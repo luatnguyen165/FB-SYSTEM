@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quên Mật Khẩu - Reels Auto-Uploader</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-color: #f9fafb; --form-bg: #ffffff; --text-main: #111827; --text-muted: #6b7280; --primary: #2563eb; --primary-hover: #1d4ed8; --border: #e5e7eb; --input-focus-border: #93c5fd; --shadow-card: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg-color); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; color: var(--text-main); }
+        .auth-card { width: 100%; max-width: 420px; background-color: var(--form-bg); border-radius: 16px; padding: 48px 40px; box-shadow: var(--shadow-card); border: 1px solid var(--border); text-align: center; }
+        .icon-circle { width: 64px; height: 64px; background-color: rgba(37, 99, 235, 0.1); border-radius: 50%; color: var(--primary); font-size: 1.5rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 28px; }
+        .title { font-size: 1.5rem; font-weight: 700; margin-bottom: 12px; letter-spacing: -0.5px; }
+        .desc { font-size: 0.925rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 32px; }
+        .form-group { margin-bottom: 24px; text-align: left; }
+        .label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 8px; }
+        .input-wrapper { position: relative; }
+        .input-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 1rem; }
+        .input { width: 100%; padding: 12px 14px 12px 42px; background-color: #fff; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; color: var(--text-main); transition: all 0.2s ease; }
+        .input:focus { outline: none; border-color: var(--input-focus-border); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+        .btn-submit { width: 100%; padding: 12px; background-color: var(--primary); color: white; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: background-color 0.2s; }
+        .btn-submit:hover { background-color: var(--primary-hover); }
+        .back-to-login { text-align: center; margin-top: 28px; font-size: 0.875rem; }
+        .back-to-login a { color: var(--text-muted); text-decoration: none; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; transition: color 0.2s; }
+        .back-to-login a:hover { color: var(--text-main); }
+        @media (max-width: 480px) { .auth-card { padding: 30px 20px; border: none; box-shadow: none; background: transparent; } }
+    </style>
+</head>
+<body>
+
+    <div class="auth-card">
+        <div class="icon-circle">
+            <i class="fa-solid fa-unlock-keyhole"></i>
+        </div>
+
+        <h1 class="title">Khôi phục mật khẩu</h1>
+        <p class="desc">Nhập địa chỉ email của bạn. Chúng tôi sẽ gửi một mã Token hoặc đường link để đặt lại mật khẩu mới.</p>
+<%
+if (typeof flash !== 'undefined' && flash) {
+    const flashType = flash.type === 'success' ? 'success' :
+                      flash.type === 'warning' ? 'warning' : 'error';
+%>
+<script>showToast(<%= JSON.stringify(flash.message) %>, '<%= flashType %>');</script>
+<% } %>
+        <form method="POST" action="/auth/forgot-password">
+            <div class="form-group">
+                <label class="label">ĐỊA CHỈ EMAIL</label>
+                <div class="input-wrapper">
+                    <i class="fa-regular fa-envelope input-icon"></i>
+                    <input type="email" name="email" class="input" placeholder="ten@email.com" required>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-submit">Yêu Cầu Liên Kết</button>
+        </form>
+
+        <div class="back-to-login">
+            <a href="/auth/login"><i class="fa-solid fa-arrow-left"></i> Quay về đăng nhập</a>
+        </div>
+    </div>
+
+    <script src="/js/toast.js"></script>
+</body>
+</html>    <link rel="stylesheet" href="/css/toast.css">

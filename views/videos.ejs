@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Kho Video - ReelsFlow AI</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/videos.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Biểu tượng và Phông chữ chuẩn -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <%- include('partials/sidebar', { currentPage: 'storeVideo' }) %>
+
+    <div class="main-content">
+        <%- include('partials/header') %>
+
+        <main class="content-body">
+            <%- include('partials/welcome-section', {
+                eyebrow: 'Kho video',
+                title: 'Quản lý video nguồn',
+                description: 'Tải lên, tìm kiếm và lên lịch video cho từng kênh vệ tinh một cách nhanh gọn.'
+            }) %>
+
+            <div class="upload-zone" id="dropZone" role="button" tabindex="0" aria-label="Tải video lên">
+                <input type="file" id="fileInput" multiple accept="video/*" style="display:none;">
+
+                <div class="upload-icon-wrap">
+                    <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                </div>
+
+                <div class="upload-copy">
+                    <h3>Kéo & thả video vào đây</h3>
+                    <p>Hoặc nhấp để chọn file từ máy tính. Bạn có thể tải nhiều video cùng lúc.</p>
+                </div>
+
+                <div class="upload-cta-row">
+                    <span class="upload-cta-btn"><i class="fa-solid fa-folder-open"></i> Chọn video</span>
+                    <span class="upload-cta-hint">MP4, MOV, M4V</span>
+                </div>
+            </div>
+
+            <div class="filter-wrapper">
+            <div class="filter-top">
+                <div class="status-tabs">
+                    <button class="tab-btn active" id="tab-all" data-status-filter="all">Tất cả (<span id="count-all">2</span>)</button>
+                    <button class="tab-btn" data-status-filter="ready">Chưa cấu hình</button>
+                    <button class="tab-btn" data-status-filter="scheduled">Đã lên lịch</button>
+                    <button class="tab-btn" data-status-filter="posted">Đã đăng</button>
+                </div>
+                <div class="filter-controls">
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass" style="color: var(--text-muted); font-size: 0.85rem;"></i>
+                        <input type="text" id="searchInput" placeholder="Tìm tên tệp video...">
+                    </div>
+                </div>
+            </div>
+
+            <div class="bulk-actions-bar" id="bulkBar">
+                <div><i class="fa-solid fa-circle-info"></i> Đã chọn <span id="selectCount">0</span> mục video</div>
+                <button class="btn-bulk-delete" id="btnBulkDelete">Xóa các mục đã chọn</button>
+            </div>
+            </div>
+
+            <div class="video-grid" id="videoGrid">
+            
+            <div class="video-card" data-status="ready" id="vcard-1">
+                <input type="checkbox" class="card-checkbox">
+                <div class="video-preview" data-video-url="https://assets.mixkit.co/videos/preview/mixkit-girl-in-neon-sign-lighting-41804-large.mp4">
+                    <div class="preview-overlay"><div class="play-icon-center"><i class="fa-solid fa-play"></i></div></div>
+                    <img class="video-thumbnail-img loaded" src="https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=400&auto=format&fit=crop" alt="Thumbnail">
+                </div>
+                <div class="video-info">
+                    <div class="video-title">video_trend_mxh_01.mp4</div>
+                    <div class="schedule-details-text"><i class="fa-regular fa-clock"></i> Chưa có lịch</div>
+                    <div class="video-meta"><span>8.4 MB</span><span class="status-tag ready">Chưa cấu hình</span></div>
+                </div>
+                <div class="card-footer-action">
+                    <button class="btn-trigger-schedule" data-card-id="vcard-1" data-video-title="video_trend_mxh_01.mp4"><i class="fa-regular fa-calendar-plus"></i> Lên lịch đăng</button>
+                </div>
+            </div>
+
+            <div class="video-card" data-status="ready" id="vcard-2">
+                <input type="checkbox" class="card-checkbox">
+                <div class="video-preview" data-video-url="https://assets.mixkit.co/videos/preview/mixkit-holding-a-smartphone-showing-a-social-media-app-42935-large.mp4">
+                    <div class="preview-overlay"><div class="play-icon-center"><i class="fa-solid fa-play"></i></div></div>
+                    <img class="video-thumbnail-img loaded" src="https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=400&auto=format&fit=crop" alt="Thumbnail">
+                </div>
+                <div class="video-info">
+                    <div class="video-title">huong_dan_lam_reels_viral.mp4</div>
+                    <div class="schedule-details-text"><i class="fa-regular fa-clock"></i> Chưa có lịch</div>
+                    <div class="video-meta"><span>12.1 MB</span><span class="status-tag ready">Chưa cấu hình</span></div>
+                </div>
+                <div class="card-footer-action">
+                    <button class="btn-trigger-schedule" data-card-id="vcard-2" data-video-title="huong_dan_lam_reels_viral.mp4"><i class="fa-regular fa-calendar-plus"></i> Lên lịch đăng</button>
+                </div>
+            </div>
+
+            </div>
+
+            <div class="pagination-bar" id="videoPaginationBar">
+            <button type="button" class="page-nav-btn" id="btnPrevVideoPage">
+                <i class="fa-solid fa-chevron-left"></i> Trước
+            </button>
+            <div class="page-info" id="videoPageInfo">Trang 1/1</div>
+            <button type="button" class="page-nav-btn" id="btnNextVideoPage">
+                Sau <i class="fa-solid fa-chevron-right"></i>
+            </button>
+            </div>
+            </main>
+    </div>
+    <div class="custom-modal" id="scheduleModal">
+        <div class="modal-form-card modal-form-card--wide">
+            <div class="schedule-modal-header">
+                <div class="schedule-modal-header-left">
+                    <div class="schedule-modal-icon">
+                        <i class="fa-regular fa-calendar-plus"></i>
+                    </div>
+                    <div>
+                        <h2 class="schedule-modal-title">Lên lịch đăng bài</h2>
+                        <p class="schedule-modal-subtitle">Chọn nền tảng, tài khoản và khung giờ để Bot tự động đăng.</p>
+                    </div>
+                </div>
+                <button type="button" class="schedule-modal-close" id="btnCancelSchedule" aria-label="Đóng">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <input type="hidden" id="targetCardId">
+
+            <div class="schedule-form-grid">
+                <!-- Nền tảng -->
+                <div class="schedule-form-section">
+                    <label class="schedule-form-label">
+                        <i class="fa-solid fa-share-nodes"></i> Nền tảng đăng tải
+                    </label>
+                    <div class="platform-tabs modal-platform-tabs" id="schedulePlatformTabs">
+                        <button type="button" class="platform-tab active" data-platform="FB">
+                            <i class="fa-brands fa-facebook"></i>
+                            <span>Facebook</span>
+                        </button>
+                        <button type="button" class="platform-tab" data-platform="IG">
+                            <i class="fa-brands fa-instagram"></i>
+                            <span>Instagram</span>
+                        </button>
+                        <button type="button" class="platform-tab" data-platform="YT">
+                            <i class="fa-brands fa-youtube"></i>
+                            <span>YouTube</span>
+                        </button>
+                        <button type="button" class="platform-tab" data-platform="TT">
+                            <i class="fa-brands fa-tiktok"></i>
+                            <span>TikTok</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tiêu đề -->
+                <div class="schedule-form-section">
+                    <label class="schedule-form-label">
+                        <i class="fa-solid fa-microphone"></i> Tiêu đề & Hashtag
+                    </label>
+                    <textarea class="schedule-textarea" id="postCaption" rows="3" placeholder="Ví dụ: Bí kíp phối đồ cực chất cho mùa hè này! #xuhuong #fashion #reels"></textarea>
+                </div>
+
+                <!-- Link affiliate (ẩn cho TikTok) -->
+                <div class="schedule-form-section" id="affiliateLinkSection">
+                    <label class="schedule-form-label">
+                        <i class="fa-solid fa-link"></i> Link Affiliate
+                    </label>
+                    <div class="affiliate-link-box" id="affiliateLinkBox">
+                        <div class="affiliate-search-wrap">
+                            <i class="fa-solid fa-search"></i>
+                            <input type="text" class="affiliate-search-input" id="affiliateSearchInput" placeholder="Tìm link affiliate...">
+                        </div>
+                        <div class="affiliate-list-box" id="affiliateListBox">
+                            <div class="affiliate-loading"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải...</div>
+                        </div>
+                        <div class="affiliate-selected-tags" id="affiliateSelectedTags"></div>
+                        <div class="affiliate-link-hint">
+                            <i class="fa-solid fa-info-circle"></i> Tích chọn link affiliate để gắn vào bài đăng (có thể chọn nhiều)
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Thời gian -->
+                <div class="schedule-form-row">
+                    <div class="schedule-form-section">
+                        <label class="schedule-form-label" for="postDateInput">
+                            <i class="fa-regular fa-clock"></i> Hẹn giờ đăng
+                        </label>
+                        <div class="schedule-datetime-split">
+                            <input type="text" class="schedule-input schedule-date-input" id="postDateInput" 
+                                inputmode="numeric" autocomplete="off" placeholder="dd/mm/yyyy">
+                            <input type="time" class="schedule-input schedule-time-input" id="postTimeInput" 
+                                step="60" value="09:00">
+                        </div>
+                        <input type="hidden" id="postDateTime">
+                    </div>
+                </div>
+
+                <!-- Tài khoản (chỉ chọn 1) -->
+                <div class="schedule-form-section">
+                    <label class="schedule-form-label">
+                        <i class="fa-solid fa-user"></i> Tài khoản đăng bài <span style="font-weight:400;font-size:0.8em;color:var(--text-muted);">(chọn 1 tài khoản)</span>
+                    </label>
+                    <div class="account-scroll-box" id="dynamicAccountBox">
+                        <div class="empty-state">
+                            <i class="fa-solid fa-spinner fa-spin"></i>
+                            <span>Đang tải tài khoản...</span>
+                        </div>
+                    </div>
+                    <div class="schedule-form-hint">
+                        <i class="fa-solid fa-circle-info"></i>
+                        Facebook: chỉ hiển thị Fanpage. Instagram: chỉ hiển thị Nhà sáng tạo.
+                    </div>
+                </div>
+            </div>
+
+            <div class="schedule-modal-footer">
+                <button type="button" class="btn-schedule-cancel" id="btnCancelScheduleAlt">Hủy bỏ</button>
+                <button type="button" class="btn-schedule-confirm" id="btnConfirmSchedule">
+                    <i class="fa-solid fa-calendar-check"></i> Xác nhận lên lịch
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="video-modal" id="videoModal">
+        <div class="phone-device">
+            <div class="phone-device__frame">
+                <div class="phone-device__notch"></div>
+                <div class="phone-device__screen">
+                    <video class="modal-video-player" id="modalPlayer" autoplay loop playsinline controls></video>
+                    <div class="phone-device__info" id="phoneVideoInfo">
+                        <div class="phone-device__badge" id="phoneVideoBadge">
+                            <i class="fa-solid fa-play"></i> Video
+                        </div>
+                        <div class="phone-device__title" id="phoneVideoTitle">Video Preview</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+     
+    <script src="/js/toast.js"></script>
+    <script src="/js/base.js"></script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/video-manager.js"></script>
+</body>
+</html>
+    <link rel="stylesheet" href="/css/toast.css">

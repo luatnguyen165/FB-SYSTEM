@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Affiliate Links - ReelsFlow AI</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/shopeeLinks.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Biểu tượng và Phông chữ chuẩn -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <%- include('partials/sidebar', { currentPage: 'shopeeLink' }) %>
+
+    <div class="main-content">
+        <%- include('partials/header') %>
+
+        <div class="content-body">
+            <%- include('partials/welcome-section', {
+                eyebrow: 'Affiliate & điều hướng',
+                title: 'Quản lý sản phẩm gắn link',
+                description: 'Tạo danh mục sản phẩm, gắn link đích và theo dõi trạng thái điều hướng một cách rõ ràng.'
+            }) %>
+
+            <div class="filter-toolbar">
+                <div class="toolbar-left">
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass" style="color: var(--text-muted); font-size: 0.85rem;"></i>
+                        <input type="text" id="tableSearchInput" placeholder="Tìm kiếm nhanh tên sản phẩm...">
+                    </div>
+                    <div class="platform-tabs" id="platformFilterTabs">
+                        <button type="button" class="platform-tab active" data-value="ALL">
+                            <i class="fa-solid fa-layer-group"></i>
+                            <span>Tất cả</span>
+                        </button>
+                        <button type="button" class="platform-tab" data-value="shopee">
+                            <i class="fa-solid fa-bag-shopping"></i>
+                            <span>Shopee</span>
+                        </button>
+                        <button type="button" class="platform-tab" data-value="tiktok">
+                            <i class="fa-brands fa-tiktok"></i>
+                            <span>TikTok Shop</span>
+                        </button>
+                        <button type="button" class="platform-tab" data-value="website">
+                            <i class="fa-solid fa-globe"></i>
+                            <span>Website</span>
+                        </button>
+                        <!-- Hidden select for backward compatibility -->
+                        <select id="platformFilterSelector" style="display:none;">
+                            <option value="ALL">Tất cả nền tảng</option>
+                            <option value="shopee">Shopee</option>
+                            <option value="tiktok">TikTok Shop</option>
+                            <option value="website">Website</option>
+                        </select>
+                    </div>
+                    <select class="select-filter" id="statusFilterSelector">
+                        <option value="ALL">Tất cả trạng thái</option>
+                        <option value="attached">Đã gắn link</option>
+                        <option value="pending">Chưa gắn link</option>
+                    </select>
+                </div>
+<button type="button" class="btn-trigger-add" id="btnOpenProductModal">
+    <i class="fa-solid fa-plus"></i> Thêm sản phẩm
+</button>            </div>
+
+            <div class="table-responsive">
+                <table class="shopee-links-table">
+                    <thead>
+                        <tr>
+                            <th class="col-thumb">Ảnh</th>
+                            <th class="col-title">Tên mô tả sản phẩm</th>
+                            <th class="col-platform">Nền tảng</th>
+                            <th class="col-url">Đường dẫn đích</th>
+                            <th class="col-time">Thời gian tạo</th>
+                            <th class="col-status">Trạng thái</th>
+                            <th class="col-actions">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="shopeeLinksTableBodyContainer">
+                </table>
+            </div>
+
+            <div class="pagination-bar" id="shopeePaginationBar">
+                <button type="button" class="page-nav-btn" id="btnPrevShopeePage">
+                    <i class="fa-solid fa-chevron-left"></i> Trước
+                </button>
+                <div class="page-info" id="shopeePageInfo">Trang 1/1</div>
+                <button type="button" class="page-nav-btn" id="btnNextShopeePage">
+                    Sau <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal-popup" id="productModal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 id="modalTitle">Thêm sản phẩm điều hướng</h3>
+                <button type="button" class="btn-close-modal" id="btnCloseModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="modalEditTargetId">
+
+                <div class="form-group">
+                    <label>Nền tảng</label>
+                    <div class="platform-tabs modal-platform-tabs" id="platformSelectGroup">
+                        <button type="button" class="platform-tab active" data-platform="shopee">
+                            <i class="fa-solid fa-bag-shopping"></i>
+                            <span>Shopee</span>
+                        </button>
+                        <button type="button" class="platform-tab" data-platform="tiktok">
+                            <i class="fa-brands fa-tiktok"></i>
+                            <span>TikTok Shop</span>
+                        </button>
+                        <button type="button" class="platform-tab" data-platform="website">
+                            <i class="fa-solid fa-globe"></i>
+                            <span>Website</span>
+                        </button>
+                        <input type="radio" name="modalPlatformSelect" value="shopee" checked style="display:none;">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Ảnh mẫu sản phẩm</label>
+                  <div class="file-upload-trigger" id="btnTriggerUpload">
+    <i class="fa-regular fa-image" style="font-size: 1.1rem;"></i> Chọn tệp ảnh từ thiết bị
+</div>
+
+<input type="file" id="modalImageSelector" accept="image/*" style="display:none;">
+
+                    <div id="modalImgPreviewContainer" style="margin-top: 4px; display: none; text-align: center; background: #f8fafc; padding: 10px; border-radius: 12px; border: 1px solid var(--border);">
+                        <img id="modalImgTag" src="" style="width: 80px; height: 80px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border); display: inline-block;">
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">Ảnh xem trước hiện tại</p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Tên mô tả sản phẩm</label>
+                    <input type="text" class="input-text" id="modalTitleInput" placeholder="Ví dụ: Áo thun 2-Way Cotton thô...">
+                </div>
+
+                <div class="form-group">
+                    <label>Đường dẫn đích</label>
+                    <input type="text" class="input-text" id="modalUrlInput" placeholder="Dán link sản phẩm Shopee / TikTok Shop / Website...">
+                </div>
+            </div>
+          <div class="modal-footer">
+    <button type="button" class="btn-modal-cancel" id="btnCancelProductModal">Hủy bỏ</button>
+    <button type="button" class="btn-modal-submit" id="btnModalSubmit">Xác nhận</button>
+</div>
+        </div>
+    </div>
+
+    <div class="modal-popup" id="deleteConfirmModal">
+        <div class="modal-container confirm-modal-container">
+            <div class="modal-header">
+                <h3>Xác nhận xóa sản phẩm</h3>
+                <button type="button" class="btn-close-modal" id="btnCloseDeleteConfirm">&times;</button>
+            </div>
+            <div class="modal-body confirm-modal-body">
+                <div class="confirm-warning-icon">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div class="confirm-modal-text">
+                    <strong>Bạn có chắc muốn xóa sản phẩm này không?</strong>
+                    <p id="deleteConfirmTitle">Sản phẩm sẽ bị xóa vĩnh viễn khỏi danh sách.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-modal-cancel" id="btnCancelDeleteConfirm">Hủy bỏ</button>
+                <button type="button" class="btn-modal-submit btn-modal-danger" id="btnConfirmDeleteLink">Xóa sản phẩm</button>
+            </div>
+        </div>
+    </div>
+ 
+    <script src="/js/toast.js"></script>
+    <script src="/js/base.js"></script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/shopeeLinks.js"></script>
+</body>
+</html>
+    <link rel="stylesheet" href="/css/toast.css">

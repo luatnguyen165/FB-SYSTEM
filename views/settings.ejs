@@ -1,0 +1,344 @@
+ <!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Cấu Hình - ReelsFlow AI</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/settings.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Biểu tượng và Phông chữ chuẩn -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <%- include('partials/sidebar', { currentPage: 'settings' }) %>
+
+    <div class="main-content">
+        <%- include('partials/header') %>
+
+        <div class="content-body settings-page">
+            <%- include('partials/welcome-section', {
+                eyebrow: 'Thiết lập hệ thống',
+                title: 'Cấu hình vận hành & tối ưu xuất bản',
+                description: 'Điều chỉnh render, lịch đăng và thông báo theo thời gian thực trong một giao diện gọn gàng và đồng bộ.'
+            }) %>
+
+            <section class="setting-panel setting-panel--highlight">
+                <div class="panel-header">
+                    <div class="panel-header__icon panel-header__icon--primary">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <div>
+                        <h2>Cấu hình lách bản quyền & Render thông minh</h2>
+                        <p>Điều chỉnh cách hệ thống xử lý video trước khi xuất bản.</p>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group full-width switch-stack">
+                        <div class="switch-row">
+                            <div class="switch-label-block">
+                                <span class="switch-title">Tự động lật đối xứng video (Horizontal Flip)</span>
+                                <span class="switch-desc">Lật gương video gốc để đổi góc nhìn, hỗ trợ đa dạng hoá nội dung đầu ra.</span>
+                            </div>
+                            <label class="switch-toggle">
+                                <input type="checkbox" id="cfgFlip" checked>
+                                <span class="slider-round"></span>
+                            </label>
+                        </div>
+
+                        <div class="switch-row">
+                            <div class="switch-label-block">
+                                <span class="switch-title">Tự động thay đổi mã hoá MD5 của tệp</span>
+                                <span class="switch-desc">Tái tạo metadata của video để mỗi lần xuất bản có cấu trúc file khác nhau.</span>
+                            </div>
+                            <label class="switch-toggle">
+                                <input type="checkbox" id="cfgMd5" checked>
+                                <span class="slider-round"></span>
+                            </label>
+                        </div>
+
+                        <div class="switch-row">
+                            <div class="switch-label-block">
+                                <span class="switch-title">Mã hoá dữ liệu tài khoản kết nối</span>
+                                <span class="switch-desc">Khi bật, token/API key/cookie sẽ được mã hoá ở cả client và server trước khi lưu.</span>
+                            </div>
+                            <label class="switch-toggle">
+                                <input type="checkbox" id="cfgDataEncryption" <%= settings && settings.dataEncryptionEnabled ? 'checked' : '' %>>
+                                <span class="slider-round"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="watermarkUpload">ĐÓNG DẤU WATERMARK TRÊN VIDEO (.PNG)</label>
+                        <span class="form-desc">Tải lên logo thương hiệu để hệ thống chèn vào video khi xuất bản.</span>
+                        <input type="file" id="watermarkUpload" class="input-text input-file" accept="image/png">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="watermarkPosition">VỊ TRÍ CHÈN LOGO</label>
+                        <span class="form-desc">Chọn góc hiển thị dấu thương hiệu trên khung video dọc 9:16.</span>
+                        <select id="watermarkPosition" class="input-text">
+                            <option>Góc trên bên phải (Mặc định)</option>
+                            <option>Góc trên bên trái</option>
+                            <option>Góc dưới bên phải</option>
+                            <option>Chèn mờ chính giữa</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <section class="setting-panel">
+                <div class="panel-header">
+                    <div class="panel-header__icon panel-header__icon--accent">
+                        <i class="fa-regular fa-clock"></i>
+                    </div>
+                    <div>
+                        <h2>Cấu hình thời gian & Giãn cách đăng tải</h2>
+                        <p>Kiểm soát nhịp đăng bài để hệ thống hoạt động ổn định hơn.</p>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+
+                    <div class="form-group">
+                        <label for="postInterval">GIÃN CÁCH GIỮA CÁC BÀI ĐĂNG</label>
+                        <span class="form-desc">Khoảng nghỉ tối thiểu (phút) giữa mỗi lần đẩy video lên cùng kênh.</span>
+                        <div class="range-input-group">
+                            <input type="number" id="postInterval" class="input-text" value="<%= settings?.postInterval || 30 %>" min="5" max="300" step="5">
+                            <span class="range-unit">phút</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="retryDelay">TỰ ĐỘNG ĐĂNG LẠI KHI LỖI</label>
+                        <span class="form-desc">Bot sẽ chờ và thử lại sau số phút này nếu đăng thất bại.</span>
+                        <div class="range-input-group">
+                            <input type="number" id="retryDelay" class="input-text" value="<%= settings?.retryDelay || 5 %>" min="1" max="60">
+                            <span class="range-unit">phút</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="maxPostsPerDay">SỐ BÀI TỐI ĐA / NGÀY</label>
+                        <span class="form-desc">Giới hạn tổng số bài đăng được trong một ngày trên tất cả kênh.</span>
+                        <div class="range-input-group">
+                            <input type="number" id="maxPostsPerDay" class="input-text" value="<%= settings?.maxPostsPerDay || 10 %>" min="1" max="100">
+                            <span class="range-unit">bài</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="minIntervalBetweenPosts">KHOẢNG NGHỈ TỐI THIỂU</label>
+                        <span class="form-desc">Khoảng nghỉ tối thiểu giữa 2 bài đăng liên tiếp trên các kênh khác nhau.</span>
+                        <div class="range-input-group">
+                            <input type="number" id="minIntervalBetweenPosts" class="input-text" value="<%= settings?.minIntervalBetweenPosts || 10 %>" min="1" max="120">
+                            <span class="range-unit">phút</span>
+                        </div>
+                    </div>
+
+                    <!-- Random Delay -->
+                    <div class="form-group full-width">
+                        <div class="switch-row">
+                            <div class="switch-label-block">
+                                <span class="switch-title">Bật độ trễ ngẫu nhiên</span>
+                                <span class="switch-desc">Thay vì khoảng cách cố định, hệ thống sẽ chờ một khoảng thời gian ngẫu nhiên giữa mỗi bài đăng để tránh bị đánh dấu spam.</span>
+                            </div>
+                            <label class="switch-toggle">
+                                <input type="checkbox" id="randomDelayEnabled" <%= settings && settings.randomDelayEnabled ? 'checked' : '' %>>
+                                <span class="slider-round"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="randomDelayRangeGroup">
+                        <label for="randomDelayMin">ĐỘ TRỄ NGẪU NHIÊN - TỐI THIỂU</label>
+                        <span class="form-desc">Giá trị nhỏ nhất trong khoảng trễ ngẫu nhiên.</span>
+                        <div class="range-input-group">
+                            <input type="number" id="randomDelayMin" class="input-text" value="<%= settings?.randomDelayMin || 5 %>" min="1" max="120">
+                            <span class="range-unit">phút</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="randomDelayMaxGroup">
+                        <label for="randomDelayMax">ĐỘ TRỄ NGẪU NHIÊN - TỐI ĐA</label>
+                        <span class="form-desc">Giá trị lớn nhất trong khoảng trễ ngẫu nhiên.</span>
+                        <div class="range-input-group">
+                            <input type="number" id="randomDelayMax" class="input-text" value="<%= settings?.randomDelayMax || 15 %>" min="1" max="300">
+                            <span class="range-unit">phút</span>
+                        </div>
+                    </div>
+
+                    <!-- Quiet Hours -->
+                    <div class="form-group full-width">
+                        <div class="switch-row">
+                            <div class="switch-label-block">
+                                <span class="switch-title">Chế độ yên lặng (Quiet Hours)</span>
+                                <span class="switch-desc">Tạm dừng đăng bài tự động trong khung giờ quy định. Các lịch sẽ được chuyển sang khoảng thời gian gần nhất sau giờ kết thúc.</span>
+                            </div>
+                            <label class="switch-toggle">
+                                <input type="checkbox" id="quietHoursEnabled" <%= settings && settings.quietHoursEnabled ? 'checked' : '' %>>
+                                <span class="slider-round"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="quietHoursStartGroup">
+                        <label for="quietHoursStart">GIỜ BẮT ĐẦU YÊN LẶNG</label>
+                        <span class="form-desc">Hệ thống sẽ không đăng bài từ thời điểm này.</span>
+                        <div class="range-input-group">
+                            <input type="time" id="quietHoursStart" class="input-text" value="<%= settings?.quietHoursStart || '23:00' %>">
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="quietHoursEndGroup">
+                        <label for="quietHoursEnd">GIỜ KẾT THÚC YÊN LẶNG</label>
+                        <span class="form-desc">Hệ thống sẽ tiếp tục đăng bài từ thời điểm này.</span>
+                        <div class="range-input-group">
+                            <input type="time" id="quietHoursEnd" class="input-text" value="<%= settings?.quietHoursEnd || '07:00' %>">
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <section class="setting-panel">
+                <div class="panel-header">
+                    <div class="panel-header__icon panel-header__icon--telegram">
+                        <i class="fa-brands fa-telegram"></i>
+                    </div>
+                    <div>
+                        <h2>Báo cáo tiến độ qua Telegram Bot</h2>
+                        <p>Nhận thông báo ngay khi có tiến trình mới hoặc lỗi phát sinh. Thông báo lịch trình đăng bài viết thành công hay thất bại.</p>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="telegram-config-row">
+                        <div class="form-group">
+                            <label for="tgToken">TELEGRAM BOT TOKEN</label>
+                            <span class="form-desc">Token Bot do BotFather cấp (VD: 123456789:ABCdefGHI...)</span>
+                            <div class="input-with-prefix">
+                                <i class="fa-solid fa-key input-prefix-icon"></i>
+                                <input type="password" class="input-text" id="tgToken" value="<%= settings && settings.telegramBotToken ? settings.telegramBotToken : '' %>" placeholder="Nhập bot token..." autocomplete="off">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="tgChatId">TELEGRAM CHAT ID</label>
+                            <span class="form-desc">Gửi tin nhắn cho @userinfobot hoặc @getidsbot để lấy Chat ID.</span>
+                            <div class="input-with-prefix">
+                                <i class="fa-solid fa-at input-prefix-icon"></i>
+                                <input type="text" class="input-text" id="tgChatId" value="<%= settings && settings.telegramChatId ? settings.telegramChatId : '' %>" placeholder="VD: 123456789" autocomplete="off">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="telegram-status-card" id="telegramStatusCard">
+                        <div class="telegram-status-info">
+                            <div class="telegram-status-dot <%= settings && settings.telegramBotToken ? 'connected' : 'disconnected' %>" id="telegramStatusDot"></div>
+                            <div>
+                                <div class="telegram-status-text" id="telegramStatusText">
+                                    <%= settings && settings.telegramBotToken ? 'Đã kết nối Telegram' : 'Chưa kết nối' %>
+                                </div>
+                                <div class="telegram-status-sub" id="telegramStatusSub">
+                                    <%= settings && settings.telegramBotToken ? 'Nhấn "Kiểm tra" để xác nhận' : 'Nhập token và chat ID để bắt đầu nhận thông báo' %>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="telegram-test-btn" id="btnTestTelegram">
+                            <i class="fa-solid fa-paper-plane"></i> Kiểm tra ngay
+                        </button>
+                    </div>
+
+                    <div class="form-group" style="margin-top:4px">
+                        <div class="telegram-notification-options">
+                            <div class="switch-row" style="padding:12px 16px">
+                                <div class="switch-label-block">
+                                    <span class="switch-title">Thông báo đăng bài thành công</span>
+                                    <span class="switch-desc">Gửi tin khi lịch đăng hoàn thành trên Facebook, TikTok, Instagram, YouTube.</span>
+                                </div>
+                                <label class="switch-toggle">
+                                    <input type="checkbox" id="tgNotifySuccess" checked>
+                                    <span class="slider-round"></span>
+                                </label>
+                            </div>
+                            <div class="switch-row" style="padding:12px 16px">
+                                <div class="switch-label-block">
+                                    <span class="switch-title">Thông báo lỗi đăng bài</span>
+                                    <span class="switch-desc">Gửi ngay khi có lỗi phát sinh trong quá trình đăng bài tự động.</span>
+                                </div>
+                                <label class="switch-toggle">
+                                    <input type="checkbox" id="tgNotifyError" checked>
+                                    <span class="slider-round"></span>
+                                </label>
+                            </div>
+                            <div class="switch-row" style="padding:12px 16px">
+                                <div class="switch-label-block">
+                                    <span class="switch-title">Thông báo tiến trình mới</span>
+                                    <span class="switch-desc">Thông báo khi có lịch mới được tạo hoặc cập nhật.</span>
+                                </div>
+                                <label class="switch-toggle">
+                                    <input type="checkbox" id="tgNotifyProgress" checked>
+                                    <span class="slider-round"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="setting-panel">
+                <div class="panel-header">
+                    <div class="panel-header__icon panel-header__icon--primary">
+                        <i class="fa-solid fa-brain"></i>
+                    </div>
+                    <div>
+                        <h2>OpenAI API Key (AI Scan)</h2>
+                        <p>API key dùng chung cho tất cả cấu hình Quét Bài Viết AI. Key sẽ được dùng để gọi OpenAI phân tích nhu cầu khách hàng.</p>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="openaiApiKey">OPENAI API KEY</label>
+                        <span class="form-desc">Lấy tại <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a>. Key có định dạng sk-...</span>
+                        <div class="input-with-prefix" style="display: flex; gap: 8px;">
+                            <i class="fa-solid fa-key input-prefix-icon"></i>
+                            <input type="password" class="input-text" id="openaiApiKey" value="<%= settings && settings.openaiApiKey ? settings.openaiApiKey : '' %>" placeholder="sk-... (để trống nếu chưa có)" autocomplete="off" style="flex: 1;">
+                            <button type="button" class="btn btn-outline btn-sm" id="btnTestOpenAiKey" style="white-space: nowrap;">
+                                <i class="fa-solid fa-plug"></i> Test Kết Nối
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div id="openaiStatusCard" style="padding: 12px 16px; border-radius: 8px; background: <%= settings && settings.openaiApiKey ? 'rgba(16, 185, 129, 0.08)' : 'rgba(148, 163, 184, 0.08)' %>; display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 10px; height: 10px; border-radius: 50%; background: <%= settings && settings.openaiApiKey ? '#10b981' : '#94a3b8' %>;" id="openaiStatusDot"></div>
+                            <span id="openaiStatusText" style="font-size: 0.85rem; color: var(--text-main);">
+                                <%= settings && settings.openaiApiKey ? 'Đã cấu hình OpenAI API Key' : 'Chưa cấu hình OpenAI API Key' %>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="sticky-save-bar">
+                <button class="btn-reset" id="btnResetSettings">Đặt lại mặc định</button>
+                <button class="btn-save-all" id="btnSaveSettings">Lưu tất cả cấu hình</button>
+            </div>
+        </div>
+    </div>
+       
+     
+    <script src="/js/toast.js"></script>
+    <script src="/js/base.js"></script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/cryptoVault.js"></script>
+    <script src="/js/settings.js"></script>
+</body>
+</html>    <link rel="stylesheet" href="/css/toast.css">

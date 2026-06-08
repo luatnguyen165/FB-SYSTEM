@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tạo Video - ReelsFlow AI</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/ai-images.css?v=202606083">
+    <link rel="stylesheet" href="/css/toast.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<%- include('partials/sidebar', { currentPage: 'video-create' }) %>
+<div class="main-content">
+    <%- include('partials/header') %>
+    <div class="content-body">
+        <div class="ai-image-hero"><div class="ai-image-hero-content"><div class="ai-image-hero-left"><div class="ai-image-hero-title"><div class="ai-image-hero-icon"><i class="fa-solid fa-video"></i></div><h1>Tạo Video</h1></div><p class="ai-image-hero-subtitle">Tạo Project → Thêm nhiều ảnh + prompt → Quản lý nội dung video.</p></div></div></div>
+        <div class="ai-image-stats">
+            <div class="ai-image-stat-card"><div class="stat-icon primary"><i class="fa-solid fa-folder-open"></i></div><div class="stat-info"><span class="stat-value"><%= stats.total %></span><span class="stat-label">Projects</span></div></div>
+            <div class="ai-image-stat-card"><div class="stat-icon success"><i class="fa-solid fa-images"></i></div><div class="stat-info"><span class="stat-value"><%= stats.completed %></span><span class="stat-label">Ảnh đã thêm</span></div></div>
+            <div class="ai-image-stat-card"><div class="stat-icon purple"><i class="fa-solid fa-layer-group"></i></div><div class="stat-info"><span class="stat-value"><%= stats.totalEntries %></span><span class="stat-label">Tổng entries</span></div></div>
+            <div class="ai-image-stat-card"><div class="stat-icon warning"><i class="fa-solid fa-heart"></i></div><div class="stat-info"><span class="stat-value"><%= stats.failed %></span><span class="stat-label">Yêu thích</span></div></div>
+        </div>
+        <div class="new-project-card"><div class="new-project-icon"><i class="fa-solid fa-folder-plus"></i></div><div class="new-project-body"><h3 class="new-project-title">Tạo Project Mới</h3><p class="new-project-desc">Đặt tên cho project để bắt đầu quản lý nội dung video</p><div class="new-project-form"><input type="text" id="newProjectName" placeholder="Nhập tên project..." class="new-project-input"><button class="btn-generate" id="btnNewProject"><i class="fa-solid fa-plus"></i> Tạo</button></div></div></div>
+        <% if (projects.length === 0) { %>
+        <div class="ai-image-empty"><i class="fa-solid fa-folder-open"></i><h3>Chưa có project nào</h3><p>Nhấn "Tạo Project Mới" để bắt đầu.</p></div>
+        <% } else { %>
+        <div class="ai-image-history-grid" id="projectsGrid">
+            <% projects.forEach(function(project) { var _e = project.entries || []; var _c = _e.filter(function(x){return x.originalImage&&x.originalImage.path;}); %>
+            <div class="ai-image-history-card" data-project-id="<%= project._id %>">
+                <div class="ai-image-history-original">
+                    <% if (_c.length > 0) { %><div class="project-thumbnails"><% _c.slice(0,4).forEach(function(x){%><img src="/<%=x.originalImage.path%>" alt="" loading="lazy" class="project-thumb"><%});%><%if(_c.length>4){%><div class="project-thumb-more">+<%= _c.length-4%></div><%}%></div>
+                    <% } else { %><div class="project-placeholder"><i class="fa-solid fa-video"></i><span><%= _e.length %> entries</span></div><% } %>
+                </div>
+                <div class="ai-image-history-info"><div class="project-name-text"><%= project.name %></div>
+                    <div class="ai-image-history-meta"><span><i class="fa-solid fa-images"></i> <%= _e.length %> ảnh</span><span><i class="fa-solid fa-heart" style="color:<%=project.isFavorite?'#ef4444':'#ccc'%>"></i></span><span><%= new Date(project.createdAt).toLocaleDateString('vi-VN') %></span></div>
+                    <div class="ai-image-history-actions"><button class="btn-sm btn-view" onclick="openProject('<%= project._id %>')"><i class="fa-solid fa-folder-open"></i> Mở</button><button class="btn-sm btn-favorite <%=project.isFavorite?'active':''%>" onclick="toggleFavorite('<%=project._id%>',this)"><i class="fa-solid fa-heart"></i></button><button class="btn-sm btn-delete" onclick="deleteProject('<%=project._id%>')"><i class="fa-solid fa-trash"></i></button></div>
+                </div>
+            </div><% }); %>
+        </div>
+        <% if (pagination.totalPages > 1) { %><div class="ai-image-pagination"><% if (pagination.page > 1) { %><a href="/ai-images?page=<%=pagination.page-1%>"><i class="fa-solid fa-chevron-left"></i></a><% } %><% for (var i=1;i<=pagination.totalPages;i++) { if (i===pagination.page) { %><span class="active"><%=i%></span><% } else { %><a href="/ai-images?page=<%=i%>"><%=i%></a><% } } %><% if (pagination.page < pagination.totalPages) { %><a href="/ai-images?page=<%=pagination.page+1%>"><i class="fa-solid fa-chevron-right"></i></a><% } %></div><% } %>
+        <% } %>
+        <!-- PROJECT DETAIL -->
+        <div class="pd-wrap" id="projectDetail" style="display:none;">
+            <div class="pd-topbar"><button class="pd-back" id="btnBackToList"><i class="fa-solid fa-arrow-left"></i></button><div class="pd-topbar-left"><div class="pd-avatar"><i class="fa-solid fa-folder"></i></div><div class="pd-info"><div class="pd-name-row"><h2 class="pd-name" id="projectName" contenteditable="true" spellcheck="false"></h2><button class="pd-name-edit" id="pdNameEdit" onclick="saveProjectName()" title="Lưu"><i class="fa-solid fa-check"></i></button></div><div class="pd-meta" id="pdMeta"></div></div></div><div class="pd-topbar-actions"><button class="pd-action-btn" id="pdFavBtn" onclick="toggleFavCurrent()" title="Yêu thích"><i class="fa-solid fa-heart"></i></button><button class="pd-action-btn danger" onclick="deleteCurrentProject()" title="Xóa"><i class="fa-solid fa-trash"></i></button></div></div>
+            <div class="pd-add-section"><div class="pd-add-card"><input type="file" id="entryFileInput" accept="image/jpeg,image/png,image/webp" style="display:none;"><div class="pd-add-trigger" id="addEntryPlaceholder"><div class="pd-add-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div><div class="pd-add-text"><span class="pd-add-title">Thêm nội dung mới</span><span class="pd-add-desc">Chọn ảnh và nhập prompt</span></div></div><div class="pd-add-form" id="addEntryForm" style="display:none;"><div class="pd-add-preview"><img id="entryPreviewImg" src="" alt=""><button class="pd-add-preview-close" id="btnRemoveEntryImage"><i class="fa-solid fa-xmark"></i></button></div><div class="pd-add-fields"><textarea id="entryPromptInput" placeholder="Nhập prompt / mô tả..." rows="3"></textarea><div class="pd-add-actions"><button class="pd-add-cancel" id="btnCancelEntry">Hủy</button><button class="pd-add-submit" id="btnGenerateEntry"><span class="btn-text"><i class="fa-solid fa-cloud-arrow-up"></i> Tải lên</span><span class="loading-text"><span class="spinner"></span> Đang tải...</span></button></div></div></div></div></div>
+            <div class="pd-entries-header"><h3 class="pd-section-title"><i class="fa-solid fa-list"></i> Danh sách nội dung</h3><span class="pd-entries-count" id="pdEntriesCount"></span></div>
+            <div class="pd-entries" id="entriesGrid"></div>
+        </div>
+    </div>
+</div>
+<!-- Lightbox -->
+<div class="ai-image-lightbox" id="lightbox"><button class="ai-image-lightbox-close" onclick="closeLightbox()"><i class="fa-solid fa-xmark"></i></button><img id="lightboxImg" src="" alt=""><div class="ai-image-lightbox-info"><div class="prompt-text" id="lightboxPrompt"></div></div></div>
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editModal">
+    <div class="modal-card">
+        <div class="modal-header"><h3><i class="fa-solid fa-pen-to-square"></i> Chỉnh sửa nội dung</h3><button class="modal-close" onclick="closeEditModal()"><i class="fa-solid fa-xmark"></i></button></div>
+        <div class="modal-body">
+            <div class="modal-img-preview"><img id="editPreviewImg" src="" alt=""></div>
+            <div class="modal-fields">
+                <label>Prompt</label>
+                <textarea id="editPromptInput" rows="4" placeholder="Nhập prompt..."></textarea>
+                <div class="modal-actions">
+                    <button class="pd-add-cancel" onclick="closeEditModal()">Hủy</button>
+                    <button class="pd-add-submit" id="btnSaveEdit"><span class="btn-text"><i class="fa-solid fa-check"></i> Lưu</span><span class="loading-text"><span class="spinner"></span> ...</span></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="toast-container"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+<script src="/js/base.js"></script>
+<script src="/js/toast.js"></script>
+<script>
+var _extToast=(typeof window.showToast==='function')?window.showToast:null;
+function notify(msg,type){type=type||'info';if(_extToast){_extToast(msg,type);return;}var c=document.getElementById('toast-container');var el=document.createElement('div');el.style.cssText='padding:12px 20px;margin-bottom:10px;border-radius:8px;color:#fff;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,0.15);';var colors={success:'#10b981',error:'#ef4444',warning:'#f59e0b',info:'#667eea'};el.style.background=colors[type]||colors.info;el.textContent=msg;c.appendChild(el);setTimeout(function(){el.style.opacity='0';el.style.transition='opacity 0.3s';setTimeout(function(){el.remove();},300);},3000);}
+
+var currentProjectId=null,currentProjectData=null;
+var projectNameEl=document.getElementById('projectName');
+var pdNameEdit=document.getElementById('pdNameEdit');
+if(projectNameEl){projectNameEl.addEventListener('focus',function(){if(pdNameEdit)pdNameEdit.style.display='flex';});projectNameEl.addEventListener('blur',function(){setTimeout(function(){if(pdNameEdit)pdNameEdit.style.display='none';},200);});}
+
+// New Project
+document.getElementById('btnNewProject').addEventListener('click',function(){var n=document.getElementById('newProjectName').value.trim()||'Project mới';fetch('/ai-images/api/project',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n})}).then(function(r){return r.json();}).then(function(d){if(d.success){notify('Đã tạo project!','success');document.getElementById('newProjectName').value='';openProject(d.project._id);}else notify(d.message,'error');}).catch(function(e){notify('Lỗi: '+e.message,'error');});});
+
+// Open Project
+function openProject(pid){currentProjectId=pid;fetch('/ai-images/api/project/'+pid+'/status').then(function(r){return r.json();}).then(function(d){if(!d.success){notify(d.message,'error');return;}var p=d.project;currentProjectData=p;document.querySelectorAll('.ai-image-history-grid,.ai-image-history-header,.ai-image-pagination,.ai-image-empty,.new-project-card').forEach(function(el){el.style.display='none';});document.getElementById('projectDetail').style.display='';document.getElementById('projectName').textContent=p.name;var entries=p.entries||[];document.getElementById('pdMeta').innerHTML='<span><i class="fa-solid fa-images"></i> '+entries.length+' nội dung</span><span><i class="fa-solid fa-calendar"></i> '+new Date(p.createdAt).toLocaleDateString('vi-VN')+'</span>';document.getElementById('pdEntriesCount').textContent=entries.length+' mục';var fb=document.getElementById('pdFavBtn');if(p.isFavorite)fb.classList.add('active');else fb.classList.remove('active');renderEntries(entries);}).catch(function(e){notify('Lỗi: '+e.message,'error');});}
+
+// Render Entries
+function renderEntries(entries){var g=document.getElementById('entriesGrid');if(!entries||entries.length===0){g.innerHTML='<div class="pd-entry-empty"><i class="fa-solid fa-folder-open"></i><p>Chưa có nội dung. Hãy thêm ảnh + prompt bên trên.</p></div>';return;}g.innerHTML='';entries.forEach(function(e,i){var op=(e.originalImage&&e.originalImage.path)?e.originalImage.path:'';var fn=e.originalImage.filename||'image';var ds=e.createdAt?new Date(e.createdAt).toLocaleDateString('vi-VN'):'';var c=document.createElement('div');c.className='pd-entry';c.dataset.entryId=e._id;var eid=e._id;var pid=currentProjectId;var ep=e.prompt||'';c.innerHTML='<div class="pd-entry-thumb" onclick="openEditModal(\''+escapeHtml(op)+'\',\''+escapeHtml(ep).replace(/'/g,"\\'")+'\',\''+eid+'\')"><img src="/'+escapeHtml(op)+'" alt="" loading="lazy"></div><div class="pd-entry-body"><div class="pd-entry-prompt">'+escapeHtml(ep||'(chưa có prompt)')+'</div><div class="pd-entry-info"><span><i class="fa-solid fa-file-image"></i> '+escapeHtml(fn)+'</span>'+(ds?'<span><i class="fa-solid fa-clock"></i> '+ds+'</span>':'')+'</div></div><div class="pd-entry-actions"><button class="pd-entry-btn play" title="Xem / Edit" onclick="openEditModal(\''+escapeHtml(op)+'\',\''+escapeHtml(ep).replace(/'/g,"\\'")+'\',\''+eid+'\')"><i class="fa-solid fa-play"></i></button><button class="pd-entry-btn danger" title="Xóa" onclick="deleteEntry(\''+pid+'\',\''+eid+'\')"><i class="fa-solid fa-trash"></i></button></div>';g.appendChild(c);});}
+
+// Add Entry
+var addEntryPlaceholder=document.getElementById('addEntryPlaceholder'),entryFileInput=document.getElementById('entryFileInput'),addEntryForm=document.getElementById('addEntryForm');
+addEntryPlaceholder.addEventListener('click',function(){entryFileInput.click();});
+document.getElementById('btnRemoveEntryImage').addEventListener('click',resetAddForm);
+document.getElementById('btnCancelEntry').addEventListener('click',resetAddForm);
+function resetAddForm(){addEntryPlaceholder.style.display='';addEntryForm.style.display='none';entryFileInput.value='';document.getElementById('entryPromptInput').value='';}
+entryFileInput.addEventListener('change',function(){if(!entryFileInput.files.length)return;var f=entryFileInput.files[0];if(!f.type.startsWith('image/')){notify('Chọn file ảnh','warning');return;}var r=new FileReader();r.onload=function(ev){document.getElementById('entryPreviewImg').src=ev.target.result;addEntryPlaceholder.style.display='none';addEntryForm.style.display='flex';document.getElementById('entryPromptInput').focus();};r.readAsDataURL(f);});
+document.getElementById('btnGenerateEntry').addEventListener('click',function(){if(!currentProjectId)return;if(!entryFileInput.files.length){notify('Chọn ảnh trước','warning');return;}var p=document.getElementById('entryPromptInput').value.trim();var btn=document.getElementById('btnGenerateEntry');btn.classList.add('loading');btn.disabled=true;var fd=new FormData();fd.append('image',entryFileInput.files[0]);fd.append('prompt',p);fetch('/ai-images/api/project/'+currentProjectId+'/upload',{method:'POST',body:fd}).then(function(r){return r.json();}).then(function(d){if(d.success){notify('Đã thêm nội dung!','success');resetAddForm();openProject(currentProjectId);}else notify(d.message,'error');}).catch(function(e){notify('Lỗi: '+e.message,'error');}).finally(function(){btn.classList.remove('loading');btn.disabled=false;});});
+document.getElementById('btnBackToList').addEventListener('click',function(){currentProjectId=null;currentProjectData=null;document.getElementById('projectDetail').style.display='none';location.reload();});
+
+// Edit Modal
+function openEditModal(imgSrc,prompt,entryId){
+    document.getElementById('editPreviewImg').src='/'+imgSrc;
+    document.getElementById('editPromptInput').value=prompt;
+    document.getElementById('editModal').dataset.entryId=entryId;
+    document.getElementById('editModal').classList.add('show');
+}
+function closeEditModal(){document.getElementById('editModal').classList.remove('show');}
+document.getElementById('btnSaveEdit').addEventListener('click',function(){
+    var entryId=document.getElementById('editModal').dataset.entryId;
+    var newPrompt=document.getElementById('editPromptInput').value.trim();
+    if(!currentProjectId||!entryId)return;
+    var btn=document.getElementById('btnSaveEdit');btn.classList.add('loading');btn.disabled=true;
+    fetch('/ai-images/api/project/'+currentProjectId+'/entry/'+entryId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:newPrompt})}).then(function(r){return r.json();}).then(function(d){
+        btn.classList.remove('loading');btn.disabled=false;
+        if(d.success){notify('Đã cập nhật!','success');closeEditModal();openProject(currentProjectId);}
+        else notify(d.message||'Lỗi','error');
+    }).catch(function(e){btn.classList.remove('loading');btn.disabled=false;notify('Lỗi: '+e.message,'error');});
+});
+
+// CRUD
+function saveProjectName(){if(!currentProjectId)return;var n=document.getElementById('projectName').textContent.trim();if(!n){notify('Tên không được trống','warning');return;}fetch('/ai-images/api/project/'+currentProjectId+'/name',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n})}).then(function(r){return r.json();}).then(function(d){if(d.success)notify('Đã lưu tên','success');}).catch(function(){});}
+function toggleFavCurrent(){if(!currentProjectId)return;fetch('/ai-images/api/project/'+currentProjectId+'/favorite',{method:'POST'}).then(function(r){return r.json();}).then(function(d){if(d.success){var b=document.getElementById('pdFavBtn');b.classList.toggle('active',d.isFavorite);if(currentProjectData)currentProjectData.isFavorite=d.isFavorite;notify(d.isFavorite?'Đã thêm yêu thích':'Đã bỏ yêu thích','success');}}).catch(function(){});}
+function deleteCurrentProject(){if(!currentProjectId)return;if(!confirm('Xóa project này?'))return;fetch('/ai-images/api/project/'+currentProjectId,{method:'DELETE'}).then(function(r){return r.json();}).then(function(d){if(d.success){notify('Đã xóa','success');location.reload();}}).catch(function(e){notify('Lỗi: '+e.message,'error');});}
+function deleteProject(pid){if(!confirm('Xóa project này?'))return;fetch('/ai-images/api/project/'+pid,{method:'DELETE'}).then(function(r){return r.json();}).then(function(d){if(d.success){var c=document.querySelector('[data-project-id="'+pid+'"]');if(c){c.style.opacity='0';setTimeout(function(){c.remove();},300);}notify('Đã xóa','success');}}).catch(function(e){notify('Lỗi: '+e.message,'error');});}
+function deleteEntry(pid,eid){if(!confirm('Xóa nội dung này?'))return;fetch('/ai-images/api/project/'+pid+'/entry/'+eid,{method:'DELETE'}).then(function(r){return r.json();}).then(function(d){if(d.success){openProject(pid);notify('Đã xóa','success');}}).catch(function(e){notify('Lỗi: '+e.message,'error');});}
+function toggleFavorite(pid,btn){fetch('/ai-images/api/project/'+pid+'/favorite',{method:'POST'}).then(function(r){return r.json();}).then(function(d){if(d.success){btn.classList.toggle('active',d.isFavorite);notify('Đã cập nhật','success');}}).catch(function(){});}
+function openLightbox(s,p){document.getElementById('lightboxImg').src=s;document.getElementById('lightboxPrompt').textContent=p;document.getElementById('lightbox').classList.add('show');}
+function closeLightbox(){document.getElementById('lightbox').classList.remove('show');}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeLightbox();closeEditModal();}});
+document.getElementById('lightbox').addEventListener('click',function(e){if(e.target===e.currentTarget)closeLightbox();});
+function escapeHtml(t){if(!t)return'';var d=document.createElement('div');d.textContent=t;return d.innerHTML;}
+</script>
+</body>
+</html>

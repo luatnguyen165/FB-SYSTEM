@@ -1,0 +1,29 @@
+{
+    "watch": [
+        "app.js",
+        "controllers/",
+        "models/",
+        "routes/",
+        "services/",
+        "middlewares/",
+        "utils/"
+    ],
+    "ignore": [
+        "social-sessions/**",
+        "uploads/**",
+        "temp-toast/**",
+        "views/fb_session/**",
+        "public/music/**",
+        "public/output/**",
+        "**/Cookies*",
+        "**/SingletonLock",
+        "**/SingletonCookie",
+        "**/SingletonSocket",
+        "**/LOCK",
+        "**/*.log",
+        "node_modules/**",
+        ".git/**"
+    ],
+    "delay": 500,
+    "ext": "js,json,ejs"
+}

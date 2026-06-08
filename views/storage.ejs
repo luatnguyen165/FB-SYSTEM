@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lưu trữ Dữ liệu - ReelsFlow AI</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/storage.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <%- include('partials/sidebar', { currentPage: 'storage' }) %>
+
+    <div class="main-content">
+        <%- include('partials/header') %>
+        
+        <main class="content-body storage-page">
+            <%- include('partials/welcome-section', {
+                eyebrow: 'Lưu trữ dữ liệu',
+                title: 'Quản lý không gian lưu trữ',
+                description: 'Thiết lập Google Drive để lưu trữ, đồng bộ và quản lý video nguồn cho toàn hệ thống.'
+            }) %>
+            
+            <div class="card">
+                <div class="card-header-flex">
+                    <i class="fa-brands fa-google-drive" style="color: #34a853;"></i>
+                    <div>
+                        <div class="card-title">Kết nối Google Drive API</div>
+                        <div class="card-subtitle">Đoạt luồng dữ liệu đám mây làm kho tài nguyên chạy chiến dịch tự động.</div>
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span>Để liên kết thư mục video trên Drive, hệ thống yêu cầu bạn điền thông tin luồng xác thực Client ID và API Key được cấp từ tài khoản Google Cloud Console.</span>
+                </div>
+
+                <div class="form-group">
+                    <label>Google Client ID</label>
+                    <input
+                        type="text"
+                        class="input-text"
+                        id="driveClientId"
+                        placeholder="Nhập chuỗi xxxxx-xxxx.apps.googleusercontent.com"
+                        value="<%= settings && settings.driveClientId ? settings.driveClientId : '' %>"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label>Google API Key</label>
+                    <input
+                        type="password"
+                        class="input-text"
+                        id="driveApiKey"
+                        placeholder="Nhập chuỗi mật mã API Key"
+                        value="<%= settings && settings.driveApiKey ? settings.driveApiKey : '' %>"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label>ID Thư Mục Video Gốc (Folder ID)</label>
+                    <input
+                        type="text"
+                        class="input-text"
+                        id="driveFolderId"
+                        placeholder="Nhập chuỗi mã ID thư mục lưu trữ video áo thun/sản phẩm"
+                        value="<%= settings && settings.driveFolderId ? settings.driveFolderId : '' %>"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label>Trạng thái kết nối hiện tại</label>
+                    <div>
+                        <span class="status-badge status-disconnected" id="statusLabelDisconnected" <% if (settings && settings.driveConnected) { %>style="display:none;"<% } %>>
+                            <i class="fa-solid fa-circle-dot"></i> Chưa liên kết dữ liệu đám mây
+                        </span>
+                        <span class="status-badge status-connected" id="statusLabelConnected" <% if (!(settings && settings.driveConnected)) { %>style="display:none;"<% } %>>
+                            <i class="fa-solid fa-circle-check"></i> Đồng bộ Google Drive thành công
+                        </span>
+                    </div>
+                </div>
+
+                <div class="footer-action-row">
+                    <button type="button" class="btn-base btn-save" id="saveDriveConfigBtn">Lưu cấu hình</button>
+                    <button type="button" class="btn-base btn-connect-drive" id="triggerGoogleAuthBtn">
+                        <i class="fa-solid fa-plug"></i> Ủy quyền tài khoản Google
+                    </button>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="/js/toast.js"></script>
+    <script src="/js/base.js"></script>
+    <script src="/js/cryptoVault.js"></script>
+    <script src="/js/storage.js"></script>
+</body>
+</html>
+    <link rel="stylesheet" href="/css/toast.css">

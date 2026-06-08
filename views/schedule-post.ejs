@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch Post ảnh - ReelsFlow AI</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/schedule-post.css">
+    <link rel="stylesheet" href="/css/toast.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.min.js"></script>
+</head>
+
+<body>
+<%- include('partials/sidebar', { currentPage: 'schedule-post' }) %>
+
+<div class="main-content">
+    <%- include('partials/header') %>
+
+    <div class="content-body">
+        <%- include('partials/welcome-section', {
+            eyebrow: 'Lịch Post ảnh',
+            title: 'Lập kế hoạch bài đăng hình ảnh',
+            description: 'Quản lý lịch đăng album ảnh, caption và nền tảng phân phối trong một giao diện trực quan.',
+            actionHtml: '<button class="btn-create-post-hero" id="btnCreatePost"><i class="fa-solid fa-plus"></i> Tạo bài Post mới</button>'
+        }) %>
+
+        <div class="schedule-overview-stats" id="scheduleOverviewStats">
+            <div class="schedule-stat-card">
+                <div class="schedule-stat-card__icon">
+                    <i class="fa-solid fa-calendar-days"></i>
+                </div>
+                <div class="schedule-stat-card__content">
+                    <span class="schedule-stat-card__label">Tổng lịch tháng</span>
+                    <strong class="schedule-stat-card__value" id="statMonthlyTotal">0</strong>
+                </div>
+                <small class="schedule-stat-card__hint" id="statMonthlyVisible">0 lịch</small>
+            </div>
+            <div class="schedule-stat-card schedule-stat-card--pending">
+                <div class="schedule-stat-card__icon">
+                    <i class="fa-solid fa-clock"></i>
+                </div>
+                <div class="schedule-stat-card__content">
+                    <span class="schedule-stat-card__label">Chờ đăng</span>
+                    <strong class="schedule-stat-card__value" id="statMonthlyPending">0</strong>
+                </div>
+                <small class="schedule-stat-card__hint">Sẵn sàng</small>
+            </div>
+            <div class="schedule-stat-card schedule-stat-card--success">
+                <div class="schedule-stat-card__icon">
+                    <i class="fa-solid fa-check-circle"></i>
+                </div>
+                <div class="schedule-stat-card__content">
+                    <span class="schedule-stat-card__label">Đã đăng</span>
+                    <strong class="schedule-stat-card__value" id="statMonthlyPosted">0</strong>
+                </div>
+                <small class="schedule-stat-card__hint">Thành công</small>
+            </div>
+            <div class="schedule-stat-card schedule-stat-card--danger">
+                <div class="schedule-stat-card__icon">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                </div>
+                <div class="schedule-stat-card__content">
+                    <span class="schedule-stat-card__label">Thất bại</span>
+                    <strong class="schedule-stat-card__value" id="statMonthlyFailed">0</strong>
+                </div>
+                <small class="schedule-stat-card__hint">Cần kiểm tra</small>
+            </div>
+        </div>
+
+        <div class="calendar-toolbar">
+            <div class="calendar-filters">
+                <div class="filter-field">
+                    <label for="scheduleStatusFilter">
+                        <i class="fa-solid fa-filter"></i> Trạng thái
+                    </label>
+                    <select class="filter-select" id="scheduleStatusFilter">
+                        <option value="all">Tất cả</option>
+                        <option value="pending">Chưa đăng</option>
+                        <option value="posted">Đã đăng</option>
+                        <option value="failed">Thất bại</option>
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label for="schedulePlatformFilter">
+                        <i class="fa-brands fa-meta"></i> Nền tảng
+                    </label>
+                    <select class="filter-select" id="schedulePlatformFilter">
+                        <option value="all">Tất cả</option>
+                        <option value="FB">Facebook</option>
+                        <option value="IG">Instagram</option>
+                        <option value="YT">YouTube</option>
+                    </select>
+                </div>
+                <div class="filter-field filter-field--wide">
+                    <label for="scheduleKeywordFilter">
+                        <i class="fa-solid fa-magnifying-glass"></i> Từ khóa
+                    </label>
+                    <input class="filter-input" id="scheduleKeywordFilter" type="search" placeholder="Tìm caption...">
+                </div>
+                <div class="filter-field">
+                    <label for="scheduleDateFilter">
+                        <i class="fa-solid fa-calendar"></i> Ngày
+                    </label>
+                    <input class="filter-input" id="scheduleDateFilter" type="date">
+                </div>
+            </div>
+            <button type="button" class="btn-clear-filters" id="btnClearCalendarFilters">
+                <i class="fa-solid fa-rotate-left"></i> Xóa lọc
+            </button>
+        </div>
+
+        <div class="calendar-wrapper">
+            <div class="calendar-header">
+                <div class="month-nav">
+                    <button class="btn-month-nav" id="btnPrevMonth">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <div class="current-month" id="currentMonthDisplay"></div>
+                    <button class="btn-month-nav" id="btnNextMonth">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
+                <button class="btn-today" id="btnCalendarToday">
+                    <i class="fa-solid fa-calendar-day"></i> Hôm nay
+                </button>
+            </div>
+
+            <div class="calendar-grid" id="calendarGrid">
+                <div class="weekday-label"><span>Thứ 2</span></div>
+                <div class="weekday-label"><span>Thứ 3</span></div>
+                <div class="weekday-label"><span>Thứ 4</span></div>
+                <div class="weekday-label"><span>Thứ 5</span></div>
+                <div class="weekday-label"><span>Thứ 6</span></div>
+                <div class="weekday-label"><span>Thứ 7</span></div>
+                <div class="weekday-label"><span>CN</span></div>
+            </div>
+
+            <!-- Popover đặt ngoài calendar-wrapper để dùng position:fixed đúng -->
+            <div class="schedule-popover" id="scheduleQuickPreviewPopover" aria-hidden="true">
+                <div class="schedule-popover__arrow"></div>
+                <div class="schedule-popover__header">
+                    <div class="schedule-popover__header-content">
+                        <p class="schedule-popover__eyebrow" id="schedulePopoverEyebrow">Chi tiết lịch</p>
+                        <h3 class="schedule-popover__title" id="schedulePopoverTitle">-</h3>
+                    </div>
+                    <button type="button" class="schedule-popover__close" id="btnCloseSchedulePopover">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="schedule-popover__body" id="schedulePopoverBody"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Tạo/Sửa Post -->
+    <div class="post-modal" id="createPostModal">
+        <div class="post-modal-container">
+            <!-- Form Side -->
+            <div class="modal-form-side">
+                <div class="form-header">
+                    <div class="form-header__left">
+                        <div class="form-header__icon">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </div>
+                        <div class="form-header__text">
+                            <h2 id="modalFormTitle">Tạo bài viết mới</h2>
+                            <p id="modalFormSubtitle">Đăng album ảnh lên các nhóm Facebook</p>
+                        </div>
+                    </div>
+                    <button type="button" class="form-header__close" id="btnClosePostModal" aria-label="Đóng">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="form-fields-scrollable" id="formFieldsScrollable">
+                    <!-- Section: Album Ảnh -->
+                    <div class="form-section">
+                        <div class="form-section__header">
+                            <i class="fa-solid fa-images"></i>
+                            <span>Album hình ảnh</span>
+                        </div>
+                        <div class="upload-zone" id="uploadZone">
+                            <div class="upload-zone__content">
+                                <i class="fa-solid fa-cloud-arrow-up"></i>
+                                <span class="upload-zone__title">Kéo thả ảnh vào đây</span>
+                                <span class="upload-zone__subtitle">hoặc click để chọn từ máy</span>
+                                <span class="upload-zone__hint">JPG, PNG • Tối đa 10 ảnh</span>
+                            </div>
+                        </div>
+                        <input type="file" id="actualImageInput" accept="image/*" multiple style="display:none;">
+                        <div class="image-preview-list-wrapper" id="miniThumbGridContainer"></div>
+                    </div>
+
+                    <!-- Section: Nội dung -->
+                    <div class="form-section">
+                        <div class="form-section__header">
+                            <i class="fa-solid fa-pencil"></i>
+                            <span>Nội dung bài đăng</span>
+                        </div>
+                        <textarea class="input-text" id="modalCaptionInput" rows="4" 
+                            placeholder="Viết nội dung bài đăng, hashtag..."></textarea>
+                        <div class="form-section__hint">
+                            <i class="fa-solid fa-info-circle"></i>
+                            Caption sẽ hiển thị kèm theo ảnh trên Facebook
+                        </div>
+                    </div>
+
+                    <!-- Section: Thời gian -->
+                    <div class="form-section">
+                        <div class="form-section__header">
+                            <i class="fa-solid fa-clock"></i>
+                            <span>Hẹn giờ đăng</span>
+                        </div>
+                        <div class="datetime-split">
+                            <div class="datetime-field">
+                                <label>Ngày</label>
+                                <input type="text" class="input-text" id="modalDateInput" inputmode="numeric" 
+                                    autocomplete="off" placeholder="dd/mm/yyyy">
+                            </div>
+                            <div class="datetime-field">
+                                <label>Giờ</label>
+                                <input type="time" class="input-text" id="modalClockInput" step="60" value="09:00">
+                            </div>
+                        </div>
+                        <input type="hidden" id="modalTimeInput">
+                    </div>
+
+                    <!-- Section: Nền tảng -->
+                    <div class="form-section">
+                        <div class="form-section__header">
+                            <i class="fa-solid fa-share-nodes"></i>
+                            <span>Nền tảng đăng tải</span>
+                        </div>
+                        <div class="platform-checkbox-group">
+                            <% const availablePlatforms = new Set((channels || []).map(ch => ch.platform)); %>
+                            <% const hasFB = availablePlatforms.has('FB'); %>
+                            <% const hasIG = availablePlatforms.has('IG'); %>
+
+                            <% if (hasFB) { %>
+                            <label class="platform-chip" data-platform="FB">
+                                <input type="radio" name="platformPick" class="platform-check" value="FB" checked>
+                                <i class="fa-brands fa-facebook"></i>
+                                <span>Facebook</span>
+                                <div class="platform-chip__check"><i class="fa-solid fa-check"></i></div>
+                            </label>
+                            <% } %>
+
+                            <% if (hasIG) { %>
+                            <label class="platform-chip" data-platform="IG">
+                                <input type="radio" name="platformPick" class="platform-check" value="IG" <%= !hasFB ? 'checked' : '' %>>
+                                <i class="fa-brands fa-instagram"></i>
+                                <span>Instagram</span>
+                                <div class="platform-chip__check"><i class="fa-solid fa-check"></i></div>
+                            </label>
+                            <% } %>
+
+                            <% if (!hasFB && !hasIG) { %>
+                            <div class="empty-state">
+                                <i class="fa-solid fa-circle-info"></i>
+                                <span>Chưa có tài khoản nào được liên kết</span>
+                            </div>
+                            <% } %>
+                        </div>
+                    </div>
+
+                    <!-- Section: Tài khoản -->
+                    <div class="form-section">
+                        <div class="form-section__header">
+                            <i class="fa-solid fa-user-circle"></i>
+                            <span>Tài khoản đăng bài</span>
+                        </div>
+                        <div class="account-scroll-box" id="dynamicAccountBox">
+                            <div class="empty-state">
+                                <i class="fa-solid fa-spinner fa-spin"></i>
+                                <span>Đang tải tài khoản...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Groups (Facebook) -->
+                    <div class="form-section" id="facebookGroupSelectWrapper">
+                        <div class="form-section__header">
+                            <i class="fa-solid fa-users"></i>
+                            <span>Group Facebook đích</span>
+                            <span class="form-section__badge" id="groupSelectedBadge">0 đã chọn</span>
+                        </div>
+                        <div class="group-search-combobox" id="groupCombobox">
+                            <div class="combobox-input-wrapper" id="comboboxInputWrapper">
+                                <i class="fa-solid fa-search combobox-search-icon"></i>
+                                <input type="text" class="combobox-search-input" id="groupSearchInput" 
+                                    placeholder="Tìm và chọn nhóm...">
+                                <span class="combobox-clear" id="comboboxClear" style="display:none;">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </span>
+                            </div>
+                            <div class="combobox-dropdown" id="groupComboboxDropdown">
+                                <div class="combobox-loading" id="groupComboboxLoading">
+                                    <div class="combobox-loading__content">
+                                        <i class="fa-solid fa-spinner fa-spin"></i>
+                                        <span>Đang tải danh sách nhóm...</span>
+                                    </div>
+                                </div>
+                                <div class="combobox-empty" id="groupComboboxEmpty" style="display:none;">
+                                    <i class="fa-solid fa-users-slash"></i>
+                                    <span>Chưa có nhóm nào</span>
+                                </div>
+                                <div class="combobox-list" id="groupComboboxList"></div>
+                            </div>
+                        </div>
+                        <div class="selected-tags" id="selectedGroupTags"></div>
+                        <div class="form-section__hint" id="groupComboboxHint">
+                            <i class="fa-solid fa-lightbulb"></i>
+                            Chọn tài khoản Facebook để hiển thị danh sách nhóm
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="action-btns-group">
+                    <button type="button" class="btn-action-secondary" id="btnCancelPostSchedule">
+                        <i class="fa-solid fa-ban"></i> Hủy bỏ
+                    </button>
+                    <button type="button" class="btn-action-danger" id="btnDeleteSchedule" style="display:none;">
+                        <i class="fa-solid fa-trash"></i> Xóa lịch
+                    </button>
+                    <button class="btn-action-primary" type="button" id="btnSubmitPostSchedule">
+                        <i class="fa-solid fa-calendar-check"></i>
+                        <span>Xác nhận lên lịch</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Preview Side -->
+            <div class="modal-preview-side">
+                <div class="preview-label">
+                    <i class="fa-solid fa-mobile-screen-button"></i>
+                    Xem trước trên điện thoại
+                </div>
+                <div class="phone-mockup">
+                    <div class="phone-notch"></div>
+                    
+                    <div class="feed-header">
+                        <div class="feed-avatar">
+                            <i class="fa-solid fa-user"></i>
+                        </div>
+                        <div class="feed-user-info">
+                            <h5 id="previewUsername">Tài khoản của bạn</h5>
+                            <span><i class="fa-solid fa-earth-americas"></i> Vừa xong</span>
+                        </div>
+                    </div>
+
+                    <div class="feed-caption" id="liveFeedTextPreview">
+                        Nội dung bài viết sẽ hiển thị tại đây. Bạn có thể viết caption dài để mô tả sản phẩm...
+                    </div>
+
+                    <div class="feed-image-container">
+                        <div class="feed-carousel-counter" id="phoneCarouselCounterBadge">
+                            <i class="fa-solid fa-images"></i> 1/1
+                        </div>
+
+                        <div class="feed-image-placeholder" id="feedImagePlaceholder">
+                            <i class="fa-regular fa-images"></i>
+                            <span>Chưa có ảnh</span>
+                        </div>
+
+                        <div class="swiper mySwiper">
+                            <div class="swiper-wrapper" id="swiperWrapperTarget"></div>
+                        </div>
+                    </div>
+
+                    <div class="feed-carousel-dots swiper-pagination" id="phoneCarouselDotsContainer"></div>
+
+                    <div class="feed-actions-bar">
+                        <div class="feed-action-btn-mock">
+                            <i class="fa-regular fa-thumbs-up"></i>
+                            <span>Thích</span>
+                        </div>
+                        <div class="feed-action-btn-mock">
+                            <i class="fa-regular fa-comment"></i>
+                            <span>Bình luận</span>
+                        </div>
+                        <div class="feed-action-btn-mock">
+                            <i class="fa-regular fa-share-from-square"></i>
+                            <span>Chia sẻ</span>
+                        </div>
+                        <div class="feed-action-btn-mock">
+                            <i class="fa-regular fa-bookmark"></i>
+                            <span>Lưu</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/toast.js"></script>
+    <script src="/js/base.js"></script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/schedule-post.js"></script>
+</body>
+
+</html>

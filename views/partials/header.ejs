@@ -1,0 +1,93 @@
+<nav class="top-nav">
+    <div class="nav-left">
+        <button class="menu-toggle" id="menuToggle" aria-label="Mở menu"><i class="fa-solid fa-bars"></i></button>
+
+        <div class="nav-brand">
+            <div class="nav-brand-mark">
+                <i class="fa-solid fa-bolt"></i>
+            </div>
+            <div class="nav-brand-text">
+                <span class="nav-brand-label"><%= t('app.name') %></span>
+                <span class="nav-brand-subtitle"><%= t('app.subtitle') %></span>
+            </div>
+        </div>
+
+        <div class="nav-search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" placeholder="<%= t('common.search_placeholder') %>">
+        </div>
+    </div>
+
+    <div class="nav-right">
+        <!-- Theme Toggle (Light/Dark) -->
+        <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle theme" title="Toggle light/dark mode">
+            <i class="fa-solid fa-sun theme-toggle__icon theme-toggle__sun" aria-hidden="true"></i>
+            <i class="fa-solid fa-moon theme-toggle__icon theme-toggle__moon" aria-hidden="true"></i>
+        </button>
+
+        <!-- Language Switcher -->
+        <div class="language-switcher" id="languageSwitcher">
+            <button class="language-switcher__btn" id="languageSwitcherBtn" type="button" aria-label="<%= t('header.language') %>">
+                <span class="language-flag" data-lang="<%= lang || 'vi' %>">
+                    <% if ((lang || 'vi') === 'vi') { %>
+                        <span class="flag flag-vn" title="Tiếng Việt"></span>
+                    <% } else { %>
+                        <span class="flag flag-us" title="English"></span>
+                    <% } %>
+                </span>
+                <span class="language-code"><%= ((lang || 'vi') === 'vi') ? 'VI' : 'EN' %></span>
+                <i class="fa-solid fa-chevron-down language-chevron"></i>
+            </button>
+            <div class="language-switcher__menu" id="languageMenu">
+                <button class="language-option <%= (lang || 'vi') === 'vi' ? 'is-active' : '' %>" data-lang="vi" type="button">
+                    <span class="flag flag-vn"></span>
+                    <span class="language-option__info">
+                        <strong>Tiếng Việt</strong>
+                        <small>Vietnamese</small>
+                    </span>
+                    <% if ((lang || 'vi') === 'vi') { %><i class="fa-solid fa-check"></i><% } %>
+                </button>
+                <button class="language-option <%= lang === 'en' ? 'is-active' : '' %>" data-lang="en" type="button">
+                    <span class="flag flag-us"></span>
+                    <span class="language-option__info">
+                        <strong>English</strong>
+                        <small>Tiếng Anh</small>
+                    </span>
+                    <% if (lang === 'en') { %><i class="fa-solid fa-check"></i><% } %>
+                </button>
+            </div>
+        </div>
+
+        <div class="nav-profile">
+            <div class="profile-dropdown-wrapper">
+                <button class="avatar-btn" id="avatarBtn" aria-haspopup="true" aria-expanded="false">
+                    <% if (typeof user !== 'undefined' && user && user.avatarUrl) { %>
+                        <img src="<%= user.avatarUrl %>" alt="Avatar" class="avatar-img">
+                    <% } else { %>
+                        <span><%= typeof user !== 'undefined' && user ? user.username.substring(0,2).toUpperCase() : 'AD' %></span>
+                    <% } %>
+                </button>
+
+                <div class="dropdown-menu" id="profileDropdown">
+                    <div class="dropdown-user-info">
+                        <h4><%= typeof user !== 'undefined' && user ? user.username : 'Admin' %></h4>
+                        <p><%= typeof user !== 'undefined' && user ? user.email : '' %></p>
+                    </div>
+                    <a href="/auth/profile" class="dropdown-item">
+                        <i class="fa-solid fa-user-gear"></i> Tài khoản cá nhân
+                    </a>
+                    <a href="/auth/change-password" class="dropdown-item">
+                        <i class="fa-solid fa-key"></i> Đổi mật khẩu
+                    </a>
+                    <hr style="border: 0; border-top: 1px solid var(--border); margin: 4px 0;">
+                    <a href="/auth/logout" class="dropdown-item logout">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i> Đăng xuất
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+<link rel="stylesheet" href="/css/toast.css">
+<!-- Device tracking -->
+<script src="/js/device.js"></script>

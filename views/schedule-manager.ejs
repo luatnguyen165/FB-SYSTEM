@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Lịch Trình - ReelsFlow AI</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/schedule-manager.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <%- include('partials/sidebar', { currentPage: 'schedule-manager' }) %>
+
+    <div class="main-content">
+        <%- include('partials/header') %>
+
+        <main class="content-body schedule-manager-page">
+            <%- include('partials/welcome-section', {
+                eyebrow: 'Quản lý lịch trình',
+                title: 'Theo dõi lịch bài viết tập trung',
+                description: 'Lọc theo nền tảng, trạng thái và tìm kiếm realtime để kiểm soát mọi lịch trình đăng bài trong một bảng duy nhất.'
+            }) %>
+
+            <section class="schedule-manager-panel">
+                <div class="schedule-manager-toolbar">
+                    <div class="toolbar-left">
+                        <div class="search-box">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="scheduleSearchInput" placeholder="Tìm theo caption, tài khoản, group, video...">
+                        </div>
+                    </div>
+
+                    <div class="toolbar-filters">
+                        <select id="platformFilter" class="input-text filter-select">
+                            <option value="all">Tất cả nền tảng</option>
+                            <option value="FB">Facebook</option>
+                            <option value="FR">Facebook Reels</option>
+                            <option value="IG">Instagram</option>
+                            <option value="TT">TikTok Video</option>
+                            <option value="TA">TikTok Affiliate</option>
+                            <option value="YS">YouTube Short</option>
+                        </select>
+
+                        <select id="statusFilter" class="input-text filter-select">
+                            <option value="all">Tất cả trạng thái</option>
+                            <option value="pending" selected>Chưa đăng</option>
+                            <option value="posted">Đã đăng</option>
+                            <option value="failed">Thất bại</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="schedule-manager-stats">
+                    <div class="stat-card-mini">
+                        <span>Tổng lịch trình</span>
+                        <strong><%= stats.total %></strong>
+                    </div>
+                    <div class="stat-card-mini stat-pending">
+                        <span>Chưa đăng</span>
+                        <strong><%= stats.pending %></strong>
+                    </div>
+                    <div class="stat-card-mini stat-posted">
+                        <span>Đã đăng</span>
+                        <strong><%= stats.posted %></strong>
+                    </div>
+                    <div class="stat-card-mini stat-failed">
+                        <span>Thất bại</span>
+                        <strong><%= stats.failed %></strong>
+                    </div>
+                </div>
+
+                <div class="schedule-table-wrap">
+                    <table class="schedule-table" id="scheduleManagerTable">
+                        <thead>
+                            <tr>
+                                <th>Thời gian</th>
+                                <th>Loại</th>
+                                <th>Nền tảng</th>
+                                <th>Nội dung</th>
+                                <th>Tài khoản / Group</th>
+                                <th>Video / Link</th>
+                                <th>Trạng thái</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (schedules && schedules.length > 0) { %>
+                                <% schedules.forEach(schedule => { %>
+                                    <% const rowPayload = encodeURIComponent(JSON.stringify({
+                                        id: schedule._id,
+                                        type: schedule.type,
+                                        status: schedule.status,
+                                        caption: schedule.caption || '',
+                                        publishedAtIso: schedule.scheduledAt || '',
+                                        platforms: schedule.platforms || [],
+                                        platformLabel: schedule.platformLabel,
+                                        accountsLabel: schedule.accountsLabel,
+                                        accounts: schedule.accounts || [],
+                                        status: schedule.status || 'pending',
+                                        statusLabel: schedule.statusLabel || '',
+                                        targetGroupName: schedule.targetGroupName || '',
+                                        targetGroupId: schedule.targetGroupId || '',
+                                        targetGroupUrl: schedule.targetGroupUrl || '',
+                                        sourceChannelName: schedule.sourceChannelName || '',
+                                        sourceChannelId: schedule.sourceChannelId || '',
+                                        images: schedule.images || [],
+                                        videoTitle: schedule.videoTitle || '',
+                                        videoId: schedule.videoId || '',
+                                        videoPath: schedule.videoPath || '',
+                                        videoUrl: schedule.videoUrl || '',
+                                        shopeeLinkIds: schedule.shopeeLinkIds || [],
+                                        publishedUrl: schedule.publishedUrl || ''
+                                    })) %>
+                                    <tr
+                                        class="schedule-row schedule-row--<%= schedule.status %>"
+                                        data-search-text="<%= schedule.searchText %>"
+                                        data-platform="<%= schedule.platforms && schedule.platforms.length ? schedule.platforms.join(',') : 'none' %>"
+                                        data-status="<%= schedule.status %>"
+                                        data-id="<%= schedule._id %>"
+                                        data-row="<%= rowPayload %>"
+                                    >
+                                        <td data-label="Thời gian">
+                                            <div class="cell-primary"><%= schedule.scheduledAtLabel %></div>
+                                            <div class="cell-secondary">Tạo: <%= schedule.createdAtLabel %></div>
+                                        </td>
+                                        <td data-label="Loại">
+                                            <span class="type-badge type-<%= schedule.type %>"><%= schedule.typeLabel %></span>
+                                        </td>
+                                        <td data-label="Nền tảng">
+                                            <div class="platform-badges">
+                                                <% if (schedule.platformDetails && schedule.platformDetails.length > 0) { %>
+                                                    <% schedule.platformDetails.forEach(platform => { %>
+                                                        <span class="platform-badge platform-<%= String(platform.code || '').toLowerCase() %> <%= platform.className %>"><%= platform.label %></span>
+                                                    <% }) %>
+                                                <% } else { %>
+                                                    <span class="muted-text">—</span>
+                                                <% } %>
+                                            </div>
+                                        </td>
+                                        <td data-label="Nội dung">
+                                            <div class="schedule-caption"><%= schedule.caption || '—' %></div>
+                                        </td>
+                                        <td data-label="Tài khoản/Groups">
+                                            <div class="cell-primary"><%= schedule.accountsLabel %></div>
+                                            <div class="cell-secondary">
+                                                <% if (schedule.targetGroupName) { %>
+                                                    Group: <%= schedule.targetGroupName %>
+                                                <% } else { %>
+                                                    Nguồn: <%= schedule.sourceChannelName %>
+                                                <% } %>
+                                            </div>
+                                        </td>
+                                        <td data-label="Video/Link">
+                                            <div class="cell-primary"><%= schedule.videoTitle %></div>
+                                            <div class="cell-secondary"><%= schedule.shopeeLinksCount %> link affiliate</div>
+                                            <% if (schedule.publishedUrl) { %>
+                                                <div class="cell-secondary">
+                                                    <a href="<%= schedule.publishedUrl %>" target="_blank" rel="noopener noreferrer">Mở Reels đã đăng</a>
+                                                </div>
+                                            <% } %>
+                                        </td>
+                                        <td>
+                                            <span class="status-pill <%= schedule.statusClassName %>"><%= schedule.statusLabel %></span>
+                                            <% if (schedule.publishedUrl) { %>
+                                                <div class="cell-secondary" style="margin-top:6px;">
+                                                    <a href="<%= schedule.publishedUrl %>" target="_blank" rel="noopener noreferrer">Link bài đã đăng</a>
+                                                </div>
+                                            <% } %>
+                                        </td>
+                                        <td>
+                                            <div class="row-actions">
+                                                <button class="btn-row-action btn-run-schedule btn-run-schedule--<%= schedule.status %>" type="button" data-schedule-id="<%= schedule._id %>" title="Chạy ngay">
+                                                    <i class="fa-solid fa-circle-play"></i>
+                                                </button>
+                                                <button class="btn-row-action btn-duplicate-schedule" type="button" data-schedule-id="<%= schedule._id %>" title="Sao chép">
+                                                    <i class="fa-regular fa-copy"></i>
+                                                </button>
+                                                <button class="btn-row-action btn-view-schedule" type="button" data-schedule-id="<%= schedule._id %>"><i class="fa-regular fa-eye"></i></button>
+                                                <button class="btn-row-action btn-delete-schedule" type="button" data-schedule-id="<%= schedule._id %>"><i class="fa-regular fa-trash-can"></i></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="8">
+                                        <div class="empty-state-table">
+                                            <i class="fa-regular fa-calendar-xmark"></i>
+                                            <h3>Chưa có lịch trình nào</h3>
+                                            <p>Hãy tạo lịch đăng từ trang Post/Reels trước, rồi quay lại đây để theo dõi và lọc dữ liệu.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="schedule-pagination" id="schedulePagination" aria-label="Phân trang lịch trình"></div>
+            </section>
+
+            <script>
+                window.__CURRENT_USER_ID = '<%= user._id %>';
+            </script>
+            <script type="application/json" id="scheduleManagerData">
+                <%- JSON.stringify({
+                    channels: channels || [],
+                    facebookChannels: facebookChannels || [],
+            videos: videos.map(v => ({
+                _id: v._id,
+                title: v.title,
+                filePath: v.filePath || '',
+                thumbnailUrl: v.thumbnailUrl || '',
+                status: v.status,
+                createdAt: v.createdAt
+            })) || [],
+                    shopeeLinks: shopeeLinks || []
+                }).replace(/</g, '\\u003c') %>
+            </script>
+
+            <div class="schedule-modal" id="scheduleEditModal" aria-hidden="true">
+                <div class="schedule-modal__backdrop" data-schedule-modal-close></div>
+                <div class="schedule-modal__card" role="dialog" aria-modal="true" aria-labelledby="scheduleModalTitle">
+                    <div class="schedule-modal__header">
+                        <div>
+                            <p class="schedule-modal__eyebrow" id="editModalEyebrow">Chỉnh sửa lịch trình</p>
+                            <h3 id="scheduleModalTitle">Xem & cập nhật lịch</h3>
+                            <p class="schedule-modal__subhead" id="editModalSubhead">Chỉnh sửa dữ liệu thật từ hệ thống, chọn lại nền tảng, tài khoản, group, video và link affiliate.</p>
+                        </div>
+                        <button type="button" class="schedule-modal__close" data-schedule-modal-close aria-label="Đóng">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+
+                    <div class="schedule-modal__body">
+                        <input type="hidden" id="editScheduleId">
+                        <input type="hidden" id="editScheduleShopeeLinks">
+                        <div class="schedule-modal__summary-bar" id="scheduleSummaryBar">
+                            <div class="schedule-summary-card">
+                                <span>Loại bài</span>
+                                <strong id="scheduleSummaryType">—</strong>
+                            </div>
+                            <div class="schedule-summary-card">
+                                <span>Trạng thái</span>
+                                <strong id="scheduleSummaryStatus">—</strong>
+                            </div>
+                            <div class="schedule-summary-card">
+                                <span>Thời gian</span>
+                                <strong id="scheduleSummaryTime">—</strong>
+                            </div>
+                        </div>
+
+                        <div class="schedule-modal__grid">
+
+                            <div class="form-group">
+                                <label>Loại bài</label>
+                                <select id="editScheduleType" class="input-text input-text--solid">
+                                    <option value="post">Post</option>
+                                    <option value="reels">Reels</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Trạng thái</label>
+                                <select id="editScheduleStatus" class="input-text input-text--solid">
+                                    <option value="pending">Đang chờ</option>
+                                    <option value="posted">Đã đăng</option>
+                                    <option value="failed">Thất bại</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group full-width">
+                                <label>Caption</label>
+                                <textarea id="editScheduleCaption" class="input-text input-text--solid schedule-textarea" rows="5" placeholder="Nhập caption..."></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Ngày giờ đăng</label>
+                                <input type="datetime-local" id="editScheduleDateTime" class="input-text input-text--solid">
+                            </div>
+
+                            <!-- Nền tảng chips -->
+                            <div class="form-group full-width">
+                                <label>Nền tảng</label>
+                                <div class="schedule-platform-chips" id="editPlatformChips"></div>
+                            </div>
+
+                            <!-- Tài khoản (single-select) -->
+                            <div class="form-group full-width">
+                                <label>Tài khoản đăng bài</label>
+                                <select id="editScheduleAccounts" class="input-text input-text--solid"></select>
+                                <div class="form-desc" id="editAccountsDesc">Chọn 1 tài khoản đăng bài.</div>
+                            </div>
+
+                            <!-- ===== POST: Groups (FB only) ===== -->
+                            <div class="form-group full-width schedule-edit-post" id="editGroupSection">
+                                <div class="schedule-group-card">
+                                    <div class="schedule-group-card__head">
+                                        <div>
+                                            <label>Nhóm Facebook</label>
+                                            <div class="form-desc">Chọn nhiều nhóm để đăng bài.</div>
+                                            <span class="schedule-edit__group-badge" id="editGroupSelectedBadge">0 đã chọn</span>
+                                        </div>
+                                        <button type="button" class="btn-mini-refresh" id="btnRefreshScheduleManagerGroups">
+                                            <i class="fa-solid fa-rotate-right"></i> Quét lại
+                                        </button>
+                                    </div>
+                                    <select id="editScheduleSourceChannelId" class="input-text input-text--solid">
+                                        <option value="">-- Chọn tài khoản nguồn --</option>
+                                    </select>
+                                    <div class="group-search-combobox" id="editGroupCombobox" style="margin-top: 12px;">
+                                        <div class="combobox-input-wrapper" id="editComboboxInputWrapper">
+                                            <i class="fa-solid fa-search combobox-search-icon"></i>
+                                            <input type="text" class="combobox-search-input" id="editGroupSearchInput"
+                                                placeholder="Tìm và chọn nhóm...">
+                                            <span class="combobox-clear" id="editComboboxClear" style="display:none;">
+                                                <i class="fa-solid fa-xmark"></i>
+                                            </span>
+                                        </div>
+                                        <div class="combobox-dropdown" id="editGroupComboboxDropdown">
+                                            <div class="combobox-loading" id="editGroupComboboxLoading">
+                                                <div class="combobox-loading__content">
+                                                    <i class="fa-solid fa-spinner fa-spin"></i>
+                                                    <span>Đang tải danh sách nhóm...</span>
+                                                </div>
+                                            </div>
+                                            <div class="combobox-empty" id="editGroupComboboxEmpty" style="display:none;">
+                                                <i class="fa-solid fa-users-slash"></i>
+                                                <span>Chưa có nhóm nào</span>
+                                            </div>
+                                            <div class="combobox-list" id="editGroupComboboxList"></div>
+                                        </div>
+                                    </div>
+                                    <div class="selected-tags" id="editSelectedGroupTags"></div>
+                                    <div class="form-section__hint" id="editGroupComboboxHint">
+                                        <i class="fa-solid fa-lightbulb"></i>
+                                        Chọn tài khoản Facebook để hiển thị danh sách nhóm
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ===== POST: Images Upload ===== -->
+                            <div class="form-group full-width schedule-edit-post" id="editPostImagesSection">
+                                <label>Ảnh bài viết</label>
+                                <div class="edit-images-grid" id="editImagesGrid"></div>
+                                <div class="edit-images-add">
+                                    <button type="button" class="btn-add-images" id="btnAddEditImages">
+                                        <i class="fa-solid fa-plus"></i> Thêm ảnh
+                                    </button>
+                                    <input type="file" id="editImageFileInput" accept="image/*" multiple style="display:none;">
+                                    <span class="edit-images-hint">Chọn nhiều ảnh cùng lúc</span>
+                                </div>
+                            </div>
+
+                            <!-- ===== REELS: Video Source ===== -->
+                            <div class="form-group full-width schedule-edit-reels" id="editReelsVideoSection">
+                                <div class="edit-reels-layout">
+                                    <!-- Left: Video Source Controls -->
+                                    <div class="edit-reels-source-col">
+                                        <label>Nguồn video</label>
+                                        <div class="edit-video-source-tabs" id="editVideoSourceTabs">
+                                            <button type="button" class="video-source-tab active" data-source="library"><i class="fa-solid fa-clapperboard"></i> Kho Video AI</button>
+                                            <button type="button" class="video-source-tab" data-source="local"><i class="fa-solid fa-upload"></i> Tải lên</button>
+                                        </div>
+
+                                        <!-- AI Library -->
+                                        <div class="edit-video-library" id="editVideoLibrarySection">
+                                            <select id="editScheduleVideoId" class="input-text input-text--solid">
+                                                <option value="">-- Chọn video từ kho --</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- Local Upload -->
+                                        <div class="edit-video-local" id="editVideoLocalSection" style="display:none;">
+                                            <div class="edit-video-dropzone" id="editVideoDropzone">
+                                                <i class="fa-solid fa-cloud-arrow-up"></i>
+                                                <p>Kéo thả video vào đây hoặc</p>
+                                                <button type="button" class="btn-browse-video" id="btnBrowseEditVideo">Duyệt file</button>
+                                                <input type="file" id="editVideoFileInput" accept="video/*" style="display:none;">
+                                                <small class="dropzone-hint">Hỗ trợ MP4, MOV, AVI. Tối đa 500MB.</small>
+                                            </div>
+                                            <div class="edit-local-video-preview" id="editLocalVideoPreview" style="display:none;">
+                                                <div class="edit-local-video-info" id="editLocalVideoInfo"></div>
+                                                <button type="button" class="btn-remove-video" id="btnRemoveEditVideo">
+                                                    <i class="fa-solid fa-trash"></i> Xóa video
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Right: Phone Preview -->
+                                    <div class="edit-reels-preview-col">
+                                        <div class="preview-label">
+                                            <i class="fa-solid fa-mobile-screen-button"></i>
+                                            Xem trước trên điện thoại
+                                        </div>
+                                        <div class="phone-mockup reels-mode" id="editPhoneMockupContainer">
+                                            <div class="phone-notch"></div>
+                                            <div class="phone-play-center-btn" id="editPhoneCenterPlayIcon">
+                                                <i class="fa-solid fa-play"></i>
+                                            </div>
+                                            <img class="phone-video-poster" id="editPhonePosterTag" alt="Video preview">
+                                            <video class="phone-video-player" id="editPhoneVideoTag" loop playsinline preload="auto"></video>
+                                            <div class="phone-video-controls" id="editPhoneVideoControls">
+                                                <button class="phone-control-btn" id="editPhonePlayPauseBtn" type="button">
+                                                    <i class="fa-solid fa-play"></i>
+                                                </button>
+                                                <div class="phone-video-info">
+                                                    <span class="phone-video-title" id="editPhoneVideoTitle">Video Preview</span>
+                                                    <span class="phone-video-duration" id="editPhoneVideoDuration">0:00</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="edit-reels-preview-caption" id="editReelsPreviewCaption"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ===== REELS: Affiliate Links ===== -->
+                            <div class="form-group full-width schedule-edit-reels" id="editAffiliateSection">
+                                <div class="edit-affiliate-card">
+                                    <div class="edit-affiliate-card__head">
+                                        <div>
+                                            <label>Link Affiliate</label>
+                                            <div class="form-desc">Chọn nhiều sản phẩm để đính kèm vào bài đăng.</div>
+                                            <span class="edit-affiliate-badge" id="editAffiliateSelectedBadge">0 đã chọn</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Affiliate Combobox -->
+                                    <div class="affiliate-combobox" id="editAffiliateCombobox">
+                                        <div class="combobox-input-wrapper" id="editAffiliateComboboxInputWrapper">
+                                            <i class="fa-solid fa-search combobox-search-icon"></i>
+                                            <input type="text" class="combobox-search-input" id="editAffiliateSearchInput" placeholder="Tìm sản phẩm...">
+                                        </div>
+                                        <div class="combobox-dropdown" id="editAffiliateComboboxDropdown">
+                                            <div class="combobox-loading" id="editAffiliateComboboxLoading">
+                                                <div class="combobox-loading__content">
+                                                    <i class="fa-solid fa-spinner fa-spin"></i>
+                                                    <span>Đang tải danh sách...</span>
+                                                </div>
+                                            </div>
+                                            <div class="combobox-empty" id="editAffiliateComboboxEmpty" style="display:none;">
+                                                <i class="fa-solid fa-link-slash"></i>
+                                                <span>Chưa có link nào</span>
+                                            </div>
+                                            <div class="combobox-list" id="editAffiliateComboboxList"></div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Selected items -->
+                                    <div class="edit-affiliate-urls" id="editAffiliateUrls">
+                                        <p class="affiliate-urls-empty">Chưa có sản phẩm nào được chọn.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group full-width">
+                                <div class="schedule-modal__meta" id="editScheduleMeta">—</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="schedule-modal__footer">
+                        <button type="button" class="btn-close-modal" data-schedule-modal-close>Hủy</button>
+                        <button type="button" class="btn-save-schedule" id="btnSaveScheduleEdit">Lưu thay đổi</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/toast.js"></script>
+    <script src="/js/base.js"></script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/schedule-manager.js"></script>
+</body>
+</html>    <link rel="stylesheet" href="/css/toast.css">

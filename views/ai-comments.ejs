@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comment Sản Phẩm - ReelsFlow AI</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/ai-comments.css">
+    <link rel="stylesheet" href="/css/toast.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<%- include('partials/sidebar', { currentPage: 'ai-comments' }) %>
+
+<div class="main-content">
+    <%- include('partials/header') %>
+
+    <div class="content-body">
+        <!-- Hero -->
+        <div class="aic-hero">
+            <div class="aic-hero-content">
+                <div class="aic-hero-left">
+                    <div class="aic-hero-title">
+                        <div class="aic-hero-icon"><i class="fa-solid fa-comment-dots"></i></div>
+                        <h1>Comment Sản Phẩm</h1>
+                    </div>
+                    <p class="aic-hero-subtitle">
+                        Tạo sẵn các comment (text, hình ảnh sản phẩm, video). 
+                        Bật/Tắt để chọn comment sẽ được dùng khi quét AI tự động post.
+                        Tắt (bỏ qua) comment nào không muốn dùng.
+                    </p>
+                </div>
+                <div class="aic-hero-actions">
+                    <button class="btn-aic-hero" id="btnNewComment">
+                        <i class="fa-solid fa-plus"></i> Tạo Sản Phẩm
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="aic-stats">
+            <div class="aic-stat-card">
+                <div class="aic-stat-icon" style="background: rgba(37,99,235,0.1); color:#2563eb;">
+                    <i class="fa-solid fa-comment"></i>
+                </div>
+                <div class="aic-stat-info">
+                    <span class="aic-stat-value"><%= stats.total %></span>
+                    <span class="aic-stat-label">Tổng comment</span>
+                </div>
+            </div>
+            <div class="aic-stat-card">
+                <div class="aic-stat-icon" style="background: rgba(16,185,129,0.1); color:#10b981;">
+                    <i class="fa-solid fa-toggle-on"></i>
+                </div>
+                <div class="aic-stat-info">
+                    <span class="aic-stat-value"><%= stats.active %></span>
+                    <span class="aic-stat-label">Đang bật</span>
+                </div>
+            </div>
+            <div class="aic-stat-card">
+                <div class="aic-stat-icon" style="background: rgba(239,68,68,0.1); color:#ef4444;">
+                    <i class="fa-solid fa-toggle-off"></i>
+                </div>
+                <div class="aic-stat-info">
+                    <span class="aic-stat-value"><%= stats.inactive %></span>
+                    <span class="aic-stat-label">Đã tắt (bỏ qua)</span>
+                </div>
+            </div>
+            <div class="aic-stat-card">
+                <div class="aic-stat-icon" style="background: rgba(245,158,11,0.1); color:#f59e0b;">
+                    <i class="fa-solid fa-chart-simple"></i>
+                </div>
+                <div class="aic-stat-info">
+                    <span class="aic-stat-value"><%= stats.text %>/<%= stats.image %>/<%= stats.video %></span>
+                    <span class="aic-stat-label">Text/Ảnh/Video</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comment List -->
+        <div class="aic-section">
+            <div class="aic-section-header">
+                <h2><i class="fa-solid fa-list"></i> Danh Sách Comment</h2>
+                <span class="aic-section-count"><%= comments.length %> comment</span>
+            </div>
+            <div class="aic-comment-list" id="commentList">
+                <% if (comments.length === 0) { %>
+                <div class="aic-empty">
+                    <i class="fa-solid fa-comment-slash" style="font-size:3rem;color:var(--text-muted);"></i>
+                    <p>Chưa có comment nào. Hãy tạo comment để AI quét có thể sử dụng.</p>
+                    <button class="btn btn-primary" id="btnNewEmpty">Tạo Comment Đầu Tiên</button>
+                </div>
+                <% } else { %>
+                <% comments.forEach(function(c) { %>
+                <div class="aic-comment-card <%= c.isActive ? '' : 'aic-comment-inactive' %>" data-comment-id="<%= c._id %>">
+                    <div class="aic-comment-left">
+                        <span class="aic-comment-order"><%= c.order %></span>
+                        <div class="aic-comment-type-badge <%= 'aic-type-' + c.type %>">
+                            <% if (c.type === 'text') { %><i class="fa-solid fa-font"></i> Text<% } %>
+                            <% if (c.type === 'image') { %><i class="fa-solid fa-image"></i> Ảnh<% } %>
+                            <% if (c.type === 'video') { %><i class="fa-solid fa-video"></i> Video<% } %>
+                        </div>
+                    </div>
+                    <div class="aic-comment-body">
+                        <div class="aic-comment-name">
+                            <%= c.name || '(Không tên)' %>
+                            <span class="aic-comment-status <%= c.isActive ? 'status-on' : 'status-off' %>">
+                                <%= c.isActive ? 'Đang dùng' : 'Bỏ qua' %>
+                            </span>
+                        </div>
+                        <div class="aic-comment-preview">
+                            <% if (c.type === 'text') { %>
+                                <i class="fa-solid fa-quote-left"></i> <%= c.content ? c.content.substring(0, 120) + (c.content.length > 120 ? '...' : '') : '(Trống)' %>
+                            <% } else if (c.type === 'image') { %>
+                                <div class="aic-preview-thumb" style="display:flex;align-items:center;gap:10px;">
+                                    <img src="<%= c.content %>" class="aic-thumb-img" loading="lazy" 
+                                         style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0;"
+                                         data-fallback-hide>
+                                    <div>
+                                        <span style="font-size:0.8rem;color:var(--text-main);"><i class="fa-solid fa-image"></i> <%= c.content ? c.content.split('/').pop() : '' %></span>
+                                        <% if (c.caption) { %><br><em style="font-size:0.75rem;color:var(--text-muted);"><%= c.caption.substring(0, 80) %></em><% } %>
+                                    </div>
+                                </div>
+                            <% } else if (c.type === 'video') { %>
+                                <div class="aic-preview-thumb" style="display:flex;align-items:center;gap:10px;">
+                                    <video src="<%= c.content %>" class="aic-thumb-video" 
+                                           style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0;"
+                                           muted preload="metadata"></video>
+                                    <div>
+                                        <span style="font-size:0.8rem;color:var(--text-main);"><i class="fa-solid fa-video"></i> <%= c.content ? c.content.split('/').pop() : '' %></span>
+                                        <% if (c.caption) { %><br><em style="font-size:0.75rem;color:var(--text-muted);"><%= c.caption.substring(0, 80) %></em><% } %>
+                                    </div>
+                                </div>
+                            <% } %>
+                        </div>
+                    </div>
+                    <div class="aic-comment-actions">
+                        <button class="btn-icon aic-btn-toggle" data-comment-id="<%= c._id %>" title="<%= c.isActive ? 'Tắt (bỏ qua)' : 'Bật' %>">
+                            <i class="fa-solid <%= c.isActive ? 'fa-toggle-on' : 'fa-toggle-off' %>" style="color:<%= c.isActive ? '#10b981' : '#9ca3af' %>;font-size:1.3rem;"></i>
+                        </button>
+                        <button class="btn-icon aic-btn-edit" data-comment-id="<%= c._id %>" title="Sửa">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button class="btn-icon aic-btn-delete" data-comment-id="<%= c._id %>" title="Xóa">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                </div>
+                <% }); %>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="commentModal">
+    <div class="modal-content modal-md">
+        <div class="modal-header">
+            <h3 id="modalTitle"><i class="fa-solid fa-plus"></i> Tạo Comment Mới</h3>
+            <button class="modal-close" id="btnCloseModal" type="button"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body">
+            <form id="commentForm" autocomplete="off">
+                <input type="hidden" id="commentId" value="">
+
+                <!-- Auto-detect badge -->
+                <div class="aic-detect-badge" id="detectBadge">
+                    <i class="fa-solid fa-magic-wand-sparkles"></i>
+                    <span>Loại comment sẽ tự động nhận diện:</span>
+                    <span class="aic-detect-type" id="detectType">
+                        <i class="fa-solid fa-font"></i> Text
+                    </span>
+                </div>
+
+                <!-- Tên gợi nhớ -->
+                <div class="form-group">
+                    <label><i class="fa-solid fa-tag" style="color:#a855f7;"></i> Tên gợi nhớ</label>
+                    <input type="text" id="commentName" placeholder="VD: Comment BĐS 1, Ảnh sản phẩm A, Video giới thiệu...">
+                </div>
+
+                <!-- Text content -->
+                <div class="form-group">
+                    <label><i class="fa-solid fa-message" style="color:#3b82f6;"></i> Nội dung text <span class="optional-tag">tuỳ chọn</span></label>
+                    <textarea id="commentTextContent" rows="4" placeholder="Nhập nội dung comment text..."></textarea>
+                    <small class="form-hint"><i class="fa-solid fa-wand-magic-sparkles"></i> Biến: <code>{ten_sp}</code> <code>{gia}</code> <code>{nganh}</code> — Nếu upload file bên dưới, text sẽ thành caption.</small>
+                </div>
+
+                <!-- File upload (image/video) -->
+                <div class="form-group">
+                    <label><i class="fa-solid fa-paperclip" style="color:#f59e0b;"></i> Hình ảnh / Video <span class="optional-tag">tuỳ chọn</span></label>
+                    <div class="aic-file-upload">
+                        <input type="file" id="commentFileInput" accept="image/*,video/*" style="display:none;">
+                        <div class="aic-file-preview" id="filePreview">
+                            <div class="aic-file-placeholder" id="filePlaceholder">
+                                <i class="fa-solid fa-cloud-arrow-up"></i>
+                                <span>Click để chọn ảnh / video hoặc kéo thả</span>
+                            </div>
+                            <div id="filePreviewContent" style="display:none;"></div>
+                        </div>
+                        <input type="hidden" id="commentFilePath" value="">
+                        <input type="hidden" id="commentFileType" value="">
+                        <span id="commentFileName" style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;display:block;"></span>
+                        <div class="aic-file-progress" id="fileProgress" style="display:none;">
+                            <div class="aic-file-progress-bar" id="fileProgressBar"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trạng thái -->
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="commentIsActive" checked>
+                        <span>Đang hoạt động (bỏ tick để tạm tắt / bỏ qua)</span>
+                    </label>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-outline" id="btnCancel">
+                        <i class="fa-solid fa-xmark"></i> Hủy
+                    </button>
+                    <button type="submit" class="btn-primary" id="btnSave">
+                        <i class="fa-solid fa-floppy-disk"></i> Lưu Comment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.__AI_COMMENTS_DATA__ = {
+        comments: <%- JSON.stringify(comments) %>
+    };
+</script>
+<script src="/js/toast.js"></script>
+<script src="/js/base.js"></script>
+<script src="/js/utils.js"></script>
+<script src="/js/ai-comments.js"></script>
+</body>
+</html>

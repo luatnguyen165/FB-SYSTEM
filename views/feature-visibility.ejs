@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Tính Năng - ReelsFlow AI</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/feature-visibility.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <%- include('partials/sidebar', { currentPage: 'feature-visibility' }) %>
+
+    <div class="main-content">
+        <%- include('partials/header') %>
+
+        <div class="content-body">
+            <%- include('partials/welcome-section', {
+                eyebrow: 'Quản lý tính năng',
+                title: 'Hiển thị tính năng trên Sidebar',
+                description: 'Bật/tắt các tính năng hiển thị trên thanh điều hướng. Chỉ Admin mới có quyền truy cập trang này.'
+            }) %>
+
+            <div class="feature-grid" id="featureGrid">
+                <% const featureLabels = {
+                    dashboard: { icon: 'fa-solid fa-chart-pie', label: 'Dashboard', desc: 'Tổng quan thống kê', group: 'trangchu' },
+                    channels: { icon: 'fa-solid fa-link', label: 'Tài Khoản MXH', desc: 'Kết nối Facebook, Instagram', group: 'trangchu' },
+                    storeVideo: { icon: 'fa-solid fa-clapperboard', label: 'Kho Video', desc: 'Quản lý video nguồn', group: 'noidung' },
+                    shopeeLink: { icon: 'fa-solid fa-bag-shopping', label: 'Link Tiếp Thị', desc: 'Affiliate links Shopee', group: 'noidung' },
+                    'schedule-manager': { icon: 'fa-solid fa-table-list', label: 'Lịch Đăng Tổng Hợp', desc: 'Xem tất cả lịch đăng', group: 'lichdang' },
+                    'schedule-post': { icon: 'fa-solid fa-images', label: 'Đăng Bài Ảnh', desc: 'Post Facebook/Instagram', group: 'lichdang' },
+                    'schedule-reels': { icon: 'fa-solid fa-film', label: 'Đăng Reels/Video', desc: 'Reels/TikTok/YouTube', group: 'lichdang' },
+                    'schedule-archive': { icon: 'fa-solid fa-clock-rotate-left', label: 'Bài Đã Đăng', desc: 'Report bài đã xuất bản', group: 'lichdang' },
+                    'schedule-groups': { icon: 'fa-solid fa-users-rectangle', label: 'Quét Group FB', desc: 'Scan group Facebook', group: 'lichdang' },
+                    'ai-scan': { icon: 'fa-solid fa-robot', label: 'AI Quét Nhu Cầu', desc: 'Scan bài viết, phân tích AI', group: 'ai' },
+                    'ai-comments': { icon: 'fa-solid fa-comment-dots', label: 'AI Tự Comment', desc: 'Bank comment, auto comment', group: 'ai' },
+                    'ai-reply-messenger': { icon: 'fa-solid fa-reply', label: 'AI Tự Reply', desc: 'Tự reply Messenger', group: 'ai' },
+                    competitors: { icon: 'fa-solid fa-users-viewfinder', label: 'Theo Dõi Đối Thủ', desc: 'Phân tích đối thủ cạnh tranh', group: 'hethong' },
+                    settings: { icon: 'fa-solid fa-sliders', label: 'Cài Đặt', desc: 'Cài đặt hệ thống', group: 'hethong' },
+                    profile: { icon: 'fa-solid fa-user-circle', label: 'Tài Khoản', desc: 'Thông tin cá nhân', group: 'hethong' },
+                }; %>
+
+                <% const groups = [
+                    { key: 'trangchu', title: '🏠 Trang Chủ', icon: 'fa-solid fa-house' },
+                    { key: 'noidung', title: '🎬 Quản Lý Nội Dung', icon: 'fa-solid fa-folder-open' },
+                    { key: 'lichdang', title: '📅 Lịch Đăng Bài', icon: 'fa-solid fa-calendar-days' },
+                    { key: 'ai', title: '🤖 AI Tự Động', icon: 'fa-solid fa-robot' },
+                    { key: 'hethong', title: '⚙️ Hệ Thống', icon: 'fa-solid fa-gear' },
+                ]; %>
+
+                <% groups.forEach(group => { %>
+                <div class="feature-group">
+                    <div class="feature-group__header">
+                        <i class="<%= group.icon %>"></i>
+                        <span><%= group.title %></span>
+                    </div>
+                    <div class="feature-group__items">
+                        <% Object.keys(featureLabels).forEach(key => { %>
+                            <% if (featureLabels[key].group === group.key) { %>
+                            <div class="feature-item" data-feature="<%= key %>">
+                                <div class="feature-item__left">
+                                    <div class="feature-item__icon">
+                                        <i class="<%= featureLabels[key].icon %>"></i>
+                                    </div>
+                                    <div class="feature-item__info">
+                                        <strong><%= featureLabels[key].label %></strong>
+                                        <span><%= featureLabels[key].desc %></span>
+                                    </div>
+                                </div>
+                                <div class="feature-item__toggle">
+                                    <label class="switch-toggle">
+                                        <input type="checkbox" class="feature-checkbox" data-key="<%= key %>" <%= features[key] !== false ? 'checked' : '' %>>
+                                        <span class="switch-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                            <% } %>
+                        <% }); %>
+                    </div>
+                </div>
+                <% }); %>
+            </div>
+
+            <div class="feature-footer">
+                <button type="button" class="btn btn-primary" id="btnSaveFeatures">
+                    <i class="fa-solid fa-floppy-disk"></i> Lưu thay đổi
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/toast.js"></script>
+    <script src="/js/base.js"></script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/feature-visibility.js"></script>
+</body>
+</html>

@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch Reels - ReelsFlow AI</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/schedule-post.css">
+    <link rel="stylesheet" href="/css/reels.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <%- include('partials/sidebar', { currentPage: 'schedule-reels' }) %>
+
+    <div class="main-content">
+        <%- include('partials/header') %>
+
+        <div class="content-body">
+            <%- include('partials/welcome-section', {
+                eyebrow: 'Lịch Reels',
+                title: 'Lập kế hoạch nội dung Reels',
+                description: 'Sắp xếp lịch đăng Reels theo tháng và theo dõi chiến dịch đa kền dễ dàng hơn.',
+                actionHtml: '<button class="btn-create-reels-hero" id="btnCreatePost"><i class="fa-solid fa-plus"></i> Tạo bài Reels mới</button>'
+            }) %>
+
+            <div class="schedule-overview-stats" id="scheduleOverviewStats">
+                <div class="schedule-stat-card">
+                    <span class="schedule-stat-card__label">Tổng lịch trong tháng</span>
+                    <strong class="schedule-stat-card__value" id="statMonthlyTotal">0</strong>
+                    <small class="schedule-stat-card__hint" id="statMonthlyVisible">0 lịch</small>
+                </div>
+                <div class="schedule-stat-card schedule-stat-card--warning">
+                    <span class="schedule-stat-card__label">Chờ đăng</span>
+                    <strong class="schedule-stat-card__value" id="statMonthlyPending">0</strong>
+                    <small class="schedule-stat-card__hint">Lịch chưa chạy</small>
+                </div>
+                <div class="schedule-stat-card schedule-stat-card--success">
+                    <span class="schedule-stat-card__label">Đã đăng</span>
+                    <strong class="schedule-stat-card__value" id="statMonthlyPosted">0</strong>
+                    <small class="schedule-stat-card__hint">Hoàn tất thành công</small>
+                </div>
+                <div class="schedule-stat-card schedule-stat-card--danger">
+                    <span class="schedule-stat-card__label">Thất bại</span>
+                    <strong class="schedule-stat-card__value" id="statMonthlyFailed">0</strong>
+                    <small class="schedule-stat-card__hint">Cần kiểm tra lại</small>
+                </div>
+            </div>
+
+            <div class="calendar-toolbar">
+                <div class="calendar-filters">
+                    <div class="filter-field">
+                        <label for="scheduleStatusFilter">
+                            <i class="fa-solid fa-filter"></i> Trạng thái
+                        </label>
+                        <select class="filter-select" id="scheduleStatusFilter">
+                            <option value="all">Tất cả</option>
+                            <option value="pending">Chưa đăng</option>
+                            <option value="posted">Đã đăng</option>
+                            <option value="failed">Thất bại</option>
+                        </select>
+                    </div>
+                    <div class="filter-field">
+                        <label for="schedulePlatformFilter">
+                            <i class="fa-brands fa-meta"></i> Nền tảng
+                        </label>
+                        <select class="filter-select" id="schedulePlatformFilter">
+                            <option value="all">Tất cả</option>
+                            <option value="FR">Facebook Reels</option>
+                            <option value="YS">YouTube Short</option>
+                            <option value="IG">Instagram</option>
+                            <option value="TT">TikTok Video</option>
+                            <option value="TA">TikTok Affiliate</option>
+                        </select>
+                    </div>
+                    <div class="filter-field filter-field--wide">
+                        <label for="scheduleKeywordFilter">
+                            <i class="fa-solid fa-magnifying-glass"></i> Từ khóa caption
+                        </label>
+                        <input class="filter-input" id="scheduleKeywordFilter" type="search" placeholder="Nhập từ khóa để lọc caption...">
+                    </div>
+                    <div class="filter-field">
+                        <label for="scheduleDateFilter">
+                            <i class="fa-solid fa-calendar"></i> Ngày đăng
+                        </label>
+                        <input class="filter-input" id="scheduleDateFilter" type="date">
+                    </div>
+                </div>
+                <button type="button" class="btn-clear-filters" id="btnClearCalendarFilters">
+                    <i class="fa-solid fa-eraser"></i> Xóa lọc
+                </button>
+            </div>
+
+            <div class="calendar-wrapper">
+                <div class="calendar-header">
+                    <div class="month-nav">
+                        <button class="btn-nav" id="btnPrevMonth"><i class="fa-solid fa-chevron-left"></i></button>
+                        <div class="current-month" id="currentMonthDisplay"></div>
+                        <button class="btn-nav" id="btnNextMonth"><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                    <button class="btn-today" id="btnTodayReels">
+                        <i class="fa-solid fa-calendar-day"></i> Hôm nay
+                    </button>
+                </div>
+
+                <div class="calendar-grid" id="calendarGrid">
+                    <div class="weekday-label">Thứ 2</div><div class="weekday-label">Thứ 3</div><div class="weekday-label">Thứ 4</div><div class="weekday-label">Thứ 5</div><div class="weekday-label">Thứ 6</div><div class="weekday-label">Thứ 7</div><div class="weekday-label">CN</div>
+                </div>
+            </div>
+
+            <!-- Popover đặt ngoài calendar-wrapper để dùng position:fixed đúng -->
+            <div class="schedule-popover" id="reelsQuickPreviewPopover" aria-hidden="true">
+                <div class="schedule-popover__arrow"></div>
+                <div class="schedule-popover__header">
+                    <div>
+                        <p class="schedule-popover__eyebrow" id="reelsPopoverEyebrow">Xem nhanh</p>
+                        <h3 class="schedule-popover__title" id="reelsPopoverTitle">Chi tiết Reels</h3>
+                    </div>
+                    <button type="button" class="schedule-popover__close" id="btnCloseReelsPopover" aria-label="Đóng popover">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="schedule-popover__body" id="reelsPopoverBody"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Tạo Reels -->
+    <div class="post-modal" id="createPostModal">
+        <div class="post-modal-container">
+            <div class="modal-form-side">
+                <div class="form-header">
+                    <div class="form-header__left">
+                        <div class="form-header__icon">
+                            <i class="fa-solid fa-film"></i>
+                        </div>
+                        <div class="form-header__text">
+                            <h2 id="modalFormTitle">Tạo bài Reels mới</h2>
+                            <p id="modalFormSubtitle">Đăng video lên các nền tảng Reels</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close-modal" id="btnCloseReelsModal" aria-label="Đóng">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="form-fields-scrollable">
+                    <!-- Nguồn video -->
+                    <div class="form-section">
+                        <div class="form-section__header">
+                            <i class="fa-solid fa-video"></i>
+                            <span>Nguồn tệp video</span>
+                        </div>
+                        <div class="video-source-buttons">
+                            <button type="button" class="btn-source-action active" id="btnUploadLocal">
+                                <i class="fa-solid fa-laptop"></i> Máy tính
+                            </button>
+                            <button type="button" class="btn-source-action" id="btnOpenLibrary">
+                                <i class="fa-solid fa-box-archive"></i> Kho Video AI
+                            </button>
+                        </div>
+                        <input type="file" id="modalVideoFileSelector" accept="video/*" style="display:none">
+                        <div class="selected-file-badge" id="filePickedBadge">
+                            <div>
+                                <i class="fa-solid fa-video" style="color:var(--primary); margin-right:6px;"></i>
+                                <span id="filePickedName">Chưa chọn video</span>
+                            </div>
+                            <span class="file-size-text" id="filePickedSize"></span>
+                        </div>
+                    </div>
+
+                    <!-- Caption -->
+                    <div class="form-section">
+                        <div class="form-section__header">
+                            <i class="fa-solid fa-pencil"></i>
+                            <span>Nội dung mô tả & hashtag</span>
+                        </div>
+                        <textarea class="input-text" id="modalCaptionInput" rows="4" placeholder="Nhập mô tả bài viết..."></textarea>
+                    </div>
+
+                    <!-- Thời gian -->
+                    <div class="form-section">
+                        <div class="form-section__header">
+                            <i class="fa-solid fa-clock"></i>
+                            <span>Hẹn giờ đăng bài</span>
+                        </div>
+                        <div class="datetime-split">
+                            <div class="datetime-field">
+                                <label>Ngày</label>
+                                <input type="text" class="input-text" id="modalDateInput" inputmode="numeric" autocomplete="off" placeholder="dd/mm/yyyy">
+                            </div>
+                            <div class="datetime-field">
+                                <label>Giờ</label>
+                                <input type="time" class="input-text" id="modalClockInput" step="60" value="09:00">
+                            </div>
+                        </div>
+                        <input type="hidden" id="modalTimeInput">
+                        <div class="form-section__hint">
+                            <i class="fa-solid fa-info-circle"></i>
+                            Định dạng: ngày/tháng/năm - giờ:phút
+                        </div>
+                    </div>
+
+                    <!-- Nền tảng -->
+                    <div class="form-section">
+                        <div class="form-section__header">
+                            <i class="fa-solid fa-share-nodes"></i>
+                            <span>Nền tảng đăng tải</span>
+                        </div>
+                        <div class="platform-chips-grid">
+                            <label class="platform-chip platform-chip--fb" data-platform="FR">
+                                <input type="radio" name="platformPick" class="platform-check" value="FR" checked>
+                                <i class="fa-brands fa-facebook"></i>
+                                <span>Facebook Reels</span>
+                                <div class="platform-chip__check"><i class="fa-solid fa-check"></i></div>
+                            </label>
+                            <label class="platform-chip platform-chip--yt" data-platform="YS">
+                                <input type="radio" name="platformPick" class="platform-check" value="YS">
+                                <i class="fa-brands fa-youtube"></i>
+                                <span>YouTube Short</span>
+                                <div class="platform-chip__check"><i class="fa-solid fa-check"></i></div>
+                            </label>
+                            <label class="platform-chip platform-chip--ig" data-platform="IG">
+                                <input type="radio" name="platformPick" class="platform-check" value="IG">
+                                <i class="fa-brands fa-instagram"></i>
+                                <span>Instagram</span>
+                                <div class="platform-chip__check"><i class="fa-solid fa-check"></i></div>
+                            </label>
+                            <label class="platform-chip platform-chip--tt" data-platform="TT">
+                                <input type="radio" name="platformPick" class="platform-check" value="TT">
+                                <i class="fa-brands fa-tiktok"></i>
+                                <span>TikTok Video</span>
+                                <div class="platform-chip__check"><i class="fa-solid fa-check"></i></div>
+                            </label>
+                            <label class="platform-chip platform-chip--ta" data-platform="TA">
+                                <input type="radio" name="platformPick" class="platform-check" value="TA">
+                                <i class="fa-solid fa-link"></i>
+                                <span>TikTok Affiliate</span>
+                                <div class="platform-chip__check"><i class="fa-solid fa-check"></i></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Tài khoản -->
+                    <div class="form-section">
+                        <div class="form-section__header">
+                            <i class="fa-solid fa-user-circle"></i>
+                            <span>Tài khoản đăng bài</span>
+                        </div>
+                        <div class="account-scroll-box" id="dynamicAccountBox">
+                            <div class="empty-state">
+                                <i class="fa-solid fa-spinner fa-spin"></i>
+                                <span>Đang tải tài khoản...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Affiliate Links -->
+                    <div class="form-section">
+                        <div class="form-section__header">
+                            <i class="fa-solid fa-link"></i>
+                            <span>Link Affiliate</span>
+                            <span class="form-section__badge form-section__badge--shopee" id="shopeeSelectedBadge">0 đã chọn</span>
+                        </div>
+                        <div class="affiliate-list" id="dynamicShopeeLinkBox">
+                            <div class="empty-state">
+                                <i class="fa-solid fa-spinner fa-spin"></i>
+                                <span>Đang tải link affiliate...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-btns-group">
+                    <button type="button" class="btn-action-secondary" id="btnCancelReels">
+                        <i class="fa-solid fa-ban"></i> Hủy bỏ
+                    </button>
+                    <button type="button" class="btn-action-danger" id="btnDeleteReels" style="display:none;">
+                        <i class="fa-solid fa-trash"></i> Xóa lịch
+                    </button>
+                    <button class="btn-action-primary" type="button" id="btnSubmitReelsSchedule">
+                        <i class="fa-solid fa-calendar-check"></i>
+                        <span>Xác nhận lên lịch</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Preview Side -->
+            <div class="modal-preview-side">
+                <div class="preview-label">
+                    <i class="fa-solid fa-mobile-screen-button"></i>
+                    Xem trước trên điện thoại
+                </div>
+                <div class="phone-mockup reels-mode" id="phoneMockupContainer">
+                    <div class="phone-notch"></div>
+                    <div class="phone-play-center-btn" id="phoneCenterPlayIcon">
+                        <i class="fa-solid fa-play"></i>
+                    </div>
+                    <img class="phone-video-poster" id="phoneMockupPosterTag" alt="Video preview">
+                    <video class="phone-video-player" id="phoneMockupVideoTag" loop playsinline preload="auto" poster=""></video>
+                    <div class="phone-video-controls" id="phoneVideoControls">
+                        <button class="phone-control-btn" id="phonePlayPauseBtn" type="button" title="Play/Pause">
+                            <i class="fa-solid fa-play"></i>
+                        </button>
+                        <div class="phone-video-info">
+                            <span id="phoneVideoTitle">Video Preview</span>
+                            <span class="phone-video-duration" id="phoneVideoDuration">0:00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="reels-preview-text-panel">
+                    <div class="phone-acc-title">
+                        <i class="fa-solid fa-circle-user"></i>
+                        <span id="phonePreviewPlatformName">Xem trước Reels</span>
+                    </div>
+                    <div class="phone-caption-text" id="livePreviewCaption">Nội dung Reels sẽ hiển thị tại đây.</div>
+                    <div class="phone-music">
+                        <i class="fa-solid fa-music"></i> Âm thanh gốc
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mini Library Modal -->
+    <div class="mini-lib-modal" id="miniLibraryModal">
+        <div class="mini-lib-card">
+            <div class="mini-lib-header">
+                <h3><i class="fa-solid fa-box-archive" style="color:var(--primary)"></i> Bốc tài nguyên từ Kho Video AI</h3>
+                <button type="button" class="mini-lib-close" id="btnCloseMiniLib">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="mini-lib-search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="miniLibSearchInput" placeholder="Gõ tên tệp hoặc từ khóa để lọc video từ kho...">
+            </div>
+            <div class="mini-lib-grid" id="miniLibGridContainer">
+                <div class="mini-lib-empty">
+                    <i class="fa-solid fa-film"></i>
+                    <span>Video sẽ được nạp theo tài khoản đang đăng nhập.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/toast.js"></script>
+    <script src="/js/base.js"></script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/reels.js"></script>
+</body>
+</html>
+    <link rel="stylesheet" href="/css/toast.css">

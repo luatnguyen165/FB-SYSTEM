@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quét Bài Viết AI - ReelsFlow AI</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/ai-scan.css?v=2026060619">
+    <link rel="stylesheet" href="/css/toast.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Puter.js + Socket.IO removed - crawl-only mode, no AI needed -->
+</head>
+<body>
+<%- include('partials/sidebar', { currentPage: 'ai-scan' }) %>
+
+<div class="main-content">
+    <%- include('partials/header') %>
+
+    <div class="content-body">
+        <!-- Hero Section -->
+        <div class="ai-scan-hero">
+            <div class="ai-scan-hero-content">
+                <div class="ai-scan-hero-left">
+                    <div class="ai-scan-hero-title">
+                        <div class="ai-scan-hero-icon"><i class="fa-solid fa-robot"></i></div>
+                        <h1>Quét Bài Viết AI</h1>
+                    </div>
+                    <p class="ai-scan-hero-subtitle">
+                        Tự động quét bài viết trong group Facebook, dùng <strong>Puter.js AI</strong> (miễn phí) phân tích nhu cầu khách hàng và comment tự động. OpenAI làm fallback.
+                    </p>
+                </div>
+                <div class="ai-scan-hero-actions">
+                    <button class="btn-scan-hero" id="btnNewConfig">
+                        <i class="fa-solid fa-plus"></i> Tạo Cấu Hình Mới
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Overview -->
+        <div class="ai-scan-stats" id="statsOverview">
+            <div class="ai-scan-stat-card">
+                <div class="stat-icon" style="background: rgba(37, 99, 235, 0.1); color: #2563eb;">
+                    <i class="fa-solid fa-search"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value"><%= stats.totalScanned %></span>
+                    <span class="stat-label">Bài đã quét</span>
+                </div>
+            </div>
+            <div class="ai-scan-stat-card">
+                <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                    <i class="fa-solid fa-check-circle"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value"><%= stats.totalMatched %></span>
+                    <span class="stat-label">Bài match nhu cầu</span>
+                </div>
+            </div>
+            <div class="ai-scan-stat-card">
+                <div class="stat-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+                    <i class="fa-solid fa-comment-dots"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value"><%= stats.totalCommented %></span>
+                    <span class="stat-label">Đã comment</span>
+                </div>
+            </div>
+            <div class="ai-scan-stat-card">
+                <div class="stat-icon" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">
+                    <i class="fa-solid fa-gear"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value"><%= stats.activeConfigs %>/<%= stats.scheduledConfigs %></span>
+                    <span class="stat-label">Cấu hình (Active/Lịch)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Real-time Scan Progress -->
+        <div class="scan-progress-panel" id="scanProgressPanel" style="display: none;">
+            <div class="scan-progress-header">
+                <i class="fa-solid fa-robot"></i>
+                <span>Đang quét bài viết qua Puter.js AI...</span>
+                <button class="btn-icon" id="btnCloseScanProgress" title="Đóng"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="scan-progress-body" id="scanProgressBody">
+                <div class="scan-progress-bar-wrapper">
+                    <div class="scan-progress-bar" id="scanProgressBar" style="width: 0%"></div>
+                </div>
+                <div class="scan-progress-info" id="scanProgressInfo">Đang chờ...</div>
+                <div class="scan-progress-log" id="scanProgressLog"></div>
+            </div>
+        </div>
+
+        <!-- Configs List -->
+        <div class="ai-scan-section">
+            <div class="section-header">
+                <h2><i class="fa-solid fa-list-check"></i> Cấu Hình Quét</h2>
+                <span class="section-count"><%= configs.length %> cấu hình</span>
+            </div>
+            <div class="config-list" id="configList">
+                <% if (configs.length === 0) { %>
+                <div class="empty-state">
+                    <i class="fa-solid fa-robot" style="font-size: 3rem; color: var(--text-muted);"></i>
+                    <p>Chưa có cấu hình quét nào.</p>
+                    <button class="btn btn-primary" id="btnNewConfigEmpty">Tạo Cấu Hình Đầu Tiên</button>
+                </div>
+                <% } else { %>
+                <% configs.forEach(function(config) { %>
+                <div class="config-card <%= config.isActive ? '' : 'config-inactive' %>" data-config-id="<%= config._id %>">
+                    <div class="config-card-header">
+                        <div class="config-name-group">
+                            <span class="config-status-dot <%= config.isActive ? 'active' : '' %>" title="<%= config.isActive ? 'Đang hoạt động' : 'Đã tắt' %>"></span>
+                            <h3><%= config.name %></h3>
+                            <% if (config.scheduleEnabled) { %>
+                            <span class="config-badge schedule-badge">
+                                <i class="fa-solid fa-clock"></i> Mỗi <%= config.scanIntervalMinutes || 60 %> phút (<%= config.scheduleTimeStart || '06:00' %> → <%= config.scheduleTimeEnd || '23:00' %>)
+                            </span>
+                            <% } %>
+                        </div>
+                         <div class="config-actions">
+                            <button class="config-run-btn btn-run-now" data-config-id="<%= config._id %>" title="Chạy quét ngay">
+                                <i class="fa-solid fa-play"></i> Quét ngay
+                            </button>
+                            <button class="btn-icon btn-edit-config" data-config-id="<%= config._id %>" title="Sửa">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button class="btn-icon btn-toggle-config" data-config-id="<%= config._id %>" title="<%= config.isActive ? 'Tắt' : 'Bật' %>">
+                                <i class="fa-solid <%= config.isActive ? 'fa-toggle-on' : 'fa-toggle-off' %>" style="color: <%= config.isActive ? '#10b981' : '' %>"></i>
+                            </button>
+                            <button class="btn-icon btn-delete-config" data-config-id="<%= config._id %>" title="Xóa">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="config-card-body">
+                        <div class="config-meta">
+                            <span class="config-meta-highlight"><i class="fa-solid fa-file-lines"></i> <%= config.maxPostsPerScan || 10 %> bài/lần quét</span>
+                            <span><i class="fa-solid fa-users"></i> <%= config.groupKeys ? config.groupKeys.length : 0 %> groups</span>
+                            <span><i class="fa-solid fa-rotate"></i> Mỗi <%= config.scanIntervalMinutes || 60 %> phút</span>
+                        </div>
+                        <% if (config.lastScanAt) { %>
+                        <div class="config-last-scan">
+                            <i class="fa-solid fa-clock-rotate-left"></i> Quét lần cuối: <%= new Date(config.lastScanAt).toLocaleDateString('en-GB') + ' ' + new Date(config.lastScanAt).toLocaleTimeString('en-GB') %>
+                        </div>
+                        <% } %>
+                    </div>
+                </div>
+                <% }); %>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Recent Results -->
+        <div class="ai-scan-section">
+            <div class="section-header">
+                <h2><i class="fa-solid fa-table-list"></i> Kết Quả Quét Gần Đây</h2>
+                <div class="section-actions">
+                    <button class="btn btn-sm btn-outline" id="btnClearResults">
+                        <i class="fa-solid fa-broom"></i> Xóa kết quả
+                    </button>
+                </div>
+            </div>
+            <div class="results-table-wrapper">
+                <table class="results-table" id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>Bài viết</th>
+                            <th>Group</th>
+                            <th>AI Score</th>
+                            <th>Match</th>
+                            <th>Comment</th>
+                            <th>Thời gian</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% if (recentResults.length === 0) { %>
+                        <tr><td colspan="6" class="empty-cell">Chưa có kết quả quét nào</td></tr>
+                        <% } else { %>
+                        <% recentResults.forEach(function(result) { %>
+                        <tr class="result-row <%= result.isMatching ? 'row-match' : 'row-no-match' %>">
+                            <td>
+                                <div class="result-post">
+                                    <% if (result.postImages && result.postImages.length > 0) { %>
+                                    <div class="result-images">
+                                        <% result.postImages.slice(0, 4).forEach(function(img) { %>
+                                        <a href="<%= img %>" target="_blank"><img src="<%= img %>" alt="Post image" loading="lazy" onerror="this.style.display='none'"></a>
+                                        <% }); %>
+                                        <% if (result.postImages.length > 4) { %>
+                                        <span class="result-images-more">+<%= result.postImages.length - 4 %></span>
+                                        <% } %>
+                                    </div>
+                                    <% } %>
+                                    <a href="<%= result.postUrl || '#' %>" target="_blank" class="post-link">
+                                        <%= result.postContent ? result.postContent.substring(0, 80) + (result.postContent.length > 80 ? '...' : '') : '(Không có nội dung)' %>
+                                    </a>
+                                    <% if (result.postAuthor) { %>
+                                    <span class="post-author">- <%= result.postAuthor %></span>
+                                    <% } %>
+                                </div>
+                            </td>
+                             <td>
+                                 <a class="group-name-link" href="<%= result.groupUrl || '#' %>" target="_blank" title="<%= result.groupUrl || '' %>">
+                                     <i class="fa-solid fa-users-group"></i>
+                                     <%= result.groupName || 'Unknown Group' %>
+                                 </a>
+                             </td>
+                            <td>
+                                <div class="score-bar">
+                                    <div class="score-fill <%= result.aiScore >= 70 ? 'score-high' : result.aiScore >= 40 ? 'score-mid' : 'score-low' %>" style="width: <%= result.aiScore %>%"></div>
+                                    <span class="score-text"><%= result.aiScore %>%</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="match-badge <%= result.isMatching ? 'match-yes' : 'match-no' %>">
+                                    <%= result.isMatching ? '✓ Match' : '✗ No' %>
+                                </span>
+                            </td>
+                            <td>
+                                <% 
+                                const hasComments = result.comments && result.comments.length > 0;
+                                const anySent = hasComments ? result.comments.some(c => c.sent) : result.commentSent;
+                                const hasError = hasComments ? result.comments.some(c => c.error) : !!result.commentError;
+                                %>
+                                <% if (anySent) { %>
+                                <span class="comment-badge sent"><i class="fa-solid fa-check"></i> Đã gửi (<%= hasComments ? result.comments.filter(c => c.sent).length : 1 %>)</span>
+                                <% } else if (hasError) { %>
+                                <span class="comment-badge error" title="<%= result.commentError || '' %>"><i class="fa-solid fa-triangle-exclamation"></i> Lỗi</span>
+                                <% } else { %>
+                                <span class="comment-badge none">—</span>
+                                <% } %>
+                            </td>
+                             <td class="time-cell">
+                                 <div><%= result.scannedAt ? new Date(result.scannedAt).toLocaleDateString('en-GB') + ' ' + new Date(result.scannedAt).toLocaleTimeString('en-GB') : '—' %></div>
+                                 <div class="result-actions">
+                                     <button class="btn-edit-result" data-id="<%= result._id %>" title="Sửa kết quả">
+                                         <i class="fa-solid fa-pen-to-square"></i>
+                                     </button>
+                                     <button class="btn-delete-result" data-id="<%= result._id %>" title="Xóa kết quả">
+                                         <i class="fa-solid fa-trash-can"></i>
+                                     </button>
+                                 </div>
+                             </td>
+                        </tr>
+                        <% }); %>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+            <!-- AI Scan Results Pagination -->
+            <div class="ai-scan-pagination" id="aiScanPagination">
+                <div class="ai-scan-pagination__info" id="aiScanPaginationInfo"></div>
+                <div class="ai-scan-pagination__controls" id="aiScanPaginationControls"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="configModal" style="display: none;">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h3 id="modalTitle">Tạo Cấu Hình Quét AI</h3>
+            <button class="modal-close" id="btnCloseModal"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body">
+            <form id="configForm">
+                <input type="hidden" id="configId" value="">
+
+                <div class="form-row form-row-2">
+                    <div class="form-group">
+                        <label>Tên cấu hình <span class="required">*</span></label>
+                        <input type="text" id="configName" placeholder="VD: Quét BĐS Group A" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Tài khoản Facebook <span class="required">*</span></label>
+                        <select id="configChannel" required>
+                            <option value="">-- Chọn tài khoản --</option>
+                            <% facebookChannels.forEach(function(ch) { %>
+                            <option value="<%= ch._id %>"><%= ch.accountName %> (<%= ch.accountType %>)</option>
+                            <% }); %>
+                        </select>
+                    </div>
+                </div>
+
+
+                <div class="form-group">
+                    <label>Chọn Group Facebook để quét <span class="required">*</span></label>
+                    <div class="group-selector" id="groupSelector">
+                        <div class="group-selector-loading" id="groupLoading" style="display: none;">
+                            <i class="fa-solid fa-spinner fa-spin"></i> Đang tải danh sách groups...
+                        </div>
+                        <div class="group-selector-empty" id="groupEmpty">
+                            <p>Chọn tài khoản Facebook trước để tải danh sách groups</p>
+                        </div>
+                        <div class="group-search-box" id="groupSearchBox" style="display: none;">
+                            <i class="fa-solid fa-search"></i>
+                            <input type="text" id="groupSearchInput" placeholder="Tìm group...">
+                            <button type="button" class="group-search-clear" id="groupSearchClear" title="Xóa"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                        <div class="group-checkbox-list" id="groupCheckboxList" style="display: none;"></div>
+                        <div class="group-selected-count" id="groupSelectedCount" style="display: none;">
+                            Đã chọn: <strong id="groupCount">0</strong> group
+                        </div>
+                    </div>
+                </div>
+
+
+
+                <div class="form-group">
+                    <label>Số bài tối đa/lần quét</label>
+                    <input type="number" id="configMaxPosts" value="10" min="1" max="50">
+                </div>
+
+                <!-- OpenAI API Key - tạm ẩn, ưu tiên crawler lưu bài viết + ảnh trước -->
+                <input type="hidden" id="configOpenaiKey" value="">
+
+                <!-- Lịch chạy tự động -->
+                <div class="form-section-divider"><i class="fa-solid fa-clock"></i> Lịch Chạy Tự Động</div>
+                
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="configScheduleEnabled">
+                        <span>Bật lịch chạy tự động</span>
+                    </label>
+                </div>
+
+                <div id="scheduleFields" style="display: none;">
+                    <div class="form-row form-row-2">
+                        <div class="form-group">
+                            <label><i class="fa-solid fa-clock"></i> Mỗi</label>
+                            <div class="input-group">
+                                <input type="number" id="configScanInterval" value="60" min="5" max="1440">
+                                <span class="input-suffix">phút / lần</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fa-solid fa-file-lines"></i> Số bài/lần quét</label>
+                            <input type="number" id="configScheduleMaxPosts" value="10" min="1" max="50">
+                        </div>
+                    </div>
+                    <div class="form-row form-row-2">
+                        <div class="form-group">
+                            <label><i class="fa-regular fa-sun"></i> Khung giờ bắt đầu</label>
+                            <input type="time" id="configScheduleTimeStart" value="06:00">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fa-regular fa-moon"></i> Khung giờ kết thúc</label>
+                            <input type="time" id="configScheduleTimeEnd" value="23:00">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fa-solid fa-calendar-days"></i> Quét bài viết trong</label>
+                        <div class="input-group">
+                            <input type="number" id="configMaxDaysOld" value="1" min="1" max="30">
+                            <span class="input-suffix">ngày gần đây</span>
+                        </div>
+                        <small class="form-hint">1 = chỉ hôm nay, 2 = hôm nay + hôm qua, 3 = 3 ngày...</small>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" id="btnCancelConfig">Hủy</button>
+                    <button type="submit" class="btn btn-primary" id="btnSaveConfig">
+                        <i class="fa-solid fa-floppy-disk"></i> Lưu Cấu Hình
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Edit Result -->
+<div class="modal-overlay" id="editResultModal" style="display: none;">
+    <div class="modal-content modal-md">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-pen-to-square"></i> Sửa Kết Quả Quét</h3>
+            <button class="modal-close" id="btnCloseEditResult"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body">
+            <form id="editResultForm">
+                <input type="hidden" id="editResultId" value="">
+                <div class="form-group">
+                    <label>Hình ảnh bài viết</label>
+                    <div class="edit-result-images" id="editResultImages"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>Nội dung bài viết</label>
+                    <textarea id="editResultContent" rows="4" placeholder="Nội dung bài viết..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Link bài viết</label>
+                    <input type="text" id="editResultUrl" placeholder="https://...">
+                </div>
+                <div class="form-group">
+                    <label>Tác giả</label>
+                    <input type="text" id="editResultAuthor" placeholder="Tên tác giả">
+                </div>
+                <div class="form-row form-row-2">
+                    <div class="form-group">
+                        <label>AI Score</label>
+                        <input type="number" id="editResultScore" min="0" max="100" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Match</label>
+                        <select id="editResultMatch">
+                            <option value="true">✓ Match</option>
+                            <option value="false">✗ Không match</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Lý do match</label>
+                    <input type="text" id="editResultReason" placeholder="Lý do...">
+                </div>
+                <div class="form-group">
+                    <label>Phân tích AI</label>
+                    <textarea id="editResultAnalysis" rows="2" placeholder="Kết quả phân tích..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" id="btnCancelEditResult">Hủy</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-floppy-disk"></i> Lưu
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: AI Analysis Detail -->
+<div class="modal-overlay" id="analysisModal" style="display: none;">
+    <div class="modal-content modal-md">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-brain"></i> Phân Tích AI</h3>
+            <button class="modal-close" id="btnCloseAnalysis"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body" id="analysisContent"></div>
+    </div>
+</div>
+
+<!-- Template for comment items (hidden) -->
+<div id="commentTextTemplate" style="display: none;">
+    <div class="comment-item" data-type="text">
+        <div class="comment-item-header">
+            <span class="comment-type-badge type-text"><i class="fa-solid fa-font"></i> Text</span>
+            <button type="button" class="btn-icon btn-remove-comment" title="Xóa comment này">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="comment-item-body">
+            <textarea class="comment-text-content" rows="2" placeholder="Nhập nội dung comment text..."></textarea>
+        </div>
+    </div>
+</div>
+
+<div id="commentImageTemplate" style="display: none;">
+    <div class="comment-item" data-type="image">
+        <div class="comment-item-header">
+            <span class="comment-type-badge type-image"><i class="fa-solid fa-image"></i> Hình Ảnh</span>
+            <button type="button" class="btn-icon btn-remove-comment" title="Xóa comment này">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="comment-item-body">
+            <div class="comment-file-upload">
+                <input type="file" class="comment-file-input" accept="image/*" style="display: none;">
+                <div class="comment-file-preview">
+                    <div class="comment-file-placeholder">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <span>Chọn ảnh để upload</span>
+                    </div>
+                    <img class="comment-file-img" style="display: none;" alt="Preview">
+                </div>
+                <input type="hidden" class="comment-file-path" value="">
+                <span class="comment-file-name"></span>
+                <div class="comment-file-progress" style="display: none;">
+                    <div class="comment-file-progress-bar"></div>
+                </div>
+            </div>
+            <input type="text" class="comment-caption" placeholder="Caption (mô tả ảnh, có thể để trống)">
+        </div>
+    </div>
+</div>
+
+<div id="commentVideoTemplate" style="display: none;">
+    <div class="comment-item" data-type="video">
+        <div class="comment-item-header">
+            <span class="comment-type-badge type-video"><i class="fa-solid fa-video"></i> Video</span>
+            <button type="button" class="btn-icon btn-remove-comment" title="Xóa comment này">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="comment-item-body">
+            <div class="comment-file-upload">
+                <input type="file" class="comment-file-input" accept="video/*" style="display: none;">
+                <div class="comment-file-preview">
+                    <div class="comment-file-placeholder">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <span>Chọn video để upload</span>
+                    </div>
+                    <video class="comment-file-video" style="display: none;" controls></video>
+                </div>
+                <input type="hidden" class="comment-file-path" value="">
+                <span class="comment-file-name"></span>
+                <div class="comment-file-progress" style="display: none;">
+                    <div class="comment-file-progress-bar"></div>
+                </div>
+            </div>
+            <input type="text" class="comment-caption" placeholder="Caption (mô tả video, có thể để trống)">
+        </div>
+    </div>
+</div>
+
+<script>
+    // Pass server data to frontend
+    window.__AI_SCAN_DATA__ = {
+        facebookChannels: <%- JSON.stringify(facebookChannels) %>,
+        configs: <%- JSON.stringify(configs) %>,
+        openaiApiKey: '<%= openaiApiKey %>'
+    };
+    window.__AI_SCAN_RESULTS__ = <%- JSON.stringify(recentResults) %>;
+    window.__USER_ID__ = '<%= user._id %>';
+</script>
+<script src="/js/toast.js"></script>
+<script src="/js/base.js"></script>
+<script src="/js/utils.js"></script>
+<script src="/js/ai-scan.js"></script>
+</body>
+</html>

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Tự Reply - ReelsFlow AI</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/ai-comments.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<%- include('partials/sidebar', { currentPage: 'ai-reply-messenger' }) %>
+
+<div class="main-content">
+    <%- include('partials/header') %>
+
+    <div class="content-body">
+        <!-- Hero Section -->
+        <div class="aic-hero">
+            <div class="aic-hero-content">
+                <div class="aic-hero-left">
+                    <div class="aic-hero-title">
+                        <div class="aic-hero-icon"><i class="fa-solid fa-reply"></i></div>
+                        <h1>AI Tự Reply Messenger</h1>
+                    </div>
+                    <p class="aic-hero-subtitle">
+                        Tự động trả lời tin nhắn Facebook Messenger theo kịch bản AI. Hỗ trợ reply theo từ khóa, reply tất cả tin nhắn, và tích hợp OpenAI để tạo câu trả lời thông minh.
+                    </p>
+                </div>
+                <div class="aic-hero-actions">
+                    <button class="btn btn-primary" onclick="document.getElementById('comingSoonModal').style.display='flex'">
+                        <i class="fa-solid fa-plus"></i> Tạo Quy Tắc Mới
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="aic-stats">
+            <div class="aic-stat-card">
+                <div class="aic-stat-icon" style="background: rgba(37, 99, 235, 0.1); color: #2563eb;">
+                    <i class="fa-solid fa-reply"></i>
+                </div>
+                <div class="aic-stat-info">
+                    <span class="aic-stat-value">0</span>
+                    <span class="aic-stat-label">Quy tắc hoạt động</span>
+                </div>
+            </div>
+            <div class="aic-stat-card">
+                <div class="aic-stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                    <i class="fa-solid fa-check-circle"></i>
+                </div>
+                <div class="aic-stat-info">
+                    <span class="aic-stat-value">0</span>
+                    <span class="aic-stat-label">Tin nhắn đã reply</span>
+                </div>
+            </div>
+            <div class="aic-stat-card">
+                <div class="aic-stat-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+                    <i class="fa-solid fa-clock"></i>
+                </div>
+                <div class="aic-stat-info">
+                    <span class="aic-stat-value">—</span>
+                    <span class="aic-stat-label">Thời gian hoạt động</span>
+                </div>
+            </div>
+            <div class="aic-stat-card">
+                <div class="aic-stat-icon" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">
+                    <i class="fa-solid fa-brain"></i>
+                </div>
+                <div class="aic-stat-info">
+                    <span class="aic-stat-value">OpenAI</span>
+                    <span class="aic-stat-label">AI Engine</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Coming Soon Feature -->
+        <div class="aic-section">
+            <div class="section-header">
+                <h2><i class="fa-solid fa-robot"></i> AI Tự Reply Messenger</h2>
+            </div>
+            <div style="text-align: center; padding: 60px 24px;">
+                <div style="width: 96px; height: 96px; margin: 0 auto 20px; background: linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(99, 102, 241, 0.04)); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-reply" style="font-size: 2.5rem; color: var(--primary);"></i>
+                </div>
+                <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">Tính năng đang phát triển</h3>
+                <p style="color: var(--text-muted); margin: 0 0 24px; max-width: 480px; margin-left: auto; margin-right: auto; line-height: 1.6;">
+                    AI Tự Reply Messenger sẽ cho phép bạn cấu hình tự động trả lời tin nhắn Messenger theo từ khóa, mẫu câu hoặc dùng OpenAI phân tích ngữ cảnh và trả lời thông minh.
+                </p>
+                
+                <div style="display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; max-width: 700px; margin: 0 auto;">
+                    <div style="flex: 1; min-width: 200px; background: var(--bg-muted); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; text-align: left;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                            <i class="fa-solid fa-keyboard" style="color: var(--primary);"></i>
+                            <strong style="font-size: 0.875rem;">Reply theo từ khóa</strong>
+                        </div>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Khi khách nhắn "giá" → trả lời bảng giá. Khi nhắn "đặt hàng" → hướng dẫn đặt hàng.</p>
+                    </div>
+                    <div style="flex: 1; min-width: 200px; background: var(--bg-muted); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; text-align: left;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                            <i class="fa-solid fa-brain" style="color: #8b5cf6;"></i>
+                            <strong style="font-size: 0.875rem;">AI thông minh (OpenAI)</strong>
+                        </div>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Phân tích ngữ cảnh tin nhắn, tạo câu trả lời tự nhiên bằng GPT-4o.</p>
+                    </div>
+                    <div style="flex: 1; min-width: 200px; background: var(--bg-muted); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; text-align: left;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                            <i class="fa-solid fa-clock" style="color: var(--warning);"></i>
+                            <strong style="font-size: 0.875rem;">Reply theo lịch</strong>
+                        </div>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Giờ hành chính: reply ngay. Ngoài giờ: reply "Chúng tôi sẽ phản hồi sớm".</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Coming Soon Modal -->
+<div class="modal-overlay" id="comingSoonModal" style="display: none;">
+    <div class="modal-content modal-md" style="text-align: center;">
+        <div class="modal-header" style="justify-content: center; border-bottom: none;">
+            <h3><i class="fa-solid fa-rocket"></i> Coming Soon</h3>
+        </div>
+        <div class="modal-body" style="padding: 32px;">
+            <div style="width: 80px; height: 80px; margin: 0 auto 20px; background: linear-gradient(135deg, var(--primary-light), rgba(99, 102, 241, 0.08)); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                <i class="fa-solid fa-reply" style="font-size: 2rem; color: var(--primary);"></i>
+            </div>
+            <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">AI Tự Reply Messenger</h3>
+            <p style="color: var(--text-muted); margin: 0 0 24px; line-height: 1.6;">
+                Tính năng này đang trong giai đoạn phát triển.<br>
+                Vui lòng quay lại sau hoặc liên hệ admin để được hỗ trợ.
+            </p>
+            <button class="btn btn-primary" onclick="document.getElementById('comingSoonModal').style.display='none'">
+                <i class="fa-solid fa-check"></i> Đã hiểu
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+<script src="/js/toast.js"></script>
+<script>
+    function showToast(msg, type) {
+        if (typeof window.showToast === 'function') {
+            window.showToast(msg, type);
+        } else {
+            var toast = document.createElement('div');
+            toast.style.cssText = 'position:fixed;top:20px;right:20px;z-index:10000;padding:14px 18px;border-radius:12px;color:white;font-size:14px;font-weight:500;box-shadow:0 10px 15px rgba(0,0,0,0.1);min-width:280px;display:flex;align-items:center;gap:10px;';
+            toast.style.background = type === 'info' ? 'linear-gradient(135deg,#2563eb,#1d4ed8)' : 'linear-gradient(135deg,#10b981,#059669)';
+            toast.innerHTML = '<span>' + msg + '</span>';
+            document.body.appendChild(toast);
+            setTimeout(function () { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(function () { toast.remove(); }, 300); }, 3000);
+        }
+    }
+</script>
+</body>
+</html>

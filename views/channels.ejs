@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Kênh Kết Nối - ReelsFlow AI</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/channels.css">
+    <link rel="stylesheet" href="/css/toast.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <%- include('partials/sidebar', { currentPage: 'channels', activePlatform, availablePlatforms }) %>
+
+    <div class="main-content">
+        <%- include('partials/header') %>
+
+        <div class="content-body">
+            <%- include('partials/welcome-section', {
+                eyebrow: t('channels.eyebrow'),
+                title: t('channels.title'),
+                description: t('channels.description')
+            }) %>
+
+            <div class="platform-tabs">
+                <% ['FB', 'TT', 'IG', 'YT', 'ZO'].forEach(p => { %>
+                    <button 
+                        class="platform-tab <%= activePlatform === p ? 'is-active' : '' %>" 
+                        data-platform="<%= p %>"
+                        data-label="<%= p === 'FB' ? 'Facebook' : p === 'TT' ? 'TikTok' : p === 'IG' ? 'Instagram' : p === 'YT' ? 'YouTube' : 'Zalo' %>"
+                    >
+                        <i class="<%= p === 'ZO' ? 'fa-solid fa-message' : 'fa-brands fa-' + (p === 'FB' ? 'facebook' : p === 'TT' ? 'tiktok' : p === 'IG' ? 'instagram' : 'youtube') %>"></i>
+                        <%= p === 'FB' ? 'Facebook' : p === 'TT' ? 'TikTok' : p === 'IG' ? 'Instagram' : p === 'YT' ? 'YouTube' : 'Zalo' %>
+                    </button>
+                <% }) %>
+            </div>
+
+            <div class="stats-grid stats-grid--single">
+                <div class="stat-card">
+                    <div class="stat-info">
+                        <h3>Tổng số tài khoản <%= platformLabel %></h3>
+                        <p id="totalAccountsCount"><%= stats.total %></p>
+                    </div>
+                    <div class="stat-icon" data-platform="<%= activePlatform %>">
+                        <i class="<%= activePlatform === 'ZO' ? 'fa-solid fa-message' : 'fa-brands fa-' + (activePlatform === 'FB' ? 'facebook' : activePlatform === 'TT' ? 'tiktok' : activePlatform === 'IG' ? 'instagram' : 'youtube') %>"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="connect-section">
+                <div class="section-header">
+                    <div>
+                        <h2>Tài khoản đang kết nối</h2>
+                <p style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">Ủy quyền API để Bot tự động đồng bộ hóa nội dung lên hệ thống vệ tinh. Bao gồm Facebook, TikTok, Zalo, Instagram, YouTube.</p>
+                    </div>
+                    <div class="connect-buttons-group connect-buttons-group--single">
+                    <button class="btn-connect btn-platform btn-<%= activePlatform.toLowerCase() %>" data-platform="<%= activePlatform %>">
+                            <i class="<%= activePlatform === 'ZO' ? 'fa-solid fa-message' : 'fa-brands fa-' + (activePlatform === 'FB' ? 'facebook' : activePlatform === 'TT' ? 'tiktok' : activePlatform === 'IG' ? 'instagram' : 'youtube') %>"></i>
+                            + Nối <%= platformLabel %>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="accounts-grid" id="accountsContainer">
+                    <% if (channels && channels.length > 0) { %>
+                        <% channels.forEach(channel => { %>
+                            <div
+                                class="account-card <%= channel.isEnabled ? '' : 'is-disabled' %> <%= ['FB','TT','IG','YT'].includes(channel.platform) ? 'is-openable' : '' %>"
+                                data-id="<%= channel._id %>"
+                                data-platform="<%= channel.platform %>"
+                                role="button"
+                                tabindex="0"
+                                aria-label="Mở tài khoản <%= channel.accountName %>"
+                            >
+                                <div class="account-top">
+                                    <div class="account-avatar-wrapper">
+                                        <% if (channel.avatarUrl) { %>
+                                            <img class="account-avatar" src="<%= channel.avatarUrl %>" alt="Avatar của <%= channel.accountName %>">
+                                        <% } else { %>
+                                            <div class="account-avatar account-avatar-placeholder">
+                                                <i class="fa-solid fa-user"></i>
+                                            </div>
+                                        <% } %>
+                                            <div class="platform-badge badge-<%= channel.platform.toLowerCase() %>">
+                                                <i class="<%= channel.platform === 'ZO' ? 'fa-solid fa-message' : 'fa-brands fa-' + (channel.platform === 'FB' ? 'facebook' : channel.platform === 'TT' ? 'tiktok' : channel.platform === 'IG' ? 'instagram' : 'youtube') %>"></i>
+                                            </div>
+                                    </div>
+                                    <div class="account-name-info">
+                                        <h4><%= channel.accountName %></h4>
+                                        <span class="account-type"><%= channel.platform %> · <%= channel.accountType %></span>
+                                        <% if (channel.profileUrl) { %>
+                                            <span class="account-type" style="margin-top:4px; display:block; word-break:break-all; color:var(--primary);"><i class="fa-solid fa-link"></i> <%= channel.profileUrl %></span>
+                                        <% } %>
+                                    </div>
+                                    <label class="switch-toggle account-action-control">
+                                        <input type="checkbox" <%= channel.isEnabled ? 'checked' : '' %>>
+                                        <span class="slider-round"></span>
+                                    </label>
+                                </div>
+                                <div class="account-meta-stats">
+                                    <div class="meta-stat-item">
+                                        <span class="meta-stat-label">Người theo dõi</span>
+                                        <span class="meta-stat-value"><%= channel.followers || '0' %></span>
+                                    </div>
+                                    <div class="meta-stat-item">
+                                        <span class="meta-stat-label">Trạng thái API</span>
+                                        <span class="meta-stat-value api-status <%= channel.apiStatus === 'active' ? 'status-active' : 'status-inactive' %>"><%= channel.apiStatus === 'active' ? 'Sẵn sàng' : channel.apiStatus %></span>
+                                    </div>
+                                    <button
+                                        class="btn-edit-channel account-action-control"
+                                        type="button"
+                                        title="Chỉnh sửa tài khoản"
+                                        data-id="<%= channel._id %>"
+                                        data-platform="<%= channel.platform %>"
+                                        data-account-name="<%= channel.accountName %>"
+                                        data-account-type="<%= channel.accountType %>"
+                                        data-profile-url="<%= channel.profileUrl || '' %>"
+                                        data-avatar-url="<%= channel.avatarUrl || '' %>"
+                                    ><i class="fa-regular fa-pen-to-square"></i></button>
+                                    <button class="btn-delete-channel account-action-control" type="button"><i class="fa-regular fa-trash-can"></i></button>
+                                </div>
+                            </div>
+                        <% }) %>
+                    <% } else { %>
+                        <div class="empty-state-card">
+                            <div class="empty-state-icon"><i class="fa-solid fa-folder-open"></i></div>
+                            <h3>Chưa có kênh <%= platformLabel %> nào</h3>
+                            <p>Hãy kết nối tài khoản <%= platformLabel %> để quản lý tập trung đúng nền tảng này.</p>
+                        </div>
+                    <% } %>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="oauth-modal" id="oauthModal">
+        <div class="oauth-card">
+            <div class="oauth-modal-header">
+                <div class="oauth-modal-header-left">
+                    <div class="oauth-icon-box" id="oauthIconBox">
+                        <i class="fa-brands fa-facebook"></i>
+                    </div>
+                    <div class="oauth-modal-title-group">
+                        <h3 id="oauthTitle">Kết nối Facebook API</h3>
+                        <p id="oauthDesc">Cấp quyền để hệ thống kết nối từng tài khoản riêng biệt.</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close-oauth" id="btnCloseOAuthModal" aria-label="Đóng">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="oauth-form-group">
+                <label class="oauth-form-label" for="oauthAccountName">Tên tài khoản / Page</label>
+                <input type="text" class="oauth-input" id="oauthAccountName" placeholder="Ví dụ: Fanpage Công Nghệ 247" autocomplete="off">
+            </div>
+
+            <div class="oauth-form-group" id="profileUrlFieldWrapper" style="display: none;">
+                <label class="oauth-form-label" for="oauthProfileUrl">Link Profile <span class="fb-required-hint" style="color:var(--danger);font-weight:400;text-transform:none;letter-spacing:0">(bắt buộc)</span></label>
+                <input type="text" class="oauth-input" id="oauthProfileUrl" placeholder="https://facebook.com/username" data-placeholder-fb="https://facebook.com/username" data-placeholder-tt="https://www.tiktok.com/@username" data-placeholder-ig="https://www.instagram.com/username" data-placeholder-yt="https://www.youtube.com/@channel" autocomplete="off">
+            </div>
+
+            <div id="oauthEditAvatarPreviewWrap" style="display:none" class="oauth-form-group">
+                <label class="oauth-form-label">Avatar hiện tại</label>
+                <div class="oauth-current-avatar" id="oauthCurrentAvatarBox">
+                    <div class="oauth-current-avatar-text" id="oauthCurrentAvatarText">Chưa có avatar</div>
+                </div>
+            </div>
+
+            <div class="oauth-form-group">
+                <label class="oauth-form-label" for="oauthAvatar">Ảnh đại diện</label>
+                <div class="oauth-upload-row">
+                    <input type="file" class="oauth-file-input" id="oauthAvatar" accept="image/*">
+                    <span class="oauth-upload-hint">Tải ảnh lên để quản lý tài khoản dễ nhận diện hơn.</span>
+                </div>
+            </div>
+
+            <div id="oauthSecondaryField"></div>
+
+            <div class="oauth-action-btns">
+                <button type="button" class="btn-oauth-cancel" id="btnOAuthCancel">
+                    <i class="fa-solid fa-ban"></i> Hủy bỏ
+                </button>
+                <button type="button" class="btn-oauth-submit" id="btnOAuthSubmit">
+                    <i class="fa-solid fa-link"></i> Ủy quyền kết nối
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/toast.js"></script>
+    <script src="/js/base.js"></script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/cryptoVault.js"></script>
+    <script src="/js/channels.js"></script>
+</body>
+</html>

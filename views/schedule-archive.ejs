@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thư Viện Đã Đăng - ReelsFlow AI</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/schedule-archive.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <%- include('partials/sidebar', { currentPage: 'schedule-archive' }) %>
+
+    <div class="main-content">
+        <%- include('partials/header') %>
+
+        <main class="content-body schedule-archive-page">
+            <%- include('partials/welcome-section', {
+                eyebrow: 'Thư viện đã đăng',
+                title: 'Report bài viết & reels đã xuất bản',
+                description: 'Theo dõi nội dung đã đăng theo nền tảng, loại bài và trạng thái trong một bảng report rõ ràng, search realtime.'
+            }) %>
+
+            <section class="archive-panel">
+                <div class="archive-toolbar">
+                    <div class="toolbar-left">
+                        <div class="search-box">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="archiveSearchInput" placeholder="Tìm caption, tài khoản, group, video...">
+                        </div>
+                    </div>
+
+                    <div class="toolbar-filters">
+                        <select id="archiveTypeFilter" class="input-text filter-select">
+                            <option value="all">Tất cả loại bài</option>
+                            <option value="post">Post</option>
+                            <option value="reels">Reels</option>
+                        </select>
+
+                        <select id="archivePlatformFilter" class="input-text filter-select">
+                            <option value="all">Tất cả nền tảng</option>
+                            <option value="FB">Facebook</option>
+                            <option value="IG">Instagram</option>
+                            <option value="TT">TikTok</option>
+                            <option value="YT">YouTube</option>
+                        </select>
+
+                        <input type="date" id="archiveDayFilter" class="input-text filter-select" title="Lọc theo ngày đăng">
+                        <input type="month" id="archiveMonthFilter" class="input-text filter-select" title="Lọc theo tháng đăng">
+
+                    </div>
+
+                    <div class="toolbar-actions">
+                        <a href="#" class="btn-toolbar-action" id="btnExportExcel" data-format="xls">
+                            <i class="fa-solid fa-file-excel"></i> Xuất Excel
+                        </a>
+                        <a href="#" class="btn-toolbar-action btn-toolbar-action--secondary" id="btnExportPdf" data-format="pdf">
+                            <i class="fa-solid fa-file-pdf"></i> Xuất PDF
+                        </a>
+                    </div>
+                </div>
+
+                <div class="archive-stats">
+                    <div class="stat-card-mini"><span>Tổng đã đăng</span><strong><%= stats.total %></strong></div>
+                    <div class="stat-card-mini stat-posted"><span>Post</span><strong><%= stats.posts %></strong></div>
+                    <div class="stat-card-mini stat-reels"><span>Reels</span><strong><%= stats.reels %></strong></div>
+                    <div class="stat-card-mini stat-pending"><span>Facebook</span><strong><%= stats.fb %></strong></div>
+                    <div class="stat-card-mini"><span>Hôm nay</span><strong><%= stats.today %></strong></div>
+                    <div class="stat-card-mini"><span>Tháng này</span><strong><%= stats.month %></strong></div>
+                </div>
+
+                <div class="archive-table-wrap">
+                    <table class="archive-table" id="archiveTable">
+                        <thead>
+                            <tr>
+                                <th>Ngày đăng</th>
+                                <th>Loại</th>
+                                <th>Nền tảng</th>
+                                <th>Nội dung</th>
+                                <th>Tài khoản / Group</th>
+                                <th>Video / Link</th>
+                                <th>Trạng thái</th>
+                                <th>Xem nhanh</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (schedules && schedules.length > 0) { %>
+                                <% schedules.forEach(schedule => { %>
+                                    <% const rowPayload = encodeURIComponent(JSON.stringify({
+                                        id: schedule._id,
+                                        publishedAtLabel: schedule.publishedAtLabel,
+                                        publishedAtIso: schedule.publishedAtIso,
+                                        publishedAtDayKey: schedule.publishedAtDayKey,
+                                        publishedAtMonthKey: schedule.publishedAtMonthKey,
+                                        type: schedule.type,
+                                        typeLabel: schedule.archiveTypeLabel,
+                                        statusLabel: schedule.archiveStatusLabel,
+                                        statusClassName: schedule.statusClassName,
+                                        caption: schedule.caption || '',
+                                        platformLabel: schedule.platformLabel,
+                                        accountsLabel: schedule.accountsLabel,
+                                        targetGroupName: schedule.targetGroupName || '',
+                                        sourceChannelName: schedule.sourceChannelName || '',
+                                        videoTitle: schedule.videoTitle || '',
+                                        shopeeLinksCount: schedule.shopeeLinksCount || 0,
+                                        platforms: schedule.platforms || [],
+                                        accounts: schedule.accounts || [],
+                                        targetGroupUrl: schedule.targetGroupUrl || '',
+                                        targetGroupId: schedule.targetGroupId || ''
+                                    })) %>
+                                    <tr
+                                        class="archive-row"
+                                        data-search-text="<%= schedule.searchText %>"
+                                        data-platform="<%= schedule.platforms && schedule.platforms.length ? schedule.platforms.join(',') : 'none' %>"
+                                        data-type="<%= schedule.type %>"
+                                        data-day="<%= schedule.publishedAtDayKey %>"
+                                        data-month="<%= schedule.publishedAtMonthKey %>"
+                                        data-row="<%= rowPayload %>"
+                                    >
+                                        <td>
+                                            <div class="cell-primary"><%= schedule.publishedAtLabel %></div>
+                                            <div class="cell-secondary">Đã đăng</div>
+                                        </td>
+                                        <td><span class="type-badge type-<%= schedule.type %>"><%= schedule.archiveTypeLabel %></span></td>
+                                        <td>
+                                            <div class="platform-badges">
+                                                <% if (schedule.platformDetails && schedule.platformDetails.length > 0) { %>
+                                                    <% schedule.platformDetails.forEach(platform => { %>
+                                                        <span class="platform-badge <%= platform.className %>"><%= platform.label %></span>
+                                                    <% }) %>
+                                                <% } else { %>
+                                                    <span class="muted-text">—</span>
+                                                <% } %>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="archive-caption"><%= schedule.caption || '—' %></div>
+                                        </td>
+                                        <td>
+                                            <div class="cell-primary"><%= schedule.accountsLabel %></div>
+                                            <div class="cell-secondary">
+                                                <% if (schedule.targetGroupName) { %>
+                                                    Group: <%= schedule.targetGroupName %>
+                                                <% } else { %>
+                                                    Nguồn: <%= schedule.sourceChannelName %>
+                                                <% } %>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="cell-primary"><%= schedule.videoTitle %></div>
+                                            <div class="cell-secondary"><%= schedule.shopeeLinksCount %> link affiliate</div>
+                                        </td>
+                                        <td><span class="status-pill status-posted"><%= schedule.archiveStatusLabel %></span></td>
+                                        <td>
+                                            <button class="btn-row-action btn-archive-view" type="button" data-schedule-id="<%= schedule._id %>">
+                                                <i class="fa-regular fa-eye"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="8">
+                                        <div class="empty-state-table">
+                                            <i class="fa-regular fa-folder-open"></i>
+                                            <h3>Chưa có nội dung đã đăng</h3>
+                                            <p>Khi có bài viết/reels được publish thành công, chúng sẽ hiển thị tại đây dưới dạng report.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Archive Pagination -->
+                <div class="archive-pagination" id="archivePagination" style="<%= (schedules && schedules.length > 0) ? '' : 'display:none;' %>">
+                    <div class="archive-pagination__info" id="archivePaginationInfo"></div>
+                    <div class="archive-pagination__controls" id="archivePaginationControls"></div>
+                </div>
+            </section>
+
+            <div class="archive-modal" id="archiveDetailModal" aria-hidden="true">
+                <div class="archive-modal__backdrop" data-archive-modal-close></div>
+                <div class="archive-modal__card" role="dialog" aria-modal="true" aria-labelledby="archiveModalTitle">
+                    <div class="archive-modal__header">
+                        <div>
+                            <p class="archive-modal__eyebrow">Chi tiết lịch đã đăng</p>
+                            <h3 id="archiveModalTitle">Xem nhanh nội dung</h3>
+                        </div>
+                        <button type="button" class="archive-modal__close" data-archive-modal-close aria-label="Đóng">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+
+                    <div class="archive-modal__body">
+                        <div class="archive-modal__summary">
+                            <div class="archive-modal__stat">
+                                <span>Loại</span>
+                                <strong id="modalType">—</strong>
+                            </div>
+                            <div class="archive-modal__stat">
+                                <span>Trạng thái</span>
+                                <strong id="modalStatus">—</strong>
+                            </div>
+                            <div class="archive-modal__stat">
+                                <span>Ngày đăng</span>
+                                <strong id="modalPublishedAt">—</strong>
+                            </div>
+                        </div>
+
+                        <div class="archive-modal__grid">
+                            <div class="archive-modal__field">
+                                <span>Nền tảng</span>
+                                <p id="modalPlatforms">—</p>
+                            </div>
+                            <div class="archive-modal__field">
+                                <span>Tài khoản</span>
+                                <p id="modalAccounts">—</p>
+                            </div>
+                            <div class="archive-modal__field">
+                                <span>Group / Nguồn</span>
+                                <p id="modalGroup">—</p>
+                            </div>
+                            <div class="archive-modal__field">
+                                <span>Video</span>
+                                <p id="modalVideo">—</p>
+                            </div>
+                        </div>
+
+                        <div class="archive-modal__caption">
+                            <span>Caption</span>
+                            <p id="modalCaption">—</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/toast.js"></script>
+    <script src="/js/base.js"></script>
+    <script src="/js/schedule-archive.js"></script>
+</body>
+</html>    <link rel="stylesheet" href="/css/toast.css">

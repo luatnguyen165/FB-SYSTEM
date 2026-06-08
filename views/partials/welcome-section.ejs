@@ -1,0 +1,15 @@
+<div class="welcome-section">
+    <div class="welcome-section__content">
+        <% if (typeof eyebrow !== 'undefined' && eyebrow) { %>
+            <span class="welcome-eyebrow"><%= eyebrow %></span>
+        <% } %>
+        <h1><%= title %></h1>
+        <p><%= description %></p>
+    </div>
+
+    <% if (typeof actionHtml !== 'undefined' && actionHtml) { %>
+        <div class="welcome-section__actions">
+            <%- actionHtml %>
+        </div>
+    <% } %>
+</div>

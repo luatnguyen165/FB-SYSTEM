@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Tổng Quan - ReelsFlow AI</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <%- include('partials/sidebar', { currentPage: 'dashboard' }) %>
+
+    <%
+        const normalizeStatus = (value = '') => String(value).trim().toLowerCase();
+        const getStatusClass = (value = '') => {
+            const status = normalizeStatus(value);
+            if (['posted', 'success', 'done', 'completed', 'đã đăng', 'đã xuất bản'].includes(status)) return 'status-posted';
+            if (['failed', 'error', 'fail', 'lỗi', 'thất bại'].includes(status)) return 'status-failed';
+            if (['pending', 'scheduled', 'waiting', 'draft', 'chờ đăng', 'chờ xử lý', 'đang chờ'].includes(status)) return 'status-pending';
+            return 'status-neutral';
+        };
+
+        const getStatusLabel = (value = '') => {
+            const status = normalizeStatus(value);
+            if (status === 'posted') return 'Đã đăng';
+            if (status === 'failed') return 'Thất bại';
+            if (status === 'pending') return 'Chờ đăng';
+            if (status === 'scheduled') return 'Đã lên lịch';
+            if (status === 'draft') return 'Bản nháp';
+            if (!status) return '—';
+            return value;
+        };
+
+        const getTypeClass = (value = '') => {
+            const type = normalizeStatus(value);
+            if (type === 'schedule') return 'type-schedule';
+            if (type === 'video') return 'type-video';
+            if (type === 'link') return 'type-link';
+            return 'type-neutral';
+        };
+    %>
+
+    <div class="main-content">
+        <%- include('partials/header') %>
+
+        <main class="content-body">
+            <%- include('partials/welcome-section', {
+                eyebrow: t('dashboard.eyebrow'),
+                title: t('dashboard.title'),
+                description: t('dashboard.description')
+            }) %>
+
+            <section class="stats-grid">
+                <div class="stat-card stat-card--video anim-stagger" style="--i:0">
+                    <div class="stat-card__icon-wrap"><i class="fa-solid fa-video"></i></div>
+                    <div class="stat-card__body">
+                        <div class="stat-label"><%= t('dashboard.total_videos') %></div>
+                        <div class="stat-value"><%= stats.totalVideos %></div>
+                    </div>
+                </div>
+                <div class="stat-card stat-card--channel anim-stagger" style="--i:1">
+                    <div class="stat-card__icon-wrap"><i class="fa-solid fa-satellite-dish"></i></div>
+                    <div class="stat-card__body">
+                        <div class="stat-label"><%= t('dashboard.total_channels') %></div>
+                        <div class="stat-value"><%= stats.totalChannels %></div>
+                    </div>
+                </div>
+                <div class="stat-card stat-card--scheduled anim-stagger" style="--i:2">
+                    <div class="stat-card__icon-wrap"><i class="fa-solid fa-clock"></i></div>
+                    <div class="stat-card__body">
+                        <div class="stat-label"><%= t('dashboard.scheduled') %></div>
+                        <div class="stat-value"><%= stats.totalScheduled %></div>
+                    </div>
+                </div>
+                <div class="stat-card stat-card--posted anim-stagger" style="--i:3">
+                    <div class="stat-card__icon-wrap"><i class="fa-solid fa-circle-check"></i></div>
+                    <div class="stat-card__body">
+                        <div class="stat-label"><%= t('dashboard.posted') %></div>
+                        <div class="stat-value"><%= stats.totalPosted %></div>
+                    </div>
+                </div>
+                <div class="stat-card stat-card--failed anim-stagger" style="--i:4">
+                    <div class="stat-card__icon-wrap"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div class="stat-card__body">
+                        <div class="stat-label"><%= t('dashboard.failed') %></div>
+                        <div class="stat-value"><%= stats.totalFailed %></div>
+                    </div>
+                </div>
+                <div class="stat-card stat-card--shopee anim-stagger" style="--i:5">
+                    <div class="stat-card__icon-wrap"><i class="fa-solid fa-cart-shopping"></i></div>
+                    <div class="stat-card__body">
+                        <div class="stat-label"><%= t('dashboard.shopee_links') %></div>
+                        <div class="stat-value"><%= stats.totalShopeeLinks %></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="dashboard-panels">
+                <div class="panel-card anim-stagger" style="--i:6">
+                    <div class="panel-card__header">
+                        <div class="panel-card__icon"><i class="fa-solid fa-chart-pie"></i></div>
+                        <h3>Tỷ lệ hoàn thành</h3>
+                    </div>
+                    <div class="panel-card__body">
+                        <div class="ratio-display">
+                            <span class="ratio-number"><%= stats.pendingToPostRatio %>%</span>
+                            <span class="ratio-label">bài đã đăng so với lịch chờ</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-bar__fill" style="width: <%= Math.min(stats.pendingToPostRatio, 100) %>%"></div>
+                        </div>
+                        <div class="mini-list">
+                            <div class="mini-list__item"><span class="mini-list__icon" style="background:var(--info-light);color:var(--info)"><i class="fa-solid fa-video"></i></span><span>Video gần đây</span><span class="mini-list__count"><%= dashboards.recentVideos.length %></span></div>
+                            <div class="mini-list__item"><span class="mini-list__icon" style="background:var(--warning-light);color:var(--warning)"><i class="fa-solid fa-calendar-days"></i></span><span>Lịch sắp tới</span><span class="mini-list__count"><%= dashboards.upcomingSchedules.length %></span></div>
+                            <div class="mini-list__item"><span class="mini-list__icon" style="background:var(--shopee-light);color:var(--shopee-color)"><i class="fa-solid fa-link"></i></span><span>Link mới</span><span class="mini-list__count"><%= dashboards.recentLinks.length %></span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-card anim-stagger" style="--i:7">
+                    <div class="panel-card__header">
+                        <div class="panel-card__icon"><i class="fa-solid fa-share-nodes"></i></div>
+                        <h3>Phân bố kênh</h3>
+                    </div>
+                    <div class="panel-card__body">
+                        <div class="mini-list">
+                            <% dashboards.channelDistribution.forEach(item => { %>
+                                <div class="mini-list__item"><span class="mini-list__label"><%= item.platform %></span><span class="mini-list__count"><%= item.count %></span></div>
+                            <% }) %>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-card anim-stagger" style="--i:8">
+                    <div class="panel-card__header">
+                        <div class="panel-card__icon"><i class="fa-solid fa-layer-group"></i></div>
+                        <h3>Loại lịch đăng</h3>
+                    </div>
+                    <div class="panel-card__body">
+                        <div class="mini-list">
+                            <% dashboards.schedulesByType.forEach(item => { %>
+                                <div class="mini-list__item"><span class="mini-list__label"><%= item._id %></span><span class="mini-list__count"><%= item.count %></span></div>
+                            <% }) %>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="dashboard-tables">
+                <div class="table-card">
+                    <h3>Hoạt động gần đây</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Loại</th><th>Tiêu đề</th><th>Mô tả</th><th>Trạng thái</th></tr>
+                        </thead>
+                        <tbody>
+                            <% dashboards.activityFeed.forEach(item => { %>
+                                <tr>
+                                    <td>
+                                        <span class="type-badge <%= getTypeClass(item.type) %>">
+                                            <%= item.type %>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="cell-ellipsis" title="<%= item.title %>"><%= item.title %></span>
+                                    </td>
+                                    <td>
+                                        <span class="cell-ellipsis" title="<%= item.subtitle %>"><%= item.subtitle %></span>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge <%= getStatusClass(item.status) %>"><%= getStatusLabel(item.status) %></span>
+                                    </td>
+                                </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="table-card">
+                    <h3>Lịch sắp tới</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Thời gian</th><th>Loại</th><th>Nội dung</th><th>Platform</th></tr>
+                        </thead>
+                        <tbody>
+                            <% dashboards.upcomingSchedules.forEach(item => { %>
+                                <tr>
+                                    <td>
+                                        <span class="cell-ellipsis" title="<%= new Date(item.scheduledAt).toLocaleString('vi-VN') %>"><%= new Date(item.scheduledAt).toLocaleString('vi-VN') %></span>
+                                    </td>
+                                    <td>
+                                        <span class="type-badge <%= getTypeClass(item.type) %>"><%= item.type %></span>
+                                    </td>
+                                    <td>
+                                        <span class="cell-ellipsis" title="<%= item.caption || '—' %>"><%= item.caption || '—' %></span>
+                                    </td>
+                                    <td>
+                                        <span class="cell-ellipsis" title="<%= (item.platforms || []).join(', ') || '—' %>"><%= (item.platforms || []).join(', ') || '—' %></span>
+                                    </td>
+                                </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="dashboard-tables">
+                <div class="table-card">
+                    <h3>Video mới nhất</h3>
+                    <table>
+                        <thead><tr><th>Tên video</th><th>Trạng thái</th><th>Ngày tạo</th></tr></thead>
+                        <tbody>
+                            <% dashboards.recentVideos.forEach(video => { %>
+                                <tr>
+                                    <td>
+                                        <span class="cell-ellipsis" title="<%= video.title %>"><%= video.title %></span>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge <%= getStatusClass(video.status) %>"><%= getStatusLabel(video.status) %></span>
+                                    </td>
+                                    <td>
+                                        <span class="cell-ellipsis" title="<%= new Date(video.createdAt).toLocaleString('vi-VN') %>"><%= new Date(video.createdAt).toLocaleString('vi-VN') %></span>
+                                    </td>
+                                </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="table-card">
+                    <h3>Shopee link mới nhất</h3>
+                    <table>
+                        <thead><tr><th>Tiêu đề</th><th>Trạng thái</th><th>Ngày tạo</th></tr></thead>
+                        <tbody>
+                            <% dashboards.recentLinks.forEach(link => { %>
+                                <tr>
+                                    <td>
+                                        <span class="cell-ellipsis" title="<%= link.title %>"><%= link.title %></span>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge <%= getStatusClass(link.status) %>"><%= getStatusLabel(link.status) %></span>
+                                    </td>
+                                    <td>
+                                        <span class="cell-ellipsis" title="<%= new Date(link.createdAt).toLocaleString('vi-VN') %>"><%= new Date(link.createdAt).toLocaleString('vi-VN') %></span>
+                                    </td>
+                                </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/js/toast.js"></script>
+    <script src="/js/base.js"></script>
+</body>
+</html>    <link rel="stylesheet" href="/css/toast.css">

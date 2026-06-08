@@ -1,0 +1,171 @@
+<%
+    const feat = typeof features !== 'undefined' ? features : {};
+    const isContentOpen = ['storeVideo', 'shopeeLink'].includes(currentPage);
+    const isSchedulerOpen = ['schedule-manager', 'schedule-post', 'schedule-reels', 'schedule-archive', 'schedule-groups'].includes(currentPage);
+    const isAiOpen = ['ai-scan', 'ai-comments', 'comment-play', 'video-create'].includes(currentPage);
+    const isAdmin = typeof user !== 'undefined' && user && user.role === 'admin';
+%>
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
+        <span>ReelsFlow AI</span>
+        <button class="sidebar-close-btn" id="sidebarCloseBtn">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+    </div>
+
+    <ul class="sidebar-menu">
+        <!-- 🏠 TRANG CHỦ -->
+        <% if (feat.dashboard !== false) { %>
+        <li class="menu-item <%= currentPage === 'dashboard' ? 'active' : '' %>">
+            <a href="/dashboard"><i class="fa-solid fa-chart-pie"></i>Dashboard</a>
+        </li>
+        <% } %>
+
+        <% if (feat.channels !== false) { %>
+        <li class="menu-item <%= currentPage === 'channels' ? 'active' : '' %>">
+            <a href="/channels"><i class="fa-solid fa-link"></i>Tài Khoản MXH</a>
+        </li>
+        <% } %>
+
+        <!-- 🎬 QUẢN LÝ NỘI DUNG -->
+        <li class="menu-section-title">Quản Lý Nội Dung</li>
+
+        <% if (feat.storeVideo !== false || feat.shopeeLink !== false) { %>
+        <li class="sidebar-group <%= isContentOpen ? 'is-open' : '' %>">
+            <button
+                type="button"
+                class="sidebar-group-toggle"
+                data-sidebar-group-toggle
+                aria-expanded="<%= isContentOpen ? 'true' : 'false' %>"
+            >
+                <span class="sidebar-group-toggle__label">
+                    <i class="fa-solid fa-folder-open"></i>
+                    Nội Dung
+                </span>
+                <i class="fa-solid fa-chevron-down sidebar-group-chevron"></i>
+            </button>
+            <ul class="sidebar-submenu">
+                <% if (feat.storeVideo !== false) { %>
+                <li class="menu-item <%= currentPage === 'storeVideo' ? 'active' : '' %>">
+                    <a href="/videos"><i class="fa-solid fa-clapperboard"></i>Kho Video</a>
+                </li>
+                <% } %>
+                <% if (feat.shopeeLink !== false) { %>
+                <li class="menu-item <%= currentPage === 'shopeeLink' ? 'active' : '' %>">
+                    <a href="/shopee"><i class="fa-solid fa-bag-shopping"></i>Link Tiếp Thị</a>
+                </li>
+                <% } %>
+            </ul>
+        </li>
+        <% } %>
+
+        <!-- 📅 LỊCH ĐĂNG BÀI -->
+        <li class="menu-section-title">Lịch Đăng Bài</li>
+
+        <% if (feat['schedule-manager'] !== false || feat['schedule-post'] !== false || feat['schedule-reels'] !== false || feat['schedule-archive'] !== false || feat['schedule-groups'] !== false) { %>
+        <li class="sidebar-group <%= isSchedulerOpen ? 'is-open' : '' %>">
+            <button
+                type="button"
+                class="sidebar-group-toggle"
+                data-sidebar-group-toggle
+                aria-expanded="<%= isSchedulerOpen ? 'true' : 'false' %>"
+            >
+                <span class="sidebar-group-toggle__label">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    Lên Lịch
+                </span>
+                <i class="fa-solid fa-chevron-down sidebar-group-chevron"></i>
+            </button>
+            <ul class="sidebar-submenu">
+                <% if (feat['schedule-manager'] !== false) { %>
+                <li class="menu-item <%= currentPage === 'schedule-manager' ? 'active' : '' %>">
+                    <a href="/schedule/manager"><i class="fa-solid fa-table-list"></i>Lịch Đăng Tổng Hợp</a>
+                </li>
+                <% } %>
+                <% if (feat['schedule-post'] !== false) { %>
+                <li class="menu-item <%= currentPage === 'schedule-post' ? 'active' : '' %>">
+                    <a href="/schedule/post"><i class="fa-solid fa-images"></i>Đăng Bài Ảnh</a>
+                </li>
+                <% } %>
+                <% if (feat['schedule-reels'] !== false) { %>
+                <li class="menu-item <%= currentPage === 'schedule-reels' ? 'active' : '' %>">
+                    <a href="/schedule/reels"><i class="fa-solid fa-film"></i>Đăng Reels/Video</a>
+                </li>
+                <% } %>
+                <% if (feat['schedule-archive'] !== false) { %>
+                <li class="menu-item <%= currentPage === 'schedule-archive' ? 'active' : '' %>">
+                    <a href="/schedule/archive"><i class="fa-solid fa-clock-rotate-left"></i>Bài Đã Đăng</a>
+                </li>
+                <% } %>
+                <% if (feat['schedule-groups'] !== false) { %>
+                <li class="menu-item <%= currentPage === 'schedule-groups' ? 'active' : '' %>">
+                    <a href="/schedule/groups"><i class="fa-solid fa-users-rectangle"></i>Quét Group FB</a>
+                </li>
+                <% } %>
+            </ul>
+        </li>
+        <% } %>
+
+        <!-- 🤖 AI TỰ ĐỘNG -->
+        <li class="menu-section-title">AI Tự Động</li>
+
+        <% if (feat['ai-scan'] !== false || feat['ai-comments'] !== false || feat['comment-play'] !== false) { %>
+        <li class="sidebar-group <%= isAiOpen ? 'is-open' : '' %>">
+            <button
+                type="button"
+                class="sidebar-group-toggle"
+                data-sidebar-group-toggle
+                aria-expanded="<%= isAiOpen ? 'true' : 'false' %>"
+            >
+                <span class="sidebar-group-toggle__label">
+                    <i class="fa-solid fa-robot"></i>
+                    AI Nâng Cao
+                </span>
+                <i class="fa-solid fa-chevron-down sidebar-group-chevron"></i>
+            </button>
+            <ul class="sidebar-submenu">
+                <% if (feat['ai-scan'] !== false) { %>
+                <li class="menu-item <%= currentPage === 'ai-scan' ? 'active' : '' %>">
+                    <a href="/schedule/ai-scan"><i class="fa-solid fa-magnifying-glass-chart"></i>AI Quét Nhu Cầu</a>
+                </li>
+                <% } %>
+                <% if (feat['ai-comments'] !== false) { %>
+                <li class="menu-item <%= currentPage === 'ai-comments' ? 'active' : '' %>">
+                    <a href="/schedule/ai-comments"><i class="fa-solid fa-comment-dots"></i>Comment Sản Phẩm</a>
+                </li>
+                <% } %>
+                <% if (feat['comment-play'] !== false) { %>
+                <li class="menu-item <%= currentPage === 'comment-play' ? 'active' : '' %>">
+                    <a href="/schedule/ai-comment/play"><i class="fa-solid fa-play"></i>▶ Kịch Bản Comment</a>
+                </li>
+                <% } %>
+                <li class="menu-item <%= currentPage === 'video-create' ? 'active' : '' %>">
+                    <a href="/ai-images"><i class="fa-solid fa-video"></i>Tạo Video</a>
+                </li>
+            </ul>
+        </li>
+        <% } %>
+
+        <!-- 👁 THEO DÕI ĐỐI THỦ -->
+        <% if (feat['competitors'] !== false) { %>
+        <li class="menu-item <%= currentPage === 'competitors' ? 'active' : '' %>">
+            <a href="/competitors"><i class="fa-solid fa-users-viewfinder"></i>Theo Dõi Đối Thủ</a>
+        </li>
+        <% } %>
+
+        <!-- ⚙️ HỆ THỐNG -->
+        <li class="menu-section-title">Hệ Thống</li>
+        <% if (feat.settings !== false) { %>
+        <li class="menu-item <%= currentPage === 'settings' ? 'active' : '' %>">
+            <a href="/settings"><i class="fa-solid fa-sliders"></i>Cài Đặt</a>
+        </li>
+        <% } %>
+
+        <% if (isAdmin) { %>
+        <li class="menu-item <%= currentPage === 'feature-visibility' ? 'active' : '' %>">
+            <a href="/features"><i class="fa-solid fa-gears"></i>Quản Lý Tính Năng</a>
+        </li>
+        <% } %>
+    </ul>
+</aside>

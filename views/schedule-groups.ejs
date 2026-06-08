@@ -1,0 +1,1614 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quét Group Facebook - ReelsFlow AI</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/schedule-post.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+        <style>
+        /* ===== SCAN GROUPS PAGE ===== */
+        .scan-groups-container { padding: 0; max-width: 1400px; margin: 0 auto; }
+
+        /* Hero Section - Distinct from welcome-section */
+        @keyframes scanHeroFadeIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.98); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes scanHeroGlow {
+            0%, 100% { box-shadow: 0 8px 24px rgba(99, 102, 241, 0.25); }
+            50%      { box-shadow: 0 8px 32px rgba(99, 102, 241, 0.4); }
+        }
+        @keyframes scanHeroShimmer {
+            0%   { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .scan-hero {
+            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 30%, #dbeafe 70%, #eff6ff 100%);
+            border: 1px solid rgba(99, 102, 241, 0.15);
+            border-radius: var(--radius-2xl);
+            padding: 32px 36px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 16px rgba(99, 102, 241, 0.1);
+            position: relative;
+            overflow: hidden;
+            animation: scanHeroFadeIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+        .scan-hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #6366f1, #818cf8, #2563eb, #6366f1);
+            background-size: 300% 100%;
+            animation: scanHeroShimmer 5s ease-in-out infinite;
+        }
+        .scan-hero::after {
+            content: '';
+            position: absolute;
+            bottom: -60px;
+            right: -40px;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .scan-hero-content { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; flex-wrap: wrap; position: relative; z-index: 1; }
+        .scan-hero-title { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
+        .scan-hero-icon {
+            width: 56px; height: 56px;
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            border-radius: var(--radius-lg);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; color: white;
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35);
+            animation: scanHeroGlow 3s ease-in-out infinite;
+            flex-shrink: 0;
+        }
+        .scan-hero-title h1 { font-size: 1.5rem; font-weight: 800; color: #312e81; margin: 0; letter-spacing: -0.5px; }
+        .scan-hero-subtitle { color: #6366f1; font-size: 0.88rem; margin: 0; max-width: 480px; line-height: 1.65; opacity: 0.85; }
+
+        /* Buttons */
+        .scan-hero-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        /* Primary scan button */
+        @keyframes btnScanPulse {
+            0%, 100% { box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35); }
+            50%      { box-shadow: 0 6px 24px rgba(99, 102, 241, 0.5); }
+        }
+
+        .btn-scan-hero {
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #4338ca 100%);
+            color: white; border: none;
+            padding: 14px 28px; border-radius: var(--radius-md);
+            font-weight: 700; font-size: 0.9rem; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 10px;
+            transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
+            letter-spacing: 0.3px;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-scan-hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s ease;
+        }
+        .btn-scan-hero:hover::before {
+            left: 100%;
+        }
+        .btn-scan-hero:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.5);
+        }
+        .btn-scan-hero:active {
+            transform: translateY(0);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        .btn-scan-hero:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+            animation: none;
+        }
+        .btn-scan-hero .btn-icon {
+            width: 32px;
+            height: 32px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+        }
+
+        /* Mode toggle button */
+        .btn-mode-hero {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            color: #64748b;
+            border: 1.5px solid rgba(99, 102, 241, 0.2);
+            padding: 13px 20px;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-mode-hero::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 3px;
+            height: 100%;
+            background: #6366f1;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .btn-mode-hero:hover {
+            border-color: #6366f1;
+            color: #4f46e5;
+            background: rgba(99, 102, 241, 0.06);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.12);
+            transform: translateY(-1px);
+        }
+        .btn-mode-hero:hover::before {
+            opacity: 1;
+        }
+        .btn-mode-hero.active {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(99, 102, 241, 0.04));
+            border-color: #6366f1;
+            color: #4f46e5;
+            font-weight: 700;
+        }
+        .btn-mode-hero.active::before {
+            opacity: 1;
+        }
+        .btn-mode-hero .mode-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #6366f1;
+            flex-shrink: 0;
+        }
+        .btn-mode-hero.active .mode-dot {
+            animation: modePulse 1.5s ease-in-out infinite;
+        }
+        @keyframes modePulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+            50%      { box-shadow: 0 0 0 4px rgba(99, 102, 241, 0); }
+        }
+
+        /* URL Input */
+        .url-input-wrapper { margin-top: 16px; display: none; }
+        .url-input-wrapper.active { display: block; }
+        .url-input-group { display: flex; gap: 10px; }
+        .url-input {
+            flex: 1; padding: 12px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 0.9rem; background: var(--bg-card);
+            transition: all var(--transition-fast); outline: none;
+        }
+        .url-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+        .btn-scrape-url {
+            background: #4f46e5; color: white; border: none;
+            padding: 12px 20px; border-radius: var(--radius-sm);
+            font-weight: 600; cursor: pointer;
+            display: flex; align-items: center; gap: 8px;
+            transition: all var(--transition-fast);
+        }
+        .btn-scrape-url:hover { background: #4338ca; }
+
+        /* Stats Grid */
+        .scan-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+        .scan-stat-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius-lg); padding: 20px;
+            display: flex; align-items: center; gap: 16px;
+            transition: all var(--transition-normal); position: relative; overflow: hidden;
+        }
+        .scan-stat-card::before {
+            content: ''; position: absolute; top: 0; left: 0;
+            width: 4px; height: 100%;
+            background: var(--primary); opacity: 0; transition: opacity var(--transition-fast);
+        }
+        .scan-stat-card:hover { border-color: var(--border-dark); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+        .scan-stat-card:hover::before { opacity: 1; }
+        .scan-stat-card:nth-child(1)::before { background: var(--primary); }
+        .scan-stat-card:nth-child(2)::before { background: var(--success); }
+        .scan-stat-card:nth-child(3)::before { background: var(--warning); }
+        .scan-stat-card:nth-child(4)::before { background: var(--info); }
+
+        .scan-stat-icon {
+            width: 48px; height: 48px; border-radius: var(--radius-md);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; flex-shrink: 0;
+        }
+        .scan-stat-icon.primary { background: var(--primary-light); color: var(--primary); }
+        .scan-stat-icon.success { background: var(--success-light); color: var(--success); }
+        .scan-stat-icon.warning { background: var(--warning-light); color: var(--warning); }
+        .scan-stat-icon.info { background: var(--info-light); color: var(--info); }
+
+        .scan-stat-info { flex: 1; min-width: 0; }
+        .scan-stat-info h3 { font-size: 1.4rem; font-weight: 800; margin: 0; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .scan-stat-info p { font-size: 0.78rem; color: var(--text-muted); margin: 4px 0 0; font-weight: 500; }
+
+        /* Filter Bar */
+        .scan-filter-bar {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius-lg); padding: 16px 20px; margin-bottom: 20px;
+            display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;
+            box-shadow: var(--shadow-sm);
+        }
+        .filter-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 180px; }
+        .filter-group label { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; }
+        .filter-group select, .filter-group input {
+            padding: 11px 14px; border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm); background: var(--bg-card);
+            color: var(--text-main); font-size: 0.875rem;
+            transition: all var(--transition-fast); cursor: pointer; outline: none;
+        }
+        .filter-group select:focus, .filter-group input:focus {
+            border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light);
+        }
+        .btn-clear-filter {
+            background: var(--bg-hover); border: 1.5px solid var(--border);
+            color: var(--text-muted); padding: 11px 16px;
+            border-radius: var(--radius-sm); cursor: pointer;
+            font-size: 0.85rem; font-weight: 600;
+            transition: all var(--transition-fast);
+            display: flex; align-items: center; gap: 8px; white-space: nowrap;
+        }
+        .btn-clear-filter:hover { background: var(--danger-light); border-color: var(--danger); color: var(--danger); }
+
+        /* Groups List */
+        .groups-list-container { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-xl); overflow: hidden; box-shadow: var(--shadow-sm); }
+        .groups-list-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 16px 20px; border-bottom: 1px solid var(--border);
+            background: var(--bg-hover); flex-wrap: wrap; gap: 16px;
+        }
+        .groups-list-header h3 { font-size: 1rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 10px; color: var(--text-main); }
+        .groups-list-header h3 i { color: var(--primary); }
+        .groups-count-badge { background: var(--primary); color: white; font-size: 0.75rem; padding: 4px 10px; border-radius: var(--radius-full); font-weight: 600; }
+        .header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn-header-action {
+            background: var(--bg-card); border: 1.5px solid var(--border);
+            color: var(--text-muted); padding: 9px 16px;
+            border-radius: var(--radius-sm); cursor: pointer;
+            font-size: 0.85rem; font-weight: 600;
+            transition: all var(--transition-fast);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .btn-header-action:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+        .btn-header-action.primary { background: var(--primary-gradient); border-color: var(--primary); color: white; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
+        .btn-header-action.primary:hover { box-shadow: 0 6px 16px rgba(37,99,235,0.4); transform: translateY(-1px); }
+
+        /* Table */
+        .groups-table-wrapper { overflow-x: auto; }
+        .groups-table { width: 100%; border-collapse: collapse; min-width: 700px; }
+        .groups-table th {
+            text-align: left; padding: 12px 16px; font-size: 0.72rem; font-weight: 700;
+            color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;
+            background: var(--bg-hover); border-bottom: 2px solid var(--border); white-space: nowrap;
+        }
+        .groups-table th:first-child { padding-left: 20px; }
+        .groups-table td { padding: 14px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        .groups-table td:first-child { padding-left: 20px; }
+        .groups-table tbody tr { transition: all var(--transition-fast); }
+        .groups-table tbody tr:hover { background: var(--bg-hover); }
+        .groups-table tbody tr:last-child td { border-bottom: none; }
+
+        .custom-checkbox { display: flex; align-items: center; justify-content: center; }
+        .custom-checkbox input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
+
+        .group-info { display: flex; align-items: center; gap: 14px; }
+        .group-avatar {
+            width: 44px; height: 44px; border-radius: var(--radius-sm);
+            background: var(--primary-gradient);
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-weight: 700; font-size: 1rem; flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+        .group-details h4 { font-size: 0.9rem; font-weight: 600; margin: 0 0 4px; color: var(--text-main); }
+        .group-details span { font-size: 0.72rem; color: var(--text-muted); }
+
+        .group-link-wrapper { max-width: 260px; }
+        .group-link { font-size: 0.8rem; color: var(--primary); text-decoration: none; word-break: break-all; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: color var(--transition-fast); }
+        .group-link:hover { color: var(--primary-dark); text-decoration: underline; }
+
+        .group-actions { display: flex; gap: 8px; }
+        .btn-action {
+            width: 36px; height: 36px; border-radius: var(--radius-sm);
+            border: 1.5px solid var(--border); background: var(--bg-card);
+            color: var(--text-muted); cursor: pointer; font-size: 0.85rem;
+            display: flex; align-items: center; justify-content: center;
+            transition: all var(--transition-fast);
+        }
+        .btn-action:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); transform: translateY(-1px); }
+        .btn-action.copy:hover { border-color: var(--success); color: var(--success); background: var(--success-light); }
+
+        /* Empty State */
+        .empty-state { text-align: center; padding: 60px 40px; }
+        .empty-state-icon { width: 96px; height: 96px; margin: 0 auto 20px; background: var(--bg-hover); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: var(--border-dark); }
+        .empty-state h3 { font-size: 1.15rem; font-weight: 700; margin: 0 0 8px; color: var(--text-main); }
+        .empty-state p { color: var(--text-muted); margin: 0 0 24px; max-width: 400px; margin-left: auto; margin-right: auto; line-height: 1.6; }
+        .empty-warning { background: var(--warning-light); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: var(--radius-md); padding: 14px 18px; color: #b45309; display: inline-flex; align-items: center; gap: 10px; font-weight: 500; font-size: 0.875rem; }
+
+        /* Scanning Modal */
+        .scanning-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999; opacity: 0; visibility: hidden;
+            transition: all var(--transition-normal);
+        }
+        .scanning-overlay.active { opacity: 1; visibility: visible; }
+        .scanning-modal {
+            background: var(--bg-card); border-radius: var(--radius-xl);
+            padding: 32px; max-width: 800px; width: 90%;
+            box-shadow: var(--shadow-2xl); transform: scale(0.95);
+            transition: transform var(--transition-normal);
+        }
+        .scanning-overlay.active .scanning-modal { transform: scale(1); }
+        .scanning-spinner {
+            width: 60px; height: 60px;
+            border: 4px solid var(--bg-hover);
+            border-top-color: var(--primary);
+            border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .scanning-modal > .scanning-header h3 { font-size: 1.2rem; font-weight: 700; margin: 0 0 8px; color: var(--text-main); }
+        .scanning-modal > .scanning-header p { color: var(--text-muted); margin: 0 0 20px; font-size: 0.875rem; }
+        .scanning-progress { background: var(--bg-hover); border-radius: var(--radius-sm); height: 8px; overflow: hidden; margin-bottom: 16px; }
+        .scanning-progress-bar { height: 100%; background: var(--primary-gradient); width: 0%; transition: width 0.5s ease; border-radius: var(--radius-sm); }
+        .scanning-log {
+            background: var(--bg-main); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); padding: 12px;
+            text-align: left; max-height: 120px; overflow-y: auto;
+            font-size: 0.78rem; color: var(--text-muted);
+        }
+        .scanning-log div { margin-bottom: 6px; padding: 4px 0; border-bottom: 1px solid var(--border); }
+        .scanning-log div:last-child { margin-bottom: 0; border-bottom: none; }
+        .scanning-log .success { color: var(--success); }
+        .scanning-log .error { color: var(--danger); }
+        .scanning-log .info { color: var(--info); }
+
+        /* Mobile Card View */
+        .groups-card-list { display: none; padding: 16px; gap: 12px; }
+        .group-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; transition: all var(--transition-fast); }
+        .group-card:hover { border-color: var(--primary); box-shadow: var(--shadow-md); }
+        .group-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+        .group-card-header .custom-checkbox { flex-shrink: 0; }
+        .group-card-info { flex: 1; min-width: 0; }
+        .group-card-info h4 { font-size: 0.9rem; font-weight: 600; margin: 0 0 4px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .group-card-info span { font-size: 0.72rem; color: var(--text-muted); }
+        .group-card-link { font-size: 0.8rem; color: var(--primary); text-decoration: none; display: block; margin-bottom: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .group-card-link:hover { text-decoration: underline; }
+        .group-card-actions { display: flex; gap: 8px; }
+
+        /* Responsive */
+        @media (max-width: 1200px) { .scan-stats-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 992px) {
+            .scan-hero { padding: 24px; }
+            .scan-hero-content { flex-direction: column; }
+            .scan-hero-actions { width: 100%; justify-content: flex-start; }
+            .btn-scan-hero, .btn-mode-hero { justify-content: center; }
+            .scan-filter-bar { flex-direction: column; }
+            .filter-group { width: 100%; }
+            .btn-clear-filter { width: 100%; justify-content: center; }
+        }
+        @media (max-width: 768px) {
+            .scan-hero { padding: 20px; border-radius: var(--radius-lg); }
+            .scan-hero-icon { width: 44px; height: 44px; font-size: 1.2rem; }
+            .scan-hero-title { flex-wrap: wrap; }
+            .scan-hero-title h1 { font-size: 1.2rem; }
+            .scan-hero-subtitle { font-size: 0.82rem; }
+            .scan-hero-actions { flex-direction: column; width: 100%; }
+            .btn-scan-hero, .btn-mode-hero { width: 100%; justify-content: center; }
+            /* URL input group on mobile */
+            .url-input-group { flex-direction: column; gap: 8px; }
+            .url-input, .btn-scrape-url { width: 100%; }
+            .btn-scrape-url { justify-content: center; padding: 12px 16px; }
+            .scan-stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .scan-stat-card { padding: 14px; flex-direction: column; text-align: center; gap: 10px; }
+            .scan-stat-info h3 { font-size: 1.15rem; }
+            .scan-stat-info p { font-size: 0.72rem; }
+            /* Filter bar on mobile */
+            .scan-filter-bar { flex-direction: column; padding: 14px 16px; }
+            .filter-group { width: 100%; min-width: 0; }
+            .btn-clear-filter { width: 100%; justify-content: center; }
+            /* Groups list header */
+            .groups-list-header { flex-direction: column; align-items: stretch; gap: 10px; padding: 12px 16px; }
+            .groups-list-header h3 { justify-content: center; flex-wrap: wrap; text-align: center; }
+            .header-actions { justify-content: center; flex-wrap: wrap; }
+            .btn-header-action { flex: 1; justify-content: center; min-width: 0; font-size: 0.8rem; padding: 8px 12px; }
+            /* Table -> Card switch */
+            .groups-table-wrapper { display: none; }
+            .groups-card-list { display: flex; flex-direction: column; padding: 12px; gap: 10px; }
+            .group-card { padding: 14px; }
+            .group-card-header { gap: 10px; }
+            .group-card-info h4 { font-size: 0.85rem; }
+            .group-card-link { font-size: 0.78rem; }
+            .group-card-actions { gap: 6px; }
+            .group-card-actions .btn-action { width: 32px; height: 32px; font-size: 0.8rem; }
+            /* Pagination on mobile */
+            .groups-pagination { flex-direction: column; align-items: center; padding: 12px 14px; gap: 10px; }
+            .groups-pagination__info { text-align: center; }
+            .groups-pagination__controls { flex-wrap: wrap; justify-content: center; }
+            .groups-pagination__btn { min-width: 32px; height: 32px; font-size: 0.78rem; padding: 0 8px; }
+            .empty-state { padding: 36px 20px; }
+            /* Scanning modal */
+            .scanning-modal { padding: 20px; }
+            .scanning-header { flex-direction: column; text-align: center; }
+            .scanning-stats { gap: 10px; }
+            .scan-stat-box { padding: 12px 10px; }
+            .scan-stat-number { font-size: 1.5rem; }
+            .live-preview-list { grid-template-columns: 1fr; }
+            .live-group-item { padding: 8px 10px; gap: 8px; }
+            .live-group-avatar { width: 30px; height: 30px; font-size: 0.8rem; }
+            .live-group-name { font-size: 0.78rem; }
+        }
+        @media (max-width: 480px) {
+            .scan-stats-grid { grid-template-columns: 1fr; }
+            .scan-stat-card { flex-direction: row; text-align: left; }
+            .scan-hero { padding: 16px; }
+            .scan-hero-title { gap: 10px; }
+            .scan-hero-title h1 { font-size: 1.1rem; }
+            .scan-hero-subtitle { font-size: 0.8rem; }
+            .groups-card-list { padding: 8px; gap: 8px; }
+            .group-card { padding: 12px; }
+            .groups-pagination { padding: 10px 8px; }
+            .groups-pagination__btn { min-width: 28px; height: 28px; font-size: 0.72rem; }
+            .header-actions { flex-direction: column; }
+            .btn-header-action { width: 100%; }
+            .scanning-modal { padding: 16px; width: 95%; }
+            .live-preview-list { grid-template-columns: 1fr; }
+            .scan-stat-box { padding: 10px 8px; }
+            .scan-stat-number { font-size: 1.25rem; }
+        }
+
+        /* Pagination */
+        .groups-pagination {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-muted);
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .groups-pagination__info {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        .groups-pagination__controls {
+            display: flex;
+            gap: 4px;
+        }
+        .groups-pagination__btn {
+            min-width: 36px;
+            height: 36px;
+            border: 1.5px solid var(--border);
+            background: var(--bg-card);
+            border-radius: var(--radius-sm);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 10px;
+            transition: all var(--transition-fast);
+        }
+        .groups-pagination__btn:hover:not(:disabled) {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--primary-light);
+        }
+        .groups-pagination__btn.is-active {
+            background: var(--primary-gradient);
+            border-color: var(--primary);
+            color: white;
+        }
+        .groups-pagination__btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        .scan-hero { animation: fadeInUp 0.4s ease; }
+        .scan-stats-grid .scan-stat-card { animation: fadeInUp 0.4s ease; }
+        .scan-stats-grid .scan-stat-card:nth-child(1) { animation-delay: 0.08s; }
+        .scan-stats-grid .scan-stat-card:nth-child(2) { animation-delay: 0.12s; }
+        .scan-stats-grid .scan-stat-card:nth-child(3) { animation-delay: 0.16s; }
+        .scan-stats-grid .scan-stat-card:nth-child(4) { animation-delay: 0.2s; }
+        .scan-filter-bar { animation: fadeInUp 0.4s ease 0.25s both; }
+        .groups-list-container { animation: fadeInUp 0.4s ease 0.3s both; }
+
+        /* ============================================================
+           DARK MODE OVERRIDES (high specificity to win over other styles)
+           ============================================================ */
+        :root.dark-mode .scan-hero,
+        :root[data-theme='dark'] .scan-hero {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.18) 0%, #1e293b 50%, #0f172a 100%) !important;
+            border-color: rgba(99, 102, 241, 0.4) !important;
+            box-shadow: 0 4px 24px rgba(99, 102, 241, 0.2) !important;
+        }
+
+        :root.dark-mode .scan-hero-title h1,
+        :root[data-theme='dark'] .scan-hero-title h1 {
+            color: #c7d2fe !important;
+        }
+
+        :root.dark-mode .scan-hero-subtitle,
+        :root[data-theme='dark'] .scan-hero-subtitle {
+            color: #a5b4fc !important;
+        }
+
+        :root.dark-mode .btn-mode-hero,
+        :root[data-theme='dark'] .btn-mode-hero {
+            background: rgba(30, 41, 59, 0.7) !important;
+            color: #cbd5e1 !important;
+            border-color: rgba(99, 102, 241, 0.3) !important;
+        }
+
+        :root.dark-mode .btn-mode-hero:hover,
+        :root[data-theme='dark'] .btn-mode-hero:hover {
+            background: rgba(99, 102, 241, 0.15) !important;
+            color: #c7d2fe !important;
+        }
+
+        :root.dark-mode .btn-mode-hero.active,
+        :root[data-theme='dark'] .btn-mode-hero.active {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(99, 102, 241, 0.1)) !important;
+            color: #c7d2fe !important;
+            border-color: #818cf8 !important;
+        }
+
+        :root.dark-mode .empty-warning,
+        :root[data-theme='dark'] .empty-warning {
+            background: rgba(245, 158, 11, 0.15) !important;
+            border-color: rgba(245, 158, 11, 0.4) !important;
+            color: #fbbf24 !important;
+        }
+
+        :root.dark-mode .scan-stat-box,
+        :root[data-theme='dark'] .scan-stat-box {
+            background: rgba(30, 41, 59, 0.6) !important;
+            border-color: rgba(99, 102, 241, 0.3) !important;
+        }
+
+        :root.dark-mode .live-groups-preview,
+        :root[data-theme='dark'] .live-groups-preview {
+            background: rgba(30, 41, 59, 0.6) !important;
+            border-color: rgba(99, 102, 241, 0.3) !important;
+        }
+
+        :root.dark-mode .live-preview-header,
+        :root[data-theme='dark'] .live-preview-header {
+            background: rgba(15, 23, 42, 0.8) !important;
+            border-color: rgba(99, 102, 241, 0.3) !important;
+        }
+
+        :root.dark-mode .live-group-item,
+        :root[data-theme='dark'] .live-group-item {
+            background: rgba(15, 23, 42, 0.6) !important;
+            border-color: rgba(99, 102, 241, 0.2) !important;
+        }
+
+        :root.dark-mode .live-group-name,
+        :root[data-theme='dark'] .live-group-name {
+            color: #f1f5f9 !important;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not(.light-mode):not([data-theme='light']) .scan-hero {
+                background: linear-gradient(135deg, rgba(99, 102, 241, 0.18) 0%, #1e293b 50%, #0f172a 100%) !important;
+                border-color: rgba(99, 102, 241, 0.4) !important;
+            }
+            :root:not(.light-mode):not([data-theme='light']) .scan-hero-title h1 {
+                color: #c7d2fe !important;
+            }
+            :root:not(.light-mode):not([data-theme='light']) .scan-hero-subtitle {
+                color: #a5b4fc !important;
+            }
+            :root:not(.light-mode):not([data-theme='light']) .btn-mode-hero {
+                background: rgba(30, 41, 59, 0.7) !important;
+                color: #cbd5e1 !important;
+                border-color: rgba(99, 102, 241, 0.3) !important;
+            }
+            :root:not(.light-mode):not([data-theme='light']) .empty-warning {
+                background: rgba(245, 158, 11, 0.15) !important;
+                color: #fbbf24 !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <%- include('partials/sidebar', { currentPage: 'schedule-groups' }) %>
+
+    <div class="main-content">
+        <%- include('partials/header') %>
+
+        <div class="content-body">
+            <div class="scan-groups-container">
+                <!-- Hero Section -->
+                <div class="scan-hero">
+                    <div class="scan-hero-content">
+                        <div>
+                            <div class="scan-hero-title">
+                                <div class="scan-hero-icon">
+                                    <i class="fa-solid fa-users-rectangle"></i>
+                                </div>
+                                <h1>Quét Group Facebook</h1>
+                            </div>
+                            <p class="scan-hero-subtitle">
+                                Quản lý danh sách group đã quét từ tài khoản Facebook của bạn để sử dụng khi lên lịch đăng bài tự động.
+                            </p>
+                            <div class="url-input-wrapper" id="urlInputWrapper">
+                                <div class="url-input-group">
+                                    <input type="text" class="url-input" id="groupUrlInput" placeholder="Nhập link group Facebook (VD: https://www.facebook.com/groups/xxx)">
+                                    <button class="btn-scrape-url" id="btnScrapeUrl" type="button">
+                                        <i class="fa-solid fa-search"></i> Quét từ URL
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="scan-hero-actions">
+                            <button class="btn-mode-hero" id="btnScanMode" title="Chế độ quét sâu tìm nhiều group hơn">
+                                <i class="fa-solid fa-bolt"></i> 
+                                <span id="scanModeLabel">Chế độ: Nhanh</span>
+                            </button>
+                            <button class="btn-scan-hero" id="btnScanGroups">
+                                <i class="fa-solid fa-arrows-rotate"></i> 
+                                Quét Group Mới
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="scan-stats-grid">
+                    <div class="scan-stat-card">
+                        <div class="scan-stat-icon primary">
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                        <div class="scan-stat-info">
+                            <h3 id="statTotalGroups"><%= groupsStats.total %></h3>
+                            <p>Tổng số Group</p>
+                        </div>
+                    </div>
+                    <div class="scan-stat-card">
+                        <div class="scan-stat-icon success">
+                            <i class="fa-solid fa-check-circle"></i>
+                        </div>
+                        <div class="scan-stat-info">
+                            <h3 id="statLastScan"><%= groupsStats.lastScanDate || '—' %></h3>
+                            <p>Cập nhật lần cuối</p>
+                        </div>
+                    </div>
+                    <div class="scan-stat-card">
+                        <div class="scan-stat-icon warning">
+                            <i class="fa-solid fa-user-group"></i>
+                        </div>
+                        <div class="scan-stat-info">
+                            <h3><%= currentAccount ? (currentAccount.accountName.length > 12 ? currentAccount.accountName.substring(0, 12) + '...' : currentAccount.accountName) : '—' %></h3>
+                            <p>Tài khoản đang dùng</p>
+                        </div>
+                    </div>
+                    <div class="scan-stat-card">
+                        <div class="scan-stat-icon info">
+                            <i class="fa-solid fa-database"></i>
+                        </div>
+                        <div class="scan-stat-info">
+                            <h3 id="statSource"><%= groupsStats.source === 'cache' ? 'Từ Cache' : (groupsStats.source || '—') %></h3>
+                            <p>Nguồn dữ liệu</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filter Bar -->
+                <div class="scan-filter-bar">
+                    <div class="filter-group">
+                        <label><i class="fa-solid fa-user"></i> Tài khoản Facebook</label>
+                        <select id="filterAccount">
+                            <option value="">-- Chọn tài khoản --</option>
+                            <% facebookChannels.forEach(channel => { %>
+                                <option value="<%= channel._id %>" <%= currentChannelId && String(currentChannelId) === String(channel._id) ? 'selected' : '' %>>
+                                    <%= channel.accountName %> <% if (channel.accountType) { %>(<%= channel.accountType %>)<% } %>
+                                </option>
+                            <% }) %>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label><i class="fa-solid fa-magnifying-glass"></i> Tìm kiếm</label>
+                        <input type="text" id="filterSearch" placeholder="Nhập tên group...">
+                    </div>
+                    <div class="filter-group">
+                        <label><i class="fa-solid fa-sort"></i> Sắp xếp</label>
+                        <select id="filterSort">
+                            <option value="name-asc">Tên A → Z</option>
+                            <option value="name-desc">Tên Z → A</option>
+                            <option value="date-desc">Mới nhất</option>
+                            <option value="date-asc">Cũ nhất</option>
+                        </select>
+                    </div>
+                    <button class="btn-clear-filter" id="btnClearFilters">
+                        <i class="fa-solid fa-eraser"></i> Xóa lọc
+                    </button>
+                </div>
+
+                <!-- Groups List -->
+                <div class="groups-list-container">
+                    <div class="groups-list-header">
+                        <h3>
+                            <i class="fa-solid fa-list"></i> Danh sách Group
+                            <span class="groups-count-badge" id="filteredCount"><%= groupsStats.total %></span>
+                        </h3>
+                        <div class="header-actions">
+                            <button class="btn-header-action" id="btnSelectAll">
+                                <i class="fa-regular fa-square-check"></i> Chọn tất cả
+                            </button>
+                            <button class="btn-header-action primary" id="btnExportGroups">
+                                <i class="fa-solid fa-download"></i> Xuất CSV
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="groupsListContent">
+                        <% if (groups && groups.length > 0) { %>
+                            <!-- Table View -->
+                            <div class="groups-table-wrapper">
+                                <table class="groups-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 50px;">
+                                                <div class="custom-checkbox">
+                                                    <input type="checkbox" id="checkAllGroups">
+                                                </div>
+                                            </th>
+                                            <th>Thông tin Group</th>
+                                            <th>Link</th>
+                                            <th style="width: 100px;">Thao tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="groupsTableBody">
+                                        <% groups.forEach((group, index) => { %>
+                                            <tr data-group-id="<%= group.groupId %>" data-group-name="<%= group.groupName.toLowerCase() %>" data-index="<%= index %>">
+                                                <td>
+                                                    <div class="custom-checkbox">
+                                                        <input type="checkbox" class="group-checkbox" value="<%= group.groupId %>">
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="group-info">
+                                                        <div class="group-avatar">
+                                                            <%= group.groupName.charAt(0).toUpperCase() %>
+                                                        </div>
+                                                        <div class="group-details">
+                                                            <h4><%= group.groupName %></h4>
+                                                            <span>ID: <%= group.groupId.substring(0, 15) %>...</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="group-link-wrapper">
+                                                        <a href="<%= group.groupUrl || 'https://www.facebook.com/groups/' + group.groupId %>" 
+                                                           target="_blank" 
+                                                           class="group-link">
+                                                            <%= group.groupUrl || 'https://www.facebook.com/groups/' + group.groupId %>
+                                                        </a>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="group-actions">
+                                                        <button class="btn-action copy" title="Sao chép link" 
+                                                                onclick="copyGroupLink('<%= encodeURIComponent(group.groupUrl || 'https://www.facebook.com/groups/' + group.groupId) %>')">
+                                                            <i class="fa-regular fa-copy"></i>
+                                                        </button>
+                                                        <button class="btn-action" title="Mở trong Facebook" 
+                                                                onclick="openGroupInFacebook('<%= group.groupId %>')">
+                                                            <i class="fa-brands fa-facebook"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <% }) %>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Pagination -->
+                            <div class="groups-pagination" id="groupsPagination">
+                                <div class="groups-pagination__info" id="paginationInfo"></div>
+                                <div class="groups-pagination__controls" id="paginationControls"></div>
+                            </div>
+
+                            <!-- Card View (Mobile) -->
+                            <div class="groups-card-list" id="groupsCardList">
+                                <% groups.forEach((group, index) => { %>
+                                    <div class="group-card" data-group-id="<%= group.groupId %>" data-group-name="<%= group.groupName.toLowerCase() %>" data-index="<%= index %>">
+                                        <div class="group-card-header">
+                                            <div class="custom-checkbox">
+                                                <input type="checkbox" class="group-checkbox" value="<%= group.groupId %>">
+                                            </div>
+                                            <div class="group-avatar" style="width: 40px; height: 40px; font-size: 0.9rem;">
+                                                <%= group.groupName.charAt(0).toUpperCase() %>
+                                            </div>
+                                            <div class="group-card-info">
+                                                <h4><%= group.groupName %></h4>
+                                                <span><%= group.groupId.substring(0, 15) %>...</span>
+                                            </div>
+                                        </div>
+                                        <a href="<%= group.groupUrl || 'https://www.facebook.com/groups/' + group.groupId %>" 
+                                           target="_blank" 
+                                           class="group-card-link">
+                                            <i class="fa-solid fa-link"></i> Mở group
+                                        </a>
+                                        <div class="group-card-actions">
+                                            <button class="btn-action copy" onclick="copyGroupLink('<%= encodeURIComponent(group.groupUrl || 'https://www.facebook.com/groups/' + group.groupId) %>')">
+                                                <i class="fa-regular fa-copy"></i>
+                                            </button>
+                                            <button class="btn-action" onclick="openGroupInFacebook('<%= group.groupId %>')">
+                                                <i class="fa-brands fa-facebook"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                <% }) %>
+                            </div>
+                        <% } else { %>
+                            <div class="empty-state">
+                                <div class="empty-state-icon">
+                                    <i class="fa-solid fa-users-slash"></i>
+                                </div>
+                                <h3>Chưa có Group nào</h3>
+                                <p>Chọn tài khoản Facebook và nhấn "Quét Group Mới" để bắt đầu quét danh sách group.</p>
+                                <% if (facebookChannels && facebookChannels.length > 0) { %>
+                                    <button class="btn-scan-hero" onclick="document.getElementById('btnScanGroups').click()">
+                                        <i class="fa-solid fa-arrows-rotate"></i> Bắt đầu quét
+                                    </button>
+                                <% } else { %>
+                                    <div class="empty-warning">
+                                        <i class="fa-solid fa-exclamation-triangle"></i>
+                                        Bạn cần có ít nhất một tài khoản Facebook được kết nối để quét group.
+                                    </div>
+                                <% } %>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scanning Modal -->
+    <div class="scanning-overlay" id="scanningOverlay">
+        <div class="scanning-modal" style="max-width: 800px;">
+            <div class="scanning-header">
+                <div class="scanning-spinner"></div>
+                <div class="scanning-title">
+                    <h3>Đang quét Group Facebook</h3>
+                    <p id="scanningStatus">Đang kết nối với tài khoản Facebook...</p>
+                </div>
+            </div>
+            
+            <div class="scanning-stats">
+                <div class="scan-stat-box">
+                    <div class="scan-stat-number" id="scanGroupsFound">0</div>
+                    <div class="scan-stat-label">Groups tìm thấy</div>
+                </div>
+                <div class="scan-stat-box">
+                    <div class="scan-stat-number" id="scanRound">0</div>
+                    <div class="scan-stat-label">Vòng quét</div>
+                </div>
+                <div class="scan-stat-box">
+                    <div class="scan-stat-number" id="scanMaxRounds">5</div>
+                    <div class="scan-stat-label">Tổng vòng</div>
+                </div>
+            </div>
+            
+            <div class="scanning-progress">
+                <div class="scanning-progress-bar" id="scanningProgressBar"></div>
+            </div>
+            
+            <!-- Live Groups Preview -->
+            <div class="live-groups-preview">
+                <div class="live-preview-header">
+                    <i class="fa-solid fa-eye"></i> 
+                    <span>Groups đã quét</span>
+                    <span class="live-count" id="liveGroupsCount">0</span>
+                </div>
+                <div class="live-preview-list" id="liveGroupsList">
+                    <!-- Groups will be added here dynamically -->
+                </div>
+            </div>
+            
+            <div class="scanning-log" id="scanningLog"></div>
+        </div>
+    </div>
+    
+    <style>
+        .scanning-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .scanning-title h3 {
+            margin: 0 0 4px 0;
+            font-size: 1.25rem;
+        }
+        .scanning-title p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        .scanning-stats {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .scan-stat-box {
+            flex: 1;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+        .scan-stat-number {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--primary);
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+        .scan-stat-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .live-groups-preview {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            margin-bottom: 16px;
+            max-height: 250px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .live-preview-header {
+            padding: 12px 16px;
+            background: white;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .live-preview-header .fa-eye {
+            color: var(--primary);
+        }
+        .live-count {
+            background: var(--primary);
+            color: white;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin-left: auto;
+        }
+        .live-preview-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        .live-group-item {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .live-group-avatar {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+        .live-group-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .live-group-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 2px;
+        }
+        .live-group-id {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+        .live-group-new {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="/js/toast.js"></script>
+    <script src="/js/base.js"></script>
+    <script>
+        let currentScanMode = 'fast';
+        let isScanning = false;
+        let currentScrapeType = 'channel'; // 'channel' hoặc 'url'
+        let scannedGroups = []; // Lưu groups đã quét để hiển thị real-time
+        let scanInterval = null; // Interval cho polling
+
+        const PAGE_SIZE = 10;
+        let currentPage = 1;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initScanMode();
+            initFilters();
+            initScanButton();
+            initScrapeUrlButton();
+            initSelectAll();
+            initExport();
+            initCheckAll();
+            initPagination();
+        });
+
+        function initPagination() {
+            const rows = document.querySelectorAll('#groupsTableBody tr');
+            const cards = document.querySelectorAll('#groupsCardList .group-card');
+            const totalItems = rows.length;
+            const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+
+            function renderPage(page) {
+                currentPage = Math.max(1, Math.min(page, totalPages));
+                
+                // Show/hide table rows
+                rows.forEach((row, i) => {
+                    const show = i >= (currentPage - 1) * PAGE_SIZE && i < currentPage * PAGE_SIZE;
+                    row.style.display = show ? '' : 'none';
+                });
+
+                // Show/hide cards (mobile)
+                cards.forEach((card, i) => {
+                    const show = i >= (currentPage - 1) * PAGE_SIZE && i < currentPage * PAGE_SIZE;
+                    card.style.display = show ? '' : 'none';
+                });
+
+                // Update info
+                const start = (currentPage - 1) * PAGE_SIZE + 1;
+                const end = Math.min(currentPage * PAGE_SIZE, totalItems);
+                document.getElementById('paginationInfo').textContent = 
+                    `Hiển thị ${start}-${end} / ${totalItems} groups`;
+
+                // Build controls
+                const controls = document.getElementById('paginationControls');
+                let btns = '';
+                
+                // Prev
+                btns += `<button class="groups-pagination__btn" data-page="prev" ${currentPage === 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i></button>`;
+                
+                // Page numbers
+                const maxBtns = 5;
+                const half = Math.floor(maxBtns / 2);
+                let startPage = Math.max(1, currentPage - half);
+                let endPage = Math.min(totalPages, startPage + maxBtns - 1);
+                startPage = Math.max(1, endPage - maxBtns + 1);
+
+                for (let p = startPage; p <= endPage; p++) {
+                    btns += `<button class="groups-pagination__btn ${p === currentPage ? 'is-active' : ''}" data-page="${p}">${p}</button>`;
+                }
+
+                // Next
+                btns += `<button class="groups-pagination__btn" data-page="next" ${currentPage === totalPages ? 'disabled' : ''}><i class="fa-solid fa-chevron-right"></i></button>`;
+
+                controls.innerHTML = btns;
+
+                // Attach events
+                controls.querySelectorAll('.groups-pagination__btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const target = btn.dataset.page;
+                        if (target === 'prev') renderPage(currentPage - 1);
+                        else if (target === 'next') renderPage(currentPage + 1);
+                        else renderPage(parseInt(target));
+                    });
+                });
+            }
+
+            if (totalItems > 0) renderPage(1);
+        }
+
+        function initScanMode() {
+            const btnScanMode = document.getElementById('btnScanMode');
+            const scanModeLabel = document.getElementById('scanModeLabel');
+            const urlInputWrapper = document.getElementById('urlInputWrapper');
+            
+            btnScanMode.addEventListener('click', function() {
+                currentScanMode = currentScanMode === 'fast' ? 'deep' : 'fast';
+                scanModeLabel.textContent = currentScanMode === 'fast' ? 'Chế độ: Nhanh' : 'Chế độ: Sâu';
+                btnScanMode.classList.toggle('active', currentScanMode === 'deep');
+            });
+
+            // Toggle URL input
+            const groupUrlInput = document.getElementById('groupUrlInput');
+            groupUrlInput.addEventListener('focus', function() {
+                urlInputWrapper.classList.add('active');
+            });
+        }
+
+        function initFilters() {
+            const filterSearch = document.getElementById('filterSearch');
+            const filterSort = document.getElementById('filterSort');
+            const filterAccount = document.getElementById('filterAccount');
+            const btnClearFilters = document.getElementById('btnClearFilters');
+
+            filterSearch.addEventListener('input', debounce(applyFilters, 300));
+            filterSort.addEventListener('change', applyFilters);
+            filterAccount.addEventListener('change', function() {
+                if (this.value) {
+                    window.location.href = '/schedule/groups?channelId=' + this.value;
+                } else {
+                    window.location.href = '/schedule/groups';
+                }
+            });
+            btnClearFilters.addEventListener('click', clearFilters);
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        function applyFilters() {
+            const searchTerm = document.getElementById('filterSearch').value.toLowerCase().trim();
+            const sortBy = document.getElementById('filterSort').value;
+            
+            const tableRows = document.querySelectorAll('.groups-table tbody tr');
+            const cards = document.querySelectorAll('.group-card');
+            
+            let visibleItems = [];
+            
+            tableRows.forEach(row => {
+                const name = row.dataset.groupName || '';
+                const matches = !searchTerm || name.includes(searchTerm);
+                row.style.display = matches ? '' : 'none';
+                if (matches) visibleItems.push(row);
+            });
+            
+            cards.forEach(card => {
+                const name = card.dataset.groupName || '';
+                const matches = !searchTerm || name.includes(searchTerm);
+                card.style.display = matches ? '' : 'none';
+            });
+
+            if (sortBy === 'name-asc' || sortBy === 'name-desc') {
+                const isAsc = sortBy === 'name-asc';
+                visibleItems.sort((a, b) => {
+                    const nameA = (a.dataset.groupName || '').toLowerCase();
+                    const nameB = (b.dataset.groupName || '').toLowerCase();
+                    return isAsc ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+                });
+                
+                const tbody = document.querySelector('.groups-table tbody');
+                if (tbody) {
+                    visibleItems.forEach(row => tbody.appendChild(row));
+                }
+            }
+
+            document.getElementById('filteredCount').textContent = visibleItems.length;
+        }
+
+        function clearFilters() {
+            document.getElementById('filterSearch').value = '';
+            document.getElementById('filterSort').value = 'name-asc';
+            applyFilters();
+            showToast('Đã xóa bộ lọc', 'info');
+        }
+
+        function initScanButton() {
+            const btnScan = document.getElementById('btnScanGroups');
+            const overlay = document.getElementById('scanningOverlay');
+            const status = document.getElementById('scanningStatus');
+            const progressBar = document.getElementById('scanningProgressBar');
+            const log = document.getElementById('scanningLog');
+
+            btnScan.addEventListener('click', async function() {
+                const accountSelect = document.getElementById('filterAccount');
+                const selectedChannelId = accountSelect.value || '<%= currentChannelId || '' %>';
+
+                if (!selectedChannelId) {
+                    showToast('Vui lòng chọn tài khoản Facebook trước', 'error');
+                    accountSelect.focus();
+                    return;
+                }
+
+                currentScrapeType = 'joins';
+                await startScanning(overlay, status, progressBar, log, selectedChannelId, null);
+            });
+        }
+
+        function initScrapeUrlButton() {
+            const btnScrapeUrl = document.getElementById('btnScrapeUrl');
+            const urlInput = document.getElementById('groupUrlInput');
+            const overlay = document.getElementById('scanningOverlay');
+            const status = document.getElementById('scanningStatus');
+            const progressBar = document.getElementById('scanningProgressBar');
+            const log = document.getElementById('scanningLog');
+
+            btnScrapeUrl.addEventListener('click', async function() {
+                const accountSelect = document.getElementById('filterAccount');
+                const selectedChannelId = accountSelect.value || '<%= currentChannelId || '' %>';
+                const groupUrl = urlInput.value.trim();
+
+                if (!selectedChannelId) {
+                    showToast('Vui lòng chọn tài khoản Facebook trước', 'error');
+                    accountSelect.focus();
+                    return;
+                }
+
+                if (!groupUrl) {
+                    showToast('Vui lòng nhập link group Facebook', 'error');
+                    urlInput.focus();
+                    return;
+                }
+
+                // Validate URL
+                try {
+                    const parsed = new URL(groupUrl);
+                    if (!/facebook\.com$/i.test(parsed.hostname)) {
+                        throw new Error('Invalid URL');
+                    }
+                } catch (e) {
+                    showToast('Link không hợp lệ. Vui lòng nhập link Facebook.', 'error');
+                    return;
+                }
+
+                currentScrapeType = 'url';
+                await startScanning(overlay, status, progressBar, log, selectedChannelId, groupUrl);
+            });
+        }
+
+        async function startScanning(overlay, status, progressBar, log, channelId, groupUrl) {
+            isScanning = true;
+            const btnScan = document.getElementById('btnScanGroups');
+            const btnScrapeUrl = document.getElementById('btnScrapeUrl');
+            
+            btnScan.disabled = true;
+            btnScrapeUrl.disabled = true;
+            overlay.classList.add('active');
+            log.innerHTML = '';
+            progressBar.style.width = '0%';
+            
+            // Reset live preview
+            scannedGroups = [];
+            updateLiveGroupsUI();
+            document.getElementById('scanGroupsFound').textContent = '0';
+            document.getElementById('scanRound').textContent = '0';
+            document.getElementById('scanMaxRounds').textContent = currentScanMode === 'fast' ? '5' : '15';
+
+            const steps = [
+                { progress: 10, msg: 'Đang kết nối với tài khoản Facebook...', delay: 800 },
+                { progress: 25, msg: 'Mở trình duyệt Chrome...', delay: 1000 },
+                { progress: 40, msg: 'Đang truy cập trang groups/joins...', delay: 1500 },
+                { progress: 55, msg: 'Bắt đầu quét danh sách group...', delay: 1000 }
+            ];
+
+            try {
+                // Chạy animation steps
+                for (const step of steps) {
+                    await delay(step.delay);
+                    progressBar.style.width = step.progress + '%';
+                    addLog(step.msg, 'info');
+                    status.textContent = step.msg;
+                }
+
+                // Gọi API - chọn đúng API dựa trên loại quét
+                let apiEndpoint;
+                if (currentScrapeType === 'url') {
+                    apiEndpoint = '/schedule/api/scrape-group';
+                } else {
+                    apiEndpoint = '/schedule/api/scrape-joins';
+                }
+                
+                const requestBody = {
+                    channelId: channelId,
+                    scanMode: currentScanMode
+                };
+                if (currentScrapeType === 'url') {
+                    requestBody.groupUrl = groupUrl;
+                }
+
+                // Bắt đầu polling để lấy tiến trình
+                const pollInterval = setInterval(async () => {
+                    try {
+                        // Gọi API get groups để xem có groups mới không
+                        const response = await fetch(`/schedule/api/groups?channelId=${channelId}`);
+                        const data = await response.json();
+                        if (data.success && data.groups) {
+                            const newGroupsCount = data.groups.length;
+                            document.getElementById('scanGroupsFound').textContent = newGroupsCount;
+                            document.getElementById('liveGroupsCount').textContent = newGroupsCount;
+                            
+                            // Cập nhật live preview với groups mới
+                            if (data.groups.length > scannedGroups.length) {
+                                scannedGroups = data.groups;
+                                updateLiveGroupsUI();
+                            }
+                            
+                            // Cập nhật status
+                            status.textContent = `Đã quét được ${newGroupsCount} groups...`;
+                            addLog(`Cập nhật: ${newGroupsCount} groups`, 'info');
+                        }
+                    } catch (e) {
+                        // Ignore polling errors
+                    }
+                }, 2000); // Poll mỗi 2 giây
+
+                // Gọi API scrape
+                const scrapeResponse = await fetch(apiEndpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                // Dừng polling
+                clearInterval(pollInterval);
+
+                const data = await scrapeResponse.json();
+                
+                if (data.success) {
+                    progressBar.style.width = '100%';
+                    addLog(`✓ Quét hoàn tất!`, 'success');
+                    status.textContent = `Hoàn tất! Tìm thấy ${data.groupsCount} group`;
+                    
+                    document.getElementById('scanGroupsFound').textContent = data.groupsCount;
+                    document.getElementById('liveGroupsCount').textContent = data.groupsCount;
+                    
+                    // Hiển thị tất cả groups đã quét
+                    if (data.groups && data.groups.length > 0) {
+                        scannedGroups = data.groups;
+                        updateLiveGroupsUI();
+                    }
+                    
+                    setTimeout(() => {
+                        overlay.classList.remove('active');
+                        showToast(`Đã quét thành công ${data.groupsCount} group!`, 'success');
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    throw new Error(data.message || 'Lỗi khi quét group');
+                }
+            } catch (error) {
+                addLog(`✗ Lỗi: ${error.message}`, 'error');
+                status.textContent = 'Đã xảy ra lỗi';
+                showToast(error.message, 'error');
+                
+                setTimeout(() => {
+                    overlay.classList.remove('active');
+                }, 2500);
+            } finally {
+                isScanning = false;
+                btnScan.disabled = false;
+                btnScrapeUrl.disabled = false;
+            }
+        }
+        
+        function updateLiveGroupsUI() {
+            const container = document.getElementById('liveGroupsList');
+            if (!container) return;
+            
+            // Hiển thị tối đa 20 groups gần nhất
+            const displayGroups = scannedGroups.slice(-20);
+            
+            container.innerHTML = displayGroups.map(group => `
+                <div class="live-group-item">
+                    <div class="live-group-avatar">${(group.groupName || 'G').charAt(0).toUpperCase()}</div>
+                    <div class="live-group-info">
+                        <div class="live-group-name">${escapeHtml(group.groupName || 'Unknown')}</div>
+                        <div class="live-group-id">ID: ${(group.groupId || '').substring(0, 12)}...</div>
+                    </div>
+                    <div class="live-group-new"></div>
+                </div>
+            `).join('');
+            
+            // Scroll xuống cuối để thấy group mới nhất
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function addLog(message, type = '') {
+            const log = document.getElementById('scanningLog');
+            const time = new Date().toLocaleTimeString('vi-VN');
+            const className = type ? `class="${type}"` : '';
+            log.innerHTML += `<div ${className}>[${time}] ${message}</div>`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function initSelectAll() {
+            const btnSelectAll = document.getElementById('btnSelectAll');
+            const checkboxes = document.querySelectorAll('.group-checkbox');
+            let allSelected = false;
+
+            btnSelectAll.addEventListener('click', function() {
+                allSelected = !allSelected;
+                checkboxes.forEach(cb => cb.checked = allSelected);
+                this.innerHTML = allSelected 
+                    ? '<i class="fa-regular fa-square-minus"></i> Bỏ chọn tất cả'
+                    : '<i class="fa-regular fa-square-check"></i> Chọn tất cả';
+            });
+        }
+
+        function initCheckAll() {
+            const checkAll = document.getElementById('checkAllGroups');
+            const checkboxes = document.querySelectorAll('.group-checkbox');
+
+            if (checkAll) {
+                checkAll.addEventListener('change', function() {
+                    checkboxes.forEach(cb => cb.checked = this.checked);
+                });
+            }
+        }
+
+        function initExport() {
+            const btnExport = document.getElementById('btnExportGroups');
+            
+            btnExport.addEventListener('click', function() {
+                const rows = document.querySelectorAll('.group-card[data-group-id]');
+                if (rows.length === 0) {
+                    showToast('Không có group nào để xuất', 'warning');
+                    return;
+                }
+
+                let csv = '\uFEFF';
+                csv += 'Tên Group,ID Group,Link\n';
+                
+                rows.forEach(row => {
+                    const name = row.querySelector('h4')?.textContent || '';
+                    const id = row.dataset.groupId || '';
+                    const link = row.querySelector('.group-card-link')?.href || '';
+                    csv += `"${name.replace(/"/g, '""')}","${id}","${link}"\n`;
+                });
+
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `facebook-groups-${new Date().toISOString().split('T')[0]}.csv`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
+                showToast('Đã xuất danh sách group ra file CSV', 'success');
+            });
+        }
+
+        function copyGroupLink(encodedUrl) {
+            const url = decodeURIComponent(encodedUrl);
+            navigator.clipboard.writeText(url).then(() => {
+                showToast('Đã sao chép link!', 'success');
+            }).catch(() => {
+                showToast('Không thể sao chép link', 'error');
+            });
+        }
+
+        function openGroupInFacebook(groupId) {
+            window.open(`https://www.facebook.com/groups/${groupId}`, '_blank');
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            if (typeof window.showToast === 'function') {
+                window.showToast(message, type);
+            } else {
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                const icons = {
+                    success: 'fa-check-circle',
+                    error: 'fa-exclamation-circle',
+                    warning: 'fa-exclamation-triangle',
+                    info: 'fa-info-circle'
+                };
+                toast.innerHTML = `
+                    <i class="fa-solid ${icons[type] || icons.info}"></i>
+                    <span>${message}</span>
+                `;
+                container.appendChild(toast);
+                setTimeout(() => {
+                    toast.classList.add('removing');
+                    setTimeout(() => toast.remove(), 350);
+                }, 3000);
+            }
+        }
+    </script>
+</body>
+</html>
+    <link rel="stylesheet" href="/css/toast.css">

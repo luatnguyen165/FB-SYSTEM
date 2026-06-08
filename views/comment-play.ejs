@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kịch Bản Comment - ReelsFlow AI</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/comment-play.css">
+    <link rel="stylesheet" href="/css/toast.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+<%- include('partials/sidebar', { currentPage: 'comment-play' }) %>
+
+<div class="main-content">
+    <%- include('partials/header') %>
+
+    <div class="content-body">
+        <!-- Hero -->
+        <div class="cp-hero">
+            <div class="cp-hero-content">
+                <div class="cp-hero-left">
+                    <div class="cp-hero-title">
+                        <div class="cp-hero-icon"><i class="fa-solid fa-play"></i></div>
+                        <h1>Kịch Bản Comment <span class="cp-hero-badge">▶ Play</span></h1>
+                    </div>
+                    <p class="cp-hero-subtitle">
+                        Tạo kịch bản tự động đăng comment từ kho lên Facebook Groups.
+                        <strong>▶</strong> Theo dõi thời gian chạy, lịch trình và hiệu suất.
+                    </p>
+                </div>
+                <div class="cp-hero-actions">
+                    <button class="btn-cp-hero" id="btnNewPlay">
+                        <i class="fa-solid fa-plus"></i> ▶ Tạo Kịch Bản
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats with Play icons -->
+        <div class="cp-stats">
+            <div class="cp-stat-card">
+                <div class="cp-stat-icon" style="background: rgba(37,99,235,0.1); color:#2563eb;">
+                    <i class="fa-solid fa-play"></i>
+                </div>
+                <div class="cp-stat-info">
+                    <span class="cp-stat-value"><%= stats.total %></span>
+                    <span class="cp-stat-label">▶ Tổng kịch bản</span>
+                </div>
+            </div>
+            <div class="cp-stat-card">
+                <div class="cp-stat-icon" style="background: rgba(16,185,129,0.1); color:#10b981;">
+                    <i class="fa-solid fa-circle-play"></i>
+                </div>
+                <div class="cp-stat-info">
+                    <span class="cp-stat-value"><%= stats.active %></span>
+                    <span class="cp-stat-label">▶ Đang chạy</span>
+                </div>
+            </div>
+            <div class="cp-stat-card">
+                <div class="cp-stat-icon" style="background: rgba(245,158,11,0.1); color:#f59e0b;">
+                    <i class="fa-solid fa-circle-pause"></i>
+                </div>
+                <div class="cp-stat-info">
+                    <span class="cp-stat-value"><%= stats.paused %></span>
+                    <span class="cp-stat-label">⏸ Đã tạm dừng</span>
+                </div>
+            </div>
+            <div class="cp-stat-card">
+                <div class="cp-stat-icon" style="background: rgba(139,92,246,0.1); color:#8b5cf6;">
+                    <i class="fa-solid fa-chart-line"></i>
+                </div>
+                <div class="cp-stat-info">
+                    <span class="cp-stat-value"><%= stats.todayPosted %></span>
+                    <span class="cp-stat-label">▶ Hôm nay đã post</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Play List -->
+        <div class="cp-section">
+            <div class="cp-section-header">
+                <h2><i class="fa-solid fa-list"></i> Danh Sách Kịch Bản</h2>
+                <span class="cp-section-count"><%= plays.length %> kịch bản</span>
+            </div>
+            <div class="cp-play-list" id="playList">
+                <% if (plays.length === 0) { %>
+                <div class="cp-empty">
+                    <div class="cp-empty-icon"><i class="fa-solid fa-play"></i></div>
+                    <p>Chưa có kịch bản nào. Hãy tạo kịch bản play comment đầu tiên!</p>
+                    <button class="btn btn-primary" id="btnNewEmpty">▶ Tạo kịch bản mới</button>
+                </div>
+                <% } else { %>
+                <% plays.forEach(function(p) { %>
+                <div class="cp-play-card <%= p.status === 'active' ? 'cp-card-active' : (p.status === 'paused' ? 'cp-card-paused' : 'cp-card-stopped') %>" data-play-id="<%= p._id %>">
+                    <div class="cp-card-top">
+                        <div class="cp-card-status">
+                            <% if (p.status === 'active') { %>
+                                <span class="cp-status-badge cp-status-running"><i class="fa-solid fa-play"></i> Đang chạy</span>
+                            <% } else if (p.status === 'paused') { %>
+                                <span class="cp-status-badge cp-status-paused"><i class="fa-solid fa-pause"></i> Đã tạm dừng</span>
+                            <% } else { %>
+                                <span class="cp-status-badge cp-status-stopped"><i class="fa-solid fa-stop"></i> Đã dừng</span>
+                            <% } %>
+                        </div>
+                        <h3 class="cp-card-name"><%= p.name || '(Chưa đặt tên)' %></h3>
+                        <% if (p.description) { %><p class="cp-card-desc"><%= p.description %></p><% } %>
+                    </div>
+
+                    <div class="cp-card-schedule">
+                        <div class="cp-schedule-item">
+                            <i class="fa-solid fa-play cp-schedule-icon"></i>
+                            <span>Lịch: <strong><%= p.schedule.intervalMinutes %> phút/lần</strong></span>
+                        </div>
+                        <div class="cp-schedule-item">
+                            <i class="fa-regular fa-clock cp-schedule-icon"></i>
+                            <span>Khung: <strong><%= p.schedule.timeRange.start %> → <%= p.schedule.timeRange.end %></strong></span>
+                        </div>
+                        <div class="cp-schedule-item">
+                            <i class="fa-solid fa-play cp-schedule-icon"></i>
+                            <span>Đã post: <strong><%= p.metrics.totalToday %> / <%= p.schedule.maxPerDay %> hôm nay</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="cp-card-times">
+                        <div class="cp-time-item">
+                            <i class="fa-solid fa-play cp-time-icon"></i>
+                            <span class="cp-time-label">Lần cuối:</span>
+                            <span class="cp-time-value"><%= p.metrics.lastRunAt ? new Date(p.metrics.lastRunAt).toLocaleString('vi-VN') : 'Chưa chạy' %></span>
+                        </div>
+                        <div class="cp-time-item">
+                            <i class="fa-solid fa-play cp-time-icon"></i>
+                            <span class="cp-time-label">Lần tới:</span>
+                            <span class="cp-time-value"><%= p.metrics.nextRunAt ? new Date(p.metrics.nextRunAt).toLocaleString('vi-VN') : 'Chưa xác định' %></span>
+                        </div>
+                    </div>
+
+                    <div class="cp-card-actions">
+                        <button class="cp-btn-icon cp-btn-run" data-play-id="<%= p._id %>" title="▶ Chạy ngay">
+                            <i class="fa-solid fa-play"></i>
+                        </button>
+                        <button class="cp-btn-icon cp-btn-toggle" data-play-id="<%= p._id %>" title="<%= p.status === 'active' ? 'Tạm dừng' : 'Bật lại' %>">
+                            <i class="fa-solid <%= p.status === 'active' ? 'fa-pause' : 'fa-play' %>"></i>
+                        </button>
+                        <button class="cp-btn-icon cp-btn-edit" data-play-id="<%= p._id %>" title="Sửa">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button class="cp-btn-icon cp-btn-delete" data-play-id="<%= p._id %>" title="Xóa">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                        <button class="cp-btn-icon cp-btn-logs" data-play-id="<%= p._id %>" title="Lịch sử">
+                            <i class="fa-solid fa-clock-rotate-left"></i>
+                        </button>
+                    </div>
+
+                    <% if (p.metrics.totalErrors > 0) { %>
+                    <div class="cp-card-errors">
+                        <i class="fa-solid fa-exclamation-triangle"></i> <%= p.metrics.totalErrors %> lỗi
+                    </div>
+                    <% } %>
+                </div>
+                <% }); %>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="playModal">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h3 id="modalTitle"><i class="fa-solid fa-play"></i> ▶ Tạo Kịch Bản Mới</h3>
+            <button class="modal-close" id="btnCloseModal" type="button"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body">
+            <form id="playForm" autocomplete="off">
+                <input type="hidden" id="playId" value="">
+
+                <div class="cp-tabs">
+                    <button type="button" class="cp-tab active" data-tab="general">
+                        <i class="fa-solid fa-info-circle"></i> Chung
+                    </button>
+                    <button type="button" class="cp-tab" data-tab="schedule">
+                        <i class="fa-solid fa-play"></i> Lịch chạy
+                    </button>
+                    <button type="button" class="cp-tab" data-tab="target">
+                        <i class="fa-solid fa-bullseye"></i> Mục tiêu
+                    </button>
+                    <button type="button" class="cp-tab" data-tab="comments">
+                        <i class="fa-solid fa-comment-dots"></i> Chọn Comment
+                    </button>
+                </div>
+
+                <div class="cp-tab-content active" id="tab-general">
+                    <div class="form-group">
+                        <label><i class="fa-solid fa-tag"></i> Tên kịch bản</label>
+                        <input type="text" id="playName" placeholder="VD: Comment BĐS buổi sáng, Play video buổi tối...">
+                    </div>
+                <div class="form-group">
+                    <label><i class="fa-solid fa-align-left"></i> Mô tả <span class="optional-tag">tuỳ chọn</span></label>
+                    <textarea id="playDescription" rows="3" placeholder="Mô tả ngắn về kịch bản này..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label><i class="fa-brands fa-facebook"></i> ▶ Tài khoản Facebook comment</label>
+                    <select id="playChannelId">
+                        <option value="">-- Chọn tài khoản Facebook --</option>
+                        <% (fbChannels || []).forEach(function(ch) { %>
+                        <option value="<%= ch._id %>"><%= ch.accountName %> (<%= ch.accountType %>)</option>
+                        <% }); %>
+                    </select>
+                    <small class="form-hint"><i class="fa-solid fa-info-circle"></i> Tài khoản này sẽ được dùng để đăng comment lên bài viết</small>
+                </div>
+            </div>
+
+                <div class="cp-tab-content" id="tab-schedule">
+                    <div class="cp-tab-hint">
+                        <i class="fa-solid fa-play"></i> Cấu hình thời gian tự động play comment
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label><i class="fa-solid fa-play"></i> Chế độ lịch</label>
+                            <select id="scheduleType">
+                                <option value="interval">▶ Interval (lặp sau mỗi N phút)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fa-regular fa-clock"></i> Mỗi</label>
+                            <div class="input-group">
+                                <input type="number" id="intervalMinutes" value="30" min="1" max="1440">
+                                <span class="input-suffix">phút / lần</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label><i class="fa-regular fa-sun"></i> ▶ Khung giờ bắt đầu</label>
+                            <input type="time" id="timeStart" value="06:00">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fa-regular fa-moon"></i> ▶ Khung giờ kết thúc</label>
+                            <input type="time" id="timeEnd" value="23:59">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label><i class="fa-solid fa-play"></i> ▶ Delay tối thiểu</label>
+                            <div class="input-group">
+                                <input type="number" id="delayMin" value="5" min="0" max="300">
+                                <span class="input-suffix">giây</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fa-solid fa-play"></i> ▶ Delay tối đa</label>
+                            <div class="input-group">
+                                <input type="number" id="delayMax" value="15" min="0" max="300">
+                                <span class="input-suffix">giây</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label><i class="fa-solid fa-play"></i> ▶ Giới hạn comment / ngày</label>
+                        <div class="input-group">
+                            <input type="number" id="maxPerDay" value="50" min="1" max="1000">
+                            <span class="input-suffix">comment</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cp-tab-content" id="tab-target">
+                    <div class="cp-tab-hint">
+                        <i class="fa-solid fa-bullseye"></i> Chọn nơi comment sẽ được đăng tới
+                    </div>
+
+                    <div class="form-group">
+                        <label><i class="fa-solid fa-play"></i> Loại mục tiêu</label>
+                        <select id="targetType">
+                            <option value="group-posts">Bài viết trong Groups</option>
+                            <option value="specific-posts">Bài viết cụ thể (URL)</option>
+                            <option value="ai-scan-results">▶ Từ kết quả AI Scan</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="groupIdsGroup">
+                        <label><i class="fa-solid fa-people-group"></i> Facebook Group IDs <span class="optional-tag">tuỳ chọn</span></label>
+                        <textarea id="groupIds" rows="3" placeholder="Mỗi dòng 1 Group ID..."></textarea>
+                        <small class="form-hint"><i class="fa-solid fa-info-circle"></i> Để trống nếu muốn comment vào tất cả group đã kết nối</small>
+                    </div>
+
+                    <div class="form-group" id="postUrlsGroup" style="display:none;">
+                        <label><i class="fa-solid fa-link"></i> ▶ URL bài viết</label>
+                        <textarea id="postUrls" rows="3" placeholder="Mỗi dòng 1 URL bài viết Facebook..."></textarea>
+                    </div>
+
+                    <div class="form-group" id="scanConfigGroup" style="display:none;">
+                        <label><i class="fa-solid fa-magnifying-glass-chart"></i> ▶ Chọn cấu hình AI Scan</label>
+                        <select id="scanConfigId">
+                            <option value="">-- Chọn cấu hình quét AI --</option>
+                            <% (scanConfigs || []).forEach(function(sc) { %>
+                            <option value="<%= sc._id %>"><%= sc.name %></option>
+                            <% }); %>
+                        </select>
+                        <small class="form-hint"><i class="fa-solid fa-info-circle"></i> Kịch bản sẽ tự động lấy bài viết từ kết quả quét của cấu hình này</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label><i class="fa-solid fa-filter"></i> Lọc loại comment</label>
+                        <div class="cp-checkbox-group">
+                            <label class="cp-checkbox-label">
+                                <input type="checkbox" class="filter-type" value="text" checked>
+                                <i class="fa-solid fa-font"></i> Text
+                            </label>
+                            <label class="cp-checkbox-label">
+                                <input type="checkbox" class="filter-type" value="image" checked>
+                                <i class="fa-solid fa-image"></i> Hình ảnh
+                            </label>
+                            <label class="cp-checkbox-label">
+                                <input type="checkbox" class="filter-type" value="video" checked>
+                                <i class="fa-solid fa-video"></i> Video
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Chọn Comment -->
+                <div class="cp-tab-content" id="tab-comments">
+                    <div class="cp-tab-hint">
+                        <i class="fa-solid fa-comment-dots"></i> Chọn comment cụ thể để dùng (bỏ trống = dùng tất cả)
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="postAllComments">
+                            <span><i class="fa-solid fa-play"></i> Post TẤT CẢ comment đã chọn lên mỗi bài viết (theo thứ tự)</span>
+                        </label>
+                        <small class="form-hint"><i class="fa-solid fa-info-circle"></i> Bật: 1 bài viết nhận được tất cả comment đã chọn. Tắt (mặc định): Random 1 comment mỗi lần chạy.</small>
+                    </div>
+
+                    <div class="cp-comment-picker" id="commentPicker">
+                        <% if (!allComments || allComments.length === 0) { %>
+                        <div class="cp-empty" style="padding:20px;">
+                            <p><i class="fa-solid fa-comment-slash"></i> Chưa có comment nào trong kho. <a href="/schedule/ai-comments">Tạo comment</a></p>
+                        </div>
+                        <% } else { %>
+                        <% allComments.forEach(function(c) { %>
+                        <label class="cp-comment-pick-item" data-comment-id="<%= c._id %>">
+                            <input type="checkbox" class="cp-comment-check" value="<%= c._id %>">
+                            <span class="cp-comment-pick-type cp-type-<%= c.type %>">
+                                <% if (c.type === 'text') { %><i class="fa-solid fa-font"></i><% } %>
+                                <% if (c.type === 'image') { %><i class="fa-solid fa-image"></i><% } %>
+                                <% if (c.type === 'video') { %><i class="fa-solid fa-video"></i><% } %>
+                            </span>
+                            <span class="cp-comment-pick-name"><%= c.name || '(Không tên)' %></span>
+                            <span class="cp-comment-pick-preview"><%= (c.type === 'text' ? c.content : c.caption || '').substring(0, 60) %></span>
+                        </label>
+                        <% }); %>
+                        <% } %>
+                    </div>
+                    <div class="cp-comment-count" id="commentCount">
+                        Đã chọn: <strong id="selectedCommentCount">0</strong> / <%= (allComments || []).length %> comment
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-outline" id="btnCancel">
+                        <i class="fa-solid fa-xmark"></i> Hủy
+                    </button>
+                    <button type="submit" class="btn-primary" id="btnSave">
+                        <i class="fa-solid fa-play"></i> ▶ Lưu Kịch Bản
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Logs Modal -->
+<div class="modal-overlay" id="logsModal">
+    <div class="modal-content modal-md">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-clock-rotate-left"></i> Lịch Sử Chạy</h3>
+            <button class="modal-close" id="btnCloseLogs" type="button"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body">
+            <div id="logsContent">
+                <div class="cp-empty" style="padding:24px;">
+                    <i class="fa-solid fa-spinner fa-spin" style="font-size:2rem;color:var(--text-muted);"></i>
+                    <p>Đang tải...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.__PLAY_DATA__ = {
+        plays: <%- JSON.stringify(plays) %>,
+        scanConfigs: <%- JSON.stringify(scanConfigs || []) %>,
+        allComments: <%- JSON.stringify(allComments || []) %>,
+        fbChannels: <%- JSON.stringify(fbChannels || []) %>
+    };
+</script>
+<script src="/js/toast.js"></script>
+<script src="/js/base.js"></script>
+<script src="/js/comment-play.js"></script>
+</body>
+</html>

@@ -355,6 +355,7 @@ img {
 .sidebar .menu-item a i.fa-user-circle { color: #6366f1; opacity: 1; }
 .sidebar .menu-item a i.fa-gears { color: #dc2626; opacity: 1; }
 .sidebar .menu-item a i.fa-wand-magic-sparkles { color: var(--primary); opacity: 1; }
+.sidebar .menu-item a i.fa-music { color: #ec4899; opacity: 1; }
 
 /* Group toggle */
 .sidebar-group {

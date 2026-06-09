@@ -1,0 +1,66 @@
+[
+  {
+    "id": 1,
+    "title": "Sunset Dreams",
+    "artist": "Luna Wave",
+    "file": "/music/tracks/track01.wav",
+    "duration": 30,
+    "cover": null
+  },
+  {
+    "id": 2,
+    "title": "Neon Nights",
+    "artist": "Cyber Pulse",
+    "file": "/music/tracks/track02.wav",
+    "duration": 30,
+    "cover": null
+  },
+  {
+    "id": 3,
+    "title": "Ocean Breeze",
+    "artist": "Coral Reef",
+    "file": "/music/tracks/track03.wav",
+    "duration": 30,
+    "cover": null
+  },
+  {
+    "id": 4,
+    "title": "Midnight Run",
+    "artist": "Urban Beats",
+    "file": "/music/tracks/track04.wav",
+    "duration": 30,
+    "cover": null
+  },
+  {
+    "id": 5,
+    "title": "Starlight",
+    "artist": "Cosmic Drift",
+    "file": "/music/tracks/track05.wav",
+    "duration": 30,
+    "cover": null
+  },
+  {
+    "id": 6,
+    "title": "Electric Soul",
+    "artist": "Neon Heart",
+    "file": "/music/tracks/track06.wav",
+    "duration": 30,
+    "cover": null
+  },
+  {
+    "id": 7,
+    "title": "Golden Hour",
+    "artist": "Sunset Blvd",
+    "file": "/music/tracks/track07.wav",
+    "duration": 30,
+    "cover": null
+  },
+  {
+    "id": 8,
+    "title": "Deep Focus",
+    "artist": "Ambient Mind",
+    "file": "/music/tracks/track08.wav",
+    "duration": 30,
+    "cover": null
+  }
+]

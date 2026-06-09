@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trend Music - ReelsFlow AI</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/trend-music.css">
+</head>
+<body>
+    <!-- Sidebar -->
+    <%- include('partials/sidebar', { currentPage, user, features }) %>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <%- include('partials/header', { currentPage, user }) %>
+
+        <!-- Body -->
+        <div class="content-body" style="padding-bottom: 100px;">
+
+            <!-- Hero Section -->
+            <div class="trend-music-hero">
+                <div class="trend-music-hero__content">
+                    <div class="trend-music-hero__badge">
+                        <span>Âm Nhạc Thịnh Hành</span>
+                    </div>
+                    <h1><i class="fa-solid fa-headphones"></i> Trend Music</h1>
+                    <p>Khám phá những bản nhạc trending được tuyển chọn đặc biệt dành cho nội dung Reels, Shorts và TikTok của bạn.</p>
+                </div>
+                <div class="trend-music-hero__visual">
+                    <div class="music-visualizer-bar"></div>
+                    <div class="music-visualizer-bar"></div>
+                    <div class="music-visualizer-bar"></div>
+                    <div class="music-visualizer-bar"></div>
+                    <div class="music-visualizer-bar"></div>
+                    <div class="music-visualizer-bar"></div>
+                    <div class="music-visualizer-bar"></div>
+                    <div class="music-visualizer-bar"></div>
+                    <div class="music-visualizer-bar"></div>
+                    <div class="music-visualizer-bar"></div>
+                </div>
+            </div>
+
+            <!-- Track Stats -->
+            <div style="display: flex; align-items: center; gap: 12px; padding: 4px 0;">
+                <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">
+                    <i class="fa-solid fa-list" style="color: var(--music-primary); margin-right: 6px;"></i>
+                    <%= tracks.length %> tracks
+                </span>
+                <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">
+                    <i class="fa-regular fa-clock" style="color: var(--text-light); margin-right: 6px;"></i>
+                    ~<%= Math.round(tracks.reduce((sum, t) => sum + (t.duration || 0), 0) / 60) %> phút
+                </span>
+            </div>
+
+            <!-- Track List -->
+            <div class="card">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-music" style="color: var(--music-primary); margin-right: 8px;"></i> Danh Sách Nhạc</h2>
+                    <span class="badge badge-primary"><%= tracks.length %> bài hát</span>
+                </div>
+                <div class="card-body" style="padding: 16px 20px;">
+                    <% if (tracks.length === 0) { %>
+                        <div class="empty-state">
+                            <i class="fa-solid fa-music"></i>
+                            <h3>Chưa có bài hát nào</h3>
+                            <p>Thêm nhạc vào thư mục <code>public/music/tracks/</code> để bắt đầu.</p>
+                        </div>
+                    <% } else { %>
+                        <div class="track-list-container" id="trackList">
+                            <% tracks.forEach(function(track) { %>
+                                <div class="track-item" data-track-id="<%= track.id %>" data-src="<%= track.file %>" data-title="<%= track.title %>" data-artist="<%= track.artist %>" data-duration="<%= track.duration %>">
+                                    <button class="track-item__play-btn track-item__play-btn--inactive" onclick="playTrack(this)">
+                                        <i class="fa-solid fa-play"></i>
+                                    </button>
+                                    <div class="track-item__info">
+                                        <div class="track-item__title"><%= track.title %></div>
+                                        <div class="track-item__artist"><i class="fa-solid fa-user" style="font-size: 0.65rem; margin-right: 4px;"></i><%= track.artist %></div>
+                                    </div>
+                                    <div class="track-item__waveform">
+                                        <span></span><span></span><span></span>
+                                        <span></span><span></span><span></span>
+                                    </div>
+                                    <span class="track-item__duration"><%= track.duration %>s</span>
+                                </div>
+                            <% }); %>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sticky Music Player Bar -->
+    <div class="music-player-bar" id="musicPlayerBar">
+        <div class="music-player-bar__now-playing">
+            <div class="music-player-bar__thumb">
+                <i class="fa-solid fa-music"></i>
+            </div>
+            <div class="music-player-bar__info">
+                <div class="music-player-bar__title" id="nowPlayingTitle">Chọn một bài hát</div>
+                <div class="music-player-bar__artist" id="nowPlayingArtist">---</div>
+            </div>
+        </div>
+
+        <div class="music-player-bar__controls">
+            <button class="music-player-bar__btn" id="prevBtn" onclick="prevTrack()">
+                <i class="fa-solid fa-backward-step"></i>
+            </button>
+            <button class="music-player-bar__btn music-player-bar__btn--play" id="playPauseBtn" onclick="togglePlayPause()">
+                <i class="fa-solid fa-play"></i>
+            </button>
+            <button class="music-player-bar__btn" id="nextBtn" onclick="nextTrack()">
+                <i class="fa-solid fa-forward-step"></i>
+            </button>
+        </div>
+
+        <div class="music-player-bar__progress">
+            <span class="music-player-bar__time" id="currentTime">0:00</span>
+            <div class="music-player-bar__track" id="progressTrack" onclick="seekAudio(event)">
+                <div class="music-player-bar__track-fill" id="progressFill"></div>
+            </div>
+            <span class="music-player-bar__time" id="totalTime">0:00</span>
+        </div>
+
+        <div class="music-player-bar__volume">
+            <button class="music-player-bar__volume-btn" onclick="toggleMute()">
+                <i class="fa-solid fa-volume-high" id="volumeIcon"></i>
+            </button>
+            <div class="music-player-bar__volume-track" onclick="setVolume(event)">
+                <div class="music-player-bar__volume-fill" id="volumeFill" style="width: 70%;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Audio Element -->
+    <audio id="audioPlayer" style="display: none;"></audio>
+
+    <!-- JavaScript -->
+    <script>
+        // ===== TREND MUSIC PLAYER =====
+        (function() {
+            const audio = document.getElementById('audioPlayer');
+            const playerBar = document.getElementById('musicPlayerBar');
+            const playPauseBtn = document.getElementById('playPauseBtn');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const progressFill = document.getElementById('progressFill');
+            const currentTimeEl = document.getElementById('currentTime');
+            const totalTimeEl = document.getElementById('totalTime');
+            const nowPlayingTitle = document.getElementById('nowPlayingTitle');
+            const nowPlayingArtist = document.getElementById('nowPlayingArtist');
+            const volumeFill = document.getElementById('volumeFill');
+            const volumeIcon = document.getElementById('volumeIcon');
+
+            let currentTrackIndex = -1;
+            let isPlaying = false;
+            let isMuted = false;
+            let previousVolume = 0.7;
+
+            // Get all track items
+            const trackItems = document.querySelectorAll('.track-item');
+            const tracks = Array.from(trackItems).map((item, index) => ({
+                id: parseInt(item.dataset.trackId),
+                src: item.dataset.src,
+                title: item.dataset.title,
+                artist: item.dataset.artist,
+                duration: parseInt(item.dataset.duration),
+                element: item,
+                index: index
+            }));
+
+            // Format time
+            function formatTime(seconds) {
+                if (isNaN(seconds) || !isFinite(seconds)) return '0:00';
+                const m = Math.floor(seconds / 60);
+                const s = Math.floor(seconds % 60);
+                return m + ':' + (s < 10 ? '0' : '') + s;
+            }
+
+            // Update active track in UI
+            function updateActiveTrack(index) {
+                trackItems.forEach(item => item.classList.remove('is-active'));
+                if (index >= 0 && index < trackItems.length) {
+                    trackItems[index].classList.add('is-active');
+                }
+            }
+
+            // Update play buttons
+            function updatePlayButtons() {
+                const icon = playPauseBtn.querySelector('i');
+                if (isPlaying) {
+                    icon.className = 'fa-solid fa-pause';
+                } else {
+                    icon.className = 'fa-solid fa-play';
+                }
+
+                // Update track list play buttons
+                trackItems.forEach((item, i) => {
+                    const btn = item.querySelector('.track-item__play-btn i');
+                    if (i === currentTrackIndex && isPlaying) {
+                        btn.className = 'fa-solid fa-pause';
+                    } else {
+                        btn.className = 'fa-solid fa-play';
+                    }
+                });
+            }
+
+            // Load and play a track
+            function loadTrack(index) {
+                if (index < 0 || index >= tracks.length) return;
+                const track = tracks[index];
+                currentTrackIndex = index;
+                audio.src = track.src;
+                audio.load();
+                audio.play().then(() => {
+                    isPlaying = true;
+                    playerBar.classList.add('is-visible');
+                    nowPlayingTitle.textContent = track.title;
+                    nowPlayingArtist.textContent = track.artist;
+                    updateActiveTrack(index);
+                    updatePlayButtons();
+                }).catch(err => {
+                    console.warn('[Trend Music] Playback error:', err.message);
+                    isPlaying = false;
+                    updatePlayButtons();
+                });
+            }
+
+            // Play a track (called from click)
+            window.playTrack = function(btn) {
+                const item = btn.closest('.track-item');
+                const index = tracks.findIndex(t => t.id === parseInt(item.dataset.trackId));
+                if (index === -1) return;
+
+                if (index === currentTrackIndex && isPlaying) {
+                    // Pause current track
+                    audio.pause();
+                    isPlaying = false;
+                    updatePlayButtons();
+                } else {
+                    loadTrack(index);
+                }
+            };
+
+            // Toggle play/pause
+            window.togglePlayPause = function() {
+                if (currentTrackIndex === -1) {
+                    // Play first track if none selected
+                    if (tracks.length > 0) loadTrack(0);
+                    return;
+                }
+                if (isPlaying) {
+                    audio.pause();
+                    isPlaying = false;
+                } else {
+                    audio.play().then(() => {
+                        isPlaying = true;
+                    }).catch(() => {
+                        isPlaying = false;
+                    });
+                }
+                updatePlayButtons();
+            };
+
+            // Next track
+            window.nextTrack = function() {
+                if (tracks.length === 0) return;
+                const next = (currentTrackIndex + 1) % tracks.length;
+                loadTrack(next);
+            };
+
+            // Previous track
+            window.prevTrack = function() {
+                if (tracks.length === 0) return;
+                const prev = (currentTrackIndex - 1 + tracks.length) % tracks.length;
+                loadTrack(prev);
+            };
+
+            // Seek audio
+            window.seekAudio = function(e) {
+                if (!audio.duration) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                const percent = (e.clientX - rect.left) / rect.width;
+                audio.currentTime = percent * audio.duration;
+            };
+
+            // Set volume
+            window.setVolume = function(e) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                audio.volume = percent;
+                volumeFill.style.width = (percent * 100) + '%';
+                updateVolumeIcon(percent);
+                isMuted = false;
+                previousVolume = percent;
+            };
+
+            // Toggle mute
+            window.toggleMute = function() {
+                if (isMuted) {
+                    audio.volume = previousVolume || 0.7;
+                    volumeFill.style.width = (previousVolume * 100) + '%';
+                    isMuted = false;
+                } else {
+                    previousVolume = audio.volume;
+                    audio.volume = 0;
+                    volumeFill.style.width = '0%';
+                    isMuted = true;
+                }
+                updateVolumeIcon(audio.volume);
+            };
+
+            function updateVolumeIcon(vol) {
+                if (vol === 0 || isMuted) {
+                    volumeIcon.className = 'fa-solid fa-volume-xmark';
+                } else if (vol < 0.5) {
+                    volumeIcon.className = 'fa-solid fa-volume-low';
+                } else {
+                    volumeIcon.className = 'fa-solid fa-volume-high';
+                }
+            }
+
+            // Audio event listeners
+            audio.addEventListener('timeupdate', function() {
+                if (audio.duration) {
+                    const percent = (audio.currentTime / audio.duration) * 100;
+                    progressFill.style.width = percent + '%';
+                    currentTimeEl.textContent = formatTime(audio.currentTime);
+                }
+            });
+
+            audio.addEventListener('loadedmetadata', function() {
+                totalTimeEl.textContent = formatTime(audio.duration);
+                currentTimeEl.textContent = '0:00';
+                progressFill.style.width = '0%';
+            });
+
+            audio.addEventListener('ended', function() {
+                window.nextTrack();
+            });
+
+            audio.addEventListener('play', function() {
+                isPlaying = true;
+                updatePlayButtons();
+            });
+
+            audio.addEventListener('pause', function() {
+                isPlaying = false;
+                updatePlayButtons();
+            });
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                // Only when player bar is visible
+                if (!playerBar.classList.contains('is-visible')) return;
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+                
+                switch(e.code) {
+                    case 'Space':
+                        e.preventDefault();
+                        window.togglePlayPause();
+                        break;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        window.nextTrack();
+                        break;
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        window.prevTrack();
+                        break;
+                }
+            });
+
+            // Volume scroll on player bar
+            playerBar.addEventListener('wheel', function(e) {
+                if (e.deltaY !== 0 && !e.target.closest('.music-player-bar__volume')) {
+                    // Adjust volume with scroll
+                    let newVol = audio.volume + (e.deltaY > 0 ? -0.05 : 0.05);
+                    newVol = Math.max(0, Math.min(1, newVol));
+                    audio.volume = newVol;
+                    volumeFill.style.width = (newVol * 100) + '%';
+                    updateVolumeIcon(newVol);
+                    if (newVol > 0) isMuted = false;
+                    e.preventDefault();
+                }
+            }, { passive: false });
+
+            console.log('[Trend Music] Player initialized with ' + tracks.length + ' tracks');
+        })();
+    </script>
+</body>
+</html>

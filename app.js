@@ -75,6 +75,7 @@ const competitorRoutes = require('./routes/competitors');
 const commentPlayRoutes = require('./routes/commentPlay');
 const aiImageRoutes = require('./routes/aiImages');
 const licenseRoutes = require('./routes/licenses');
+const trendMusicRoutes = require('./routes/trendMusic');
 const { loadFeatureVisibility } = require('./middlewares/authMiddleware');
 const { startReelsScheduleRunner } = require('./services/reelsScheduleRunner');
 const { runScheduledScans } = require('./services/aiScanService');
@@ -190,6 +191,7 @@ app.use('/competitors', competitorRoutes); // Theo dõi đối thủ
 app.use('/schedule/ai-comment/play', commentPlayRoutes); // Khúc Play Comment
 app.use('/ai-images', aiImageRoutes);              // Tạo Ảnh AI
 app.use('/admin/licenses', licenseRoutes);        // License Key Management
+app.use('/trend-music', trendMusicRoutes);        // Trend Music
 
 // Route mặc định - Chuyển hướng đến trang đăng nhập
 app.get('/', (req, res) => {

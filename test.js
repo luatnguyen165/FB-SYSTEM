@@ -38,21 +38,13 @@ function parseCookiesTxt(filePath) {
     return cookies;
 }
 
-// Hàm lưu cookies từ Playwright về định dạng cookies.txt (Netscape)
-function saveCookiesAsNetscape(cookies, filePath) {
-    const lines = ['# Netscape HTTP Cookie File'];
-    for (const c of cookies) {
-        const domain = c.domain.startsWith('.') ? c.domain : '.' + c.domain;
-        const flag = 'FALSE';
-        const path = c.path || '/';
-        const secure = c.secure ? 'TRUE' : 'FALSE';
-        const expires = Math.floor((c.expires || 9999999999));
-        const name = c.name;
-        const value = c.value;
-        lines.push(`${domain}\t${flag}\t${path}\t${secure}\t${expires}\t${name}\t${value}`);
-    }
-    fs.writeFileSync(filePath, lines.join('\n'), 'utf-8');
-    console.log(`✅ Đã lưu ${cookies.length} cookies vào ${filePath}`);
+// Hàm parse số (vd: "1.2M" -> 1200000, "50K" -> 50000)
+function parseCount(text) {
+    if (!text) return 0;
+    const str = text.trim().toUpperCase();
+    if (str.includes('M')) return parseFloat(str) * 1000000;
+    if (str.includes('K')) return parseFloat(str) * 1000;
+    return parseInt(str.replace(/[^0-9]/g, '')) || 0;
 }
 
 (async () => {
@@ -131,21 +123,21 @@ function saveCookiesAsNetscape(cookies, filePath) {
         console.log('✅ Đã đăng nhập thành công qua cookies!');
 
         // ============================================================
-        // BƯỚC 3: TÌM KIẾM TRENDING NHẠC VIỆT NAM
+        // BƯỚC 3: TÌM VIDEO #TRENDING VỚI LƯỢT TƯƠNG TÁC CAO
         // ============================================================
-        console.log('🔍 Bắt đầu tìm kiếm...');
+        console.log('🔍 Tìm kiếm video hashtag #trending...');
         
-        // Đi thẳng đến URL tìm kiếm trending nhạc Việt Nam
-        await page.goto('https://www.tiktok.com/search?q=nh%E1%BA%A1c%20trending%20vi%E1%BB%87t%20nam%202026&type=video', { waitUntil: 'networkidle', timeout: 30000 });
-        console.log('Đã điều hướng đến trang tìm kiếm "nhạc trending việt nam 2026"...');
+        // Tìm kiếm hashtag #trending
+        await page.goto('https://www.tiktok.com/search?q=%23trending', { waitUntil: 'networkidle', timeout: 30000 });
+        console.log('Đã điều hướng đến trang tìm kiếm #trending...');
         await page.waitForTimeout(3000);
 
         console.log('Đang chờ trang kết quả tìm kiếm tải xong...');
         const videoLinkSelector = 'a[href*="/video/"]';
         await page.waitForSelector(videoLinkSelector, { timeout: 20000 });
 
-        console.log('Cuộn trang nhẹ xuống để kích hoạt load thêm dữ liệu video...');
-        await page.evaluate(() => window.scrollBy(0, 600));
+        console.log('Cuộn trang nhẹ xuống để kích hoạt load thêm dữ liệu...');
+        await page.evaluate(() => window.scrollBy(0, 800));
         await page.waitForTimeout(2500);
 
         console.log('Đang lấy danh sách link video...');
@@ -153,72 +145,81 @@ function saveCookiesAsNetscape(cookies, filePath) {
         const uniqueLinks = [...new Set(allLinks)];
         console.log(`Tổng cộng ${uniqueLinks.length} link video tìm thấy.`);
 
-        // === BƯỚC 4: LỌC VIDEO THEO THỜI LƯỢNG < 2 PHÚT ===
-        console.log('\n⏱ Đang kiểm tra thời lượng từng video...');
-        const videoUnder2Min = [];
+        // === BƯỚC 4: LẤY LƯỢT TIM & COMMENT TỪNG VIDEO ===
+        console.log('\n❤️ Đang kiểm tra lượt tim & comment từng video...');
+        const videoStats = [];
 
-        for (let i = 0; i < uniqueLinks.length && videoUnder2Min.length < 10; i++) {
+        for (let i = 0; i < uniqueLinks.length && videoStats.length < 10; i++) {
             const link = uniqueLinks[i];
             try {
                 const username = link.split('/@')[1]?.split('/')[0] || 'unknown';
-                console.log(`  [${i + 1}/${uniqueLinks.length}] Đang kiểm tra @${username}...`);
+                console.log(`  [${i + 1}/${uniqueLinks.length}] @${username}...`);
                 await page.goto(link, { waitUntil: 'networkidle', timeout: 20000 });
-                await page.waitForTimeout(1500);
+                await page.waitForTimeout(2000);
 
-                // Lấy thời lượng video từ page
-                const durationSeconds = await page.evaluate(() => {
-                    // Cách 1: từ meta og:video:duration
-                    const metaDuration = document.querySelector('meta[property="og:video:duration"]');
-                    if (metaDuration) return parseInt(metaDuration.getAttribute('content'));
-                    // Cách 2: từ data-e2e video-duration (format MM:SS)
-                    const durationEl = document.querySelector('[data-e2e="video-duration"]');
-                    if (durationEl) {
-                        const text = durationEl.textContent.trim();
-                        const parts = text.split(':');
-                        if (parts.length === 2) return parseInt(parts[0]) * 60 + parseInt(parts[1]);
-                        if (parts.length === 3) return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
-                    }
-                    // Cách 3: từ JSON-LD
-                    const ld = document.querySelector('script[type="application/ld+json"]');
-                    if (ld) {
-                        try {
-                            const data = JSON.parse(ld.textContent);
-                            const dur = data?.duration || '';
-                            const match = dur.match(/PT(\d+)M(\d+)S/);
-                            if (match) return parseInt(match[1]) * 60 + parseInt(match[2]);
-                        } catch(e) {}
-                    }
-                    return null;
+                // Lấy lượt tim và comment
+                const stats = await page.evaluate(() => {
+                    // Lấy lượt tim
+                    const likeEl = document.querySelector('[data-e2e="like-count"], [data-e2e="video-count"]');
+                    const likeText = likeEl ? likeEl.textContent.trim() : '0';
+
+                    // Lấy lượt comment
+                    const commentEl = document.querySelector('[data-e2e="comment-count"]');
+                    const commentText = commentEl ? commentEl.textContent.trim() : '0';
+
+                    // Lấy title từ meta
+                    const titleMeta = document.querySelector('meta[property="og:title"]');
+                    const title = titleMeta ? titleMeta.content : '';
+
+                    // Lấy description có hashtags
+                    const descMeta = document.querySelector('meta[property="og:description"]');
+                    const description = descMeta ? descMeta.content : '';
+
+                    // Lấy thời gian đăng
+                    const publishEl = document.querySelector('[data-e2e="video-publish-time"]');
+                    const publishTime = publishEl ? publishEl.textContent.trim() : '';
+
+                    return { likeText, commentText, title, description, publishTime };
                 });
 
-                if (durationSeconds !== null && durationSeconds < 120) {
-                    const minutes = Math.floor(durationSeconds / 60);
-                    const secs = durationSeconds % 60;
-                    console.log(`    ✅ ${minutes}m${secs.toString().padStart(2, '0')}s — DƯỚI 2 PHÚT`);
-                    videoUnder2Min.push(link);
-                } else if (durationSeconds !== null) {
-                    const minutes = Math.floor(durationSeconds / 60);
-                    const secs = durationSeconds % 60;
-                    console.log(`    ⏭ ${minutes}m${secs.toString().padStart(2, '0')}s — quá 2 phút, bỏ qua`);
-                } else {
-                    console.log(`    ⚠️ Không xác định được thời lượng, bỏ qua`);
-                }
+                const likeCount = parseCount(stats.likeText);
+                const commentCount = parseCount(stats.commentText);
+
+                console.log(`    ❤️ ${stats.likeText}  💬 ${stats.commentText}  🕐 ${stats.publishTime || 'N/A'}`);
+
+                videoStats.push({
+                    url: link,
+                    username,
+                    likes: likeCount,
+                    comments: commentCount,
+                    likeText: stats.likeText,
+                    commentText: stats.commentText,
+                    title: stats.title,
+                    publishTime: stats.publishTime
+                });
             } catch (err) {
-                console.log(`    ⚠️ Lỗi khi kiểm tra: ${err.message.slice(0, 80)}`);
+                console.log(`    ⚠️ Lỗi: ${err.message.slice(0, 80)}`);
             }
         }
 
-        console.log(`\n============================================`);
-        console.log(`   DANH SÁCH ${videoUnder2Min.length} VIDEO TRENDING < 2 PHÚT`);
-        console.log(`============================================`);
-        if (videoUnder2Min.length === 0) {
-            console.log('❌ Không tìm thấy video nào dưới 2 phút.');
+        // Sắp xếp: ưu tiên lượt tim cao, sau đó comment cao
+        videoStats.sort((a, b) => {
+            if (b.likes !== a.likes) return b.likes - a.likes;
+            return b.comments - a.comments;
+        });
+
+        console.log(`\n=========================================================`);
+        console.log(`   TOP ${videoStats.length} VIDEO #TRENDING — NHIỀU TƯƠNG TÁC NHẤT`);
+        console.log(`=========================================================`);
+        if (videoStats.length === 0) {
+            console.log('❌ Không tìm thấy video nào.');
         } else {
-            videoUnder2Min.forEach((link, index) => {
-                console.log(`[${index + 1}] -> ${link}`);
+            videoStats.forEach((v, index) => {
+                console.log(`[${index + 1}] ❤️ ${v.likeText} | 💬 ${v.commentText} | 🕐 ${v.publishTime || 'N/A'} | @${v.username}`);
+                console.log(`    ${v.url}`);
             });
         }
-        console.log(`============================================\n`);
+        console.log(`=========================================================\n`);
 
     } catch (error) {
         console.error('🔴 Đã xảy ra lỗi hệ thống:', error.message);

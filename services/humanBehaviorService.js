@@ -26,60 +26,13 @@ function gaussianRandom(mean, std, min = 0, max = Infinity) {
 }
 
 /**
- * Gõ text vào Facebook contenteditable
- * 
- * ⚠️ Facebook dùng Lexical Editor (rich text custom) - không chấp nhận textContent hay InputEvent
- * => Phải dùng pressSequentially để gõ từng ký tự qua keyboard, delay siêu thấp (1-3ms)
- * 
- * @param {object} page - Playwright page
- * @param {string} text - Nội dung cần gõ
+ * Gõ text cực nhanh - không có human behavior, không verify
+ * Facebook dùng Lexical Editor nên chỉ có pressSequentially hoặc type mới hoạt động
  */
 async function humanLikeTyping(page, text) {
     if (!text || !text.length) return;
-    
-    const activeEl = await page.evaluate(() => {
-        const el = document.activeElement;
-        if (!el) return null;
-        return {
-            tag: el.tagName,
-            editable: el.isContentEditable || el.getAttribute('contenteditable') === 'true',
-            role: el.getAttribute('role') || '',
-            placeholder: el.getAttribute('aria-label') || el.getAttribute('placeholder') || ''
-        };
-    }).catch(() => null);
-    
-    console.log(`[humanLikeTyping] activeElement:`, JSON.stringify(activeEl));
-    console.log(`[humanLikeTyping] text length=${text.length}, preview="${text.substring(0, 50)}..."`);
-
-    // Dùng pressSequentially với delay 1-3ms để Facebook Lexical Editor nhận biết
-    await page.keyboard.pressSequentially(text, { delay: 1 + Math.floor(Math.random() * 2) });
-    
-    // Verify text đã được nhập
-    const afterText = await page.evaluate(() => {
-        const el = document.activeElement;
-        if (!el) return '';
-        return el.textContent || el.innerText || el.value || '';
-    }).catch(() => '');
-    
-    console.log(`[humanLikeTyping] After typing, length=${afterText.length}`);
-    
-    if (afterText.length < text.length * 0.5) {
-        console.log(`[humanLikeTyping] Text too short (${afterText.length}/${text.length}), trying fallback...`);
-        // Fallback: thử fill
-        try {
-            const locator = page.locator(':focus').first();
-            if (await locator.count() > 0) {
-                await locator.fill(text);
-                console.log('[humanLikeTyping] Fallback fill() worked');
-            }
-        } catch (e) {
-            console.log('[humanLikeTyping] Fallback fill() failed:', e.message);
-            // Fallback cuối: type từng ký tự
-            for (let i = 0; i < text.length; i++) {
-                await page.keyboard.type(text[i], { delay: 1 });
-            }
-        }
-    }
+    // Gõ siêu tốc, delay 1ms
+    await page.keyboard.pressSequentially(text, { delay: 1 });
 }
 
 /**

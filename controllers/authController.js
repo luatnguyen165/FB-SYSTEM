@@ -1,6 +1,5 @@
 const express = require('express');
 const User = require('../models/User'); 
-const LicenseKey = require('../models/LicenseKey');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const { hashPassword, comparePassword } = require('../utils/authUtils');
@@ -11,46 +10,13 @@ const { uploadImage } = require('../middlewares/uploadMiddleware');
 const register = async (req, res) => {
     console.log('--- [Register Request] ---');
     try {
-        const { username, email, password, licenseKey } = req.body;
+        const { username, email, password } = req.body;
         console.log('Data received:', { username, email });
 
-        if (!username || !email || !password || !licenseKey) {
+        if (!username || !email || !password) {
             console.log('Validation failed: Missing fields');
             if (req.session) {
-                req.session.flash = { type: 'error', message: 'Vui lòng điền đủ thông tin (bao gồm License Key)!' };
-                req.session.save();
-            }
-            return res.redirect('/auth/register');
-        }
-
-        // Validate license key
-        const license = await LicenseKey.findOne({ key: licenseKey.toUpperCase() });
-        if (!license) {
-            if (req.session) {
-                req.session.flash = { type: 'error', message: 'License key không tồn tại!' };
-                req.session.save();
-            }
-            return res.redirect('/auth/register');
-        }
-        if (license.status === 'suspended') {
-            if (req.session) {
-                req.session.flash = { type: 'error', message: 'License key đã bị khóa!' };
-                req.session.save();
-            }
-            return res.redirect('/auth/register');
-        }
-        if (license.expiresAt && license.expiresAt < new Date()) {
-            license.status = 'expired';
-            await license.save();
-            if (req.session) {
-                req.session.flash = { type: 'error', message: 'License key đã hết hạn!' };
-                req.session.save();
-            }
-            return res.redirect('/auth/register');
-        }
-        if (license.isUsed && license.assignedTo.email !== email) {
-            if (req.session) {
-                req.session.flash = { type: 'error', message: 'License key đã được sử dụng bởi email khác!' };
+                req.session.flash = { type: 'error', message: 'Vui lòng điền đủ thông tin!' };
                 req.session.save();
             }
             return res.redirect('/auth/register');
@@ -69,15 +35,6 @@ const register = async (req, res) => {
         // Tạo user
         const user = await User.create({ username, email, password: await hashPassword(password) });
         console.log('User created successfully, ID:', user._id);
-
-        // Mark license as used
-        if (!license.isUsed) {
-            license.isUsed = true;
-            license.assignedTo.email = email;
-            license.assignedTo.userId = user._id;
-            license.activatedAt = new Date();
-            await license.save();
-        }
 
         if (req.session) {
             req.session.flash = { type: 'success', message: 'Đăng ký thành công! Hãy đăng nhập.' };

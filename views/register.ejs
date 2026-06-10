@@ -67,16 +67,6 @@
                 </div>
             </div>
 
-            <div class="form-group">
-                <label class="label">LICENSE KEY <span style="color:#dc3545;">*</span></label>
-                <div class="input-wrapper">
-                    <i class="fa-solid fa-key input-icon"></i>
-                    <input type="text" name="licenseKey" class="input" placeholder="FB-XXXX-XXXX-XXXX" required>
-                </div>
-                <small style="color: var(--text-muted); display: block; margin-top: 4px;">
-                    Nhập license key được cung cấp bởi admin. Nếu chưa có, <a href="#" onclick="alert('Vui lòng liên hệ admin để mua license key!'); return false;">liên hệ admin</a>.
-                </small>
-            </div>
 
             <label class="policy">
                 <input type="checkbox" required>
@@ -91,12 +81,6 @@
         </div>
     </div>
 
-    <script>
-    // Auto-uppercase license key input
-    document.querySelector('input[name="licenseKey"]').addEventListener('input', function() {
-        this.value = this.value.toUpperCase();
-    });
-    </script>
     <script src="/js/toast.js"></script>
 </body>
 </html>    <link rel="stylesheet" href="/css/toast.css">

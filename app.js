@@ -45,7 +45,7 @@ if (isSilent) {
             msg.includes('[Post Upload]') || msg.includes('[Crawl]') ||
             msg.includes('[Full Scan]') || msg.includes('[AI]') ||
             msg.includes('[Scheduler]') || msg.includes('[Comment]') ||
-            msg.includes('[CommentPlay]') || msg.includes('[Competitor Service]') || msg.includes('[AI Image]') || msg.includes('BAT DAU CHAY PLAY') ||
+            msg.includes('[CommentPlay]') || msg.includes('[Competitor Service]') || msg.includes('[AI Image]') || msg.includes('[Download API]') || msg.includes('BAT DAU CHAY PLAY') ||
             msg.includes('KET QUA:') || msg.includes('step=') ||
             msg.includes('#####')) {
             originalLog(...args);
@@ -75,7 +75,7 @@ const competitorRoutes = require('./routes/competitors');
 const commentPlayRoutes = require('./routes/commentPlay');
 const aiImageRoutes = require('./routes/aiImages');
 const licenseRoutes = require('./routes/licenses');
-const trendMusicRoutes = require('./routes/trendMusic');
+const musicTrendingRoutes = require('./routes/musicTrending');
 const { loadFeatureVisibility } = require('./middlewares/authMiddleware');
 const { startReelsScheduleRunner } = require('./services/reelsScheduleRunner');
 const { runScheduledScans } = require('./services/aiScanService');
@@ -112,7 +112,7 @@ app.use(
                 mediaSrc: ["'self'", "blob:", "https://assets.mixkit.co"],
                 styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
                 fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com", "data:"],
-                connectSrc: ["'self'", "https://cdnjs.cloudflare.com", "ws:", "wss:"],
+                connectSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "ws:", "wss:"],
             },
         },
     })
@@ -191,7 +191,8 @@ app.use('/competitors', competitorRoutes); // Theo dõi đối thủ
 app.use('/schedule/ai-comment/play', commentPlayRoutes); // Khúc Play Comment
 app.use('/ai-images', aiImageRoutes);              // Tạo Ảnh AI
 app.use('/admin/licenses', licenseRoutes);        // License Key Management
-app.use('/trend-music', trendMusicRoutes);        // Trend Music
+app.use('/music-trending', musicTrendingRoutes);  // Music Trending
+app.use('/download', require('./routes/download')); // Download YouTube video/audio
 
 // Route mặc định - Chuyển hướng đến trang đăng nhập
 app.get('/', (req, res) => {

@@ -16,8 +16,12 @@ function gaussianRandom(mean, std, min = 0, max = Infinity) {
 }
 
 /**
- * Gõ text vào element đang được focus (activeElement)
- * Log chi tiết từng bước để debug
+ * Gõ text vào element đang được focus - dùng insertText cho nhanh,
+ * nếu không được thì fallback về type từng ký tự
+ * 
+ * ⚠️ LƯU Ý: pressSequentially là locator method, KHÔNG PHẢI keyboard method
+ *    page.keyboard.pressSequentially() KHÔNG TỒN TẠI
+ *    => Luôn dùng page.keyboard.type() hoặc locator.pressSequentially()
  */
 async function humanLikeTyping(page, text) {
     if (!text || !text.length) return;
@@ -32,60 +36,68 @@ async function humanLikeTyping(page, text) {
             if (!el) return { exists: false, reason: 'No active element' };
             return {
                 tag: el.tagName,
-                id: el.id || '',
-                className: (el.className || '').substring(0, 80),
-                contentEditable: el.isContentEditable || el.getAttribute('contenteditable'),
-                role: el.getAttribute('role') || '',
-                value: (el.value || '').substring(0, 50),
-                textContent: (el.textContent || '').substring(0, 50),
-                placeholder: el.getAttribute('aria-label') || el.getAttribute('placeholder') || '',
-                innerText: (el.innerText || '').substring(0, 50),
-                childNodes: el.childNodes.length
+                editable: el.isContentEditable || el.getAttribute('contenteditable'),
+                role: el.getAttribute('role') || ''
             };
         });
         console.log(`[humanLikeTyping] activeElement BEFORE:`, JSON.stringify(info));
     } catch (e) {
-        console.log(`[humanLikeTyping] Cannot get activeElement:`, e.message);
+        console.log(`[humanLikeTyping] Can't get activeElement:`, e.message);
     }
     
-    // Bước 2: Thử type từng ký tự với press (đáng tin cậy nhất)
-    console.log(`[humanLikeTyping] Using page.keyboard.type() with delay 1ms...`);
-    for (let i = 0; i < text.length; i++) {
-        await page.keyboard.type(text[i], { delay: 1 });
-    }
-    console.log(`[humanLikeTyping] Done typing ${text.length} characters`);
-    
-    await page.waitForTimeout(200);
-    
-    // Bước 3: Log text sau khi gõ
+    // Bước 2: Thử insertText trước (nhanh nhất - chèn nguyên text cùng lúc)
     try {
-        const afterValue = await page.evaluate(() => {
+        await page.evaluate((t) => {
             const el = document.activeElement;
-            if (!el) return '(no active element)';
-            return (el.value || el.textContent || el.innerText || '').substring(0, 200);
-        });
-        console.log(`[humanLikeTyping] activeElement AFTER (first 200 chars): "${afterValue}"`);
-        console.log(`[humanLikeTyping] Input length: ${afterValue.length}`);
+            if (!el) return;
+            // Dùng document.execCommand('insertText') - Facebook Lexical chấp nhận
+            const sel = window.getSelection();
+            if (sel && el.isContentEditable) {
+                sel.collapse(el, 0);
+                document.execCommand('insertText', false, t);
+            }
+        }, text);
+        console.log(`[humanLikeTyping] insertText done`);
     } catch (e) {
-        console.log(`[humanLikeTyping] Cannot get after value:`, e.message);
+        console.log(`[humanLikeTyping] insertText failed:`, e.message);
     }
     
-    // Bước 4: Thử verify
+    await page.waitForTimeout(100);
+    
+    // Bước 3: Verify - nếu text đã được nhập thì thôi
+    let typedOk = false;
     try {
-        const pageContent = await page.evaluate(() => {
-            const dialogs = document.querySelectorAll('div[role="dialog"]');
-            let result = '';
-            dialogs.forEach((d, i) => {
-                const textbox = d.querySelector('[contenteditable="true"]');
-                if (textbox) {
-                    result += `Dialog ${i}: "${(textbox.textContent || '').substring(0, 100)}" | `;
-                }
-            });
-            return result || '(no dialogs with contenteditable found)';
+        const after = await page.evaluate(() => {
+            const el = document.activeElement;
+            if (!el) return '';
+            return (el.textContent || el.innerText || el.value || '');
         });
-        console.log(`[humanLikeTyping] Dialog content: ${pageContent}`);
+        typedOk = after.includes(text.substring(0, 20));
+        console.log(`[humanLikeTyping] After insertText: length=${after.length}, includes="${text.substring(0,20)}"? ${typedOk}`);
     } catch (e) {
-        console.log(`[humanLikeTyping] Cannot check dialog:`, e.message);
+        console.log(`[humanLikeTyping] Verify error:`, e.message);
+    }
+    
+    // Bước 4: Nếu insertText không được, fallback type từng ký tự
+    if (!typedOk) {
+        console.log(`[humanLikeTyping] insertText failed, fallback to type()...`);
+        for (let i = 0; i < text.length; i++) {
+            await page.keyboard.type(text[i], { delay: 0 });
+            // Thỉnh thoảng yield cho event loop
+            if (i % 50 === 0) await new Promise(r => setImmediate(r));
+        }
+        console.log(`[humanLikeTyping] Fallback type() done`);
+        
+        await page.waitForTimeout(100);
+        
+        try {
+            const after = await page.evaluate(() => {
+                const el = document.activeElement;
+                if (!el) return '';
+                return (el.textContent || el.innerText || el.value || '').substring(0, 200);
+            });
+            console.log(`[humanLikeTyping] After fallback (first 200): "${after}"`);
+        } catch (e) {}
     }
     
     console.log(`===== [humanLikeTyping] END =====\n`);

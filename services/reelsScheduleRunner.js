@@ -404,15 +404,28 @@ async function executeSchedule(schedule, { persistStatus = true, markAsPosted = 
             const post = await buildPostUploadPayload(schedule);
             console.log(`[Schedule Runner] Processing POST schedule ${schedule._id} using ${account.accountName} (${account.accountType || 'Cá nhân'}), ${post.groups.length} groups to post`);
 
+            // Socket: bắt đầu đăng post
+            emitScheduleUpdate(schedule.userId, {
+                _id: schedule._id,
+                status: 'processing',
+                progress: { phase: 'post_start', message: `Đang đăng bài lên ${post.groups.length} group...`, current: 0, total: post.groups.length }
+            });
+
             const results = [];
             let firstSuccessUrl = '';
-            // FIX: allSuccess phải được khởi tạo là true, chỉ set false khi có lỗi
             let allSuccess = true;
 
             for (let i = 0; i < post.groups.length; i++) {
                 const group = post.groups[i];
                 console.log(`[Schedule Runner] Posting to group ${i + 1}/${post.groups.length}: ${group.groupUrl || group.groupId}`);
                 
+                // Socket: đang đăng lên group thứ i
+                emitScheduleUpdate(schedule.userId, {
+                    _id: schedule._id,
+                    status: 'processing',
+                    progress: { phase: 'post_to_group', message: `Đăng nhóm ${i + 1}/${post.groups.length}: ${group.groupUrl?.substring(0, 50) || group.groupId}`, current: i + 1, total: post.groups.length }
+                });
+
                 try {
                     const groupResult = await runBotPostGroupInstantWithAccount({
                         userId: schedule.userId,
@@ -462,6 +475,14 @@ async function executeSchedule(schedule, { persistStatus = true, markAsPosted = 
                 publishedUrl: firstSuccessUrl,
                 groupResults: results
             };
+
+            // Socket: đã đăng xong post
+            emitScheduleUpdate(schedule.userId, {
+                _id: schedule._id,
+                status: allSuccess ? 'posted' : 'failed',
+                publishedUrl: firstSuccessUrl || '',
+                progress: { phase: 'post_complete', message: allSuccess ? 'Đã đăng bài thành công' : 'Đăng bài thất bại', current: post.groups.length, total: post.groups.length }
+            });
 
             console.log(`[Schedule Runner] Post schedule ${schedule._id} completed: ${results.filter(r => r.success).length}/${results.length} groups posted successfully`);
         } else {

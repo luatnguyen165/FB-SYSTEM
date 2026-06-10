@@ -1,21 +1,11 @@
 const { platform } = require('os');
 
-// ====== TIỆN ÍCH HUMAN-LIKE BEHAVIOR ======
+// ====== TIỆN ÍCH ======
 
-/**
- * Chờ ngẫu nhiên trong khoảng [min, max] ms
- */
 function randomWait(min, max) {
     return new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * (max - min + 1) + min)));
 }
 
-/**
- * Tạo delay phân phối chuẩn (gaussian) gần với hành vi người thật
- * @param {number} mean - Giá trị trung bình (ms)
- * @param {number} std - Độ lệch chuẩn (ms)
- * @param {number} min - Giá trị tối thiểu
- * @param {number} max - Giá trị tối đa
- */
 function gaussianRandom(mean, std, min = 0, max = Infinity) {
     let u = 0, v = 0;
     while (u === 0) u = Math.random();
@@ -26,21 +16,83 @@ function gaussianRandom(mean, std, min = 0, max = Infinity) {
 }
 
 /**
- * Gõ text cực nhanh - không có human behavior, không verify
- * Facebook dùng Lexical Editor nên chỉ có pressSequentially hoặc type mới hoạt động
+ * Gõ text vào element đang được focus (activeElement)
+ * Log chi tiết từng bước để debug
  */
 async function humanLikeTyping(page, text) {
     if (!text || !text.length) return;
-    // Gõ siêu tốc, delay 1ms
-    await page.keyboard.pressSequentially(text, { delay: 1 });
+    
+    console.log(`\n===== [humanLikeTyping] START =====`);
+    console.log(`[humanLikeTyping] text length=${text.length}, preview="${text.substring(0, 100)}"`);
+    
+    // Bước 1: Log activeElement trước khi gõ
+    try {
+        const info = await page.evaluate(() => {
+            const el = document.activeElement;
+            if (!el) return { exists: false, reason: 'No active element' };
+            return {
+                tag: el.tagName,
+                id: el.id || '',
+                className: (el.className || '').substring(0, 80),
+                contentEditable: el.isContentEditable || el.getAttribute('contenteditable'),
+                role: el.getAttribute('role') || '',
+                value: (el.value || '').substring(0, 50),
+                textContent: (el.textContent || '').substring(0, 50),
+                placeholder: el.getAttribute('aria-label') || el.getAttribute('placeholder') || '',
+                innerText: (el.innerText || '').substring(0, 50),
+                childNodes: el.childNodes.length
+            };
+        });
+        console.log(`[humanLikeTyping] activeElement BEFORE:`, JSON.stringify(info));
+    } catch (e) {
+        console.log(`[humanLikeTyping] Cannot get activeElement:`, e.message);
+    }
+    
+    // Bước 2: Thử type từng ký tự với press (đáng tin cậy nhất)
+    console.log(`[humanLikeTyping] Using page.keyboard.type() with delay 1ms...`);
+    for (let i = 0; i < text.length; i++) {
+        await page.keyboard.type(text[i], { delay: 1 });
+    }
+    console.log(`[humanLikeTyping] Done typing ${text.length} characters`);
+    
+    await page.waitForTimeout(200);
+    
+    // Bước 3: Log text sau khi gõ
+    try {
+        const afterValue = await page.evaluate(() => {
+            const el = document.activeElement;
+            if (!el) return '(no active element)';
+            return (el.value || el.textContent || el.innerText || '').substring(0, 200);
+        });
+        console.log(`[humanLikeTyping] activeElement AFTER (first 200 chars): "${afterValue}"`);
+        console.log(`[humanLikeTyping] Input length: ${afterValue.length}`);
+    } catch (e) {
+        console.log(`[humanLikeTyping] Cannot get after value:`, e.message);
+    }
+    
+    // Bước 4: Thử verify
+    try {
+        const pageContent = await page.evaluate(() => {
+            const dialogs = document.querySelectorAll('div[role="dialog"]');
+            let result = '';
+            dialogs.forEach((d, i) => {
+                const textbox = d.querySelector('[contenteditable="true"]');
+                if (textbox) {
+                    result += `Dialog ${i}: "${(textbox.textContent || '').substring(0, 100)}" | `;
+                }
+            });
+            return result || '(no dialogs with contenteditable found)';
+        });
+        console.log(`[humanLikeTyping] Dialog content: ${pageContent}`);
+    } catch (e) {
+        console.log(`[humanLikeTyping] Cannot check dialog:`, e.message);
+    }
+    
+    console.log(`===== [humanLikeTyping] END =====\n`);
 }
 
 /**
- * Di chuyển chuột giống người thật (đường đi cong, không thẳng)
- * @param {object} page - Playwright page
- * @param {number} targetX - Tọa độ X đích
- * @param {number} targetY - Tọa độ Y đích
- * @param {object} options - Tùy chọn
+ * Di chuyển chuột giống người thật
  */
 async function humanLikeMouseMove(page, targetX, targetY, { steps = null } = {}) {
     const vp = page.viewportSize() || { width: 1366, height: 768 };
@@ -223,7 +275,7 @@ async function performRandomReaction(page) {
 }
 
 /**
- * Scroll feed và tương tác nhẹ (warm-up trước khi đăng)
+ * Scroll feed và tương tác nhẹ
  */
 async function warmUp(page, { minInteractions = 3, maxInteractions = 6 } = {}) {
     const totalActions = Math.floor(Math.random() * (maxInteractions - minInteractions + 1)) + minInteractions;

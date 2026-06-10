@@ -30,33 +30,54 @@ function gaussianRandom(mean, std, min = 0, max = Infinity) {
  * - Thỉnh thoảng chậm lại (suy nghĩ)
  * - Thỉnh thoảng gõ sai rồi sửa
  */
-async function humanLikeTyping(page, text, { baseDelay = 60, variance = 40 } = {}) {
+async function humanLikeTyping(page, text, { baseDelay = 5, variance = 5 } = {}) {
     if (!text || !text.length) return;
     
+    // Gõ cực nhanh: dùng insertText thay vì gõ từng ký tự riêng lẻ
+    try {
+        // Thử dùng insertText để paste nguyên đoạn text cùng lúc (siêu nhanh)
+        await page.evaluate((t) => {
+            const el = document.activeElement;
+            if (!el) return;
+            if (el.isContentEditable) {
+                el.textContent = t;
+                // Trigger input event để Facebook nhận biết
+                el.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: true }));
+            } else if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
+                const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+                    window.HTMLTextAreaElement.prototype, 'value'
+                )?.set || Object.getOwnPropertyDescriptor(
+                    window.HTMLInputElement.prototype, 'value'
+                )?.set;
+                if (nativeInputValueSetter) {
+                    nativeInputValueSetter.call(el, t);
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                } else {
+                    el.value = t;
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            }
+        }, text);
+        
+        // Vẫn gõ thêm vài ký tự cuối bằng keyboard để tạo dấu hiệu "người gõ"
+        await randomWait(50, 150);
+        if (text.length > 0) {
+            const lastChar = text[text.length - 1];
+            await page.keyboard.type(lastChar, { delay: 3 });
+            await page.keyboard.press('Backspace', { delay: 2 });
+        }
+        
+        return;
+    } catch (e) {
+        // Fallback nếu evaluate không được
+    }
+    
+    // Fallback: gõ nhanh từng ký tự
     let i = 0;
     while (i < text.length) {
         const char = text[i];
-        
-        // Gõ từng ký tự với delay thay đổi
-        const delay = baseDelay + Math.floor(Math.random() * variance) - (variance / 2);
-        await page.keyboard.type(char, { delay: Math.max(15, delay) });
-        
-        // Thỉnh thoảng pause dài hơn như đang suy nghĩ
-        if (Math.random() < 0.04) {
-            await randomWait(600, 1800);
-        }
-        
-        // Thỉnh thoảng gõ sai rồi xóa sửa (rất hiếm)
-        if (Math.random() < 0.01 && i > 3) {
-            const backspaceCount = Math.floor(Math.random() * 3) + 1;
-            for (let b = 0; b < backspaceCount; b++) {
-                await page.keyboard.press('Backspace', { delay: 50 + Math.floor(Math.random() * 80) });
-            }
-            await randomWait(400, 1000);
-            i = Math.max(0, i - backspaceCount);
-            continue;
-        }
-        
+        const delay = Math.max(1, Math.floor(Math.random() * 3)); // 1-3ms
+        await page.keyboard.type(char, { delay });
         i++;
     }
 }

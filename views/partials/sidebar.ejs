@@ -23,8 +23,54 @@
         <% } %>
 
         <% if (feat.channels !== false) { %>
-        <li class="menu-item <%= currentPage === 'channels' ? 'active' : '' %>">
-            <a href="/channels"><i class="fa-solid fa-link"></i>Tài Khoản MXH</a>
+        <%
+            const chs = typeof channels !== 'undefined' ? channels : [];
+            const isChannelsOpen = ['channels'].includes(currentPage);
+
+            // Group channels by platform
+            const platformOrder = ['FB', 'TT', 'IG', 'YT'];
+            const platformLabels = { FB: 'Facebook', TT: 'TikTok', IG: 'Instagram', YT: 'Youtube' };
+            const platformIcons = { FB: 'fa-facebook', TT: 'fa-tiktok', IG: 'fa-instagram', YT: 'fa-youtube' };
+            const platformColors = { FB: 'var(--fb-color)', TT: 'var(--tt-color)', IG: 'var(--ig-color)', YT: 'var(--yt-color)' };
+
+            const chsByPlatform = {};
+            chs.forEach(function(ch) {
+                if (!chsByPlatform[ch.platform]) chsByPlatform[ch.platform] = [];
+                chsByPlatform[ch.platform].push(ch);
+            });
+
+            // For FB, further group by accountType
+            const accountTypeOrder = { 'Cá nhân': 1, 'Nhà Sáng Tạo': 2, 'Fanpage': 3 };
+            const accountTypeIcons = { 'Cá nhân': 'fa-user', 'Nhà Sáng Tạo': 'fa-star', 'Fanpage': 'fa-flag' };
+        %>
+        <li class="sidebar-group is-open">
+            <button
+                type="button"
+                class="sidebar-group-toggle account-group-toggle"
+                data-sidebar-group-toggle
+                aria-expanded="true"
+            >
+                <span class="sidebar-group-toggle__label">
+                    <i class="fa-solid fa-link"></i>
+                    Tài Khoản MXH
+                </span>
+                <span class="account-count"><%= chs.length %></span>
+                <i class="fa-solid fa-chevron-down sidebar-group-chevron"></i>
+            </button>
+            <ul class="sidebar-submenu">
+                <% platformOrder.forEach(function(pl) { %>
+                <% var plChs = chsByPlatform[pl] || []; %>
+                <li class="menu-item channel-item <%= currentPage === 'channels' && (typeof activePlatform !== 'undefined' && activePlatform === pl) ? 'active' : '' %>">
+                    <a href="/channels?platform=<%= pl %>" class="channel-link platform-link">
+                        <span class="platform-icon" style="color:<%= platformColors[pl] %>;">
+                            <i class="fa-brands <%= platformIcons[pl] %>"></i>
+                        </span>
+                        <span class="channel-name"><%= platformLabels[pl] %></span>
+                        <span class="sidebar-platform-badge sidebar-platform-badge--<%= pl.toLowerCase() %><%= plChs.length === 0 ? ' sidebar-platform-badge--empty' : '' %>"><%= plChs.length %></span>
+                    </a>
+                </li>
+                <% }); %>
+            </ul>
         </li>
         <% } %>
 
@@ -80,27 +126,27 @@
             <ul class="sidebar-submenu">
                 <% if (feat['schedule-manager'] !== false) { %>
                 <li class="menu-item <%= currentPage === 'schedule-manager' ? 'active' : '' %>">
-                    <a href="/schedule/manager"><i class="fa-solid fa-table-list"></i>Lịch Đăng Tổng Hợp</a>
+                    <a href="/schedule/manager"><i class="fa-solid fa-table-list"></i>Xem lịch tổng hợp</a>
                 </li>
                 <% } %>
                 <% if (feat['schedule-post'] !== false) { %>
                 <li class="menu-item <%= currentPage === 'schedule-post' ? 'active' : '' %>">
-                    <a href="/schedule/post"><i class="fa-solid fa-images"></i>Đăng Bài Ảnh</a>
+                    <a href="/schedule/post"><i class="fa-solid fa-images"></i>Đăng bài hình ảnh</a>
                 </li>
                 <% } %>
                 <% if (feat['schedule-reels'] !== false) { %>
                 <li class="menu-item <%= currentPage === 'schedule-reels' ? 'active' : '' %>">
-                    <a href="/schedule/reels"><i class="fa-solid fa-film"></i>Đăng Reels/Video</a>
+                    <a href="/schedule/reels"><i class="fa-solid fa-film"></i>Đăng Reels / Video</a>
                 </li>
                 <% } %>
                 <% if (feat['schedule-archive'] !== false) { %>
                 <li class="menu-item <%= currentPage === 'schedule-archive' ? 'active' : '' %>">
-                    <a href="/schedule/archive"><i class="fa-solid fa-clock-rotate-left"></i>Bài Đã Đăng</a>
+                    <a href="/schedule/archive"><i class="fa-solid fa-clock-rotate-left"></i>Lịch sử đăng bài</a>
                 </li>
                 <% } %>
                 <% if (feat['schedule-groups'] !== false) { %>
                 <li class="menu-item <%= currentPage === 'schedule-groups' ? 'active' : '' %>">
-                    <a href="/schedule/groups"><i class="fa-solid fa-users-rectangle"></i>Quét Group FB</a>
+                    <a href="/schedule/groups"><i class="fa-solid fa-magnifying-glass"></i>Quét nhóm Facebook</a>
                 </li>
                 <% } %>
             </ul>

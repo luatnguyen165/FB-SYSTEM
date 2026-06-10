@@ -32,7 +32,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    document.querySelectorAll('.btn-connect').forEach(btn => {
+    // btn-connect-hero (hero header), btn-empty-connect (empty state), btn-connect (legacy)
+    document.querySelectorAll('.btn-connect-hero, .btn-empty-connect, .btn-connect').forEach(btn => {
         btn.addEventListener('click', () => {
             const platform = btn.dataset.platform || pagePlatform;
             openOAuthModal(platform);
@@ -55,6 +56,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnCloseOAuthModal')?.addEventListener('click', closeOAuthModal);
     document.getElementById('btnOAuthCancel')?.addEventListener('click', closeOAuthModal);
     document.getElementById('btnOAuthSubmit')?.addEventListener('click', submitNewChannel);
+
+    // Wire up avatar file input → instant image preview
+    initAvatarPreview();
 
     document.querySelectorAll('.switch-toggle input').forEach(toggle => {
         toggle.addEventListener('change', function() {
@@ -90,6 +94,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 let currentPlatform = '';
+// pagePlatform is also declared inside DOMContentLoaded — use a module-level var here
+// to avoid the duplicate declaration error in non-module scripts.
 let pagePlatform = document.querySelector('.btn-platform')?.dataset.platform || 'FB';
 let isFacebookConnectInProgress = false;
 let currentEditingChannelId = '';
@@ -290,14 +296,8 @@ function openOAuthModal(platform, channelData = null) {
             `;
             initAccountTypeCards('Cá nhân');
         } else {
-            // TikTok, YouTube, Zalo: mặc định là "Cá nhân", chỉ cho nhập followers
-            secondaryField.innerHTML = `
-                <input type="hidden" name="oauthAccountType" value="Cá nhân">
-                <div class="oauth-form-group">
-                    <label class="oauth-form-label" for="oauthFollowers">Follower ban đầu (tuỳ chọn)</label>
-                    <input type="text" class="oauth-input" id="oauthFollowers" placeholder="Ví dụ: 10000">
-                </div>
-            `;
+            // TikTok, YouTube, Zalo: mặc định là "Cá nhân"
+            secondaryField.innerHTML = `<input type="hidden" name="oauthAccountType" value="Cá nhân">`;
         }
     }
 
@@ -306,6 +306,37 @@ function openOAuthModal(platform, channelData = null) {
 
     // Focus first input
     setTimeout(() => nameInput?.focus(), 100);
+}
+
+/**
+ * Wire up the avatar file input to show an instant preview in #oauthCurrentAvatarBox.
+ * Called once after DOM is ready — the listener persists across modal open/close cycles.
+ */
+function initAvatarPreview() {
+    const avatarInput = document.getElementById('oauthAvatar');
+    const previewWrap = document.getElementById('oauthEditAvatarPreviewWrap');
+    const previewBox  = document.getElementById('oauthCurrentAvatarBox');
+    if (!avatarInput) return;
+
+    avatarInput.addEventListener('change', () => {
+        const file = avatarInput.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            // Show the preview section
+            if (previewWrap) previewWrap.style.display = 'block';
+
+            // Swap content of the preview box to an <img>
+            if (previewBox) {
+                previewBox.innerHTML = `
+                    <img class="oauth-current-avatar-img" src="${e.target.result}" alt="Preview avatar">
+                    <span class="oauth-current-avatar-text">Ảnh mới chọn</span>
+                `;
+            }
+        };
+        reader.readAsDataURL(file);
+    });
 }
 
 function initAccountTypeCards(defaultType = 'Cá nhân') {

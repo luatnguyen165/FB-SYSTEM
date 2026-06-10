@@ -15,14 +15,21 @@ function ensureDir(dirPath) {
     }
 }
 
+// In-memory caches — keys don't change at runtime, so compute/read once.
+let _keyPairCache = null;
+let _restKeyCache = null;
+
 function ensureKeyPair() {
+    if (_keyPairCache) return _keyPairCache;
+
     ensureDir(KEY_DIR);
 
     if (fs.existsSync(PUBLIC_KEY_PATH) && fs.existsSync(PRIVATE_KEY_PATH)) {
-        return {
+        _keyPairCache = {
             publicKey: fs.readFileSync(PUBLIC_KEY_PATH, 'utf8'),
             privateKey: fs.readFileSync(PRIVATE_KEY_PATH, 'utf8')
         };
+        return _keyPairCache;
     }
 
     const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
@@ -34,7 +41,8 @@ function ensureKeyPair() {
     fs.writeFileSync(PUBLIC_KEY_PATH, publicKey, 'utf8');
     fs.writeFileSync(PRIVATE_KEY_PATH, privateKey, 'utf8');
 
-    return { publicKey, privateKey };
+    _keyPairCache = { publicKey, privateKey };
+    return _keyPairCache;
 }
 
 function getPublicKey() {
@@ -46,9 +54,11 @@ function getPrivateKey() {
 }
 
 function getRestKey() {
-    return crypto.createHash('sha256').update(
+    if (_restKeyCache) return _restKeyCache;
+    _restKeyCache = crypto.createHash('sha256').update(
         process.env.DATA_ENCRYPTION_SECRET || process.env.SESSION_SECRET || 'fb-system-encryption'
     ).digest();
+    return _restKeyCache;
 }
 
 function isEncryptedValue(value) {

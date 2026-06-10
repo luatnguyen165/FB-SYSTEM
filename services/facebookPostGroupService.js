@@ -240,6 +240,40 @@ async function uploadImagesIntoPostDialog(page, dialog, imagePaths = []) {
     return true;
 }
 
+/**
+ * Focus vào contenteditable div của Facebook một cách đáng tin cậy
+ * Dùng Playwright locator.click() thay vì coordinate click để đảm bảo focus đúng
+ */
+async function focusFacebookContentEditable(page, textBox) {
+    if (!textBox) return false;
+    
+    try {
+        // Dùng scrollIntoView + click của Playwright (đáng tin cậy hơn coordinate click)
+        await textBox.scrollIntoViewIfNeeded().catch(() => {});
+        await randomWait(300, 800);
+        
+        // Click bằng Playwright locator API - đảm bảo focus đúng
+        await textBox.click({ force: true });
+        await randomWait(500, 1000);
+        
+        // Verify focus đã được set
+        const isFocused = await textBox.evaluate((el) => {
+            return document.activeElement === el || el.contains(document.activeElement);
+        }).catch(() => false);
+        
+        if (!isFocused) {
+            console.log('[GroupPost] First click did not focus, trying force focus...');
+            await textBox.focus().catch(() => {});
+            await randomWait(300, 600);
+        }
+        
+        return true;
+    } catch (err) {
+        console.error('[GroupPost] Failed to focus textbox:', err.message);
+        return false;
+    }
+}
+
 async function runBotPostGroupInstant(page, { groupUrl, content, images }) {
     if (!groupUrl) {
         throw new Error('Thiếu groupUrl để đăng bài');
@@ -255,9 +289,6 @@ async function runBotPostGroupInstant(page, { groupUrl, content, images }) {
     await page.goto(groupUrl, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
     await page.waitForLoadState('domcontentloaded').catch(() => {});
     await page.waitForTimeout(3000);
-
-    // === Không warm-up ở đây vì sẽ cuộn trang xuống, gây khó tìm nút đăng bài ===
-    // === Warm-up sẽ được thực hiện SAU KHI đăng bài xong ===
 
     // Mở khung đăng bài - với nhiều lựa chọn selector
     const openBoxSelectors = [
@@ -327,12 +358,84 @@ async function runBotPostGroupInstant(page, { groupUrl, content, images }) {
         }
     }
 
-    // Nhập nội dung (giống người thật gõ phím)
+    // Sau khi upload ảnh xong, Facebook có thể re-render dialog
+    // Cần tìm lại contenteditable và focus đúng cách
     if (finalContent) {
-        const textBox = page.locator('xpath=//div[@role="dialog"]//div[@contenteditable="true"]');
-        await humanLikeClick(page, textBox);
-        await randomWait(400, 1200);
-        await humanLikeTyping(page, finalContent);
+        console.log('[GroupPost] Finding contenteditable div after image upload...');
+        
+        // Tìm textbox với nhiều selector dự phòng
+        const textBoxSelectors = [
+            'xpath=//div[@role="dialog"]//div[@contenteditable="true"]',
+            'xpath=//div[@role="dialog"]//div[contains(@class, "notranslate")][@contenteditable="true"]',
+            'div[role="dialog"] div[contenteditable="true"]',
+            'div[role="dialog"] div[aria-label*="viết" i][contenteditable="true"]',
+            'div[role="dialog"] div[aria-label*="write" i][contenteditable="true"]',
+            'div[contenteditable="true"]'
+        ];
+        
+        let textBox = null;
+        for (const selector of textBoxSelectors) {
+            try {
+                const candidate = page.locator(selector).first();
+                const count = await candidate.count().catch(() => 0);
+                if (count > 0) {
+                    textBox = candidate;
+                    console.log(`[GroupPost] Found contenteditable with selector: ${selector}`);
+                    break;
+                }
+            } catch (e) {}
+        }
+
+        if (textBox) {
+            // Focus vào textbox trước
+            const focused = await focusFacebookContentEditable(page, textBox);
+            if (!focused) {
+                console.log('[GroupPost] Could not focus textbox, trying fallback...');
+                // Fallback: thử click vào vùng soạn thảo
+                try {
+                    await textBox.evaluate((el) => el.focus());
+                    await randomWait(500, 1000);
+                } catch (e) {
+                    console.error('[GroupPost] Fallback focus failed:', e.message);
+                }
+            }
+            
+            await randomWait(400, 1200);
+            
+            // Kiểm tra focus trước khi gõ
+            const activeElementInfo = await page.evaluate(() => {
+                const active = document.activeElement;
+                if (!active) return { tag: 'none', editable: false };
+                return {
+                    tag: active.tagName,
+                    editable: active.isContentEditable || active.getAttribute('contenteditable') === 'true',
+                    role: active.getAttribute('role') || '',
+                    class: (active.className || '').substring(0, 100)
+                };
+            }).catch(() => ({ tag: 'unknown', editable: false }));
+            
+            console.log('[GroupPost] Active element before typing:', JSON.stringify(activeElementInfo));
+            
+            if (activeElementInfo.editable) {
+                // Gõ content vào element đã được focus
+                await humanLikeTyping(page, finalContent);
+                console.log('[GroupPost] Content typed successfully via focused element');
+            } else {
+                // Fallback: dùng fill hoặc type vào textBox trực tiếp
+                console.log('[GroupPost] Active element not editable, typing directly...');
+                try {
+                    await textBox.fill(finalContent);
+                    console.log('[GroupPost] Content filled via locator.fill()');
+                } catch (fillErr) {
+                    console.log('[GroupPost] fill() failed, trying pressSequentially...');
+                    await textBox.focus().catch(() => {});
+                    await textBox.pressSequentially(finalContent, { delay: 30 + Math.floor(Math.random() * 40) });
+                    console.log('[GroupPost] Content typed via pressSequentially');
+                }
+            }
+        } else {
+            console.log('[GroupPost] Không tìm thấy contenteditable div! Không thể gõ content.');
+        }
     }
 
     // Chờ ngẫu nhiên trước khi đăng (như người đang suy nghĩ, check lại bài)
@@ -380,10 +483,8 @@ async function runBotPostGroupInstant(page, { groupUrl, content, images }) {
     // Nếu chưa tìm thấy nút nào visible+enabled, thử chờ lâu hơn để Facebook xử lý ảnh xong
     if (!postButtonFound && imagePaths.length > 0) {
         console.log('[GroupPost] Post button not immediately visible, waiting for image processing...');
-        // Chờ lâu hơn cho Facebook xử lý ảnh (có thể mất 30-60s)
         await randomWait(5000, 10000);
 
-        // Thử lại tất cả selectors
         for (const selector of postButtonSelectors) {
             try {
                 const candidate = page.locator(selector).first();
@@ -436,7 +537,6 @@ async function runBotPostGroupInstant(page, { groupUrl, content, images }) {
                     }
                 }
             } else {
-                // Log page content để debug
                 console.log('[GroupPost] WARNING: Could not find any "Đăng" button. Page content:');
                 const pageText = await page.evaluate(() => document.body.innerText.substring(0, 500)).catch(() => 'N/A');
                 console.log(`[GroupPost] Page text preview: ${pageText}`);
@@ -450,26 +550,22 @@ async function runBotPostGroupInstant(page, { groupUrl, content, images }) {
     const postStartedAt = Date.now();
     const postMaxWait = imagePaths.length ? 30000 : 20000;
     
-    // Chờ dialog đóng (bài đã được đăng thành công)
     try {
         await page.waitForFunction(() => {
             const dialogs = document.querySelectorAll('div[role="dialog"]');
             for (const d of dialogs) {
-                // Dialog đăng bài thường có textbox hoặc nút Đăng
                 if (d.querySelector('[contenteditable="true"]') || d.textContent.includes('Đăng')) {
-                    return false; // Dialog vẫn còn
+                    return false;
                 }
             }
-            return true; // Không còn dialog nào khả nghi
+            return true;
         }, { timeout: postMaxWait }).catch(() => {});
     } catch (e) {
         console.log(`[GroupPost] Wait for dialog close timed out after ${postMaxWait}ms`);
     }
 
-    // Đợi thêm một chút để Facebook cập nhật URL
     await page.waitForTimeout(3000);
     
-    // Lấy URL sau khi đăng (ưu tiên URL mới nếu chuyển hướng)
     try {
         await page.waitForFunction((oldUrl) => {
             return window.location.href !== oldUrl && 
@@ -479,11 +575,9 @@ async function runBotPostGroupInstant(page, { groupUrl, content, images }) {
                     window.location.href.includes('/groups/'));
         }, currentUrl, { timeout: 10000 }).catch(() => {});
     } catch (e) {
-        // URL không đổi - vẫn dùng URL hiện tại
     }
     currentUrl = page.url();
 
-    // === Mô phỏng hành vi người thật SAU KHI ĐĂNG: like bài, scroll, tương tác ===
     console.log('[GroupPost] Simulating human behavior after posting...');
     await simulateHumanAfterPost(page, { 
         minWait: 5000, 
@@ -509,7 +603,6 @@ async function runBotPostGroupInstantWithAccount({ userId, accountName, accountT
         const result = await runBotPostGroupInstant(page, post);
         return result;
     } finally {
-        // Đóng context sau khi hoàn tất (bao gồm cả đăng bài và tương tác)
         try {
             await context.close();
         } catch (e) {}

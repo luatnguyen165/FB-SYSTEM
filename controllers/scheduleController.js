@@ -759,10 +759,11 @@ const createSchedule = async (req, res) => {
             );
         }
 
-        if (nextType === 'reels') {
-            console.log(`[Schedule API] createSchedule => armed reels wakeup for ${schedule._id} at ${schedule.scheduledAt.toISOString()}`);
-            await pokeReelsScheduleRunner().catch(() => {});
-        }
+        // Luôn gọi pokeReelsScheduleRunner để đảm bảo scheduler bắt kịp lịch mới
+        // (cả post lẫn reels/tiktok đều cần được xử lý)
+        const scheduleType = nextType;
+        console.log(`[Schedule API] createSchedule => armed reels wakeup for schedule ${schedule._id} type=${scheduleType} at ${schedule.scheduledAt.toISOString()}`);
+        await pokeReelsScheduleRunner().catch(() => {});
 
         sendTelegramNotification(req.user._id, NOTIFICATION_TYPES.PROGRESS, {
             action: 'Tạo lịch đăng mới',
@@ -884,10 +885,12 @@ const updateSchedule = async (req, res) => {
                 return res.status(404).json({ success: false, message: 'Tài khoản Facebook nguồn không tồn tại hoặc đã bị tắt' });
             }
 
-            const { groups: joinedGroups } = await getJoinedFacebookGroupsCached(
-                req.user._id,
-                selectedSourceChannel._id
-            );
+            const { groups: joinedGroups } = await getJoinedFacebookGroupsCached({
+                userId: req.user._id,
+                channelId: selectedSourceChannel._id,
+                accountName: selectedSourceChannel.accountName,
+                accountType: selectedSourceChannel.accountType || 'Cá nhân'
+            });
 
             const targetGroupIdArray = typeof targetGroupIds === 'string' 
                 ? (targetGroupIds.startsWith('[') ? JSON.parse(targetGroupIds) : [targetGroupIds])
@@ -947,10 +950,9 @@ const updateSchedule = async (req, res) => {
             );
         }
 
-        if (schedule.type === 'reels') {
-            console.log(`[Schedule API] updateSchedule => armed reels wakeup for ${schedule._id} at ${schedule.scheduledAt.toISOString()}`);
-            await pokeReelsScheduleRunner().catch(() => {});
-        }
+        // Luôn gọi pokeReelsScheduleRunner để đảm bảo scheduler bắt kịp lịch đã cập nhật (cả post lẫn reels)
+        console.log(`[Schedule API] updateSchedule => armed reels wakeup for schedule ${schedule._id} type=${schedule.type} at ${schedule.scheduledAt.toISOString()}`);
+        await pokeReelsScheduleRunner().catch(() => {});
 
         await schedule.populate(buildSchedulePopulateOptions(req.user._id));
         res.json({ success: true, message: 'Đã cập nhật lịch đăng!', schedule });

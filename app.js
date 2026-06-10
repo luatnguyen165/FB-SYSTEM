@@ -77,6 +77,7 @@ const aiImageRoutes = require('./routes/aiImages');
 const licenseRoutes = require('./routes/licenses');
 const musicTrendingRoutes = require('./routes/musicTrending');
 const { loadFeatureVisibility } = require('./middlewares/authMiddleware');
+const { loadUserChannels } = require('./middlewares/channelMiddleware');
 const { startReelsScheduleRunner } = require('./services/reelsScheduleRunner');
 const { runScheduledScans } = require('./services/aiScanService');
 const i18nMiddleware = require('./middlewares/i18nMiddleware');
@@ -150,32 +151,13 @@ app.use((req, res, next) => {
     next();
 });
 
-// MongoDB - Kết nối với timeout để tránh treo app nếu MongoDB không chạy
-const DB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/reelsflow';
-let mongoConnected = false;
-
-mongoose.connect(DB_URI, {
-    serverSelectionTimeoutMS: 5000, // timeout 5s thay vì 30s mặc định
-    connectTimeoutMS: 5000
-})
-.then(() => {
-    mongoConnected = true;
-    console.log('✅ Đã kết nối thành công tới MongoDB');
-})
-.catch(err => {
-    console.error('❌ Lỗi kết nối MongoDB:', err.message);
-    console.error('⚠️ App sẽ chạy nhưng không có database - một số tính năng sẽ không hoạt động');
-});
-
-// Export trạng thái kết nối để các routes kiểm tra
-global.mongoConnected = mongoConnected;
-
 // ========================
 // ROUTING
 // ========================
 
 // Apply feature visibility globally (after auth but before regular routes)
 app.use(loadFeatureVisibility);         // Load feature visibility settings for sidebar
+app.use(loadUserChannels);              // Load user channels for sidebar dropdown
 app.use(i18nMiddleware);                 // Inject t() and lang into all views
 
 app.use('/auth', authRoutes);           // Auth: login, register, forgot, profile, change-password
@@ -229,45 +211,61 @@ function startServer(port) {
         // Cập nhật global.SERVER_URL để các module khác dùng
         global.SERVER_URL = `http://localhost:${port}`;
         console.log(`🚀 Server đang lắng nghe tại port: ${global.SERVER_URL}`);
-
-        // Chỉ chạy scheduler khi có DB
-        if (global.mongoConnected) {
-            try { startReelsScheduleRunner(); } catch(e) { console.error('[Startup] Reels schedule runner error:', e.message); }
-
-            // AI Scan scheduler
-            setInterval(() => {
-                runScheduledScans().then(results => {
-                    if (results && results.length > 0) {
-                        console.log(`[AI Scan Scheduler] Đã xử lý ${results.length} cấu hình`);
-                    }
-                }).catch(err => {
-                    console.error('[AI Scan Scheduler] Error:', err.message);
-                });
-            }, 30 * 1000);
-            console.log('[AI Scan Scheduler] Đã khởi động scheduler (kiểm tra mỗi 30 giây)');
-
-            // Comment Play scheduler
-            setInterval(() => {
-                try {
-                    const commentPlayService = require('./services/commentPlayService');
-                    commentPlayService.processScheduledPlays().then(results => {
-                        if (results.length > 0) {
-                            console.log(`[CommentPlay Scheduler] Đã xử lý ${results.length} kịch bản`);
-                        }
-                    }).catch(err => {
-                        console.error('[CommentPlay Scheduler] Error:', err.message);
-                    });
-                } catch(e) {
-                    console.error('[CommentPlay Scheduler] Error:', e.message);
-                }
-            }, 30 * 1000);
-            console.log('[CommentPlay Scheduler] Đã khởi động scheduler (kiểm tra mỗi 30 giây)');
-        } else {
-            console.log('⚠️ MongoDB chưa kết nối - Bỏ qua khởi động scheduler');
-        }
     });
 
     return server;
 }
 
+// Khởi động server trước (routes đã được định nghĩa ở trên)
 const server = startServer(DEFAULT_PORT);
+
+// Sau đó kết nối MongoDB - scheduler sẽ được khởi động sau khi kết nối thành công
+// QUAN TRỌNG: global.mongoConnected được set trong callback, không phải đồng bộ
+const DB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/reelsflow';
+global.mongoConnected = false;
+
+mongoose.connect(DB_URI, {
+    serverSelectionTimeoutMS: 5000,
+    connectTimeoutMS: 5000
+})
+.then(() => {
+    global.mongoConnected = true;
+    console.log('✅ Đã kết nối thành công tới MongoDB');
+
+    // === KHỞI ĐỘNG SCHEDULER SAU KHI CÓ DB ===
+    try { startReelsScheduleRunner(); } catch(e) { console.error('[Startup] Reels schedule runner error:', e.message); }
+
+    // AI Scan scheduler
+    setInterval(() => {
+        runScheduledScans().then(results => {
+            if (results && results.length > 0) {
+                console.log(`[AI Scan Scheduler] Đã xử lý ${results.length} cấu hình`);
+            }
+        }).catch(err => {
+            console.error('[AI Scan Scheduler] Error:', err.message);
+        });
+    }, 30 * 1000);
+    console.log('[AI Scan Scheduler] Đã khởi động scheduler (kiểm tra mỗi 30 giây)');
+
+    // Comment Play scheduler
+    setInterval(() => {
+        try {
+            const commentPlayService = require('./services/commentPlayService');
+            commentPlayService.processScheduledPlays().then(results => {
+                if (results.length > 0) {
+                    console.log(`[CommentPlay Scheduler] Đã xử lý ${results.length} kịch bản`);
+                }
+            }).catch(err => {
+                console.error('[CommentPlay Scheduler] Error:', err.message);
+            });
+        } catch(e) {
+            console.error('[CommentPlay Scheduler] Error:', e.message);
+        }
+    }, 30 * 1000);
+    console.log('[CommentPlay Scheduler] Đã khởi động scheduler (kiểm tra mỗi 30 giây)');
+})
+.catch(err => {
+    console.error('❌ Lỗi kết nối MongoDB:', err.message);
+    console.error('⚠️ App sẽ chạy nhưng không có database - một số tính năng sẽ không hoạt động');
+    // global.mongoConnected vẫn là false, scheduler sẽ không khởi động
+});

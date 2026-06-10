@@ -35,14 +35,53 @@
 }
 
 @keyframes iconFloat {
-    0%, 100% { transform: translateY(0); }
-    50%      { transform: translateY(-4px); }
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    25%      { transform: translateY(-3px) rotate(-2deg); }
+    50%      { transform: translateY(-5px) rotate(0deg); }
+    75%      { transform: translateY(-3px) rotate(2deg); }
 }
 
 @keyframes pulseGlow {
-    0%   { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.15); }
-    70%  { box-shadow: 0 0 0 10px rgba(37, 99, 235, 0); }
+    0%   { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.18); }
+    70%  { box-shadow: 0 0 0 12px rgba(37, 99, 235, 0); }
     100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+}
+
+@keyframes iconBounce {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.15); }
+}
+
+@keyframes spinSlow {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+@keyframes wiggle {
+    0%, 100% { transform: rotate(0deg); }
+    15%      { transform: rotate(-8deg); }
+    30%      { transform: rotate(8deg); }
+    45%      { transform: rotate(-5deg); }
+    60%      { transform: rotate(5deg); }
+    75%      { transform: rotate(-2deg); }
+}
+
+@keyframes heartbeat {
+    0%, 100% { transform: scale(1); }
+    14%      { transform: scale(1.2); }
+    28%      { transform: scale(1); }
+    42%      { transform: scale(1.15); }
+    56%      { transform: scale(1); }
+}
+
+@keyframes ringBell {
+    0%, 100% { transform: rotate(0deg); }
+    10%  { transform: rotate(14deg); }
+    20%  { transform: rotate(-14deg); }
+    30%  { transform: rotate(8deg); }
+    40%  { transform: rotate(-8deg); }
+    50%  { transform: rotate(4deg); }
+    60%  { transform: rotate(-2deg); }
 }
 
 /* ===== GLOBAL STAGGER ANIMATION ===== */
@@ -124,6 +163,27 @@
 
 .stat-card:hover .stat-card__icon-wrap {
     transform: scale(1.08);
+    animation: iconBounce 0.6s ease;
+}
+
+/* Per-variant hover icon animations */
+.stat-card--video:hover .stat-card__icon-wrap i {
+    animation: iconFloat 1.5s ease-in-out infinite;
+}
+.stat-card--channel:hover .stat-card__icon-wrap i {
+    animation: wiggle 0.8s ease;
+}
+.stat-card--scheduled:hover .stat-card__icon-wrap i {
+    animation: ringBell 1s ease;
+}
+.stat-card--posted:hover .stat-card__icon-wrap i {
+    animation: heartbeat 1s ease;
+}
+.stat-card--failed:hover .stat-card__icon-wrap i {
+    animation: wiggle 0.6s ease;
+}
+.stat-card--shopee:hover .stat-card__icon-wrap i {
+    animation: iconBounce 0.5s ease;
 }
 
 .stat-card__icon-wrap {
@@ -136,6 +196,12 @@
     font-size: 1.2rem;
     flex-shrink: 0;
     transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Subtle idle floating animation on icon wrap */
+.stat-card__icon-wrap i {
+    display: inline-block;
+    transition: transform 0.3s ease;
 }
 
 .stat-card__body {
@@ -232,6 +298,14 @@
 .panel-card:hover {
     box-shadow: 0 8px 25px -8px rgba(0, 0, 0, 0.1);
     transform: translateY(-2px);
+}
+
+.panel-card:hover .panel-card__icon {
+    animation: pulseGlow 1.5s ease infinite;
+}
+
+.panel-card:hover .panel-card__icon i {
+    animation: iconFloat 1.2s ease-in-out infinite;
 }
 
 .panel-card__header {
@@ -534,6 +608,40 @@
 
 .dashboard-tables:nth-child(4) .table-card {
     animation-delay: 1s;
+}
+
+/* ===== PANEL CARD ICON COLORS ===== */
+.panel-card:nth-child(1) .panel-card__icon {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.14), rgba(139, 92, 246, 0.04));
+    color: #7c3aed;
+}
+.panel-card:nth-child(2) .panel-card__icon {
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.14), rgba(14, 165, 233, 0.04));
+    color: #0ea5e9;
+}
+.panel-card:nth-child(3) .panel-card__icon {
+    background: linear-gradient(135deg, rgba(234, 88, 12, 0.14), rgba(234, 88, 12, 0.04));
+    color: #ea580c;
+}
+
+/* ===== MINI LIST ICON HOVER ===== */
+.mini-list__item:hover .mini-list__icon i {
+    animation: iconBounce 0.5s ease;
+}
+
+/* ===== TABLE ROW ENTRANCE ===== */
+.table-card tbody tr {
+    opacity: 0;
+    animation: fadeSlideUp 0.35s ease forwards;
+    animation-delay: calc(var(--row, 0) * 40ms + 0.9s);
+}
+
+/* ===== STAT VALUE NUMBER GLOW ON HOVER ===== */
+.stat-card:hover .stat-value {
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 /* ===== RESPONSIVE ===== */

@@ -79,12 +79,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Sidebar tree dropdowns
+    // Sidebar tree dropdowns — all groups including Tài Khoản MXH are toggleable
     document.querySelectorAll('[data-sidebar-group-toggle]').forEach((button) => {
         button.addEventListener('click', () => {
             const group = button.closest('.sidebar-group');
             if (!group) return;
-
             const willOpen = !group.classList.contains('is-open');
             group.classList.toggle('is-open', willOpen);
             button.setAttribute('aria-expanded', String(willOpen));
@@ -141,14 +140,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 langSwitcher.classList.remove('is-open');
             }
         });
-        // Click on language option
+        // Current active language — read from the server-rendered data-lang on the nav element
+        const getCurrentLang = () => {
+            const nav = document.querySelector('.top-nav[data-lang]');
+            if (nav) return nav.dataset.lang;
+            const active = langSwitcher.querySelector('.language-option.is-active');
+            return active?.dataset.lang || 'vi';
+        };
+
+        // Click on language option — save then hard-reload immediately
         langSwitcher.querySelectorAll('.language-option').forEach((opt) => {
             opt.addEventListener('click', async () => {
                 const lang = opt.dataset.lang;
                 if (!lang) return;
+
+                // No-op if already on this language
+                if (lang === getCurrentLang()) {
+                    langSwitcher.classList.remove('is-open');
+                    return;
+                }
+
+                langSwitcher.classList.add('is-loading');
+                langSwitcher.classList.remove('is-open');
+
                 try {
-                    // Show loading state
-                    langSwitcher.classList.add('is-loading');
                     const res = await fetch('/auth/api/language', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -156,12 +171,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                     const data = await res.json();
                     if (data && data.success) {
-                        // Show toast
-                        if (typeof showToast === 'function') {
-                            showToast(lang === 'vi' ? 'Đã chuyển sang Tiếng Việt' : 'Switched to English', 'success');
-                        }
-                        // Reload page to apply new language
-                        setTimeout(() => window.location.reload(), 400);
+                        // Reload immediately — server will render everything in the new language
+                        window.location.reload();
                     } else {
                         if (typeof showToast === 'function') {
                             showToast((data && data.message) || 'Update failed', 'error');

@@ -12,6 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
 </head>
 <body>
     <%- include('partials/sidebar', { currentPage: 'schedule-reels' }) %>
@@ -156,10 +157,7 @@
                         </div>
                         <div class="video-source-buttons">
                             <button type="button" class="btn-source-action active" id="btnUploadLocal">
-                                <i class="fa-solid fa-laptop"></i> Máy tính
-                            </button>
-                            <button type="button" class="btn-source-action" id="btnOpenLibrary">
-                                <i class="fa-solid fa-box-archive"></i> Kho Video AI
+                                <i class="fa-solid fa-laptop"></i> Chọn video từ máy tính
                             </button>
                         </div>
                         <input type="file" id="modalVideoFileSelector" accept="video/*" style="display:none">
@@ -326,29 +324,10 @@
         </div>
     </div>
 
-    <!-- Mini Library Modal -->
-    <div class="mini-lib-modal" id="miniLibraryModal">
-        <div class="mini-lib-card">
-            <div class="mini-lib-header">
-                <h3><i class="fa-solid fa-box-archive" style="color:var(--primary)"></i> Bốc tài nguyên từ Kho Video AI</h3>
-                <button type="button" class="mini-lib-close" id="btnCloseMiniLib">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-            <div class="mini-lib-search">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                <input type="text" id="miniLibSearchInput" placeholder="Gõ tên tệp hoặc từ khóa để lọc video từ kho...">
-            </div>
-            <div class="mini-lib-grid" id="miniLibGridContainer">
-                <div class="mini-lib-empty">
-                    <i class="fa-solid fa-film"></i>
-                    <span>Video sẽ được nạp theo tài khoản đang đăng nhập.</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script src="/js/toast.js"></script>
+    <script>
+        window.__CURRENT_USER_ID = '<%= user._id %>';
+    </script>
     <script src="/js/base.js"></script>
     <script src="/js/utils.js"></script>
     <script src="/js/reels.js"></script>

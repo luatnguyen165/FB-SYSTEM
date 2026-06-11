@@ -319,6 +319,37 @@
                 <!-- OpenAI API Key - tạm ẩn, ưu tiên crawler lưu bài viết + ảnh trước -->
                 <input type="hidden" id="configOpenaiKey" value="">
 
+                <!-- ============ KỊCH BẢN QUÉT ============ -->
+                <div class="form-section-divider"><i class="fa-solid fa-wand-magic-sparkles"></i> Kịch Bản Quét</div>
+
+                <div class="form-group">
+                    <label>Ngách ngành (Niche) <small class="form-hint-inline">— Dùng cho biến {ten_sp}, {nganh}</small></label>
+                    <input type="text" id="configNiche" placeholder="VD: Bất động sản, xe hơi, thời trang...">
+                </div>
+
+                <div class="form-group">
+                    <label>Kịch bản AI Phân Tích <span class="required">*</span> <small class="form-hint-inline">— Prompt gửi cho AI</small></label>
+                    <textarea id="configScanScript" rows="6" placeholder="Nhập kịch bản/prompt cho AI phân tích bài viết. VD: Phân tích bài viết có nhu cầu mua BĐS không? Đánh giá điểm từ 0-100..."></textarea>
+                    <small class="form-hint">Kịch bản này sẽ được dùng làm prompt chính để AI phân tích mỗi bài viết. Bạn có thể viết tự do.</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Ngân Hàng Comment</label>
+                    <small class="form-hint" style="margin-bottom: 10px; display: block;">Thêm các comment (text/hình ảnh/video) để hệ thống tự động gửi khi bài viết match nhu cầu.</small>
+                    <div class="comment-bank-list" id="commentBankList"></div>
+                    <div class="comment-bank-add">
+                        <button type="button" class="btn btn-sm btn-outline btn-add-comment" data-type="text" id="btnAddCommentText">
+                            <i class="fa-solid fa-font"></i> + Text
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline btn-add-comment" data-type="image" id="btnAddCommentImage">
+                            <i class="fa-solid fa-image"></i> + Hình Ảnh
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline btn-add-comment" data-type="video" id="btnAddCommentVideo">
+                            <i class="fa-solid fa-video"></i> + Video
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Lịch chạy tự động -->
                 <div class="form-section-divider"><i class="fa-solid fa-clock"></i> Lịch Chạy Tự Động</div>
                 

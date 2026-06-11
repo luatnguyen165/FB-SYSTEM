@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ServerAdmin - Quản lý người dùng</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/admin.css">
+    <style>
+        /* Feature Visibility Styles */
+        .feature-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .feature-group {
+            background: var(--card-bg, #fff);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border-color, #e5e7eb);
+        }
+        .feature-group__header {
+            padding: 12px 20px;
+            background: var(--hover-bg, #f9fafb);
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-color, #374151);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-color, #e5e7eb);
+        }
+        .feature-group__header i {
+            color: var(--primary-color, #6366f1);
+        }
+        .feature-group__items {
+            padding: 8px 0;
+        }
+        .feature-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            transition: background 0.15s;
+        }
+        .feature-item:hover {
+            background: var(--hover-bg, #f9fafb);
+        }
+        .feature-item__left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .feature-item__icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--primary-light, #eef2ff);
+            color: var(--primary-color, #6366f1);
+            font-size: 16px;
+        }
+        .feature-item__info strong {
+            display: block;
+            font-size: 14px;
+            color: var(--text-color, #374151);
+        }
+        .feature-item__info span {
+            font-size: 12px;
+            color: var(--text-muted, #9ca3af);
+        }
+        /* Toggle Switch */
+        .switch-toggle {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+        .switch-toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .switch-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #d1d5db;
+            transition: 0.3s;
+            border-radius: 24px;
+        }
+        .switch-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+        .switch-toggle input:checked + .switch-slider {
+            background-color: #6366f1;
+        }
+        .switch-toggle input:checked + .switch-slider:before {
+            transform: translateX(20px);
+        }
+        .feature-footer {
+            margin-top: 20px;
+            display: flex;
+            justify-content: flex-end;
+        }
+        .feature-status {
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+        .feature-status.active {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+        .feature-status.inactive {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <i class="fas fa-shield-halved"></i>
+                <div class="sidebar-brand-text">
+                    <span class="sidebar-brand-label">ServerAdmin</span>
+                    <span class="sidebar-brand-subtitle">Quản lý hệ thống</span>
+                </div>
+            </div>
+            <ul class="sidebar-menu">
+                <li class="menu-section-title">Chức năng</li>
+                <li class="menu-item active" data-section="dashboard">
+                    <a href="#"><i class="fas fa-chart-line"></i> <span>Tổng quan</span></a>
+                </li>
+                <li class="menu-item" data-section="users">
+                    <a href="#"><i class="fas fa-users"></i> <span>Quản lý Users</span></a>
+                </li>
+                <li class="menu-item" data-section="create-user">
+                    <a href="#"><i class="fas fa-user-plus"></i> <span>Tạo User mới</span></a>
+                </li>
+                <li class="menu-item" data-section="features">
+                    <a href="#"><i class="fas fa-toggle-on"></i> <span>Quản lý Tính năng</span></a>
+                </li>
+                <li class="menu-section-title">Tài khoản</li>
+                <li class="menu-item">
+                    <a href="/logout" style="color: #dc2626;"><i class="fas fa-right-from-bracket"></i> <span>Đăng xuất</span></a>
+                </li>
+            </ul>
+            <div class="sidebar-footer-info">
+                <div class="admin-avatar">
+                    <i class="fas fa-user-shield"></i>
+                </div>
+                <div class="admin-info">
+                    <span class="admin-name"><%= adminName %></span>
+                    <span class="admin-role">Administrator</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Nav -->
+            <header class="top-nav">
+                <div class="nav-left">
+                    <h2 class="page-title" id="pageTitle">Tổng quan hệ thống</h2>
+                </div>
+                <div class="nav-right">
+                    <span class="server-status" id="serverStatus">
+                        <i class="fas fa-circle"></i> Đang kiểm tra...
+                    </span>
+                </div>
+            </header>
+
+            <div class="content-wrapper">
+                <!-- Dashboard Section -->
+                <section id="section-dashboard" class="section active">
+                    <div class="stats-grid">
+                        <div class="stat-card stat-card--total anim-stagger" style="--i:0">
+                            <div class="stat-card__icon-wrap"><i class="fas fa-users"></i></div>
+                            <div class="stat-card__body">
+                                <div class="stat-label">Tổng Users</div>
+                                <div class="stat-value" id="stat-total">0</div>
+                            </div>
+                        </div>
+                        <div class="stat-card stat-card--admin anim-stagger" style="--i:1">
+                            <div class="stat-card__icon-wrap"><i class="fas fa-user-shield"></i></div>
+                            <div class="stat-card__body">
+                                <div class="stat-label">Admin</div>
+                                <div class="stat-value" id="stat-admin">0</div>
+                            </div>
+                        </div>
+                        <div class="stat-card stat-card--user anim-stagger" style="--i:2">
+                            <div class="stat-card__icon-wrap"><i class="fas fa-user"></i></div>
+                            <div class="stat-card__body">
+                                <div class="stat-label">User thường</div>
+                                <div class="stat-value" id="stat-user">0</div>
+                            </div>
+                        </div>
+                        <div class="stat-card stat-card--week anim-stagger" style="--i:3">
+                            <div class="stat-card__icon-wrap"><i class="fas fa-calendar-week"></i></div>
+                            <div class="stat-card__body">
+                                <div class="stat-label">Đăng ký tuần</div>
+                                <div class="stat-value" id="stat-week">0</div>
+                            </div>
+                        </div>
+                        <div class="stat-card stat-card--month anim-stagger" style="--i:4">
+                            <div class="stat-card__icon-wrap"><i class="fas fa-calendar"></i></div>
+                            <div class="stat-card__body">
+                                <div class="stat-label">Đăng ký tháng</div>
+                                <div class="stat-value" id="stat-month">0</div>
+                            </div>
+                        </div>
+                        <div class="stat-card stat-card--devices anim-stagger" style="--i:5">
+                            <div class="stat-card__icon-wrap"><i class="fas fa-mobile-screen-button"></i></div>
+                            <div class="stat-card__body">
+                                <div class="stat-label">Devices active</div>
+                                <div class="stat-value" id="stat-devices">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Registration Table -->
+                    <div class="table-card">
+                        <div class="chart-header">
+                            <h3><i class="fas fa-table"></i> Đăng ký trong 30 ngày qua</h3>
+                            <button class="btn btn-sm" onclick="loadStats()"><i class="fas fa-sync-alt"></i> Làm mới</button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="users-table">
+                                <thead>
+                                    <tr>
+                                        <th>Ngày</th>
+                                        <th>Số đăng ký</th>
+                                        <th>Tổng lũy kế</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="registrationTableBody">
+                                    <tr><td colspan="3" class="loading-cell">Đang tải...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Users Management Section -->
+                <section id="section-users" class="section">
+                    <div class="section-header">
+                        <h1><i class="fas fa-users"></i> Quản lý Users</h1>
+                        <button class="btn btn-primary" onclick="showSection('create-user')"><i class="fas fa-user-plus"></i> Thêm User</button>
+                    </div>
+                    <div class="filters-bar">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="searchInput" placeholder="Tìm theo tên, email, SĐT..." oninput="debounceSearch()">
+                        </div>
+                        <select id="roleFilter" onchange="loadUsers()">
+                            <option value="">Tất cả vai trò</option>
+                            <option value="user">User</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                        <select id="sortFilter" onchange="loadUsers()">
+                            <option value="createdAt-desc">Mới nhất</option>
+                            <option value="createdAt-asc">Cũ nhất</option>
+                            <option value="username-asc">Tên A-Z</option>
+                            <option value="username-desc">Tên Z-A</option>
+                            <option value="email-asc">Email A-Z</option>
+                        </select>
+                    </div>
+                    <div class="table-card">
+                        <h3><i class="fas fa-list"></i> Danh sách người dùng</h3>
+                        <div class="table-responsive">
+                            <table class="users-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Tên</th>
+                                        <th>Email</th>
+                                        <th>SĐT</th>
+                                        <th>Vai trò</th>
+                                        <th>Devices</th>
+                                        <th>Ngày tạo</th>
+                                        <th>Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="usersTableBody">
+                                    <tr><td colspan="8" class="loading-cell">Đang tải...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="pagination" id="pagination"></div>
+                </section>
+
+                <!-- Create User Section -->
+                <section id="section-create-user" class="section">
+                    <div class="section-header">
+                        <h1><i class="fas fa-user-plus"></i> Tạo User mới</h1>
+                    </div>
+                    <div class="form-card">
+                        <form id="createUserForm" onsubmit="createUser(event)">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label><i class="fas fa-user"></i> Username *</label>
+                                    <input type="text" id="create-username" required placeholder="Nhập tên người dùng">
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fas fa-envelope"></i> Email *</label>
+                                    <input type="email" id="create-email" required placeholder="Nhập email">
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fas fa-lock"></i> Mật khẩu *</label>
+                                    <input type="password" id="create-password" required minlength="6" placeholder="Tối thiểu 6 ký tự">
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fas fa-phone"></i> Số điện thoại</label>
+                                    <input type="text" id="create-phone" placeholder="Nhập SĐT (không bắt buộc)">
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fas fa-user-tag"></i> Vai trò</label>
+                                    <select id="create-role">
+                                        <option value="user">User</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Tạo User</button>
+                                <button type="reset" class="btn btn-secondary"><i class="fas fa-rotate-right"></i> Đặt lại</button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- Features Section -->
+                <section id="section-features" class="section">
+                    <div class="section-header">
+                        <h1><i class="fas fa-toggle-on"></i> Quản lý Tính năng FB-SYSTEM</h1>
+                        <button class="btn btn-primary" onclick="saveFeatures()"><i class="fas fa-floppy-disk"></i> Lưu thay đổi</button>
+                    </div>
+                    <p style="color: var(--text-muted, #9ca3af); margin-bottom: 16px; font-size: 14px;">
+                        Bật/tắt các tính năng hiển thị trên Sidebar của FB-SYSTEM. Tính năng bị tắt sẽ không hiển thị với người dùng.
+                    </p>
+                    <div class="feature-grid" id="featureGrid"></div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- User Detail Modal -->
+    <div class="modal-overlay" id="userModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-user"></i> Chi tiết User</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div class="modal-overlay" id="editModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-user-pen"></i> Chỉnh sửa User</h2>
+                <button class="modal-close" onclick="closeEditModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="editUserForm" onsubmit="updateUser(event)">
+                    <input type="hidden" id="edit-id">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Username</label>
+                            <input type="text" id="edit-username" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="edit-email" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Số điện thoại</label>
+                            <input type="text" id="edit-phone">
+                        </div>
+                        <div class="form-group">
+                            <label>Vai trò</label>
+                            <select id="edit-role">
+                                <option value="user">User</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Lưu</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Hủy</button>
+                    </div>
+                </form>
+                <hr class="divider">
+                <h3 class="section-subtitle"><i class="fas fa-lock"></i> Đổi mật khẩu</h3>
+                <form id="changePasswordForm" onsubmit="changePassword(event)">
+                    <input type="hidden" id="pw-id">
+                    <div class="form-group">
+                        <label>Mật khẩu mới</label>
+                        <input type="password" id="new-password" minlength="6" placeholder="Tối thiểu 6 ký tự" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-warning"><i class="fas fa-key"></i> Đổi mật khẩu</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // ========================
+        // STATE
+        // ========================
+        let currentPage = 1;
+        let searchTimeout = null;
+
+        // ========================
+        // FEATURE DEFINITIONS
+        // ========================
+        const featureDefs = {
+            trangchu: {
+                title: 'Trang Chủ',
+                icon: 'fa-solid fa-house',
+                items: {
+                    dashboard: { icon: 'fa-solid fa-chart-pie', label: 'Dashboard', desc: 'Tổng quan thống kê' },
+                    channels: { icon: 'fa-solid fa-link', label: 'Tài Khoản MXH', desc: 'Kết nối Facebook, Instagram' },
+                }
+            },
+            noidung: {
+                title: 'Quản Lý Nội Dung',
+                icon: 'fa-solid fa-folder-open',
+                items: {
+                    storeVideo: { icon: 'fa-solid fa-clapperboard', label: 'Kho Video', desc: 'Quản lý video nguồn' },
+                    shopeeLink: { icon: 'fa-solid fa-bag-shopping', label: 'Link Tiếp Thị', desc: 'Affiliate links Shopee' },
+                    storage: { icon: 'fa-solid fa-database', label: 'Kho Lưu Trữ', desc: 'Quản lý file, hình ảnh' },
+                }
+            },
+            lichdang: {
+                title: 'Lịch Đăng Bài',
+                icon: 'fa-solid fa-calendar-days',
+                items: {
+                    'schedule-manager': { icon: 'fa-solid fa-table-list', label: 'Lịch Đăng Tổng Hợp', desc: 'Xem tất cả lịch đăng' },
+                    'schedule-post': { icon: 'fa-solid fa-images', label: 'Đăng Bài Ảnh', desc: 'Post Facebook/Instagram' },
+                    'schedule-reels': { icon: 'fa-solid fa-film', label: 'Đăng Reels/Video', desc: 'Reels/TikTok/YouTube' },
+                    'schedule-archive': { icon: 'fa-solid fa-clock-rotate-left', label: 'Bài Đã Đăng', desc: 'Report bài đã xuất bản' },
+                    'schedule-groups': { icon: 'fa-solid fa-users-rectangle', label: 'Quét Group FB', desc: 'Scan group Facebook' },
+                }
+            },
+            ai: {
+                title: 'AI Tự Động',
+                icon: 'fa-solid fa-robot',
+                items: {
+                    'ai-scan': { icon: 'fa-solid fa-magnifying-glass-chart', label: 'AI Quét Nhu Cầu', desc: 'Scan bài viết, phân tích AI' },
+                    'ai-comments': { icon: 'fa-solid fa-comment-dots', label: 'AI Tự Comment', desc: 'Bank comment, auto comment' },
+                    'ai-reply-messenger': { icon: 'fa-solid fa-reply', label: 'AI Tự Reply', desc: 'Tự động reply Messenger' },
+                    'comment-play': { icon: 'fa-solid fa-play', label: 'Kịch Bản Comment', desc: 'Chạy kịch bản comment tự động' },
+                }
+            },
+			music: {
+                title: 'Nhạc & Đối Thủ',
+                icon: 'fa-solid fa-music',
+                items: {
+                    competitors: { icon: 'fa-solid fa-users-viewfinder', label: 'Theo Dõi Đối Thủ', desc: 'Phân tích đối thủ cạnh tranh' },
+                    'trend-music': { icon: 'fa-solid fa-music', label: 'Music Trending', desc: 'Nhạc xu hướng' },
+                }
+            },
+            hethong: {
+                title: 'Hệ Thống',
+                icon: 'fa-solid fa-gear',
+                items: {
+                    settings: { icon: 'fa-solid fa-sliders', label: 'Cài Đặt', desc: 'Cài đặt hệ thống' },
+                    profile: { icon: 'fa-solid fa-user-circle', label: 'Tài Khoản', desc: 'Thông tin cá nhân' },
+                    'analytics': { icon: 'fa-solid fa-chart-line', label: 'Analytics', desc: 'Phân tích dữ liệu' },
+                    'telegram-notifications': { icon: 'fa-solid fa-paper-plane', label: 'Telegram', desc: 'Thông báo Telegram' },
+                }
+            }
+        };
+
+        // ========================
+        // NAVIGATION
+        // ========================
+        document.querySelectorAll('.menu-item[data-section]').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                showSection(item.dataset.section);
+            });
+        });
+
+        const pageTitles = {
+            'dashboard': 'Tổng quan hệ thống',
+            'users': 'Quản lý Users',
+            'create-user': 'Tạo User mới',
+            'features': 'Quản lý Tính năng FB-SYSTEM'
+        };
+
+        function showSection(name) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.menu-item').forEach(n => n.classList.remove('active'));
+            document.getElementById('section-' + name).classList.add('active');
+            const menuItem = document.querySelector('[data-section="' + name + '"]');
+            if (menuItem) menuItem.classList.add('active');
+            document.getElementById('pageTitle').textContent = pageTitles[name] || '';
+            if (name === 'dashboard') loadStats();
+            if (name === 'users') loadUsers();
+            if (name === 'features') loadFeatures();
+        }
+
+        // ========================
+        // STATS
+        // ========================
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/stats');
+                if (res.status === 401) { window.location.href = '/login'; return; }
+                const data = await res.json();
+                animateValue('stat-total', data.totalUsers || 0);
+                animateValue('stat-admin', data.adminCount || 0);
+                animateValue('stat-user', data.userCount || 0);
+                animateValue('stat-week', data.newUsersWeek || 0);
+                animateValue('stat-month', data.newUsersMonth || 0);
+                animateValue('stat-devices', data.activeDevices || 0);
+                renderRegistrationTable(data.registrationChart || []);
+            } catch (err) {
+                console.error('Lỗi tải stats:', err);
+            }
+        }
+
+        function animateValue(id, end) {
+            const el = document.getElementById(id);
+            const start = parseInt(el.textContent) || 0;
+            if (start === end) { el.textContent = end; return; }
+            const duration = 600;
+            const startTime = performance.now();
+            function update(now) {
+                const elapsed = now - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                el.textContent = Math.round(start + (end - start) * eased);
+                if (progress < 1) requestAnimationFrame(update);
+            }
+            requestAnimationFrame(update);
+        }
+
+        function renderRegistrationTable(chartData) {
+            const tbody = document.getElementById('registrationTableBody');
+            const dataMap = {};
+            chartData.forEach(d => { dataMap[d._id] = d.count; });
+            const rows = [];
+            let cumulative = 0;
+            for (let i = 29; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const key = d.toISOString().split('T')[0];
+                const count = dataMap[key] || 0;
+                cumulative += count;
+                const dateStr = d.toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+                const isToday = i === 0;
+                rows.push('<tr style="--row:' + (29 - i) + '; ' + (isToday ? 'font-weight:600;' : '') + '">' +
+                    '<td>' + dateStr + ' ' + (isToday ? '<span class="type-badge type-active" style="margin-left:6px">Hôm nay</span>' : '') + '</td>' +
+                    '<td>' + (count > 0 ? '<span class="type-badge type-user">' + count + '</span>' : '<span style="color:var(--text-light)">0</span>') + '</td>' +
+                    '<td><strong>' + cumulative + '</strong></td>' +
+                    '</tr>');
+            }
+            tbody.innerHTML = rows.join('');
+        }
+
+        // ========================
+        // USERS LIST
+        // ========================
+        function debounceSearch() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => { currentPage = 1; loadUsers(); }, 300);
+        }
+
+        async function loadUsers() {
+            const search = document.getElementById('searchInput').value;
+            const role = document.getElementById('roleFilter').value;
+            const sortVal = document.getElementById('sortFilter').value;
+            const [sortBy, sortOrder] = sortVal.split('-');
+            try {
+                const params = new URLSearchParams({ page: currentPage, limit: 15, search, role, sortBy, sortOrder });
+                const res = await fetch('/api/users?' + params);
+                if (res.status === 401) { window.location.href = '/login'; return; }
+                const data = await res.json();
+                renderUsersTable(data.users);
+                renderPagination(data.pagination);
+            } catch (err) {
+                console.error('Lỗi tải users:', err);
+            }
+        }
+
+        function renderUsersTable(users) {
+            const tbody = document.getElementById('usersTableBody');
+            if (!users || users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="loading-cell">Không tìm thấy user nào</td></tr>';
+                return;
+            }
+            tbody.innerHTML = users.map((u, i) =>
+                '<tr style="--row:' + i + '">' +
+                '<td>' + ((currentPage - 1) * 15 + i + 1) + '</td>' +
+                '<td><strong>' + escHtml(u.username) + '</strong></td>' +
+                '<td><span class="cell-ellipsis">' + escHtml(u.email) + '</span></td>' +
+                '<td>' + escHtml(u.phoneNumber || '-') + '</td>' +
+                '<td><span class="type-badge type-' + u.role + '">' + u.role + '</span></td>' +
+                '<td>' + (u.devices || []).length + '</td>' +
+                '<td>' + new Date(u.createdAt).toLocaleDateString('vi-VN') + '</td>' +
+                '<td class="actions-cell">' +
+                '<button class="btn-icon btn-info" onclick="viewUser(\'' + u._id + '\')" title="Xem"><i class="fas fa-eye"></i></button>' +
+                '<button class="btn-icon btn-primary" onclick="editUser(\'' + u._id + '\')" title="Sửa"><i class="fas fa-pen"></i></button>' +
+                '<button class="btn-icon btn-danger" onclick="deleteUser(\'' + u._id + '\', \'' + escHtml(u.username) + '\')" title="Xóa"><i class="fas fa-trash"></i></button>' +
+                '</td></tr>'
+            ).join('');
+        }
+
+        function renderPagination(pag) {
+            const el = document.getElementById('pagination');
+            if (!pag || pag.totalPages <= 1) { el.innerHTML = ''; return; }
+            let html = '';
+            if (currentPage > 1) html += '<button onclick="goPage(' + (currentPage - 1) + ')"><i class="fas fa-chevron-left"></i></button>';
+            for (let i = 1; i <= pag.totalPages; i++) {
+                if (i === currentPage) html += '<button class="active">' + i + '</button>';
+                else if (Math.abs(i - currentPage) <= 2 || i === 1 || i === pag.totalPages) html += '<button onclick="goPage(' + i + ')">' + i + '</button>';
+                else if (Math.abs(i - currentPage) === 3) html += '<span>...</span>';
+            }
+            if (currentPage < pag.totalPages) html += '<button onclick="goPage(' + (currentPage + 1) + ')"><i class="fas fa-chevron-right"></i></button>';
+            html += '<span class="page-info">Trang ' + pag.page + '/' + pag.totalPages + ' (' + pag.total + ' user)</span>';
+            el.innerHTML = html;
+        }
+
+        function goPage(p) { currentPage = p; loadUsers(); }
+
+        // ========================
+        // CRUD
+        // ========================
+        async function createUser(e) {
+            e.preventDefault();
+            try {
+                const body = {
+                    username: document.getElementById('create-username').value,
+                    email: document.getElementById('create-email').value,
+                    password: document.getElementById('create-password').value,
+                    phoneNumber: document.getElementById('create-phone').value,
+                    role: document.getElementById('create-role').value
+                };
+                const res = await fetch('/api/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error);
+                showToast('Tạo user thành công!', 'success');
+                document.getElementById('createUserForm').reset();
+                loadStats();
+            } catch (err) { showToast('Lỗi: ' + err.message, 'error'); }
+        }
+
+        async function viewUser(id) {
+            try {
+                const res = await fetch('/api/users/' + id);
+                if (res.status === 401) { window.location.href = '/login'; return; }
+                const u = await res.json();
+                const devices = (u.devices || []).map(d =>
+                    '<tr>' +
+                    '<td>' + escHtml(d.deviceId.substring(0, 16)) + '...</td>' +
+                    '<td>' + escHtml(d.platform || '-') + '</td>' +
+                    '<td>' + escHtml(d.ipAddress || '-') + '</td>' +
+                    '<td>' + (d.lastLogin ? new Date(d.lastLogin).toLocaleString('vi-VN') : '-') + '</td>' +
+                    '<td><span class="type-badge ' + (d.isActive ? 'type-active' : 'type-inactive') + '">' + (d.isActive ? 'Active' : 'Inactive') + '</span></td>' +
+                    '<td><button class="btn-icon btn-danger" onclick="deleteDevice(\'' + u._id + '\', \'' + escHtml(d.deviceId) + '\')"><i class="fas fa-trash"></i></button></td>' +
+                    '</tr>'
+                ).join('');
+
+                document.getElementById('modalBody').innerHTML =
+                    '<div class="user-detail">' +
+                    '<div class="detail-row"><label>Tên:</label><span>' + escHtml(u.username) + '</span></div>' +
+                    '<div class="detail-row"><label>Email:</label><span>' + escHtml(u.email) + '</span></div>' +
+                    '<div class="detail-row"><label>SĐT:</label><span>' + escHtml(u.phoneNumber || 'Chưa có') + '</span></div>' +
+                    '<div class="detail-row"><label>Vai trò:</label><span class="type-badge type-' + u.role + '">' + u.role + '</span></div>' +
+                    '<div class="detail-row"><label>Ngôn ngữ:</label><span>' + (u.language === 'vi' ? 'Tiếng Việt' : 'English') + '</span></div>' +
+                    '<div class="detail-row"><label>Ngày tạo:</label><span>' + new Date(u.createdAt).toLocaleString('vi-VN') + '</span></div>' +
+                    '</div>' +
+                    '<h3 class="section-subtitle"><i class="fas fa-mobile-screen-button"></i> Devices (' + (u.devices || []).length + ')</h3>' +
+                    (devices.length > 0 ?
+                        '<table class="users-table" style="margin-top:10px">' +
+                        '<thead><tr><th>Device ID</th><th>Platform</th><th>IP</th><th>Lần cuối</th><th>Trạng thái</th><th></th></tr></thead>' +
+                        '<tbody>' + devices + '</tbody></table>'
+                    : '<p class="empty-text">Chưa có device nào</p>');
+                document.getElementById('userModal').classList.add('active');
+            } catch (err) { showToast('Lỗi: ' + err.message, 'error'); }
+        }
+
+        function closeModal() { document.getElementById('userModal').classList.remove('active'); }
+
+        async function editUser(id) {
+            try {
+                const res = await fetch('/api/users/' + id);
+                if (res.status === 401) { window.location.href = '/login'; return; }
+                const u = await res.json();
+                document.getElementById('edit-id').value = u._id;
+                document.getElementById('edit-username').value = u.username;
+                document.getElementById('edit-email').value = u.email;
+                document.getElementById('edit-phone').value = u.phoneNumber || '';
+                document.getElementById('edit-role').value = u.role;
+                document.getElementById('pw-id').value = u._id;
+                document.getElementById('editModal').classList.add('active');
+            } catch (err) { showToast('Lỗi: ' + err.message, 'error'); }
+        }
+
+        function closeEditModal() { document.getElementById('editModal').classList.remove('active'); }
+
+        async function updateUser(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit-id').value;
+            try {
+                const body = {
+                    username: document.getElementById('edit-username').value,
+                    email: document.getElementById('edit-email').value,
+                    phoneNumber: document.getElementById('edit-phone').value,
+                    role: document.getElementById('edit-role').value
+                };
+                const res = await fetch('/api/users/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error);
+                showToast('Cập nhật thành công!', 'success');
+                closeEditModal();
+                loadUsers();
+            } catch (err) { showToast('Lỗi: ' + err.message, 'error'); }
+        }
+
+        async function changePassword(e) {
+            e.preventDefault();
+            const id = document.getElementById('pw-id').value;
+            const pw = document.getElementById('new-password').value;
+            try {
+                const res = await fetch('/api/users/' + id + '/password', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ newPassword: pw }) });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error);
+                showToast('Đổi mật khẩu thành công!', 'success');
+                document.getElementById('new-password').value = '';
+            } catch (err) { showToast('Lỗi: ' + err.message, 'error'); }
+        }
+
+        async function deleteUser(id, name) {
+            if (!confirm('Bạn có chắc muốn xóa user "' + name + '"? Hành động này không thể hoàn tác.')) return;
+            try {
+                const res = await fetch('/api/users/' + id, { method: 'DELETE' });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error);
+                showToast('Xóa user thành công!', 'success');
+                loadUsers(); loadStats();
+            } catch (err) { showToast('Lỗi: ' + err.message, 'error'); }
+        }
+
+        async function deleteDevice(userId, deviceId) {
+            if (!confirm('Xóa device này?')) return;
+            try {
+                const res = await fetch('/api/users/' + userId + '/devices/' + encodeURIComponent(deviceId), { method: 'DELETE' });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error);
+                showToast('Xóa device thành công!', 'success');
+                viewUser(userId);
+            } catch (err) { showToast('Lỗi: ' + err.message, 'error'); }
+        }
+
+        // ========================
+        // FEATURES
+        // ========================
+        async function loadFeatures() {
+            try {
+                const res = await fetch('/api/features');
+                if (res.status === 401) { window.location.href = '/login'; return; }
+                const features = await res.json();
+                renderFeatures(features);
+            } catch (err) {
+                console.error('Lỗi tải tính năng:', err);
+                // Render with defaults if API fails
+                renderFeatures({});
+            }
+        }
+
+        function renderFeatures(features) {
+            const grid = document.getElementById('featureGrid');
+            if (!grid) return;
+            let html = '';
+            for (const [groupKey, group] of Object.entries(featureDefs)) {
+                html += '<div class="feature-group">';
+                html += '<div class="feature-group__header"><i class="' + group.icon + '"></i> <span>' + group.title + '</span></div>';
+                html += '<div class="feature-group__items">';
+                for (const [key, def] of Object.entries(group.items)) {
+                    const isEnabled = features[key] !== false;
+                    html += '<div class="feature-item">';
+                    html += '<div class="feature-item__left">';
+                    html += '<div class="feature-item__icon"><i class="' + def.icon + '"></i></div>';
+                    html += '<div class="feature-item__info"><strong>' + def.label + '</strong><span>' + def.desc + '</span></div>';
+                    html += '</div>';
+                    html += '<div class="feature-item__toggle">';
+                    html += '<label class="switch-toggle">';
+                    html += '<input type="checkbox" class="feature-checkbox" data-key="' + key + '" ' + (isEnabled ? 'checked' : '') + '>';
+                    html += '<span class="switch-slider"></span>';
+                    html += '</label>';
+                    html += '</div>';
+                    html += '</div>';
+                }
+                html += '</div></div>';
+            }
+            grid.innerHTML = html;
+        }
+
+        async function saveFeatures() {
+            const checkboxes = document.querySelectorAll('.feature-checkbox');
+            const updates = {};
+            checkboxes.forEach(cb => {
+                updates[cb.dataset.key] = cb.checked;
+            });
+            try {
+                const res = await fetch('/api/features', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updates)
+                });
+                if (res.status === 401) { window.location.href = '/login'; return; }
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error);
+                showToast('Đã cập nhật hiển thị tính năng!', 'success');
+            } catch (err) {
+                showToast('Lỗi: ' + err.message, 'error');
+            }
+        }
+
+        // ========================
+        // UTILS
+        // ========================
+        function escHtml(str) { const div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
+
+        function showToast(msg, type) {
+            type = type || 'info';
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = 'toast show toast-' + type;
+            setTimeout(function() { toast.className = 'toast'; }, 3000);
+        }
+
+        async function checkStatus() {
+            try {
+                const res = await fetch('/api/stats');
+                if (res.status === 401) { window.location.href = '/login'; return; }
+                if (res.ok) {
+                    document.getElementById('serverStatus').innerHTML = '<i class="fas fa-circle" style="color:#10b981"></i> Đang hoạt động';
+                } else {
+                    document.getElementById('serverStatus').innerHTML = '<i class="fas fa-circle" style="color:#f59e0b"></i> Có lỗi';
+                }
+            } catch (e) {
+                document.getElementById('serverStatus').innerHTML = '<i class="fas fa-circle" style="color:#ef4444"></i> Mất kết nối';
+            }
+        }
+
+        // Init
+        loadStats();
+        checkStatus();
+    </script>
+</body>
+</html>

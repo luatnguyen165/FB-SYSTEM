@@ -1,0 +1,115 @@
+/* ===================================
+   SCHEDULE-POST-STATS.CSS - Hero Button & Stats Cards
+   Part of schedule-post.css split
+   =================================== */
+
+/* ===== HERO BUTTON ===== */
+.btn-create-post-hero {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: var(--primary-gradient);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+}
+
+.btn-create-post-hero:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+}
+
+.btn-create-post-hero i {
+    font-size: 0.85rem;
+}
+
+/* ===== STATS CARDS ===== */
+.schedule-overview-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+.schedule-stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    transition: all var(--transition-normal);
+    box-shadow: var(--shadow-sm);
+}
+
+.schedule-stat-card:hover {
+    border-color: var(--border-dark);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.schedule-stat-card__icon {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary-light);
+    color: var(--primary);
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.schedule-stat-card--pending .schedule-stat-card__icon {
+    background: var(--warning-light);
+    color: var(--warning);
+}
+
+.schedule-stat-card--success .schedule-stat-card__icon {
+    background: var(--success-light);
+    color: var(--success);
+}
+
+.schedule-stat-card--danger .schedule-stat-card__icon {
+    background: var(--danger-light);
+    color: var(--danger);
+}
+
+.schedule-stat-card__content {
+    flex: 1;
+    min-width: 0;
+}
+
+.schedule-stat-card__label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.schedule-stat-card__value {
+    display: block;
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--text-main);
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.schedule-stat-card--pending .schedule-stat-card__value { color: var(--warning); }
+.schedule-stat-card--success .schedule-stat-card__value { color: var(--success); }
+.schedule-stat-card--danger .schedule-stat-card__value { color: var(--danger); }
+
+.schedule-stat-card__hint {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--text-light);
+}

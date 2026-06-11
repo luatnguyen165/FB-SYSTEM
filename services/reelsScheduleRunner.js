@@ -489,6 +489,14 @@ async function executeSchedule(schedule, { persistStatus = true, markAsPosted = 
             const post = await buildReelsUploadPayload(schedule);
             console.log(`[Schedule Runner] Processing REELS schedule ${schedule._id} using ${account.accountName} (${account.accountType || 'Cá nhân'})`);
 
+            // Socket: bắt đầu đăng reels
+            emitScheduleUpdate(schedule.userId, {
+                _id: schedule._id,
+                type: 'reels',
+                status: 'processing',
+                progress: { phase: 'reels_start', message: `Đang đăng reels lên Facebook với tài khoản ${account.accountName}...`, current: 0, total: 1 }
+            });
+
             result = await runBotUploadInstantWithAccount({
                 userId: schedule.userId,
                 accountName: account.accountName,
@@ -498,6 +506,15 @@ async function executeSchedule(schedule, { persistStatus = true, markAsPosted = 
                     profileUrl: account.profileUrl || ''
                 },
                 headless: false
+            });
+
+            // Socket: đã đăng xong reels
+            emitScheduleUpdate(schedule.userId, {
+                _id: schedule._id,
+                type: 'reels',
+                status: result?.success ? 'posted' : 'failed',
+                publishedUrl: result?.publishedUrl || '',
+                progress: { phase: 'reels_complete', message: result?.success ? 'Đã đăng reels thành công' : 'Đăng reels thất bại', current: 1, total: 1 }
             });
         }
 

@@ -274,7 +274,7 @@ function buildSchedulePreviewHtml(schedule = {}) {
     return `
         <div class="schedule-popover__meta-line">
             <span class="schedule-popover__badge ${platformMeta.className}"><i class="${platformMeta.icon}"></i> ${escapeHtml(platformMeta.label)}</span>
-            <span class="schedule-popover__badge ${statusMeta.className}"><i class="fa-solid ${statusMeta.icon}"></i> ${escapeHtml(statusMeta.label)}</span>
+            <span class="schedule-popover__badge ${statusMeta.className}"><i class="fa-solid ${statusMeta.icon}"></i></span>
         </div>
         <div class="schedule-popover__section">
             <strong>Thời gian</strong>
@@ -290,7 +290,6 @@ function buildSchedulePreviewHtml(schedule = {}) {
         </div>
         <div class="schedule-popover__section schedule-popover__section--grid">
             <div><strong>Nền tảng</strong><p>${escapeHtml(Array.isArray(schedule.platforms) && schedule.platforms.length ? schedule.platforms.map(code => getSchedulePlatformMeta(code).label).join(', ') : '—')}</p></div>
-            <div><strong>Trạng thái</strong><p>${escapeHtml(statusMeta.label)}</p></div>
             <div><strong>Tài khoản</strong><p>${escapeHtml(Array.isArray(schedule.accounts) && schedule.accounts.length ? schedule.accounts.join(', ') : '—')}</p></div>
             <div><strong>Group/Nguồn</strong><p>${escapeHtml(schedule.targetGroupName || schedule.sourceChannelName || '—')}</p></div>
         </div>
@@ -358,7 +357,7 @@ function openSchedulePopover(schedule, anchorEl, mode = 'detail', overflowItems 
                         <span class="schedule-popover__overflow-item-time">${timeOnly}</span>
                         <strong>${itemTitle}</strong>
                         <small>
-                            <span class="schedule-popover__overflow-item-badge schedule-popover__overflow-item-badge--${itemStatus.className}">${itemStatus.label}</span>
+                            <span class="schedule-popover__overflow-item-badge schedule-popover__overflow-item-badge--${itemStatus.className}"></span>
                         </small>
                     </div>
                     <div class="schedule-popover__overflow-item-arrow">
@@ -1197,6 +1196,7 @@ async function renderCalendar() {
             const title = String(item.caption || '').trim() || (String(item.type || '') === 'reels' ? 'Reels đã lên lịch' : 'Post đã lên lịch');
             const time = formatShortDateTime(item.scheduledAt).split(' ')[1] || formatShortDateTime(item.scheduledAt);
             const canDrag = String(item.status || 'pending') === 'pending';
+            const truncatedTitle = escapeHtml(title).length > 40 ? escapeHtml(title).substring(0, 40) + '…' : escapeHtml(title);
 
             return `
                 <div class="schedule-item ${platformMeta.className} schedule-item--${String(item.status || 'pending')} ${String(item.type || 'post') === 'reels' ? 'schedule-item--reels' : 'schedule-item--post'}"
@@ -1204,12 +1204,12 @@ async function renderCalendar() {
                     data-schedule-id="${escapeHtml(item._id)}"
                     data-status="${escapeHtml(String(item.status || 'pending'))}"
                     data-date-key="${escapeHtml(dateKey)}"
-                    title="${escapeHtml(time)} • ${escapeHtml(title)} • ${escapeHtml(statusMeta.label)}">
+                    title="${escapeHtml(time)} • ${truncatedTitle}">
                     <div class="schedule-item__main">
                         <i class="${platformMeta.icon}"></i>
-                        <span class="schedule-item__text" title="${escapeHtml(title)}">${escapeHtml(time)} • ${escapeHtml(title)}</span>
+                        <span class="schedule-item__text" title="${escapeHtml(title)}">${escapeHtml(time)} • ${truncatedTitle}</span>
                     </div>
-                    <span class="schedule-item__status ${statusMeta.className}">${escapeHtml(statusMeta.label)}</span>
+                    <span class="schedule-item__status-dot ${statusMeta.className}"></span>
                 </div>`;
         }).join('');
 
@@ -1219,7 +1219,7 @@ async function renderCalendar() {
                         <i class="fa-solid fa-ellipsis"></i>
                         <span class="schedule-item__text">+${remainingCount} lịch khác</span>
                     </div>
-                    <span class="schedule-item__status status-pending">Xem thêm</span>
+                    <span class="schedule-item__status-dot status-pending"></span>
                </button>`
             : '';
 
@@ -1236,6 +1236,55 @@ async function renderCalendar() {
 
     const calendarSummaryEl = document.getElementById('statMonthlyVisible');
     if (calendarSummaryEl) calendarSummaryEl.textContent = getCalendarFilterSummaryText(filters, filteredSchedules);
+}
+
+function schedulePostCalendarRefreshFromRealtime(data = {}) {
+    if (schedulePostRealtimeRefreshTimer) {
+        clearTimeout(schedulePostRealtimeRefreshTimer);
+    }
+
+    schedulePostRealtimeRefreshTimer = setTimeout(async () => {
+        try {
+            await renderCalendar();
+            const status = String(data.status || '').trim();
+            if (status === 'posted') {
+                showToast('Lịch Post ảnh đã đăng thành công và được cập nhật.', 'success');
+            } else if (status === 'failed') {
+                showToast('Lịch Post ảnh đăng thất bại. Vui lòng kiểm tra lại.', 'error');
+            }
+        } catch (error) {
+            console.error('[Schedule Post Socket] Refresh calendar failed:', error);
+        }
+    }, 250);
+}
+
+function initSchedulePostRealtimeSocket() {
+    const userId = window.__CURRENT_USER_ID || null;
+    if (!userId || typeof io === 'undefined' || schedulePostRealtimeSocket) return;
+
+    schedulePostRealtimeSocket = io(window.location.origin, {
+        transports: ['websocket', 'polling']
+    });
+
+    schedulePostRealtimeSocket.on('connect', () => {
+        schedulePostRealtimeSocket.emit('join-user', userId);
+        console.log('[Schedule Post Socket] Connected:', schedulePostRealtimeSocket.id);
+    });
+
+    schedulePostRealtimeSocket.on('schedule-update', (data) => {
+        if (!data || !data._id) return;
+        const currentType = getCalendarType();
+
+        // Nếu server chưa gửi type, vẫn refresh để tương thích với event cũ.
+        if (data.type && String(data.type) !== currentType) return;
+
+        console.log('[Schedule Post Socket] schedule-update received:', data);
+        schedulePostCalendarRefreshFromRealtime(data);
+    });
+
+    schedulePostRealtimeSocket.on('connect_error', (error) => {
+        console.error('[Schedule Post Socket] Connection error:', error?.message || error);
+    });
 }
 
 async function openScheduleFromDay(dateString) {
@@ -1566,6 +1615,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     refreshSchedulePostPlatformOptions();
+    initSchedulePostRealtimeSocket();
 
     renderCalendar();
 });

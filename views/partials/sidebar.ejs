@@ -1,8 +1,5 @@
 <%
     const feat = typeof features !== 'undefined' ? features : {};
-    const isContentOpen = ['storeVideo', 'shopeeLink'].includes(currentPage);
-    const isSchedulerOpen = ['schedule-manager', 'schedule-post', 'schedule-reels', 'schedule-archive', 'schedule-groups'].includes(currentPage);
-    const isAiOpen = ['ai-scan', 'ai-comments', 'comment-play', 'video-create'].includes(currentPage);
     const isAdmin = typeof user !== 'undefined' && user && user.role === 'admin';
 %>
 <aside class="sidebar" id="sidebar">
@@ -43,18 +40,17 @@
             const accountTypeOrder = { 'Cá nhân': 1, 'Nhà Sáng Tạo': 2, 'Fanpage': 3 };
             const accountTypeIcons = { 'Cá nhân': 'fa-user', 'Nhà Sáng Tạo': 'fa-star', 'Fanpage': 'fa-flag' };
         %>
-        <li class="sidebar-group is-open">
+        <li class="sidebar-group accounts-group">
             <button
                 type="button"
                 class="sidebar-group-toggle account-group-toggle"
-                data-sidebar-group-toggle
-                aria-expanded="true"
+                data-sidebar-group-toggle="accounts"
+                aria-expanded="false"
             >
                 <span class="sidebar-group-toggle__label">
                     <i class="fa-solid fa-link"></i>
                     Tài Khoản MXH
                 </span>
-                <span class="account-count"><%= chs.length %></span>
                 <i class="fa-solid fa-chevron-down sidebar-group-chevron"></i>
             </button>
             <ul class="sidebar-submenu">
@@ -66,7 +62,6 @@
                             <i class="fa-brands <%= platformIcons[pl] %>"></i>
                         </span>
                         <span class="channel-name"><%= platformLabels[pl] %></span>
-                        <span class="sidebar-platform-badge sidebar-platform-badge--<%= pl.toLowerCase() %><%= plChs.length === 0 ? ' sidebar-platform-badge--empty' : '' %>"><%= plChs.length %></span>
                     </a>
                 </li>
                 <% }); %>
@@ -78,12 +73,12 @@
         <li class="menu-section-title">Quản Lý Nội Dung</li>
 
         <% if (feat.storeVideo !== false || feat.shopeeLink !== false) { %>
-        <li class="sidebar-group <%= isContentOpen ? 'is-open' : '' %>">
+        <li class="sidebar-group">
             <button
                 type="button"
                 class="sidebar-group-toggle"
                 data-sidebar-group-toggle
-                aria-expanded="<%= isContentOpen ? 'true' : 'false' %>"
+                aria-expanded="false"
             >
                 <span class="sidebar-group-toggle__label">
                     <i class="fa-solid fa-folder-open"></i>
@@ -110,12 +105,12 @@
         <li class="menu-section-title">Lịch Đăng Bài</li>
 
         <% if (feat['schedule-manager'] !== false || feat['schedule-post'] !== false || feat['schedule-reels'] !== false || feat['schedule-archive'] !== false || feat['schedule-groups'] !== false) { %>
-        <li class="sidebar-group <%= isSchedulerOpen ? 'is-open' : '' %>">
+        <li class="sidebar-group">
             <button
                 type="button"
                 class="sidebar-group-toggle"
                 data-sidebar-group-toggle
-                aria-expanded="<%= isSchedulerOpen ? 'true' : 'false' %>"
+                aria-expanded="false"
             >
                 <span class="sidebar-group-toggle__label">
                     <i class="fa-solid fa-calendar-days"></i>
@@ -157,12 +152,12 @@
         <li class="menu-section-title">AI Tự Động</li>
 
         <% if (feat['ai-scan'] !== false || feat['ai-comments'] !== false || feat['comment-play'] !== false) { %>
-        <li class="sidebar-group <%= isAiOpen ? 'is-open' : '' %>">
+        <li class="sidebar-group">
             <button
                 type="button"
                 class="sidebar-group-toggle"
                 data-sidebar-group-toggle
-                aria-expanded="<%= isAiOpen ? 'true' : 'false' %>"
+                aria-expanded="false"
             >
                 <span class="sidebar-group-toggle__label">
                     <i class="fa-solid fa-robot"></i>
@@ -186,9 +181,6 @@
                     <a href="/schedule/ai-comment/play"><i class="fa-solid fa-play"></i>▶ Kịch Bản Comment</a>
                 </li>
                 <% } %>
-                <li class="menu-item <%= currentPage === 'video-create' ? 'active' : '' %>">
-                    <a href="/ai-images"><i class="fa-solid fa-video"></i>Tạo Video</a>
-                </li>
             </ul>
         </li>
         <% } %>
@@ -201,7 +193,7 @@
         <% } %>
 
         <!-- 🎵 MUSIC TRENDING -->
-        <% if (feat['music-trending'] !== false) { %>
+        <% if (feat['trend-music'] !== false) { %>
         <li class="menu-item <%= currentPage === 'music-trending' ? 'active' : '' %>">
             <a href="/music-trending"><i class="fa-solid fa-music"></i>Music Trending</a>
         </li>

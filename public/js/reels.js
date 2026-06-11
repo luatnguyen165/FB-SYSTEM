@@ -339,6 +339,8 @@ let reelsCalendarOverflowMap = new Map();
 let reelsCalendarDragState = { scheduleId: '', sourceDateKey: '' };
 let reelsCalendarActivePopover = { scheduleId: '', mode: 'detail' };
 let reelsAccountOptionsCache = [];
+let reelsRealtimeSocket = null;
+let reelsRealtimeRefreshTimer = null;
 
 function updateReelsSubmitButtonState() {
     const btnSubmit = document.getElementById('btnSubmitReelsSchedule');
@@ -589,11 +591,11 @@ function formatLocalDateKey(dateValue) {
 function getReelsStatusMeta(status) {
     switch (String(status || 'pending')) {
         case 'posted':
-            return { label: 'Đã đăng', className: 'reels-status-posted' };
+            return { label: 'Đã đăng', className: 'reels-status-posted', icon: 'fa-solid fa-check' };
         case 'failed':
-            return { label: 'Thất bại', className: 'reels-status-failed' };
+            return { label: 'Thất bại', className: 'reels-status-failed', icon: 'fa-solid fa-xmark' };
         default:
-            return { label: 'Đang chờ', className: 'reels-status-pending' };
+            return { label: 'Đang chờ', className: 'reels-status-pending', icon: 'fa-solid fa-clock' };
     }
 }
 
@@ -721,7 +723,8 @@ function positionReelsPopover(popover, anchorEl) {
 function buildReelsPreviewHtml(schedule = {}) {
     const platformMeta = getReelsPlatformMeta(getReelsPrimaryPlatform(schedule));
     const statusMeta = getReelsStatusMeta(schedule.status);
-    const title = String(schedule.caption || '').trim() || 'Reels đã lên lịch';
+    const rawTitle = String(schedule.caption || '').trim() || 'Reels đã lên lịch';
+    const title = rawTitle.length > 80 ? rawTitle.substring(0, 77) + '...' : rawTitle;
     const videoTitle = schedule.videoTitle || schedule.videoName || (schedule.videoId && typeof schedule.videoId === 'object' ? schedule.videoId.title : '') || '—';
     const videoSize = schedule.videoSize || (schedule.videoId && typeof schedule.videoId === 'object' ? schedule.videoId.fileSize : '') || '—';
     const poster = schedule.videoId && typeof schedule.videoId === 'object' ? schedule.videoId.thumbnailUrl : '';
@@ -729,7 +732,7 @@ function buildReelsPreviewHtml(schedule = {}) {
     return `
         <div class="schedule-popover__meta-line">
             <span class="schedule-popover__badge ${platformMeta.className}"><i class="${platformMeta.icon}"></i> ${platformMeta.label}</span>
-            <span class="schedule-popover__badge ${statusMeta.className}"><i class="fa-solid fa-clock"></i> ${statusMeta.label}</span>
+            <span class="schedule-popover__badge ${statusMeta.className}"><i class="${statusMeta.icon}"></i></span>
         </div>
         <div class="schedule-popover__section">
             <strong>Thời gian</strong>
@@ -1002,9 +1005,10 @@ function renderReelsCalendar(schedules = []) {
             const platformMeta = getReelsPlatformMeta(getReelsPrimaryPlatform(item));
             const statusMeta = getReelsStatusMeta(item.status);
             const time = formatShortDateTime(item.scheduledAt).split(' ')[1] || formatShortDateTime(item.scheduledAt);
-            const title = item.caption || 'Reels đã lên lịch';
+            const rawTitle = String(item.caption || '').trim() || 'Reels đã lên lịch';
+            const title = rawTitle.length > 40 ? rawTitle.substring(0, 37) + '...' : rawTitle;
             const canDrag = String(item.status || 'pending') === 'pending';
-            return `<div class="schedule-item ${platformMeta.className} ${statusMeta.className} ${String(item.type || 'reels') === 'reels' ? 'schedule-item--reels' : 'schedule-item--post'}" draggable="${canDrag ? 'true' : 'false'}" data-schedule-id="${item._id}" data-date-key="${dateKey}" title="${time} • ${title} • ${statusMeta.label}"><i class="${platformMeta.icon}"></i><span class="schedule-item-body"><span class="schedule-item-text">${time} • ${title}</span><span class="schedule-status-badge">${statusMeta.label}</span></span></div>`;
+            return `<div class="schedule-item ${platformMeta.className} ${statusMeta.className} ${String(item.type || 'reels') === 'reels' ? 'schedule-item--reels' : 'schedule-item--post'}" draggable="${canDrag ? 'true' : 'false'}" data-schedule-id="${item._id}" data-date-key="${dateKey}" title="${time} • ${rawTitle}"><i class="${platformMeta.icon}"></i><span class="schedule-item-body"><span class="schedule-item__text" title="${rawTitle}">${time} • ${title}</span><span class="schedule-item__status-dot ${statusMeta.className}"></span></span></div>`;
         }).join('');
 
         const moreHtml = remainingCount > 0
@@ -1286,9 +1290,10 @@ function applyReelsFilters() {
             const platformMeta = getReelsPlatformMeta(getReelsPrimaryPlatform(item));
             const statusMeta = getReelsStatusMeta(item.status);
             const time = formatShortDateTime(item.scheduledAt).split(' ')[1] || formatShortDateTime(item.scheduledAt);
-            const title = item.caption || 'Reels đã lên lịch';
+            const rawTitle = String(item.caption || '').trim() || 'Reels đã lên lịch';
+            const title = rawTitle.length > 40 ? rawTitle.substring(0, 37) + '...' : rawTitle;
             const canDrag = String(item.status || 'pending') === 'pending';
-            return `<div class="schedule-item ${platformMeta.className} ${statusMeta.className} ${String(item.type || 'reels') === 'reels' ? 'schedule-item--reels' : 'schedule-item--post'}" draggable="${canDrag ? 'true' : 'false'}" data-schedule-id="${item._id}" data-date-key="${dateKey}" title="${time} • ${title} • ${statusMeta.label}"><i class="${platformMeta.icon}"></i><span class="schedule-item-body"><span class="schedule-item-text">${time} • ${title}</span><span class="schedule-status-badge">${statusMeta.label}</span></span></div>`;
+            return `<div class="schedule-item ${platformMeta.className} ${statusMeta.className} ${String(item.type || 'reels') === 'reels' ? 'schedule-item--reels' : 'schedule-item--post'}" draggable="${canDrag ? 'true' : 'false'}" data-schedule-id="${item._id}" data-date-key="${dateKey}" title="${time} • ${rawTitle}"><i class="${platformMeta.icon}"></i><span class="schedule-item-body"><span class="schedule-item__text" title="${rawTitle}">${time} • ${title}</span><span class="schedule-item__status-dot ${statusMeta.className}"></span></span></div>`;
         }).join('');
 
         const moreHtml = remainingCount > 0
@@ -1953,3 +1958,63 @@ function searchVideoInMiniLibrary() {
     renderAvailableVideosForReels();
     renderShopeeLinkList();
 }
+
+// ============================================================
+// REALTIME SOCKET - Listen for schedule status updates
+// ============================================================
+
+function reelsCalendarRefreshFromRealtime(data = {}) {
+    if (reelsRealtimeRefreshTimer) {
+        clearTimeout(reelsRealtimeRefreshTimer);
+    }
+
+    reelsRealtimeRefreshTimer = setTimeout(async () => {
+        try {
+            await refreshReelsCalendarFallback();
+            const status = String(data.status || '').trim();
+            if (status === 'posted') {
+                showToast('Lịch Reels đã đăng thành công và được cập nhật.', 'success');
+            } else if (status === 'failed') {
+                showToast('Lịch Reels đăng thất bại. Vui lòng kiểm tra lại.', 'error');
+            } else if (status === 'processing') {
+                const message = data.progress?.message || 'Đang xử lý đăng bài...';
+                showToast(message, 'info');
+            }
+        } catch (error) {
+            console.error('[Reels Socket] Refresh calendar failed:', error);
+        }
+    }, 250);
+}
+
+function initReelsRealtimeSocket() {
+    const userId = window.__CURRENT_USER_ID || null;
+    if (!userId || typeof io === 'undefined' || reelsRealtimeSocket) return;
+
+    reelsRealtimeSocket = io(window.location.origin, {
+        transports: ['websocket', 'polling']
+    });
+
+    reelsRealtimeSocket.on('connect', () => {
+        reelsRealtimeSocket.emit('join-user', userId);
+        console.log('[Reels Socket] Connected:', reelsRealtimeSocket.id);
+    });
+
+    reelsRealtimeSocket.on('schedule-update', (data) => {
+        if (!data || !data._id) return;
+
+        // Only handle reels type updates
+        if (data.type && String(data.type) !== 'reels') return;
+
+        console.log('[Reels Socket] schedule-update received:', data);
+        reelsCalendarRefreshFromRealtime(data);
+    });
+
+    reelsRealtimeSocket.on('connect_error', (error) => {
+        console.error('[Reels Socket] Connection error:', error?.message || error);
+    });
+}
+
+// Initialize socket on DOMContentLoaded
+document.addEventListener('DOMContentLoaded', () => {
+    initReelsRealtimeSocket();
+});

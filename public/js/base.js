@@ -79,14 +79,38 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Sidebar tree dropdowns — all groups including Tài Khoản MXH are toggleable
+    // Sidebar tree dropdowns — chỉ mở group cha của tính năng hiện tại/click
+    const sidebarGroups = Array.from(document.querySelectorAll('.sidebar-group'));
+
+    function setSidebarGroupOpen(group, isOpen) {
+        if (!group) return;
+        group.classList.toggle('is-open', isOpen);
+        const button = group.querySelector('[data-sidebar-group-toggle]');
+        if (button) button.setAttribute('aria-expanded', String(isOpen));
+    }
+
+    function openOnlySidebarGroup(targetGroup) {
+        sidebarGroups.forEach((group) => {
+            setSidebarGroupOpen(group, group === targetGroup);
+        });
+    }
+
+    const activeSidebarItem = document.querySelector('.sidebar .menu-item.active');
+    openOnlySidebarGroup(activeSidebarItem?.closest('.sidebar-group') || null);
+
     document.querySelectorAll('[data-sidebar-group-toggle]').forEach((button) => {
-        button.addEventListener('click', () => {
+        button.addEventListener('click', (e) => {
+            e.stopPropagation();
             const group = button.closest('.sidebar-group');
             if (!group) return;
             const willOpen = !group.classList.contains('is-open');
-            group.classList.toggle('is-open', willOpen);
-            button.setAttribute('aria-expanded', String(willOpen));
+            openOnlySidebarGroup(willOpen ? group : null);
+        });
+    });
+
+    document.querySelectorAll('.sidebar-submenu .menu-item a').forEach((link) => {
+        link.addEventListener('click', () => {
+            openOnlySidebarGroup(link.closest('.sidebar-group'));
         });
     });
 

@@ -1,0 +1,371 @@
+/* ===================================
+   SCHEDULE-POST-POPOVER.CSS - Popover Styles
+   Part of schedule-post.css split
+   =================================== */
+
+/* ===== POPOVER ===== */
+.schedule-popover {
+    position: fixed;
+    z-index: 5000;
+    width: 400px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    padding: 0;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(8px);
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+}
+
+.schedule-popover.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.schedule-popover__arrow {
+    position: absolute;
+    top: -8px;
+    left: 24px;
+    width: 16px;
+    height: 16px;
+    background: var(--bg-card);
+    border-left: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    transform: rotate(45deg);
+}
+
+.schedule-popover__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.schedule-popover__header-content {
+    flex: 1;
+}
+
+.schedule-popover__eyebrow {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.schedule-popover__title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.schedule-popover__close {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-hover);
+    border: none;
+    border-radius: 50%;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.schedule-popover__close:hover {
+    background: var(--danger-light);
+    color: var(--danger);
+}
+
+.schedule-popover__body {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.schedule-popover__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.schedule-popover__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.schedule-popover__badge--fb { background: rgba(24, 119, 242, 0.1); color: var(--fb-color); }
+.schedule-popover__badge--ig { background: rgba(225, 48, 108, 0.1); color: var(--ig-color); }
+.schedule-popover__badge--yt { background: rgba(255, 0, 0, 0.1); color: var(--yt-color); }
+.schedule-popover__badge--pending {
+    background: var(--warning);
+    color: #fff;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+}
+.schedule-popover__badge--posted {
+    background: var(--success);
+    color: #fff;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+}
+.schedule-popover__badge--failed {
+    background: var(--danger);
+    color: #fff;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.schedule-popover__caption {
+    padding: 14px 16px;
+    background: var(--bg-hover);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--text-main);
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-word;
+    max-height: none;
+}
+
+.schedule-popover__media-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.schedule-popover__media-grid img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+}
+
+.schedule-popover__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+
+/* ===== OVERFLOW LIST ===== */
+.schedule-popover__overflow-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.schedule-popover__overflow-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 14px 16px;
+    background: var(--bg-hover);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-align: left;
+}
+
+.schedule-popover__overflow-item:hover {
+    background: var(--primary-light);
+    border-color: var(--primary);
+    transform: translateX(4px);
+}
+
+.schedule-popover__overflow-item-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-card);
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+    font-size: 1rem;
+}
+
+.schedule-popover__overflow-item-icon--fb { background: rgba(24, 119, 242, 0.1); color: var(--fb-color); }
+.schedule-popover__overflow-item-icon--ig { background: rgba(225, 48, 108, 0.1); color: var(--ig-color); }
+.schedule-popover__overflow-item-icon--yt { background: rgba(255, 0, 0, 0.1); color: var(--yt-color); }
+.schedule-popover__overflow-item-icon--tt { background: rgba(0, 0, 0, 0.05); color: #000; }
+
+.schedule-popover__overflow-item-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.schedule-popover__overflow-item-time {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.schedule-popover__overflow-item-time::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: var(--primary);
+    border-radius: 50%;
+}
+
+.schedule-popover__overflow-item-main strong {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.schedule-popover__overflow-item-main small {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.schedule-popover__overflow-item-badge {
+    width: 10px;
+    height: 10px;
+    padding: 0;
+    border-radius: 50%;
+    flex-shrink: 0;
+    font-size: 0;
+    display: inline-block;
+    border: 1.5px solid transparent;
+}
+
+.schedule-popover__overflow-item-badge--pending {
+    background: var(--warning);
+    border-color: rgba(245, 158, 11, 0.4);
+}
+.schedule-popover__overflow-item-badge--posted {
+    background: var(--success);
+    border-color: rgba(16, 185, 129, 0.4);
+}
+.schedule-popover__overflow-item-badge--failed {
+    background: var(--danger);
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+.schedule-popover__overflow-item-arrow {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-light);
+    font-size: 0.85rem;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.schedule-popover__overflow-item:hover .schedule-popover__overflow-item-arrow {
+    color: var(--primary);
+    transform: translateX(4px);
+}
+
+/* ===== POPOVER BODY SECTIONS ===== */
+.schedule-popover__section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.schedule-popover__section strong {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.schedule-popover__section p {
+    font-size: 0.875rem;
+    color: var(--text-main);
+    margin: 0;
+    line-height: 1.5;
+}
+
+.schedule-popover__section--grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.schedule-popover__section--grid > div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.schedule-popover__meta-line {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.schedule-popover__actions .btn-calendar-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--primary);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.schedule-popover__actions .btn-calendar-secondary:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+}

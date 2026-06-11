@@ -163,6 +163,8 @@
     const $configChannel = document.getElementById('configChannel');
     const $configMaxPosts = document.getElementById('configMaxPosts');
     const $configOpenaiKey = document.getElementById('configOpenaiKey');
+    const $configNiche = document.getElementById('configNiche');
+    const $configScanScript = document.getElementById('configScanScript');
 
     const $groupLoading = document.getElementById('groupLoading');
     const $groupEmpty = document.getElementById('groupEmpty');
@@ -214,6 +216,9 @@
         $modalTitle.textContent = 'Tạo Cấu Hình Quét AI';
         $configMaxPosts.value = '10';
         resetGroupSelector();
+        // Reset comment bank
+        var bankList = document.getElementById('commentBankList');
+        if (bankList) bankList.innerHTML = '';
     }
 
     function resetGroupSelector() {
@@ -328,6 +333,9 @@
             groupKeys: JSON.stringify(groupKeys),
             maxPostsPerScan: parseInt($configMaxPosts.value, 10) || 10,
             openaiApiKey: $configOpenaiKey.value.trim(),
+            niche: $configNiche ? $configNiche.value.trim() : '',
+            scanScript: $configScanScript ? $configScanScript.value.trim() : '',
+            commentItems: JSON.stringify(getCommentBankItems()),
             scheduleEnabled: $scheduleEnabled ? $scheduleEnabled.checked : false,
             scanIntervalMinutes: parseInt($scanInterval.value, 10) || 60,
             maxPostsPerScanSchedule: parseInt($scheduleMaxPosts.value, 10) || 10,
@@ -404,6 +412,13 @@
             $configMaxPosts.value = config.maxPostsPerScan || 10;
             $configOpenaiKey.value = config.openaiApiKey || '';
             $modalTitle.textContent = 'Sửa Cấu Hình Quét AI';
+
+            // Load niche & scanScript
+            if ($configNiche) $configNiche.value = config.niche || '';
+            if ($configScanScript) $configScanScript.value = config.scanScript || '';
+
+            // Load comment bank
+            renderCommentBank(config.commentItems || []);
 
             // Load schedule fields
             if ($scheduleEnabled) {

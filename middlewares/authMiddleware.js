@@ -1,6 +1,7 @@
 // middlewares/authMiddleware.js
-const User = require('../models/User');
 const { t } = require('../locales/i18n');
+
+const SERVER_ADMIN_URL = process.env.SERVER_ADMIN_URL || 'http://localhost:5000';
 
 const requireAuth = async (req, res, next) => {
     try {
@@ -12,12 +13,16 @@ const requireAuth = async (req, res, next) => {
             return res.redirect('/auth/login');
         }
 
-        const user = await User.findById(req.session.userId).lean();
-        if (!user) {
+        const response = await fetch(`${SERVER_ADMIN_URL}/api/auth/profile/${req.session.userId}`);
+        const data = await response.json();
+
+        if (!response.ok || !data.success || !data.user) {
             res.clearCookie('remember_token');
             req.session.destroy();
             return res.redirect('/auth/login');
         }
+
+        const user = data.user;
         req.user = user;
         res.locals.user = user;
         // Inject the correct t() function based on user's language preference
@@ -43,18 +48,31 @@ const requireAdmin = (req, res, next) => {
     next();
 };
 
-// Middleware to load feature visibility into res.locals
+// Middleware to load feature visibility from ServerAdmin API
 const loadFeatureVisibility = async (req, res, next) => {
     try {
-        const FeatureVisibility = require('../models/FeatureVisibility');
-        let features = await FeatureVisibility.findOne();
-        if (!features) {
-            features = await FeatureVisibility.create({});
+        const response = await fetch(`${SERVER_ADMIN_URL}/api/features`);
+        if (response.ok) {
+            const features = await response.json();
+            res.locals.features = features;
+        } else {
+            console.warn('[Feature Visibility] ServerAdmin API returned', response.status);
+            res.locals.features = {};
         }
-        res.locals.features = features.toObject();
     } catch (err) {
-        console.error('[Feature Visibility] Load error:', err.message);
-        res.locals.features = {};
+        console.error('[Feature Visibility] Load error (fallback to local DB):', err.message);
+        // Fallback to local DB if ServerAdmin is unreachable
+        try {
+            const FeatureVisibility = require('../models/FeatureVisibility');
+            let features = await FeatureVisibility.findOne();
+            if (!features) {
+                features = await FeatureVisibility.create({});
+            }
+            res.locals.features = features.toObject();
+        } catch (dbErr) {
+            console.error('[Feature Visibility] Fallback error:', dbErr.message);
+            res.locals.features = {};
+        }
     }
     next();
 };

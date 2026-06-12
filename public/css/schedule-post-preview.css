@@ -9,7 +9,45 @@
     border-left: 1px solid var(--border);
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    align-items: center;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 16px 12px;
+    gap: 12px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-dark) transparent;
+}
+
+.modal-preview-side::-webkit-scrollbar {
+    width: 4px;
+}
+
+.modal-preview-side::-webkit-scrollbar-thumb {
+    background: var(--border-dark);
+    border-radius: 2px;
+}
+
+/* ===== PREVIEW LABEL ===== */
+.preview-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 8px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    box-shadow: var(--shadow-sm);
+    flex-shrink: 0;
+}
+
+.preview-label i {
+    color: var(--primary);
+    font-size: 0.9rem;
 }
 
 .preview-header {
@@ -75,10 +113,11 @@
 
 /* Phone Mockup */
 .phone-mockup {
-    width: 280px;
-    height: 560px;
+    width: 260px;
+    min-width: 260px;
+    height: 460px;
     background: #1e293b;
-    border-radius: 32px;
+    border-radius: 36px;
     border: 4px solid #1e293b;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
     position: relative;
@@ -86,6 +125,7 @@
     display: flex;
     flex-direction: column;
     padding: 0;
+    flex-shrink: 0;
 }
 
 .phone-notch {
@@ -126,18 +166,18 @@
 .feed-user-info h5 {
     font-size: 0.85rem;
     font-weight: 700;
-    color: var(--text-main);
+    color: #fff;
     margin: 0;
 }
 
 .feed-user-info span {
     font-size: 0.7rem;
-    color: var(--text-muted);
+    color: rgba(255, 255, 255, 0.6);
 }
 
 .feed-caption {
     font-size: 0.8rem;
-    color: var(--text-main);
+    color: #e2e8f0;
     line-height: 1.45;
     padding: 0 14px 10px;
     display: -webkit-box;
@@ -248,7 +288,7 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    color: var(--text-muted);
+    color: rgba(255, 255, 255, 0.6);
     font-size: 0.75rem;
     font-weight: 600;
 }

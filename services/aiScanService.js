@@ -334,6 +334,7 @@ async function savePostsToDb(posts, config, groupUrl) {
                 postAuthor: author,
                 postPublishedAt: publishedAt,
                 aiAnalyzed: false,
+                isMatching: true, // Auto match mặc định
                 scannedAt: new Date()
             });
             saved++;
@@ -424,7 +425,8 @@ Trả về JSON: {"isMatching": true/false, "score": 0-100, "analysis": "...", "
 
     doc.aiAnalysis = aiResult.analysis;
     doc.aiScore = aiResult.score;
-    doc.isMatching = aiResult.isMatching;
+    // Auto-match: tất cả bài viết đều match mặc định, AI chỉ cập nhật score + analysis
+    doc.isMatching = true;
     doc.matchReason = aiResult.reason || '';
     doc.aiAnalyzed = true;
     await doc.save();

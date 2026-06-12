@@ -133,8 +133,8 @@ class CommentPlayService {
     async runPlay(userId, playId) {
         const play = await CommentPlay.findOne({ _id: playId, userId });
         if (!play) throw new Error('Không tìm thấy kịch bản');
-        // forceRun = true: bỏ qua kiểm tra khung giờ và giới hạn ngày
-        return this._executePlay(play, true);
+        // Gộp: Play = Auto Comment All (comment tất cả bài viết theo tuần tự)
+        return this.runAutoCommentAll(userId, playId);
     }
 
     async processScheduledPlays() {
@@ -146,7 +146,8 @@ class CommentPlayService {
         const results = [];
         for (const play of plays) {
             try {
-                const result = await this._executePlay(play);
+                // Lịch trình cũng dùng auto-comment-all
+                const result = await this.runAutoCommentAll(play.userId, play._id);
                 results.push({ playId: play._id, success: true, result });
             } catch (err) {
                 results.push({ playId: play._id, success: false, error: err.message });
@@ -181,6 +182,7 @@ class CommentPlayService {
 
         console.log("##### _executePlay: Goi _pickTargetPost");
         const targetInfo = await this._pickTargetPost(play);
+        console.log("##### _executePlay: targetInfo=", targetInfo);
         if (!targetInfo) { 
             console.log("##### _executePlay: KHONG CO targetInfo -> skip");
             return { skipped: true, reason: 'no_target_posts_available' };
@@ -373,10 +375,22 @@ class CommentPlayService {
     }
 
     async _pickTargetPost(play) {
+        // console.log("##### _pickTargetPost: play.target=", play);
+        // console.log("##### _pickTargetPost: play.target.scanConfigId=", play.target.scanConfigId);
+        // Ưu tiên: ai-scan-results với scanConfigId cụ thể
         if (play.target.type === 'ai-scan-results' && play.target.scanConfigId) {
+            console.log("##### _pickTargetPost: Picking from ai-scan-results with scanConfigId=", play.target.scanConfigId);
             return this._pickPostFromScanResults(play);
         }
 
+        // Fallback: nếu target type là group-posts hoặc ai-scan-results mà không có scanConfigId
+        // → Tìm từ tất cả kết quả AI Scan chưa comment (isMatching: true)
+        if (play.target.type === 'group-posts' || play.target.type === 'ai-scan-results') {
+            const result = await this._pickPostFromScanResults(play);
+            if (result) return result;
+        }
+
+        // Specific posts (URL list)
         if (play.target.postUrls && play.target.postUrls.length > 0) {
             const idx = Math.floor(Math.random() * play.target.postUrls.length);
             return {
@@ -399,7 +413,6 @@ class CommentPlayService {
         }
 
         // Lấy danh sách postUrl đã được PLAY NÀY comment thành công
-        // (Không phụ thuộc vào flag commentSent của AI scan vì AI scan có thể đã auto-comment)
         const commentedLogs = await CommentPlayLog.find({
             playId: play._id,
             status: 'success',
@@ -408,22 +421,29 @@ class CommentPlayService {
 
         const commentedSet = new Set(commentedLogs.map(l => String(l.targetUrl)));
 
+        // Query filter: nếu có scanConfigId thì filter theo config, không thì lấy tất cả của user
         const baseFilter = {
             userId: play.userId,
-            configId: scanConfigId,
             postUrl: { $ne: '', $exists: true }
         };
+        if (scanConfigId) {
+            baseFilter.configId = scanConfigId;
+        }
 
-        // Chỉ lấy bài match nhu cầu (isMatching: true) mà PLAY NÀY chưa comment
+        // Lấy bài match nhu cầu (isMatching: true) — không filter theo commentSent
+        // vì CommentPlayLog (commentedSet) sẽ xử lý việc loại bỏ bài đã comment
         let results = await AiScanResult.find({
             ...baseFilter,
             isMatching: true
-        }).sort({ scannedAt: -1 }).limit(50).lean();
+        }).sort({ scannedAt: -1 }).limit(100).lean();
 
+        console.log(`[CommentPlay] Found ${results.length} matching scan results for play ${play._id}. Commented URLs count: ${commentedSet.size}`);
+
+        // Loại bỏ bài đã comment bởi play này (qua CommentPlayLog)
         let uncommented = results.filter(r => r.postUrl && !commentedSet.has(String(r.postUrl)));
 
         if (!uncommented || uncommented.length === 0) {
-            console.log(`[CommentPlay] ⚠ No target post available (isMatching: true). configId=${scanConfigId}, commentedByThisPlay=${commentedSet.size}, totalMatchingInDB=${results?.length || 0}`);
+            console.log(`[CommentPlay] ⚠ No target post available (isMatching: true). scanConfigId=${scanConfigId || 'ALL'}, commentedByThisPlay=${commentedSet.size}, totalMatchingInDB=${results?.length || 0}`);
             return null;
         }
 
@@ -467,7 +487,7 @@ class CommentPlayService {
                 keepOpenMs: 10000
             });
 
-            // Cập nhật scan result cho comment cuối cùng (hoặc comment đầu tiên)
+            // Cập nhật scan result CHỈ KHI comment thành công
             if (postResult.success && targetInfo.scanResultId && comments.length > 0) {
                 try {
                     const AiScanResult = require('../models/AiScanResult');
@@ -481,12 +501,167 @@ class CommentPlayService {
                 } catch (err) {
                     console.error('[CommentPlay] Error updating scan result:', err.message);
                 }
+            } else if (!postResult.success && targetInfo.scanResultId) {
+                // Comment THẤT BẠI → giữ commentSent: false để lần sau retry
+                try {
+                    const AiScanResult = require('../models/AiScanResult');
+                    await AiScanResult.findByIdAndUpdate(targetInfo.scanResultId, {
+                        commentSent: false,
+                        commentError: postResult.error || 'Comment failed'
+                    });
+                } catch (err) {}
             }
 
             return postResult;
         } catch (err) {
             return { success: false, error: err.message };
         }
+    }
+
+    // ============================================================
+    // AUTO COMMENT ALL
+    // ============================================================
+
+    /**
+     * Tự động comment tất cả bài viết chưa comment theo tuần tự
+     * Mở Chrome → comment → đóng → chờ → lặp lại cho đến khi hết bài
+     */
+    async runAutoCommentAll(userId, playId, onProgress) {
+        const play = await CommentPlay.findOne({ _id: playId, userId });
+        if (!play) throw new Error('Không tìm thấy kịch bản');
+
+        const allResults = [];
+        let totalPosted = 0;
+        let totalErrors = 0;
+        let iteration = 0;
+        const maxIterations = 100; // Safety limit
+
+        while (iteration < maxIterations) {
+            iteration++;
+            let playState;
+            try {
+                playState = await CommentPlay.findById(play._id);
+            } catch (e) { break; }
+            if (!playState) break;
+
+            this._checkResetDaily(playState);
+
+            // Check if there's a target post available
+            let targetInfo;
+            try {
+                targetInfo = await this._pickTargetPost(playState);
+            } catch (e) {
+                console.log(`[AutoCommentAll] Error picking target: ${e.message}`);
+                break;
+            }
+
+            if (!targetInfo) {
+                console.log(`[AutoCommentAll] No more targets available after ${iteration} iterations`);
+                if (onProgress) {
+                    onProgress({ type: 'complete', totalPosted, totalErrors, iterations: iteration });
+                }
+                break;
+            }
+
+            // Get comments
+            const comments = await this._getCommentsToPost(playState);
+            if (!comments || comments.length === 0) {
+                console.log(`[AutoCommentAll] No comments available`);
+                if (onProgress) {
+                    onProgress({ type: 'complete', totalPosted, totalErrors, iterations: iteration, reason: 'no_comments' });
+                }
+                break;
+            }
+
+            // Post comment
+            let postResult;
+            try {
+                postResult = await this._postComment(playState, comments, targetInfo);
+            } catch (e) {
+                postResult = { success: false, error: e.message };
+            }
+
+            // Create logs
+            let successCount = 0;
+            let errorCount = 0;
+            if (postResult.success && postResult.results) {
+                for (let i = 0; i < comments.length; i++) {
+                    const comment = comments[i];
+                    const resultDetail = postResult.results[i] || { success: postResult.success, error: postResult.error };
+                    await CommentPlayLog.create({
+                        playId: playState._id,
+                        commentId: comment._id,
+                        commentText: comment.type === 'text' ? comment.content : comment.caption,
+                        commentType: comment.type,
+                        targetUrl: targetInfo.url,
+                        targetGroupId: targetInfo.groupId || '',
+                        status: resultDetail.success ? 'success' : 'error',
+                        errorMessage: resultDetail.error || '',
+                        postedAt: new Date()
+                    });
+                    if (resultDetail.success) successCount++; else errorCount++;
+                }
+            } else {
+                for (let i = 0; i < comments.length; i++) {
+                    const comment = comments[i];
+                    await CommentPlayLog.create({
+                        playId: playState._id,
+                        commentId: comment._id,
+                        commentText: comment.type === 'text' ? comment.content : comment.caption,
+                        commentType: comment.type,
+                        targetUrl: targetInfo.url,
+                        targetGroupId: targetInfo.groupId || '',
+                        status: postResult.success ? 'success' : 'error',
+                        errorMessage: postResult.error || '',
+                        postedAt: new Date()
+                    });
+                    if (postResult.success) successCount++; else errorCount++;
+                }
+            }
+
+            totalPosted += successCount;
+            totalErrors += errorCount;
+
+            // Update play metrics
+            try {
+                const freshPlay = await CommentPlay.findById(playState._id);
+                if (freshPlay) {
+                    freshPlay.metrics.totalCommentsPosted += successCount;
+                    freshPlay.metrics.totalToday += successCount;
+                    freshPlay.metrics.totalErrors += errorCount;
+                    freshPlay.metrics.lastRunAt = new Date();
+                    freshPlay.updatedAt = new Date();
+                    await freshPlay.save();
+                }
+            } catch (e) { console.error('[AutoCommentAll] Error updating metrics:', e.message); }
+
+            // Emit progress
+            if (onProgress) {
+                onProgress({
+                    type: 'progress',
+                    iteration,
+                    posted: successCount,
+                    errors: errorCount,
+                    targetUrl: targetInfo.url,
+                    totalPosted,
+                    totalErrors
+                });
+            }
+
+            console.log(`[AutoCommentAll] #${iteration}: ${successCount > 0 ? '✓' : '✕'} ${targetInfo.url} (total: ${totalPosted} posted, ${totalErrors} errors)`);
+
+            // Delay between posts
+            const delay = this._getRandomDelay(playState);
+            console.log(`[AutoCommentAll] Waiting ${Math.round(delay / 1000)}s before next post...`);
+            await new Promise(r => setTimeout(r, delay));
+        }
+
+        return {
+            success: totalPosted > 0,
+            totalPosted,
+            totalErrors,
+            iterations: iteration
+        };
     }
 
     // ============================================================

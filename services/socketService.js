@@ -6,6 +6,14 @@ let io = null;
 // Maps requestId -> { resolve, reject, timeout }
 const pendingAiAnalysis = new Map();
 
+// Lazy-load models to avoid circular deps
+function getModels() {
+    return {
+        AiScanResult: require('../models/AiScanResult'),
+        AiScanConfig: require('../models/AiScanConfig')
+    };
+}
+
 function initializeSocketIO(socketIoInstance) {
     io = socketIoInstance;
     
@@ -45,6 +53,40 @@ function initializeSocketIO(socketIoInstance) {
             const { userId, configId, status, current, total, message } = data;
             if (userId) {
                 emitScanProgress(userId, configId, { status, current, total, message });
+            }
+        });
+
+        // ============================================================
+        // AI SCAN - Load table data via Socket.IO (fast, no page reload)
+        // ============================================================
+        socket.on('scan:load-table', async (data) => {
+            const { userId, page: pageNum, limit } = data || {};
+            if (!userId) return;
+            try {
+                const { AiScanResult, AiScanConfig } = getModels();
+                const pageSize = parseInt(limit, 10) || 50;
+                const pg = parseInt(pageNum, 10) || 1;
+                const skip = (pg - 1) * pageSize;
+
+                const [results, total, totalScanned, totalMatched, totalCommented] = await Promise.all([
+                    AiScanResult.find({ userId }).sort({ scannedAt: -1 }).skip(skip).limit(pageSize).lean(),
+                    AiScanResult.countDocuments({ userId }),
+                    AiScanResult.countDocuments({ userId }),
+                    AiScanResult.countDocuments({ userId, isMatching: true }),
+                    AiScanResult.countDocuments({ userId, commentSent: true })
+                ]);
+
+                const room = `user:${userId}`;
+                io.to(room).emit('scan:table-data', {
+                    results,
+                    total,
+                    page: pg,
+                    totalPages: Math.ceil(total / pageSize),
+                    stats: { totalScanned, totalMatched, totalCommented }
+                });
+                console.log(`[Socket.IO] Emitted scan:table-data to ${room}: ${results.length}/${total} results`);
+            } catch (err) {
+                console.error(`[Socket.IO] Error loading table data:`, err.message);
             }
         });
         

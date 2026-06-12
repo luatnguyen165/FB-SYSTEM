@@ -591,11 +591,11 @@ function formatLocalDateKey(dateValue) {
 function getReelsStatusMeta(status) {
     switch (String(status || 'pending')) {
         case 'posted':
-            return { label: 'Đã đăng', className: 'reels-status-posted', icon: 'fa-solid fa-check' };
+            return { label: 'Thành công', className: 'reels-status-posted', icon: 'fa-solid fa-check' };
         case 'failed':
             return { label: 'Thất bại', className: 'reels-status-failed', icon: 'fa-solid fa-xmark' };
         default:
-            return { label: 'Đang chờ', className: 'reels-status-pending', icon: 'fa-solid fa-clock' };
+            return { label: 'Chờ', className: 'reels-status-pending', icon: 'fa-solid fa-clock' };
     }
 }
 
@@ -1008,7 +1008,7 @@ function renderReelsCalendar(schedules = []) {
             const rawTitle = String(item.caption || '').trim() || 'Reels đã lên lịch';
             const title = rawTitle.length > 40 ? rawTitle.substring(0, 37) + '...' : rawTitle;
             const canDrag = String(item.status || 'pending') === 'pending';
-            return `<div class="schedule-item ${platformMeta.className} ${statusMeta.className} ${String(item.type || 'reels') === 'reels' ? 'schedule-item--reels' : 'schedule-item--post'}" draggable="${canDrag ? 'true' : 'false'}" data-schedule-id="${item._id}" data-date-key="${dateKey}" title="${time} • ${rawTitle}"><i class="${platformMeta.icon}"></i><span class="schedule-item-body"><span class="schedule-item__text" title="${rawTitle}">${time} • ${title}</span><span class="schedule-item__status-dot ${statusMeta.className}"></span></span></div>`;
+            return `<div class="schedule-item ${platformMeta.className} ${statusMeta.className} ${String(item.type || 'reels') === 'reels' ? 'schedule-item--reels' : 'schedule-item--post'}" draggable="${canDrag ? 'true' : 'false'}" data-schedule-id="${item._id}" data-date-key="${dateKey}" title="${time} • ${rawTitle}"><i class="${platformMeta.icon}"></i><span class="schedule-item-body"><span class="schedule-item__text" title="${rawTitle}">${time} • ${title}</span></span><span class="schedule-item__status-label ${statusMeta.className}">${statusMeta.label}</span></div>`;
         }).join('');
 
         const moreHtml = remainingCount > 0
@@ -1293,7 +1293,7 @@ function applyReelsFilters() {
             const rawTitle = String(item.caption || '').trim() || 'Reels đã lên lịch';
             const title = rawTitle.length > 40 ? rawTitle.substring(0, 37) + '...' : rawTitle;
             const canDrag = String(item.status || 'pending') === 'pending';
-            return `<div class="schedule-item ${platformMeta.className} ${statusMeta.className} ${String(item.type || 'reels') === 'reels' ? 'schedule-item--reels' : 'schedule-item--post'}" draggable="${canDrag ? 'true' : 'false'}" data-schedule-id="${item._id}" data-date-key="${dateKey}" title="${time} • ${rawTitle}"><i class="${platformMeta.icon}"></i><span class="schedule-item-body"><span class="schedule-item__text" title="${rawTitle}">${time} • ${title}</span><span class="schedule-item__status-dot ${statusMeta.className}"></span></span></div>`;
+            return `<div class="schedule-item ${platformMeta.className} ${statusMeta.className} ${String(item.type || 'reels') === 'reels' ? 'schedule-item--reels' : 'schedule-item--post'}" draggable="${canDrag ? 'true' : 'false'}" data-schedule-id="${item._id}" data-date-key="${dateKey}" title="${time} • ${rawTitle}"><i class="${platformMeta.icon}"></i><span class="schedule-item-body"><span class="schedule-item__text" title="${rawTitle}">${time} • ${title}</span></span><span class="schedule-item__status-label ${statusMeta.className}">${statusMeta.label}</span></div>`;
         }).join('');
 
         const moreHtml = remainingCount > 0

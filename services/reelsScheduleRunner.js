@@ -10,7 +10,7 @@ const { emitScheduleUpdate } = require('./socketService');
 const { sendTelegramNotification, NOTIFICATION_TYPES } = require('./telegramService');
 
 const CHECK_INTERVAL_MS = 15 * 1000;
-const SCHEDULE_TIMEOUT_MS = 5 * 60 * 1000; // 5 phút timeout cho mỗi schedule
+const SCHEDULE_TIMEOUT_MS = 15 * 60 * 1000; // 15 phút timeout cho mỗi schedule (tăng cho parallel posting)
 
 let isWorkerStarted = false;
 let isProcessing = false;
@@ -404,30 +404,41 @@ async function executeSchedule(schedule, { persistStatus = true, markAsPosted = 
             const post = await buildPostUploadPayload(schedule);
             console.log(`[Schedule Runner] Processing POST schedule ${schedule._id} using ${account.accountName} (${account.accountType || 'Cá nhân'}), ${post.groups.length} groups to post`);
 
-            // Socket: bắt đầu đăng post
-            emitScheduleUpdate(schedule.userId, {
-                _id: schedule._id,
-                status: 'processing',
-                progress: { phase: 'post_start', message: `Đang đăng bài lên ${post.groups.length} group...`, current: 0, total: post.groups.length }
-            });
-
+            // Parallel posting: max 4 Chrome instances chạy đồng thời
+            const MAX_CONCURRENT_GROUPS = 4;
             const results = [];
             let firstSuccessUrl = '';
             let allSuccess = true;
+            let completedCount = 0;
 
-            for (let i = 0; i < post.groups.length; i++) {
-                const group = post.groups[i];
-                console.log(`[Schedule Runner] Posting to group ${i + 1}/${post.groups.length}: ${group.groupUrl || group.groupId}`);
-                
-                // Socket: đang đăng lên group thứ i
-                emitScheduleUpdate(schedule.userId, {
-                    _id: schedule._id,
-                    status: 'processing',
-                    progress: { phase: 'post_to_group', message: `Đăng nhóm ${i + 1}/${post.groups.length}: ${group.groupUrl?.substring(0, 50) || group.groupId}`, current: i + 1, total: post.groups.length }
-                });
+            console.log(`[Schedule Runner] Posting to ${post.groups.length} groups with max ${MAX_CONCURRENT_GROUPS} concurrent browsers`);
 
-                try {
-                    const groupResult = await runBotPostGroupInstantWithAccount({
+            // Socket: bắt đầu đăng bài song song
+            emitScheduleUpdate(schedule.userId, {
+                _id: schedule._id,
+                status: 'processing',
+                progress: { phase: 'post_start', message: `Đang đăng bài lên ${post.groups.length} nhóm (tối đa ${MAX_CONCURRENT_GROUPS} Chrome cùng lúc)...`, current: 0, total: post.groups.length }
+            });
+
+            // Chia groups thành các batch nhỏ, mỗi batch tối đa MAX_CONCURRENT_GROUPS
+            for (let batchStart = 0; batchStart < post.groups.length; batchStart += MAX_CONCURRENT_GROUPS) {
+                const batch = post.groups.slice(batchStart, batchStart + MAX_CONCURRENT_GROUPS);
+                const batchIndex = batchStart;
+
+                console.log(`[Schedule Runner] Processing batch ${Math.floor(batchStart / MAX_CONCURRENT_GROUPS) + 1}: groups ${batchStart + 1}-${batchStart + batch.length}/${post.groups.length}`);
+
+                const batchPromises = batch.map((group, localIndex) => {
+                    const globalIndex = batchIndex + localIndex;
+                    console.log(`[Schedule Runner] Posting to group ${globalIndex + 1}/${post.groups.length}: ${group.groupUrl || group.groupId}`);
+
+                    // Socket: đang đăng lên group
+                    emitScheduleUpdate(schedule.userId, {
+                        _id: schedule._id,
+                        status: 'processing',
+                        progress: { phase: 'post_to_group', message: `Đăng nhóm ${globalIndex + 1}/${post.groups.length}: ${group.groupUrl?.substring(0, 50) || group.groupId}`, current: globalIndex + 1, total: post.groups.length }
+                    });
+
+                    return runBotPostGroupInstantWithAccount({
                         userId: schedule.userId,
                         accountName: account.accountName,
                         accountType: account.accountType || 'Cá nhân',
@@ -439,34 +450,59 @@ async function executeSchedule(schedule, { persistStatus = true, markAsPosted = 
                             profileUrl: account.profileUrl || ''
                         },
                         headless: false
-                    });
+                    }).then(groupResult => {
+                        completedCount++;
+                        console.log(`[Schedule Runner] Group ${globalIndex + 1}/${post.groups.length} completed: success=${groupResult?.success || false}`);
 
-                    results.push({
-                        group: group,
-                        success: groupResult?.success || false,
-                        publishedUrl: groupResult?.publishedUrl || ''
-                    });
+                        // Socket: tiến độ sau mỗi group xong
+                        emitScheduleUpdate(schedule.userId, {
+                            _id: schedule._id,
+                            status: 'processing',
+                            progress: { phase: 'post_to_group', message: `Đã đăng ${completedCount}/${post.groups.length} nhóm`, current: completedCount, total: post.groups.length }
+                        });
 
-                    if (groupResult?.success && !firstSuccessUrl) {
-                        firstSuccessUrl = groupResult.publishedUrl || '';
+                        return {
+                            group,
+                            success: groupResult?.success || false,
+                            publishedUrl: groupResult?.publishedUrl || ''
+                        };
+                    }).catch(err => {
+                        completedCount++;
+                        console.error(`[Schedule Runner] Failed to post to group ${group.groupUrl}:`, err.message);
+
+                        // Socket: tiến độ sau mỗi group (dù thất bại)
+                        emitScheduleUpdate(schedule.userId, {
+                            _id: schedule._id,
+                            status: 'processing',
+                            progress: { phase: 'post_to_group', message: `Đã đăng ${completedCount}/${post.groups.length} nhóm`, current: completedCount, total: post.groups.length }
+                        });
+
+                        return {
+                            group,
+                            success: false,
+                            error: err.message
+                        };
+                    });
+                });
+
+                // Chạy batch hiện tại song song, đợi tất cả xong trước khi qua batch tiếp
+                const batchResults = await Promise.all(batchPromises);
+                results.push(...batchResults);
+
+                // Cập nhật firstSuccessUrl và allSuccess
+                for (const r of batchResults) {
+                    if (r.success && !firstSuccessUrl) {
+                        firstSuccessUrl = r.publishedUrl || '';
                     }
-
-                    if (!groupResult?.success) {
+                    if (!r.success) {
                         allSuccess = false;
                     }
+                }
 
-                    if (i < post.groups.length - 1) {
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-                    }
-
-                } catch (err) {
-                    console.error(`[Schedule Runner] Failed to post to group ${group.groupUrl}:`, err.message);
-                    results.push({
-                        group: group,
-                        success: false,
-                        error: err.message
-                    });
-                    allSuccess = false;
+                // Nếu còn batch tiếp, chờ 2s để tránh bị Facebook chặn
+                if (batchStart + MAX_CONCURRENT_GROUPS < post.groups.length) {
+                    console.log(`[Schedule Runner] Batch done. Waiting 2s before next batch...`);
+                    await new Promise(resolve => setTimeout(resolve, 2000));
                 }
             }
 

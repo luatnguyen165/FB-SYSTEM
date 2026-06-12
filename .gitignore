@@ -12,9 +12,11 @@ social-sessions
 # Logs
 *.log
 npm-debug.log*
-
+page_post/
+images/
 # Build output
 dist/
+
 
 # OS files
 Thumbs.db

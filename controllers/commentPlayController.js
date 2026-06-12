@@ -99,11 +99,95 @@ const togglePlay = async (req, res) => {
 const runPlayNow = async (req, res) => {
     try {
         const { playId } = req.params;
-        const result = await commentPlayService.runPlay(req.user._id, playId);
-        return res.json({ success: true, message: 'Đã chạy kịch bản!', result });
+        const userId = req.user._id;
+
+        // Verify play exists
+        const play = await commentPlayService.getById(userId, playId);
+        if (!play) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy kịch bản' });
+        }
+
+        // Return immediately, run in background
+        res.json({ success: true, message: 'Đã bắt đầu tự động comment tất cả bài viết. Hệ thống đang chạy ở background...' });
+
+        // Run in background with progress tracking
+        commentPlayService.runAutoCommentAll(userId, playId, (progress) => {
+            try {
+                const io = require('../services/socketService').getIO?.();
+                if (io) {
+                    io.to('user_' + userId).emit('auto-comment-progress', {
+                        playId,
+                        ...progress
+                    });
+                }
+            } catch (e) {}
+        }).then(result => {
+            console.log(`[AutoCommentAll] Completed for ${playId}:`, result);
+            try {
+                const io = require('../services/socketService').getIO?.();
+                if (io) {
+                    io.to('user_' + userId).emit('auto-comment-complete', {
+                        playId,
+                        ...result
+                    });
+                }
+            } catch (e) {}
+        }).catch(err => {
+            console.error(`[AutoCommentAll] Error for ${playId}:`, err.message);
+        });
     } catch (error) {
         console.error('Run Play Error:', error);
-        return res.status(500).json({ success: false, message: 'Lỗi: ' + error.message });
+        if (!res.headersSent) {
+            return res.status(500).json({ success: false, message: 'Lỗi: ' + error.message });
+        }
+    }
+};
+
+// Auto Comment All - tự động comment tất cả bài viết chưa comment
+const autoCommentAll = async (req, res) => {
+    try {
+        const { playId } = req.params;
+        const userId = req.user._id;
+
+        // Verify play exists
+        const play = await commentPlayService.getById(userId, playId);
+        if (!play) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy kịch bản' });
+        }
+
+        // Return immediately, run in background
+        res.json({ success: true, message: 'Đã bắt đầu tự động comment tất cả bài viết. Hệ thống đang chạy ở background...' });
+
+        // Run in background with progress tracking
+        commentPlayService.runAutoCommentAll(userId, playId, (progress) => {
+            try {
+                const io = require('../services/socketService').getIO?.();
+                if (io) {
+                    io.to('user_' + userId).emit('auto-comment-progress', {
+                        playId,
+                        ...progress
+                    });
+                }
+            } catch (e) {}
+        }).then(result => {
+            console.log(`[AutoCommentAll] Completed for ${playId}:`, result);
+            try {
+                const io = require('../services/socketService').getIO?.();
+                if (io) {
+                    io.to('user_' + userId).emit('auto-comment-complete', {
+                        playId,
+                        ...result
+                    });
+                }
+            } catch (e) {}
+        }).catch(err => {
+            console.error(`[AutoCommentAll] Error for ${playId}:`, err.message);
+        });
+    } catch (error) {
+        console.error('Auto Comment All Error:', error);
+        if (!res.headersSent) {
+            return res.status(500).json({ success: false, message: 'Lỗi: ' + error.message });
+        }
     }
 };
 
@@ -143,6 +227,7 @@ module.exports = {
     deletePlay,
     togglePlay,
     runPlayNow,
+    autoCommentAll,
     getPlayLogs,
     getPlayLogsSummary
 };

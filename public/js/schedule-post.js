@@ -186,11 +186,11 @@ function formatShortDateTime(dateValue) {
 function getScheduleStatusMetaClient(status) {
     switch (String(status || 'pending')) {
         case 'posted':
-            return { label: 'Đã đăng', className: 'status-posted', icon: 'fa-circle-check' };
+            return { label: 'Thành công', className: 'status-posted', icon: 'fa-circle-check' };
         case 'failed':
             return { label: 'Thất bại', className: 'status-failed', icon: 'fa-triangle-exclamation' };
         default:
-            return { label: 'Chưa đăng', className: 'status-pending', icon: 'fa-clock' };
+            return { label: 'Chờ', className: 'status-pending', icon: 'fa-clock' };
     }
 }
 
@@ -694,6 +694,7 @@ let selectedGroupKeys = []; // Lưu các group đã chọn
 let currentGroupSourceChannelId = ''; // Lưu channel ID hiện tại đang load groups
 
 let schedulePostGroupsLoading = false;
+let schedulePostDropdownJustOpened = false;
 
 async function loadSchedulePostFacebookGroups(sourceChannelId, preferredGroupKeys = [], forceRefresh = false, scanMode = 'fast') {
     console.log('[DEBUG] loadSchedulePostFacebookGroups called with:', sourceChannelId);
@@ -741,6 +742,8 @@ async function loadSchedulePostFacebookGroups(sourceChannelId, preferredGroupKey
 
     // Show loading
     dropdown.classList.add('open');
+    schedulePostDropdownJustOpened = true;
+    setTimeout(() => { schedulePostDropdownJustOpened = false; }, 100);
     loading.style.display = 'block';
     empty.style.display = 'none';
     list.innerHTML = '';
@@ -772,7 +775,10 @@ async function loadSchedulePostFacebookGroups(sourceChannelId, preferredGroupKey
         schedulePostGroupsLoading = false;
         if (submitBtn) submitBtn.disabled = false;
         
-        // Dropdown is already open from loading state
+        // Đảm bảo dropdown mở sau khi load xong groups
+        dropdown.classList.add('open');
+        schedulePostDropdownJustOpened = true;
+        setTimeout(() => { schedulePostDropdownJustOpened = false; }, 100);
 
     } catch (err) {
         console.error('Load Facebook groups failed:', err);
@@ -1209,7 +1215,7 @@ async function renderCalendar() {
                         <i class="${platformMeta.icon}"></i>
                         <span class="schedule-item__text" title="${escapeHtml(title)}">${escapeHtml(time)} • ${truncatedTitle}</span>
                     </div>
-                    <span class="schedule-item__status-dot ${statusMeta.className}"></span>
+                    <span class="schedule-item__status-label ${statusMeta.className}">${statusMeta.label}</span>
                 </div>`;
         }).join('');
 
@@ -1582,6 +1588,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Close dropdown when clicking outside
     document.addEventListener('click', (e) => {
+        if (schedulePostDropdownJustOpened) return;
         if (!groupCombobox?.contains(e.target)) {
             groupDropdown?.classList.remove('open');
         }

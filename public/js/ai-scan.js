@@ -22,6 +22,8 @@
                 // Join user room for private events
                 if (window.__USER_ID__) {
                     socket.emit('join-user', window.__USER_ID__);
+                    // Request fresh table data via Socket.IO (fast, no page reload)
+                    socket.emit('scan:load-table', { userId: window.__USER_ID__ });
                 }
             });
 
@@ -69,11 +71,26 @@
                 updateScanProgressBar(current, total);
             });
 
-            // Listen for scan completion
+            // Listen for scan completion - refresh table via Socket.IO instead of page reload
             socket.on('scan:complete', function (data) {
                 console.log('[AI Scan] Scan completed:', data);
-                showScanProgressMessage('✓ Quét hoàn tất! Đang làm mới trang...');
-                setTimeout(function () { location.reload(); }, 2000);
+                showScanProgressMessage('✓ Quét hoàn tất! Đang tải lại bảng...');
+                // Request fresh table data via Socket.IO
+                socket.emit('scan:load-table', { userId: window.__USER_ID__ });
+            });
+
+            // Listen for full table data from backend (Socket.IO)
+            socket.on('scan:table-data', function (data) {
+                console.log('[AI Scan] Table data received:', data.results?.length, 'results');
+                refreshResultsTable(data.results || []);
+                // Update pagination
+                if (data.total !== undefined) {
+                    updatePaginationFromSocket(data);
+                }
+                // Update stats
+                if (data.stats) {
+                    updateStats(data.stats);
+                }
             });
 
             // Listen for new results in real-time
@@ -480,13 +497,13 @@
         });
     });
 
-    // Clear results
+    // Clear results - use Socket.IO to refresh
     document.getElementById('btnClearResults')?.addEventListener('click', async function () {
         if (!confirm('Xóa tất cả kết quả quét?')) return;
         try {
             var res = await fetch('/schedule/ai-scan/api/results', { method: 'DELETE' });
             var json = await res.json();
-            if (json.success) { showToast(json.message, 'success'); setTimeout(function () { location.reload(); }, 500); }
+            if (json.success) { showToast(json.message, 'success'); refreshTableViaSocket(); }
             else showToast(json.message || 'Lỗi', 'error');
         } catch (err) { showToast('Lỗi: ' + err.message, 'error'); }
     });
@@ -554,7 +571,7 @@
             return;
         }
 
-        // Delete button - xóa từng bài viết
+        // Delete button - xóa từng bài viết (use Socket.IO to refresh)
         const deleteBtn = e.target.closest('.btn-delete-result');
         if (deleteBtn) {
             e.preventDefault();
@@ -578,9 +595,9 @@
                         row.style.transition = 'opacity 0.3s, transform 0.3s';
                         row.style.opacity = '0';
                         row.style.transform = 'translateX(20px)';
-                        setTimeout(function() { location.reload(); }, 400);
+                        setTimeout(function() { refreshTableViaSocket(); }, 400);
                     } else {
-                        setTimeout(function() { location.reload(); }, 500);
+                        refreshTableViaSocket();
                     }
                 } else {
                     showToast(json.message || 'Lỗi xóa', 'error');
@@ -632,7 +649,7 @@
                 showToast('Đã cập nhật kết quả!', 'success');
                 $editResultModal.classList.remove('is-visible');
                 setTimeout(function () { $editResultModal.style.display = 'none'; document.body.style.overflow = ''; }, 300);
-                setTimeout(function () { location.reload(); }, 500);
+                refreshTableViaSocket();
             } else {
                 showToast(json.message || 'Lỗi cập nhật', 'error');
             }
@@ -665,7 +682,7 @@
         if (existing) existing.remove();
         var indicator = document.createElement('div');
         indicator.className = 'scan-running-indicator';
-        indicator.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang quét bài viết... Vui lòng đợi và refresh trang sau vài phút.';
+        indicator.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang quét bài viết... Hệ thống sẽ tự động cập nhật kết quả.';
         var hero = document.querySelector('.ai-scan-hero');
         if (hero) hero.insertAdjacentElement('afterend', indicator);
         setTimeout(function () {
@@ -688,6 +705,124 @@
 
     function escapeAttr(str) {
         return String(str).replace(/&/g, '&').replace(/"/g, '"').replace(/'/g, '&#39;').replace(/</g, '<').replace(/>/g, '>');
+    }
+
+    /**
+     * Refresh the entire results table with data from Socket.IO
+     */
+    function refreshResultsTable(results) {
+        var tbody = document.querySelector('#resultsTable tbody');
+        if (!tbody) return;
+
+        recentResults = results;
+
+        if (results.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-cell">Chưa có kết quả quét nào</td></tr>';
+            // Clear pagination
+            var infoEl = document.getElementById('aiScanPaginationInfo');
+            var controlsEl = document.getElementById('aiScanPaginationControls');
+            if (infoEl) infoEl.textContent = '';
+            if (controlsEl) controlsEl.innerHTML = '';
+            return;
+        }
+
+        var html = '';
+        results.forEach(function(result) {
+            var scoreClass = result.aiScore >= 70 ? 'score-high' : result.aiScore >= 40 ? 'score-mid' : 'score-low';
+            var matchClass = result.isMatching ? 'match-yes' : 'match-no';
+            var matchText = result.isMatching ? '✓ Match' : '✗ No';
+
+            var hasComments = result.comments && result.comments.length > 0;
+            var anySent = hasComments ? result.comments.some(function(c) { return c.sent; }) : result.commentSent;
+            var hasError = hasComments ? result.comments.some(function(c) { return c.error; }) : !!result.commentError;
+
+            var commentHtml = '';
+            if (anySent) {
+                var sentCount = hasComments ? result.comments.filter(function(c) { return c.sent; }).length : 1;
+                commentHtml = '<span class="comment-badge sent"><i class="fa-solid fa-check"></i> Đã gửi (' + sentCount + ')</span>';
+            } else if (hasError) {
+                commentHtml = '<span class="comment-badge error" title="' + escapeAttr(result.commentError || '') + '"><i class="fa-solid fa-triangle-exclamation"></i> Lỗi</span>';
+            } else {
+                commentHtml = '<span class="comment-badge none">—</span>';
+            }
+
+            var imagesHtml = '';
+            if (result.postImages && result.postImages.length > 0) {
+                imagesHtml = '<div class="result-images">';
+                result.postImages.slice(0, 4).forEach(function(img) {
+                    imagesHtml += '<a href="' + escapeAttr(img) + '" target="_blank"><img src="' + escapeAttr(img) + '" alt="Post image" loading="lazy" onerror="this.style.display=\'none\'"></a>';
+                });
+                if (result.postImages.length > 4) {
+                    imagesHtml += '<span class="result-images-more">+' + (result.postImages.length - 4) + '</span>';
+                }
+                imagesHtml += '</div>';
+            }
+
+            var postContent = result.postContent ? result.postContent.substring(0, 80) + (result.postContent.length > 80 ? '...' : '') : '(Không có nội dung)';
+            var scannedAt = result.scannedAt ? new Date(result.scannedAt).toLocaleDateString('en-GB') + ' ' + new Date(result.scannedAt).toLocaleTimeString('en-GB') : '—';
+
+            html += '<tr class="result-row ' + (result.isMatching ? 'row-match' : 'row-no-match') + '" data-result-id="' + result._id + '">' +
+                '<td>' +
+                    '<div class="result-post">' +
+                        imagesHtml +
+                        '<a href="' + escapeAttr(result.postUrl || '#') + '" target="_blank" class="post-link">' + escapeHtml(postContent) + '</a>' +
+                        (result.postAuthor ? '<span class="post-author">- ' + escapeHtml(result.postAuthor) + '</span>' : '') +
+                    '</div>' +
+                '</td>' +
+                '<td>' +
+                    '<a class="group-name-link" href="' + escapeAttr(result.groupUrl || '#') + '" target="_blank" title="' + escapeAttr(result.groupUrl || '') + '">' +
+                        '<i class="fa-solid fa-users-group"></i> ' + escapeHtml(result.groupName || 'Unknown Group') +
+                    '</a>' +
+                '</td>' +
+                '<td>' +
+                    '<div class="score-bar">' +
+                        '<div class="score-fill ' + scoreClass + '" style="width: ' + result.aiScore + '%"></div>' +
+                        '<span class="score-text">' + result.aiScore + '%</span>' +
+                    '</div>' +
+                '</td>' +
+                '<td><span class="match-badge ' + matchClass + '">' + matchText + '</span></td>' +
+                '<td>' + commentHtml + '</td>' +
+                '<td class="time-cell">' +
+                    '<div>' + scannedAt + '</div>' +
+                    '<div class="result-actions">' +
+                        '<button class="btn-edit-result" data-id="' + result._id + '" title="Sửa kết quả"><i class="fa-solid fa-pen-to-square"></i></button>' +
+                        '<button class="btn-delete-result" data-id="' + result._id + '" title="Xóa kết quả"><i class="fa-solid fa-trash-can"></i></button>' +
+                    '</div>' +
+                '</td>' +
+            '</tr>';
+        });
+
+        tbody.innerHTML = html;
+        // Re-init pagination
+        initAiScanPagination();
+    }
+
+    /**
+     * Update pagination from Socket.IO data
+     */
+    function updatePaginationFromSocket(data) {
+        var infoEl = document.getElementById('aiScanPaginationInfo');
+        if (infoEl) {
+            var total = data.total || 0;
+            var pg = data.page || 1;
+            var pageSize = 50;
+            var start = (pg - 1) * pageSize + 1;
+            var end = Math.min(pg * pageSize, total);
+            if (total === 0) {
+                infoEl.textContent = 'Không có kết quả';
+            } else {
+                infoEl.textContent = 'Hiển thị ' + start + '-' + end + ' / ' + total + ' kết quả';
+            }
+        }
+    }
+
+    /**
+     * Refresh table via Socket.IO (call after delete/update)
+     */
+    function refreshTableViaSocket() {
+        if (socket && socket.connected && window.__USER_ID__) {
+            socket.emit('scan:load-table', { userId: window.__USER_ID__ });
+        }
     }
 
     function showToast(msg, type) {

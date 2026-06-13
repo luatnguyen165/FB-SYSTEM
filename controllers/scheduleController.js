@@ -1480,7 +1480,7 @@ const scrapeGroupsFromJoinsAPI = async (req, res) => {
             channel.accountName,
             channel.accountType || 'Cá nhân',
             channel.platform,
-            { headless: false } // Để false để dễ debug, có thể đổi thành true khi chạy chính thức
+            { headless: true }
         );
         console.log(`[Group Scrape Joins API>>>>>>>>] Opened userSessionDir context for userSessionDir: ${sessionKey},  userSessionDir: ${userSessionDir}`);
         context = browserContext;

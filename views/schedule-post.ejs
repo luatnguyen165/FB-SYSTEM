@@ -8,13 +8,14 @@
     <link rel="stylesheet" href="/css/base.css">
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/schedule-post.css">
+    <link rel="stylesheet" href="/css/ai-content.css">
     <link rel="stylesheet" href="/css/toast.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <script src="/js/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.min.js"></script>
 </head>
@@ -291,35 +292,11 @@
                         <div class="form-section__header">
                             <i class="fa-solid fa-users"></i>
                             <span>Group Facebook đích</span>
-                            <span class="form-section__badge" id="groupSelectedBadge">0 đã chọn</span>
                         </div>
-                        <div class="group-search-combobox" id="groupCombobox">
-                            <div class="combobox-input-wrapper" id="comboboxInputWrapper">
-                                <i class="fa-solid fa-search combobox-search-icon"></i>
-                                <input type="text" class="combobox-search-input" id="groupSearchInput" 
-                                    placeholder="Tìm và chọn nhóm...">
-                                <span class="combobox-clear" id="comboboxClear" style="display:none;">
-                                    <i class="fa-solid fa-xmark"></i>
-                                </span>
+                        <div id="schedulePostGroupsList" class="schedule-groups-list">
+                            <div class="schedule-accounts-empty">
+                                <i class="fa-solid fa-lightbulb"></i> Chọn tài khoản Facebook để hiển thị danh sách nhóm
                             </div>
-                            <div class="combobox-dropdown" id="groupComboboxDropdown">
-                                <div class="combobox-loading" id="groupComboboxLoading">
-                                    <div class="combobox-loading__content">
-                                        <i class="fa-solid fa-spinner fa-spin"></i>
-                                        <span>Đang tải danh sách nhóm...</span>
-                                    </div>
-                                </div>
-                                <div class="combobox-empty" id="groupComboboxEmpty" style="display:none;">
-                                    <i class="fa-solid fa-users-slash"></i>
-                                    <span>Chưa có nhóm nào. Vui lòng vào trang <a href="/schedule/groups" style="color:var(--primary);font-weight:600;text-decoration:underline;">Quét nhóm Facebook</a> để quét.</span>
-                                </div>
-                                <div class="combobox-list" id="groupComboboxList"></div>
-                            </div>
-                        </div>
-                        <div class="selected-tags" id="selectedGroupTags"></div>
-                        <div class="form-section__hint" id="groupComboboxHint">
-                            <i class="fa-solid fa-lightbulb"></i>
-                            Chọn tài khoản Facebook để hiển thị danh sách nhóm
                         </div>
                     </div>
 
@@ -408,6 +385,12 @@
     </script>
     <script src="/js/base.js"></script>
     <script src="/js/utils.js"></script>
+    <script src="/js/schedule-post/helpers.js"></script>
+    <script src="/js/schedule-post/image.js"></script>
+    <script src="/js/schedule-post/calendar.js"></script>
+    <script src="/js/schedule-post/groups.js"></script>
+    <script src="/js/schedule-post/modal.js"></script>
+    <script src="/js/schedule-post/realtime.js"></script>
     <script src="/js/schedule-post.js"></script>
 </body>
 

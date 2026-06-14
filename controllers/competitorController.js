@@ -1,7 +1,7 @@
 // controllers/competitorController.js
 const competitorService = require('../services/competitorService');
 const Channel = require('../models/Channel');
-const { getOrOpenFacebookContext } = require('../services/facebookPlaywrightService');
+const { getOrOpenFacebookContext } = require('../services/facebook/session');
 const { fetchPagePosts } = require('../services/facebookPageScraper');
 
 /**

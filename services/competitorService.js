@@ -307,7 +307,7 @@ class CompetitorService {
      */
     async scrapeCompetitorPosts(userId, competitor) {
         const Channel = require('../models/Channel');
-        const { getOrOpenFacebookContext } = require('../services/facebookPlaywrightService');
+        const { getOrOpenFacebookContext } = require('../services/facebook/session');
         const { fetchPagePosts } = require('../services/facebookPageScraper');
         const SESSION_ROOT = path.join(global.USER_DATA_DIR || path.join(__dirname, '..'), 'social-sessions');
 

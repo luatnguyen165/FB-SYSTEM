@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Content Creator - ReelsFlow</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/ai-content.css">
+    <link rel="stylesheet" href="/css/toast.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<%- include('partials/sidebar', { currentPage: 'ai-content' }) %>
+<div class="main-content">
+    <%- include('partials/header') %>
+    <div class="content-body">
+
+        <!-- Hero -->
+        <div class="ai-content-hero">
+            <div class="ai-content-hero-content">
+                <div class="ai-content-hero-left">
+                    <div class="ai-content-hero-title">
+                        <div class="ai-content-hero-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                        <h1>AI Content Creator</h1>
+                    </div>
+                    <p class="ai-content-hero-subtitle">Tạo nội dung theo văn phong mẫu • Lên lịch tự động • Đăng đa nền tảng</p>
+                    <div class="ai-api-key-bar">
+                        <i class="fa-solid fa-key"></i>
+                        <span class="ai-api-key-status" id="apiKeyStatus"><%= openaiApiKey ? '✅ Đã cấu hình' : '⚠️ Chưa có OpenAI API Key.' %></span>
+                        <% if (!openaiApiKey) { %>
+                        <a href="/settings" class="btn-save-apikey"><i class="fa-solid fa-gear"></i> Cấu hình ngay</a>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="ai-content-stats">
+            <div class="ai-content-stat-card">
+                <div class="stat-icon primary"><i class="fa-solid fa-palette"></i></div>
+                <div class="stat-info"><span class="stat-value" id="statStyles">0</span><span class="stat-label">Văn phong</span></div>
+            </div>
+            <div class="ai-content-stat-card">
+                <div class="stat-icon success"><i class="fa-solid fa-calendar-check"></i></div>
+                <div class="stat-info"><span class="stat-value" id="statSchedules">0</span><span class="stat-label">Lịch đang chạy</span></div>
+            </div>
+            <div class="ai-content-stat-card">
+                <div class="stat-icon purple"><i class="fa-solid fa-file-lines"></i></div>
+                <div class="stat-info"><span class="stat-value" id="statPosts">0</span><span class="stat-label">Bài đã tạo</span></div>
+            </div>
+            <div class="ai-content-stat-card">
+                <div class="stat-icon warning"><i class="fa-solid fa-paper-plane"></i></div>
+                <div class="stat-info"><span class="stat-value" id="statPublished">0</span><span class="stat-label">Đã đăng</span></div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="ai-content-tabs">
+            <button class="ai-tab-btn active" data-tab="styles"><i class="fa-solid fa-palette"></i> Văn Phong</button>
+            <button class="ai-tab-btn" data-tab="schedules"><i class="fa-solid fa-calendar"></i> Lịch Nội Dung</button>
+            <button class="ai-tab-btn" data-tab="posts"><i class="fa-solid fa-newspaper"></i> Bài Viết AI</button>
+        </div>
+
+        <!-- Tab: Văn Phong -->
+        <div class="ai-tab-content active" id="tab-styles">
+            <div class="ai-content-section-header">
+                <h2><i class="fa-solid fa-palette"></i> Quản lý Văn Phong</h2>
+                <button class="btn-primary" id="btnNewStyle"><i class="fa-solid fa-plus"></i> Tạo Văn Phong Mới</button>
+            </div>
+
+            <% if (styles.length === 0) { %>
+            <div class="ai-content-empty">
+                <i class="fa-solid fa-palette"></i>
+                <h3>Chưa có văn phong nào</h3>
+                <p>Tạo văn phong mẫu để AI học cách viết bài theo phong cách của bạn.</p>
+            </div>
+            <% } else { %>
+            <div class="ai-content-grid">
+                <% styles.forEach(function(style) { %>
+                <div class="ai-style-card" data-id="<%= style._id %>">
+                    <div class="ai-style-header">
+                        <div class="ai-style-icon"><i class="fa-solid fa-pen-fancy"></i></div>
+                        <div class="ai-style-info">
+                            <h3><%= style.name %></h3>
+                            <span class="ai-style-meta">
+                                <%= style.sampleArticles.length %> bài mẫu • <%= (style.topics || []).length %> chủ đề
+                                <% if (style.trainingVersion > 0) { %>
+                                • <span style="color:var(--success);font-weight:600;">v<%= style.trainingVersion %></span>
+                                <% } %>
+                            </span>
+                        </div>
+                        <div class="ai-style-actions">
+                            <button class="btn-sm btn-analyze" onclick="analyzeStyle('<%= style._id %>')" title="Phân tích AI"><i class="fa-solid fa-magnifying-glass-chart"></i></button>
+                            <% if (style.trainingVersion > 0) { %>
+                            <button class="btn-sm btn-retrain" onclick="retrainStyle('<%= style._id %>')" title="Train lại từ bài tốt nhất"><i class="fa-solid fa-brain"></i></button>
+                            <% } %>
+                            <button class="btn-sm btn-edit" onclick="editStyle('<%= style._id %>')" title="Sửa"><i class="fa-solid fa-pen"></i></button>
+                            <button class="btn-sm btn-delete" onclick="deleteStyle('<%= style._id %>')" title="Xóa"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <% if (style.styleAnalysis && style.styleAnalysis.tone) { %>
+                    <div class="ai-style-analysis">
+                        <div class="analysis-tag"><i class="fa-solid fa-comment"></i> <%= style.styleAnalysis.tone %></div>
+                        <div class="analysis-tag"><i class="fa-solid fa-font"></i> <%= style.styleAnalysis.vocabulary %></div>
+                        <% if (style.styleAnalysis.keywords && style.styleAnalysis.keywords.length) { %>
+                        <div class="analysis-keywords">
+                            <% style.styleAnalysis.keywords.slice(0, 5).forEach(function(kw) { %>
+                            <span class="keyword-tag"><%= kw %></span>
+                            <% }); %>
+                        </div>
+                        <% } %>
+                        <p class="analysis-summary"><%= style.styleAnalysis.summary %></p>
+                    </div>
+                    <% } else { %>
+                    <div class="ai-style-no-analysis">
+                        <i class="fa-solid fa-exclamation-circle"></i> Chưa phân tích. Nhấn nút phân tích để AI học văn phong.
+                    </div>
+                    <% } %>
+                </div>
+                <% }); %>
+            </div>
+            <% } %>
+        </div>
+
+        <!-- Tab: Lịch Nội Dung -->
+        <div class="ai-tab-content" id="tab-schedules">
+            <div class="ai-content-section-header">
+                <h2><i class="fa-solid fa-calendar"></i> Lịch Tạo Nội Dung</h2>
+            <button class="btn-primary" id="btnNewSchedule" <%= styles.length === 0 ? 'disabled title="Cần tạo văn phong trước"' : '' %>><i class="fa-solid fa-plus"></i> Tạo Lịch & Tạo Bài Ngay</button>
+            </div>
+
+            <% if (schedules.length === 0) { %>
+            <div class="ai-content-empty">
+                <i class="fa-solid fa-calendar"></i>
+                <h3>Chưa có lịch nào</h3>
+                <p>Tạo lịch để AI tự động tạo bài viết theo khoảng ngày và khung giờ bạn thiết lập.</p>
+            </div>
+            <% } else { %>
+            <div class="ai-content-list">
+                <% schedules.forEach(function(sch) { %>
+                <div class="ai-schedule-card" data-id="<%= sch._id %>">
+                    <div class="ai-schedule-header">
+                        <div class="ai-schedule-icon <%= sch.status === 'active' ? 'active' : sch.status === 'completed' ? 'completed' : '' %>">
+                            <i class="fa-solid <%= sch.status === 'active' ? 'fa-play-circle' : sch.status === 'completed' ? 'fa-check-circle' : sch.status === 'paused' ? 'fa-pause-circle' : 'fa-edit' %>"></i>
+                        </div>
+                        <div class="ai-schedule-info">
+                            <h3><%= sch.name %></h3>
+                            <span class="ai-schedule-meta">
+                                <i class="fa-solid fa-palette"></i> <%= sch.writingStyleId?.name || 'N/A' %> •
+                                <span class="status-badge status-<%= sch.status %>"><%= sch.status %></span>
+                            </span>
+                        </div>
+                        <div class="ai-schedule-actions">
+                            <% if (sch.status === 'active' || sch.status === 'draft') { %>
+                            <button class="btn-sm btn-generate" onclick="generateNow('<%= sch._id %>')" title="Tạo bài ngay"><i class="fa-solid fa-wand-magic-sparkles"></i> Tạo bài</button>
+                            <% } %>
+                            <button class="btn-sm btn-edit" onclick="editSchedule('<%= sch._id %>')" title="Sửa"><i class="fa-solid fa-pen"></i></button>
+                            <button class="btn-sm btn-delete" onclick="deleteSchedule('<%= sch._id %>')" title="Xóa"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <div class="ai-schedule-details">
+                        <div class="schedule-detail"><i class="fa-solid fa-calendar-days"></i> <%= new Date(sch.dateRange.startDate).toLocaleDateString('vi-VN') %> - <%= new Date(sch.dateRange.endDate).toLocaleDateString('vi-VN') %></div>
+                        <div class="schedule-detail"><i class="fa-solid fa-clock"></i> <%= (sch.timeSlots || []).map(function(s){ return (s.hour<10?'0':'')+s.hour+':'+(s.minute<10?'0':'')+s.minute; }).join(', ') || 'N/A' %></div>
+                        <div class="schedule-detail"><i class="fa-solid fa-file-lines"></i> Đã tạo: <%= sch.postsGenerated || 0 %> bài</div>
+                        <div class="schedule-detail"><i class="fa-solid fa-hashtag"></i> Chủ đề: <%= (sch.contentConfig?.topics || []).join(', ') || 'Chung' %></div>
+                    </div>
+                </div>
+                <% }); %>
+            </div>
+            <% } %>
+        </div>
+
+        <!-- Tab: Bài Viết AI -->
+        <div class="ai-tab-content" id="tab-posts">
+            <div class="ai-content-section-header">
+                <h2><i class="fa-solid fa-newspaper"></i> Bài Viết Đã Tạo</h2>
+                <div class="ai-content-filter">
+                    <select id="filterSchedule" onchange="filterPosts()">
+                        <option value="">Tất cả lịch</option>
+                        <% schedules.forEach(function(s) { %>
+                        <option value="<%= s._id %>"><%= s.name %></option>
+                        <% }); %>
+                    </select>
+                    <select id="filterStatus" onchange="filterPosts()">
+                        <option value="">Tất cả trạng thái</option>
+                        <option value="draft">Draft</option>
+                        <option value="pending">Chờ đăng</option>
+                        <option value="posted">Đã đăng</option>
+                        <option value="failed">Thất bại</option>
+                    </select>
+                </div>
+            </div>
+
+            <% if (posts.length === 0) { %>
+            <div class="ai-content-empty">
+                <i class="fa-solid fa-newspaper"></i>
+                <h3>Chưa có bài viết nào</h3>
+                <p>Bài viết sẽ xuất hiện ở đây sau khi AI tạo xong.</p>
+            </div>
+            <% } else { %>
+            <div class="ai-posts-list" id="postsList">
+                <% posts.forEach(function(post) { %>
+                <div class="ai-post-card" data-id="<%= post._id %>" data-status="<%= post.status %>">
+                    <div class="ai-post-header">
+                        <div class="ai-post-status status-<%= post.status %>"><%= post.status %></div>
+                        <div class="ai-post-date"><%= new Date(post.scheduledAt).toLocaleString('vi-VN') %></div>
+                    </div>
+                    <h3 class="ai-post-title"><%= post.title || '(Không tiêu đề)' %></h3>
+                    <p class="ai-post-content-preview"><%= (post.content || '').substring(0, 200) %><%= post.content.length > 200 ? '...' : '' %></p>
+                    <div class="ai-post-meta">
+                        <span><i class="fa-solid fa-calendar"></i> <%= post.scheduleId?.name || 'N/A' %></span>
+                        <span><i class="fa-solid fa-globe"></i> <%= (post.platforms || []).join(', ') || 'N/A' %></span>
+                    </div>
+                    <div class="ai-post-actions">
+                        <button class="btn-sm btn-view" onclick="viewPost('<%= post._id %>')"><i class="fa-solid fa-eye"></i> Xem</button>
+                        <button class="btn-sm btn-edit" onclick="editPost('<%= post._id %>')"><i class="fa-solid fa-pen"></i> Sửa</button>
+                        <% if (post.status === 'draft') { %>
+                        <button class="btn-sm btn-publish" onclick="publishPost('<%= post._id %>')"><i class="fa-solid fa-paper-plane"></i> Đăng</button>
+                        <% } %>
+                        <button class="btn-sm btn-delete" onclick="deletePost('<%= post._id %>')"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+                <% }); %>
+            </div>
+            <% } %>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Tạo/Sửa Văn Phong -->
+<div class="ai-modal-overlay" id="styleModal" style="display:none;">
+    <div class="ai-modal ai-modal-lg">
+        <div class="ai-modal-header">
+            <h2 id="styleModalTitle"><i class="fa-solid fa-pen-fancy"></i> Tạo Văn Phong Mới</h2>
+            <button class="ai-modal-close" onclick="closeStyleModal()">&times;</button>
+        </div>
+        <div class="ai-modal-body">
+            <input type="hidden" id="styleEditId" value="">
+            <div class="form-group">
+                <label>Tên văn phong <span class="required">*</span></label>
+                <input type="text" id="styleName" placeholder="VD: Văn phong bán hàng skincare" class="form-input">
+            </div>
+            <div class="form-group">
+                <label>Bài viết mẫu <span class="required">*</span> <small>(ít nhất 1 bài)</small></label>
+                <div id="articlesList">
+                    <div class="article-entry">
+                        <input type="text" class="form-input article-title" placeholder="Tiêu đề bài mẫu (tùy chọn)">
+                        <textarea class="form-input article-content" rows="4" placeholder="Nội dung bài viết mẫu..."></textarea>
+                        <input type="text" class="form-input article-category" placeholder="Chủ đề / thể loại (tùy chọn)">
+                        <button type="button" class="btn-sm btn-remove-article" onclick="removeArticle(this)"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+                <button type="button" class="btn-secondary" id="btnAddArticle"><i class="fa-solid fa-plus"></i> Thêm bài mẫu</button>
+            </div>
+            <div class="form-group">
+                <label>Chủ đề cần viết <small>(mỗi dòng 1 chủ đề)</small></label>
+                <textarea id="styleTopics" rows="3" class="form-input" placeholder="Review sản phẩm&#10;Chia sẻ kinh nghiệm&#10;Bán hàng"></textarea>
+            </div>
+        </div>
+        <div class="ai-modal-footer">
+            <button class="btn-secondary" onclick="closeStyleModal()">Hủy</button>
+            <button class="btn-primary" id="btnSaveStyle"><i class="fa-solid fa-save"></i> Lưu</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Tạo/Sửa Lịch -->
+<div class="ai-modal-overlay" id="scheduleModal" style="display:none;">
+    <div class="ai-modal ai-modal-lg">
+        <div class="ai-modal-header">
+            <h2 id="scheduleModalTitle"><i class="fa-solid fa-calendar-plus"></i> Tạo Lịch & Tạo Bài Ngay</h2>
+            <button class="ai-modal-close" onclick="closeScheduleModal()">&times;</button>
+        </div>
+        <div class="ai-modal-body">
+            <input type="hidden" id="scheduleEditId" value="">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Tên lịch <span class="required">*</span></label>
+                    <input type="text" id="scheduleName" placeholder="VD: Lịch tuần 1 tháng 7" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label>Văn phong <span class="required">*</span></label>
+                    <select id="scheduleStyleId" class="form-input">
+                        <option value="">-- Chọn văn phong --</option>
+                        <% styles.forEach(function(s) { %>
+                        <option value="<%= s._id %>"><%= s.name %></option>
+                        <% }); %>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Ngày bắt đầu <span class="required">*</span></label>
+                    <input type="text" id="scheduleStartDate" class="form-input" placeholder="dd/mm/yyyy" onfocus="(this.type='date')" onblur="if(!this.value)(this.type='text')">
+                </div>
+                <div class="form-group">
+                    <label>Ngày kết thúc <span class="required">*</span></label>
+                    <input type="text" id="scheduleEndDate" class="form-input" placeholder="dd/mm/yyyy" onfocus="(this.type='date')" onblur="if(!this.value)(this.type='text')">
+                </div>
+            </div>
+
+            <!-- Platform & Account Selection -->
+            <div class="form-group">
+                <label>Nền tảng đăng bài <span class="required">*</span></label>
+                <div class="platform-checkbox-group" id="schedulePlatformGroup">
+                    <label class="platform-chip" data-platform="FB">
+                        <input type="radio" name="schedulePlatformPick" class="platform-check" value="FB" checked onchange="renderScheduleAccounts()">
+                        <i class="fa-brands fa-facebook"></i> <span>Facebook</span>
+                        <div class="platform-chip__check"><i class="fa-solid fa-check"></i></div>
+                    </label>
+                    <label class="platform-chip" data-platform="IG">
+                        <input type="radio" name="schedulePlatformPick" class="platform-check" value="IG" onchange="renderScheduleAccounts()">
+                        <i class="fa-brands fa-instagram"></i> <span>Instagram</span>
+                        <div class="platform-chip__check"><i class="fa-solid fa-check"></i></div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Tài khoản đăng bài</label>
+                <div id="scheduleAccountsList" class="schedule-accounts-list"></div>
+            </div>
+
+            <div class="form-group" id="postTypeGroup" style="display:none;">
+                <label>Đăng lên</label>
+                <div class="post-type-selector">
+                    <label class="post-type-chip active" data-posttype="personal" onclick="selectPostType('personal')">
+                        <input type="radio" name="postTypePick" value="personal" checked>
+                        <i class="fa-solid fa-user"></i> <span>Cá nhân</span>
+                    </label>
+                    <label class="post-type-chip" data-posttype="group" onclick="selectPostType('group')" id="postTypeGroupOption">
+                        <input type="radio" name="postTypePick" value="group">
+                        <i class="fa-solid fa-users"></i> <span>Nhóm</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group" id="groupSelectContainer" style="display:none;">
+                <label>Chọn nhóm Facebook</label>
+                <div id="scheduleGroupsList" class="schedule-groups-list"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Khung giờ đăng bài <span class="required">*</span></label>
+                <div id="timeSlotsList">
+                    <!-- Time slot entries rendered by JS -->
+                </div>
+                <button type="button" class="btn-secondary" id="btnAddTimeSlot"><i class="fa-solid fa-plus"></i> Thêm khung giờ</button>
+            </div>
+
+            <div class="form-group">
+                <label style="display:flex;align-items:center;justify-content:space-between;">
+                    <span>Chủ đề xoay vòng <small>(mỗi dòng 1 chủ đề)</small></span>
+                    <button type="button" class="btn-sm btn-generate" id="btnGenerateTopics" onclick="generateTopicsAI()" style="font-size:11px;padding:5px 12px;">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> AI tạo chủ đề
+                    </button>
+                </label>
+                <textarea id="scheduleTopics" rows="4" class="form-input" placeholder="Nhấn nút 'AI tạo chủ đề' để AI tự động tạo hot topics...&#10;Hoặc nhập thủ công mỗi dòng 1 chủ đề"></textarea>
+                <div id="generatedTopicsList" style="display:none;margin-top:10px;"></div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Số từ tối đa</label>
+                    <input type="number" id="scheduleMaxWords" class="form-input" value="500" min="100">
+                </div>
+                <div class="form-group">
+                    <label>Ngôn ngữ</label>
+                    <select id="scheduleLanguage" class="form-input">
+                        <option value="vi">Tiếng Việt</option>
+                        <option value="en">English</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Hướng dẫn thêm cho AI</label>
+                <textarea id="scheduleCustomInstructions" rows="2" class="form-input" placeholder="VD: Luôn bắt đầu bằng câu hỏi, thêm emoji ở đầu mỗi đoạn"></textarea>
+            </div>
+        </div>
+        <div class="ai-modal-footer">
+            <button class="btn-secondary" onclick="closeScheduleModal()">Hủy</button>
+            <button class="btn-primary" id="btnSaveSchedule"><i class="fa-solid fa-wand-magic-sparkles"></i> Tạo Lịch & Tạo Bài Ngay</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Xem/Sửa Bài Viết — Premium Editor -->
+<div class="ai-modal-overlay" id="postModal" style="display:none;">
+    <div class="ai-modal ai-modal-xl">
+        <div class="ai-modal-header">
+            <h2 id="postModalTitle"><i class="fa-solid fa-pen-to-square"></i> Chỉnh sửa bài viết</h2>
+            <button class="ai-modal-close" onclick="closePostModal()">&times;</button>
+        </div>
+        <div class="ai-modal-body">
+            <input type="hidden" id="postEditId" value="">
+
+            <!-- Meta Bar -->
+            <div class="post-edit-meta-bar" id="postMetaBar">
+                <div class="post-meta-chip status-draft" id="postStatusChip">
+                    <i class="fa-solid fa-circle"></i> <span id="postStatusText">draft</span>
+                </div>
+                <div class="post-meta-chip" id="postDateChip">
+                    <i class="fa-solid fa-clock"></i> <span id="postDateText">-</span>
+                </div>
+                <div class="post-meta-chip" id="postScheduleChip">
+                    <i class="fa-solid fa-calendar"></i> <span id="postScheduleText">-</span>
+                </div>
+            </div>
+
+            <!-- Title Input -->
+            <input type="text" id="postTitle" class="post-edit-title-input" placeholder="Nhập tiêu đề bài viết...">
+
+            <!-- Content Editor -->
+            <div class="post-edit-content-wrapper">
+                <div class="post-edit-content-label">
+                    <label for="postContent"><i class="fa-solid fa-align-left"></i> Nội dung bài viết</label>
+                    <div class="post-word-count" id="postWordCount">
+                        <i class="fa-solid fa-font"></i> <span id="wordCountNum">0</span> từ
+                    </div>
+                </div>
+                <textarea id="postContent" class="post-edit-textarea" placeholder="Viết nội dung bài viết ở đây..."></textarea>
+            </div>
+
+            <!-- Channel Chips -->
+            <div class="post-edit-channels-section">
+                <div class="post-edit-channels-label">
+                    <i class="fa-solid fa-globe"></i> Nền tảng đăng bài
+                </div>
+                <div class="post-edit-channels-grid" id="postChannelsGrid">
+                    <div class="post-channel-chip fb active" data-platform="FB" onclick="toggleChannelChip(this)">
+                        <i class="fa-brands fa-facebook"></i> Facebook
+                    </div>
+                    <div class="post-channel-chip ig" data-platform="IG" onclick="toggleChannelChip(this)">
+                        <i class="fa-brands fa-instagram"></i> Instagram
+                    </div>
+                    <div class="post-channel-chip tt" data-platform="TT" onclick="toggleChannelChip(this)">
+                        <i class="fa-brands fa-tiktok"></i> TikTok
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="ai-modal-footer">
+            <button class="btn-secondary" onclick="closePostModal()">Hủy</button>
+            <button class="btn-primary" id="btnSavePost"><i class="fa-solid fa-save"></i> Lưu thay đổi</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.__channelsData = <%- JSON.stringify(channels || []) %>;
+    window.__stylesData = <%- JSON.stringify(styles || []) %>;
+    window.__groupCaches = <%- JSON.stringify(groupCaches || []) %>;
+    window.__schedulesData = <%- JSON.stringify(schedules || []) %>;
+</script>
+<script src="/js/base.js"></script>
+<script src="/js/ai-content.js"></script>
+</body>
+</html>

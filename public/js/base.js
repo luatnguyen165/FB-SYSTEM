@@ -95,8 +95,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Only open parent sidebar-group if active item is inside one
+    // (Standalone items like "AI Content Creator" have no sidebar-group parent)
     const activeSidebarItem = document.querySelector('.sidebar .menu-item.active');
-    openOnlySidebarGroup(activeSidebarItem?.closest('.sidebar-group') || null);
+    const activeSidebarGroup = activeSidebarItem?.closest('.sidebar-group');
+    if (activeSidebarGroup) {
+        openOnlySidebarGroup(activeSidebarGroup);
+    }
 
     document.querySelectorAll('[data-sidebar-group-toggle]').forEach((button) => {
         button.addEventListener('click', (e) => {

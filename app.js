@@ -76,6 +76,7 @@ const commentPlayRoutes = require('./routes/commentPlay');
 const aiImageRoutes = require('./routes/aiImages');
 const licenseRoutes = require('./routes/licenses');
 const musicTrendingRoutes = require('./routes/musicTrending');
+const aiContentRoutes = require('./routes/aiContent');
 const { loadFeatureVisibility } = require('./middlewares/authMiddleware');
 const { loadUserChannels } = require('./middlewares/channelMiddleware');
 const { startReelsScheduleRunner } = require('./services/reelsScheduleRunner');
@@ -175,6 +176,7 @@ app.use('/ai-images', aiImageRoutes);              // Tạo Ảnh AI
 app.use('/admin/licenses', licenseRoutes);        // License Key Management
 app.use('/music-trending', musicTrendingRoutes);  // Music Trending
 app.use('/download', require('./routes/download')); // Download YouTube video/audio
+app.use('/ai-content', aiContentRoutes);           // AI Content Creator
 
 // Route mặc định - Chuyển hướng đến trang đăng nhập
 app.get('/', (req, res) => {
@@ -263,6 +265,44 @@ mongoose.connect(DB_URI, {
         }
     }, 30 * 1000);
     console.log('[CommentPlay Scheduler] Đã khởi động scheduler (kiểm tra mỗi 30 giây)');
+
+    // AI Content Creator scheduler - tạo bài viết theo lịch
+    setInterval(() => {
+        try {
+            const aiContentService = require('./services/aiContentService');
+            const apiKey = process.env.OPENAI_API_KEY;
+            if (!apiKey) return;
+            aiContentService.processActiveSchedules(apiKey).then(count => {
+                if (count > 0) {
+                    console.log(`✅ [AI Content Scheduler] Đã tạo ${count} bài viết mới`);
+                }
+            }).catch(err => {
+                console.error('[AI Content Scheduler] Error:', err.message);
+            });
+        } catch(e) {
+            console.error('[AI Content Scheduler] Error:', e.message);
+        }
+    }, 60 * 1000);
+    console.log('[AI Content Scheduler] Đã khởi động scheduler (kiểm tra mỗi 60 giây)');
+
+    // AI Content Auto-Retrain - train lại văn phong từ bài viết tốt nhất
+    setInterval(() => {
+        try {
+            const aiContentService = require('./services/aiContentService');
+            const apiKey = process.env.OPENAI_API_KEY;
+            if (!apiKey) return;
+            aiContentService.autoRetrainLoop(apiKey).then(count => {
+                if (count > 0) {
+                    console.log(`🧠 [AI Auto-Retrain] Đã train lại ${count} văn phong`);
+                }
+            }).catch(err => {
+                console.error('[AI Auto-Retrain] Error:', err.message);
+            });
+        } catch(e) {
+            console.error('[AI Auto-Retrain] Error:', e.message);
+        }
+    }, 30 * 60 * 1000); // Kiểm tra mỗi 30 phút
+    console.log('[AI Auto-Retrain] Đã khởi động scheduler (kiểm tra mỗi 30 phút)');
 })
 .catch(err => {
     console.error('❌ Lỗi kết nối MongoDB:', err.message);

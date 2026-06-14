@@ -15,7 +15,7 @@ const {
 } = require('../utils/cryptoVault');
 const {
     startFacebookProfileUrlWatcher
-} = require('../services/facebookPlaywrightService');
+} = require('../services/facebook/utils');
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

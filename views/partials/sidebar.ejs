@@ -151,7 +151,7 @@
         <!-- 🤖 AI TỰ ĐỘNG -->
         <li class="menu-section-title">AI Tự Động</li>
 
-        <% if (feat['ai-scan'] !== false || feat['ai-comments'] !== false || feat['comment-play'] !== false) { %>
+        <% if (feat['ai-scan'] !== false || feat['ai-comments'] !== false || feat['comment-play'] !== false || feat['ai-content'] !== false) { %>
         <li class="sidebar-group">
             <button
                 type="button"
@@ -182,6 +182,13 @@
                 </li>
                 <% } %>
             </ul>
+        </li>
+        <% } %>
+
+        <!-- 🤖 AI CONTENT -->
+        <% if (feat['ai-content'] !== false) { %>
+        <li class="menu-item <%= currentPage === 'ai-content' ? 'active' : '' %>">
+            <a href="/ai-content"><i class="fa-solid fa-pen-nib"></i>AI Content Creator</a>
         </li>
         <% } %>
 

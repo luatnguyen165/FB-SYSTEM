@@ -1,11 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const {
-    getOrOpenFacebookContext,
-    findFirstVisibleLocator,
-    writeTextIntoLocator,
-    normalizePublishedFacebookUrl
-} = require('./facebookPlaywrightService');
+const { getOrOpenFacebookContext } = require('./facebook/session');
+const { findFirstVisibleLocator, writeTextIntoLocator, normalizePublishedFacebookUrl } = require('./facebook/utils');
 const {
     randomWait,
     humanLikeTyping,
@@ -15,70 +11,13 @@ const {
     warmUp,
     simulateHumanAfterPost
 } = require('./humanBehaviorService');
-
-function resolveLocalImagePath(imagePath = '') {
-    const rawPath = String(imagePath || '').trim();
-    if (!rawPath) return '';
-
-    if (path.isAbsolute(rawPath) && fs.existsSync(rawPath)) {
-        return rawPath;
-    }
-
-const projectRoot = global.USER_DATA_DIR || path.join(__dirname, '..');
-    const normalizedRelative = rawPath.replace(/^\/+/, '').replace(/^\.\/+/, '');
-
-    const candidates = [
-        path.join(projectRoot, normalizedRelative),
-        path.join(projectRoot, 'uploads', 'images', path.basename(normalizedRelative))
-    ];
-
-    for (const candidate of candidates) {
-        if (fs.existsSync(candidate)) return candidate;
-    }
-
-    return rawPath;
-}
-
-function normalizeScheduleImageInputs(images = []) {
-    const values = Array.isArray(images) ? images : [images];
-    return values
-        .map(resolveLocalImagePath)
-        .filter(Boolean)
-        .filter((filePath) => fs.existsSync(filePath));
-}
-
-function normalizeFacebookGroupUrl(url = '') {
-    const raw = String(url || '').trim();
-    if (!raw) return '';
-
-    try {
-        const parsed = new URL(raw);
-        if (!/^(www\.)?facebook\.com$/i.test(parsed.hostname)) return '';
-
-        const pathname = parsed.pathname.replace(/\/+$/, '/');
-        if (!/^\/groups\//i.test(pathname)) return '';
-
-        return `${parsed.origin}${pathname}${parsed.search || ''}`;
-    } catch (err) {
-        return '';
-    }
-}
-
-function buildFacebookGroupTargetUrl(groupUrl = '', groupId = '') {
-    const normalizedGroupUrl = normalizeFacebookGroupUrl(groupUrl);
-    if (normalizedGroupUrl) return normalizedGroupUrl;
-
-    const rawGroupId = String(groupId || '').trim();
-    if (!rawGroupId) return '';
-    if (/^https?:\/\//i.test(rawGroupId)) return normalizeFacebookGroupUrl(rawGroupId);
-
-    return `https://www.facebook.com/groups/${encodeURIComponent(rawGroupId)}`;
-}
-
-function isAllowedPostImageFile(filePath = '') {
-    const ext = path.extname(String(filePath || '').trim()).toLowerCase();
-    return ['.jpg', '.jpeg', '.png'].includes(ext);
-}
+const {
+    resolveLocalImagePath,
+    normalizeScheduleImageInputs,
+    isAllowedPostImageFile,
+    normalizeFacebookGroupUrl,
+    buildFacebookGroupTargetUrl
+} = require('./common/facebook');
 
 async function uploadImagesIntoPostDialog(page, dialog, imagePaths = []) {
     const resolvedPaths = normalizeScheduleImageInputs(imagePaths).filter(isAllowedPostImageFile);

@@ -469,7 +469,7 @@ class CommentPlayService {
             const channel = await Channel.findById(play.channelId).lean();
             if (!channel) throw new Error('Không tìm thấy tài khoản Facebook');
 
-            const facebookPlaywrightService = require('./facebookPlaywrightService');
+            const facebookCommentService = require('./facebook/comment');
 
             // Chuẩn bị danh sách comment cho playwright
             const commentList = comments.map(c => ({
@@ -480,7 +480,7 @@ class CommentPlayService {
             }));
 
             console.log("##### _postComment: DANG GOI commentOnPost voi", commentList.length, "comment(s)");
-            const postResult = await facebookPlaywrightService.commentOnPost({
+            const postResult = await facebookCommentService.commentOnPost({
                 channel,
                 postUrl: targetInfo.url,
                 comments: commentList,

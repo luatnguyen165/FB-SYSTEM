@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const SchedulePost = require('../models/SchedulePost');
 const Channel = require('../models/Channel');
-const { runBotUploadInstantWithAccount } = require('./facebookPlaywrightService');
+const { runBotUploadInstantWithAccount } = require('./facebook/reels');
 const { runBotPostGroupInstantWithAccount } = require('./facebookPostGroupService');
 const { uploadVideoToTikTok } = require('./tiktokPlaywrightService');
 const { uploadVideoToInstagram, uploadImagesToInstagram } = require('./instagramPlaywrightService');
@@ -532,17 +532,17 @@ async function executeSchedule(schedule, { persistStatus = true, markAsPosted = 
         console.log(`[Schedule Runner] executeSchedule done schedule=${schedule._id} success=${Boolean(result?.success)} publishedUrl=${result?.publishedUrl || ''}`);
 
         if (persistStatus) {
-            if (result?.success && markAsPosted) {
+            if (result?.success) {
+                // Upload thành công - luôn set status = 'posted'
                 await SchedulePost.updateOne(
                     { _id: schedule._id },
-                    { $set: { status: 'posted', publishedUrl: result?.publishedUrl || '' } }
-                );
-            } else if (result?.success && result?.publishedUrl) {
-                await SchedulePost.updateOne(
-                    { _id: schedule._id },
-                    { $set: { publishedUrl: result.publishedUrl } }
+                    { $set: { 
+                        status: 'posted', 
+                        publishedUrl: result?.publishedUrl || '' 
+                    } }
                 );
             } else {
+                // Upload thất bại
                 await SchedulePost.updateOne(
                     { _id: schedule._id },
                     { $set: { status: 'failed' } }
@@ -633,6 +633,7 @@ async function processDueSchedules() {
 
                 emitScheduleUpdate(schedule.userId, {
                     _id: schedule._id,
+                    type: schedule.type || 'reels',
                     status: finalStatus,
                     publishedUrl: finalUrl
                 });

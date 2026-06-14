@@ -2,91 +2,33 @@ const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
 
-const SESSION_ROOT = path.join(global.USER_DATA_DIR || path.join(__dirname, '..'), 'social-sessions'); // Thư mục tập trung cho social sessions
-const ACTIVE_SOCIAL_SESSIONS = global.__socialPlaywrightSessions || (global.__socialPlaywrightSessions = new Map());
+const { SESSION_ROOT, ensureDir, sanitizeFolderName, buildAccountFolder, verifyCookiesSaved, getChromeArgs, getUserAgent, waitForContextClose } = require('./common/browser');
 const { getAntiDetectionScript } = require('./humanBehaviorService');
+const FacebookGroupCache = require('../models/FacebookGroupCache');
 
-// ===== ANTI-DETECTION: Tắt banner "Chrome is being controlled" qua Windows Registry =====
-function disableChromeAutomationInfobar() {
-    if (process.platform !== 'win32') return false;
-    try {
-        const { execSync } = require('child_process');
-        // Xóa registry key cũ nếu có
-        execSync('reg delete "HKEY_CURRENT_USER\\Software\\Google\\Chrome" /v SuppressInfobarEnabled /f 2>nul', { stdio: 'ignore' });
-        // Set registry: SuppressInfobarEnabled = 1 (DWORD)
-        execSync('reg add "HKEY_CURRENT_USER\\Software\\Google\\Chrome" /v SuppressInfobarEnabled /t REG_DWORD /d 1 /f', { stdio: 'ignore' });
-        execSync('reg add "HKEY_CURRENT_USER\\Software\\Policies\\Google\\Chrome" /v SuppressInfobarEnabled /t REG_DWORD /d 1 /f 2>nul', { stdio: 'ignore' });
-        console.log('[Anti-Detection] Đã set Windows Registry để ẩn Chrome automation infobar');
-        return true;
-    } catch (e) {
-        console.warn('[Anti-Detection] Không thể set registry:', e.message);
-        return false;
-    }
-}
+const ACTIVE_SOCIAL_SESSIONS = global.__socialPlaywrightSessions || (global.__socialPlaywrightSessions = new Map());
 
 // Gọi ngay khi module load
-disableChromeAutomationInfobar();
-
-const FacebookGroupCache = require('../models/FacebookGroupCache');
+require('./common/browser').disableChromeAutomationInfobar();
 
 /**
  * Lấy danh sách nhóm từ Cache (DB)
- * @param {string} userId - ID người dùng
- * @param {string} channelId - ID tài khoản FB
  */
 async function getJoinedFacebookGroupsCached(userId, channelId) {
-
     try {
-        // Tìm cache dựa trên userId và channelId
-        const cache = await FacebookGroupCache.findOne({ 
-            userId, 
-            channelId 
-        }).lean(); // Sử dụng .lean() để tăng hiệu năng vì chúng ta chỉ đọc dữ liệu
+        const cache = await FacebookGroupCache.findOne({ userId, channelId }).lean();
         if (!cache) {
-            return { 
-                success: true, 
-                groups: [], 
-                updatedAt: null,
-                message: "Chưa có dữ liệu cache" 
-            };
+            return { success: true, groups: [], updatedAt: null, message: "Chưa có dữ liệu cache" };
         }
-
-        return { 
-            success: true, 
-            groups: cache.groups, 
-            updatedAt: cache.updatedAt 
-        };
+        return { success: true, groups: cache.groups, updatedAt: cache.updatedAt };
     } catch (error) {
         console.error(`[getJoinedFacebookGroupsCached Error] ${error.message}`);
         throw new Error('Lỗi khi truy vấn cache');
     }
 }
 
-function ensureDir(dirPath) {
-    if (!fs.existsSync(dirPath)) {
-        fs.mkdirSync(dirPath, { recursive: true });
-    }
-}
-
-function sanitizeFolderName(value = '') {
-    return String(value)
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9ก-๙_-]+/gi, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '') || 'social-account';
-}
-
-function buildFacebookAccountFolder(userId, accountName, platform = 'FB') {
-    const safeAccountName = sanitizeFolderName(accountName);
-    // Chuyển platform về dạng viết hoa để đồng bộ (ví dụ: fb -> FB)
-    
-    // Đường dẫn bây giờ sẽ là: SESSION_ROOT/userId/tên-tài-khoản-NỀN-TẢNG
-    return path.join(SESSION_ROOT, String(userId), `${safeAccountName}-${platform}`);
-}
-
-// Alias - buildSocialAccountFolder giống buildFacebookAccountFolder
-const buildSocialAccountFolder = buildFacebookAccountFolder;
+// Alias
+const buildSocialAccountFolder = buildAccountFolder;
 
 /**
  * Lấy thông tin profile từ session đã lưu trong thư mục social-sessions
@@ -233,119 +175,6 @@ async function getOrOpenSocialContext(userId, accountName,accountType,platform =
     });
 
     return { context, sessionKey, reused: false, userSessionDir };
-}
-
-/**
- * Kiểm tra cookies đã được lưu thành công bởi persistent context (launchPersistentContext)
- * Với persistent context, Playwright tự động lưu cookies khi context đóng.
- * Quét rộng tất cả các vị trí có thể chứa cookie.
- */
-function verifyCookiesSaved(userSessionDir) {
-    if (!userSessionDir || !fs.existsSync(userSessionDir)) {
-        return { valid: false, reason: 'Thư mục session không tồn tại' };
-    }
-
-    // Quét toàn bộ cây thư mục để tìm file Cookies
-    const foundCookiesFiles = [];
-    
-    try {
-        const walkDir = (dir, depth = 0) => {
-            if (depth > 4) return; // Giới hạn độ sâu
-            let entries;
-            try {
-                entries = fs.readdirSync(dir, { withFileTypes: true });
-            } catch (e) { return; }
-            
-            for (const entry of entries) {
-                const fullPath = path.join(dir, entry.name);
-                if (entry.isDirectory()) {
-                    walkDir(fullPath, depth + 1);
-                } else if (entry.name.toLowerCase() === 'cookies' || entry.name.toLowerCase().includes('cookie')) {
-                    try {
-                        const stats = fs.statSync(fullPath);
-                        if (stats.size > 100) {
-                            foundCookiesFiles.push({ path: fullPath, size: stats.size });
-                        }
-                    } catch (e) { /* ignore */ }
-                }
-            }
-        };
-        walkDir(userSessionDir);
-    } catch (e) { /* ignore */ }
-
-    // Kiểm tra các đường dẫn phổ biến
-    const commonPaths = [
-        path.join(userSessionDir, 'Default', 'Network', 'Cookies'),
-        path.join(userSessionDir, 'Default', 'Cookies'),
-        path.join(userSessionDir, 'Default', 'Network', 'Cookies-journal'),
-        path.join(userSessionDir, 'Cookies'),
-        path.join(userSessionDir, 'Network', 'Cookies'),
-    ];
-
-    for (const cookieFile of commonPaths) {
-        try {
-            if (fs.existsSync(cookieFile)) {
-                const stats = fs.statSync(cookieFile);
-                if (stats.size > 100) {
-                    return { valid: true, cookiesCount: Math.round(stats.size / 200), storageStatePath: cookieFile };
-                }
-            }
-        } catch (e) { /* ignore */ }
-    }
-
-    // Nếu tìm thấy file Cookies qua quét cây
-    if (foundCookiesFiles.length > 0) {
-        const largest = foundCookiesFiles.sort((a, b) => b.size - a.size)[0];
-        return { valid: true, cookiesCount: Math.round(largest.size / 200), storageStatePath: largest.path };
-    }
-
-    // Fallback: kiểm tra Local State (file JSON chứa thông tin profile Chrome)
-    const localStatePath = path.join(userSessionDir, 'Local State');
-    if (fs.existsSync(localStatePath)) {
-        try {
-            const stats = fs.statSync(localStatePath);
-            if (stats.size > 50) {
-                return { valid: true, cookiesCount: 5, storageStatePath: userSessionDir };
-            }
-        } catch (e) { /* ignore */ }
-    }
-
-    // Kiểm tra có file dữ liệu nào trong thư mục profile không
-    try {
-        const entries = fs.readdirSync(userSessionDir);
-        const hasDataFiles = entries.some(e => {
-            if (e === '.' || e === '..') return false;
-            const fullPath = path.join(userSessionDir, e);
-            try {
-                const stat = fs.statSync(fullPath);
-                if (stat.isFile() && stat.size > 100) return true;
-                if (stat.isDirectory()) {
-                    const subEntries = fs.readdirSync(fullPath);
-                    return subEntries.length > 3;
-                }
-            } catch (err) { return false; }
-            return false;
-        });
-        if (hasDataFiles) {
-            return { valid: true, cookiesCount: entries.length, storageStatePath: userSessionDir };
-        }
-    } catch (e) { /* ignore */ }
-
-    // LUÔN trả về valid = true cho TikToken để tránh lỗi không lưu được session
-    // Với launchPersistentContext, Playwright tự động duy trì cookies,
-    // việc không tìm thấy file cookies database có thể do đường dẫn khác nhau giữa các phiên bản Chrome
-    if (userSessionDir) {
-        try {
-            // Kiểm tra nếu thư mục đã tồn tại và có nội dung
-            const entries = fs.readdirSync(userSessionDir);
-            if (entries.length > 0) {
-                console.log(`[Verify Cookies] Session dir exists with ${entries.length} entries, marking as valid`);
-                return { valid: true, cookiesCount: 1, storageStatePath: userSessionDir };
-            }
-        } catch (e) { /* ignore */ }
-    }
-
-    return { valid: false, reason: 'Chưa tìm thấy dữ liệu session Chrome', storageStatePath: userSessionDir };
 }
 
 /**

@@ -3,6 +3,13 @@ const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
 const socketService = require('../socketService');
 
+/**
+ * Gọi AI dựa trên provider được cấu hình
+ * @param {string} userId
+ * @param {object} postData
+ * @param {string} prompt
+ * @param {object} config - { configId, openaiApiKey, model, aiProvider, openaiCompatibleApiKey, openaiCompatibleBaseUrl, openaiCompatibleModel, anthropicApiKey, anthropicModel, usePuter }
+ */
 async function callAiForAnalysis(userId, postData, prompt, config = {}) {
     const usePuter = config.usePuter !== false;
     if (usePuter) {
@@ -23,12 +30,38 @@ async function callAiForAnalysis(userId, postData, prompt, config = {}) {
             }, prompt, 30000);
             return result;
         } catch (puterErr) {
-            console.warn(`[AI Scan] Puter.js failed, trying OpenAI:`, puterErr.message);
+            console.warn(`[AI Scan] Puter.js failed, trying AI provider:`, puterErr.message);
         }
     }
+
+    const aiProvider = config.aiProvider || 'openai';
+
+    if (aiProvider === 'openai') {
+        const apiKey = config.openaiApiKey || '';
+        if (!apiKey) throw new Error('Chưa cấu hình OpenAI API key');
+        return await callOpenAi(prompt, apiKey, config.model || 'gpt-4o-mini');
+    }
+
+    if (aiProvider === 'openai-compatible') {
+        const apiKey = config.openaiCompatibleApiKey || '';
+        const baseUrl = config.openaiCompatibleBaseUrl || '';
+        const model = config.openaiCompatibleModel || config.model || 'gpt-3.5-turbo';
+        if (!apiKey) throw new Error('Chưa cấu hình API key cho OpenAI Compatible');
+        if (!baseUrl) throw new Error('Chưa cấu hình Base URL cho OpenAI Compatible');
+        return await callOpenAiCompatible(prompt, apiKey, baseUrl, model);
+    }
+
+    if (aiProvider === 'anthropic') {
+        const apiKey = config.anthropicApiKey || '';
+        const model = config.anthropicModel || config.model || 'claude-3-haiku-20240307';
+        if (!apiKey) throw new Error('Chưa cấu hình Anthropic API key');
+        return await callAnthropic(prompt, apiKey, model);
+    }
+
+    // Fallback to OpenAI
     const apiKey = config.openaiApiKey || '';
-    if (!apiKey) throw new Error('Không có Puter.js frontend và chưa cấu hình OpenAI API key');
-    return await callOpenAi(prompt, apiKey, config.model);
+    if (!apiKey) throw new Error('Không có Puter.js frontend và chưa cấu hình AI provider');
+    return await callOpenAi(prompt, apiKey, config.model || 'gpt-4o-mini');
 }
 
 async function callOpenAi(prompt, apiKey, modelName = 'gpt-4o-mini') {
@@ -45,6 +78,44 @@ async function callOpenAi(prompt, apiKey, modelName = 'gpt-4o-mini') {
         timeout: 30000
     });
     return response.data?.choices?.[0]?.message?.content || '';
+}
+
+async function callOpenAiCompatible(prompt, apiKey, baseUrl, modelName = 'gpt-3.5-turbo') {
+    const cleanBaseUrl = String(baseUrl).replace(/\/+$/, '');
+    const response = await axios.post(`${cleanBaseUrl}/chat/completions`, {
+        model: String(modelName).trim(),
+        messages: [
+            { role: 'system', content: 'Bạn là trợ lý phân tích nhu cầu khách hàng. Trả về JSON hợp lệ.' },
+            { role: 'user', content: prompt }
+        ],
+        temperature: 0.3,
+        max_tokens: 500
+    }, {
+        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        timeout: 30000
+    });
+    return response.data?.choices?.[0]?.message?.content || '';
+}
+
+async function callAnthropic(prompt, apiKey, modelName = 'claude-3-haiku-20240307') {
+    const response = await axios.post('https://api.anthropic.com/v1/messages', {
+        model: String(modelName).trim(),
+        max_tokens: 500,
+        system: 'Bạn là trợ lý phân tích nhu cầu khách hàng. Trả về JSON hợp lệ. KHÔNG thêm markup hay giải thích, chỉ trả về JSON thuần.',
+        messages: [
+            { role: 'user', content: prompt }
+        ]
+    }, {
+        headers: {
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+            'Content-Type': 'application/json'
+        },
+        timeout: 30000
+    });
+    // Anthropic returns content in a different structure
+    const content = response.data?.content?.[0]?.text || '';
+    return content;
 }
 
 function parseAiResponse(rawText = '') {
@@ -79,6 +150,21 @@ Nội dung: ${doc.postContent}
 Trả về JSON: {"isMatching": true/false, "score": 0-100, "analysis": "...", "reason": "..."}`;
 
     console.log(`[AI] Analyzing DB post: ${doc.postId}`);
+
+    // Build AI config with all possible provider fields
+    const aiConfig = {
+        configId: config._id,
+        openaiApiKey: apiKey || config.openaiApiKey,
+        model: config.model,
+        aiProvider: config.aiProvider || 'openai',
+        openaiCompatibleApiKey: config.openaiCompatibleApiKey,
+        openaiCompatibleBaseUrl: config.openaiCompatibleBaseUrl,
+        openaiCompatibleModel: config.openaiCompatibleModel,
+        anthropicApiKey: config.anthropicApiKey,
+        anthropicModel: config.anthropicModel,
+        usePuter: true
+    };
+
     const aiRawResponse = await callAiForAnalysis(config.userId, {
         postId: doc.postId,
         postUrl: doc.postUrl,
@@ -87,12 +173,7 @@ Trả về JSON: {"isMatching": true/false, "score": 0-100, "analysis": "...", "
         postImages: doc.postImages || [],
         _currentPostIndex: doc._batchIndex || '?',
         _totalPosts: doc._batchTotal || '?'
-    }, analysisPrompt, {
-        configId: config._id,
-        openaiApiKey: apiKey,
-        model: config.model,
-        usePuter: true
-    });
+    }, analysisPrompt, aiConfig);
     const aiResult = parseAiResponse(aiRawResponse);
 
     doc.aiAnalysis = aiResult.analysis;
@@ -109,6 +190,8 @@ Trả về JSON: {"isMatching": true/false, "score": 0-100, "analysis": "...", "
 module.exports = {
     callAiForAnalysis,
     callOpenAi,
+    callOpenAiCompatible,
+    callAnthropic,
     parseAiResponse,
     analyzeDbResult
 };

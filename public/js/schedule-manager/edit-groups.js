@@ -4,6 +4,23 @@
 
 let editFacebookGroups = [];
 let editSelectedGroupKeys = [];
+let editGroupNamesMap = {}; // key -> groupName (stored from payload for display before groups load)
+
+function setEditGroupNamesFromPayload(payload) {
+    editGroupNamesMap = {};
+    if (!payload) return;
+    const keys = Array.isArray(payload.targetGroupId)
+        ? payload.targetGroupId
+        : (payload.targetGroupId ? [payload.targetGroupId] : []);
+    const name = payload.targetGroupName || '';
+    // Map each key to the group name (if multiple keys share the same name, store individually)
+    keys.forEach((key, idx) => {
+        // If we have a groupUrl in payload, prefer it as key
+        const actualKey = key;
+        // For backward compat, check if payload has group URL mapping
+        editGroupNamesMap[actualKey] = name;
+    });
+}
 
 async function loadEditFacebookGroups(sourceChannelId, preferredGroupKeys = '') {
     const combobox = document.getElementById('editGroupCombobox');
@@ -22,6 +39,7 @@ async function loadEditFacebookGroups(sourceChannelId, preferredGroupKeys = '') 
         if (hint) hint.innerHTML = '<i class="fa-solid fa-lightbulb"></i> Chọn tài khoản Facebook để hiển thị danh sách nhóm';
         editFacebookGroups = [];
         editSelectedGroupKeys = [];
+        editGroupNamesMap = {};
         renderEditSelectedGroupTags();
         return;
     }
@@ -49,6 +67,13 @@ async function loadEditFacebookGroups(sourceChannelId, preferredGroupKeys = '') 
         if (loading) loading.style.display = 'none';
         if (hint) hint.innerHTML = `<i class="fa-solid fa-check-circle"></i> ${editFacebookGroups.length} nhóm có sẵn. Chọn một hoặc nhiều nhóm để đăng bài.`;
         editSelectedGroupKeys = Array.isArray(preferredGroupKeys) ? [...preferredGroupKeys] : (preferredGroupKeys ? preferredGroupKeys.split(',') : []);
+        
+        // Update group names map with actual data from loaded groups
+        editFacebookGroups.forEach(g => {
+            const key = g.groupUrl || g.groupId || '';
+            if (key) editGroupNamesMap[key] = g.groupName || key;
+        });
+        
         if (searchInput) searchInput.value = '';
         renderEditGroupComboboxList(editFacebookGroups);
         renderEditSelectedGroupTags();
@@ -115,9 +140,9 @@ function renderEditSelectedGroupTags() {
 
     container.innerHTML = editSelectedGroupKeys.map(key => {
         const group = editFacebookGroups.find(g => (g.groupUrl || g.groupId) === key);
-        const name = group?.groupName || key;
+        const name = group?.groupName || editGroupNamesMap[key] || key;
         return `<div class="selected-tag" data-key="${key}">
-            <span>${name.substring(0, 20)}${name.length > 20 ? '...' : ''}</span>
+            <span>${name.substring(0, 25)}${name.length > 25 ? '...' : ''}</span>
             <span class="selected-tag__remove" data-action="remove-edit-group" data-key="${key}">
                 <i class="fa-solid fa-xmark"></i>
             </span>

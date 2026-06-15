@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -298,30 +298,130 @@
                         <i class="fa-solid fa-brain"></i>
                     </div>
                     <div>
-                        <h2>OpenAI API Key (AI Scan)</h2>
-                        <p>API key dùng chung cho tất cả cấu hình Quét Bài Viết AI. Key sẽ được dùng để gọi OpenAI phân tích nhu cầu khách hàng.</p>
+                        <h2>Cấu hình AI Provider</h2>
+                        <p>Chọn nhà cung cấp AI và cấu hình API key. Dùng chung cho AI Scan và các tính năng AI khác.</p>
                     </div>
                 </div>
 
                 <div class="form-grid">
-                    <div class="form-group">
-                        <label for="openaiApiKey">OPENAI API KEY</label>
-                        <span class="form-desc">Lấy tại <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a>. Key có định dạng sk-...</span>
-                        <div class="input-with-prefix" style="display: flex; gap: 8px;">
-                            <i class="fa-solid fa-key input-prefix-icon"></i>
-                            <input type="password" class="input-text" id="openaiApiKey" value="<%= settings && settings.openaiApiKey ? settings.openaiApiKey : '' %>" placeholder="sk-... (để trống nếu chưa có)" autocomplete="off" style="flex: 1;">
-                            <button type="button" class="btn btn-outline btn-sm" id="btnTestOpenAiKey" style="white-space: nowrap;">
-                                <i class="fa-solid fa-plug"></i> Test Kết Nối
-                            </button>
+                    <!-- Bộ chọn AI Provider -->
+                    <div class="form-group full-width">
+                        <label for="aiProvider">NHÀ CUNG CẤP AI</label>
+                        <span class="form-desc">Chọn dịch vụ AI bạn muốn sử dụng để phân tích nội dung.</span>
+                        <select id="aiProvider" class="input-text" style="max-width: 400px;">
+                            <option value="openai" <%= settings && settings.aiProvider === 'openai' ? 'selected' : '' %>>OpenAI</option>
+                            <option value="openai-compatible" <%= settings && settings.aiProvider === 'openai-compatible' ? 'selected' : '' %>>OpenAI Compatible (Groq, DeepSeek, v.v.)</option>
+                            <option value="anthropic" <%= settings && settings.aiProvider === 'anthropic' ? 'selected' : '' %>>Anthropic (Claude)</option>
+                        </select>
+                    </div>
+
+                    <!-- OpenAI Settings -->
+                    <div class="ai-provider-fields" id="aiOpenaiFields">
+                        <div class="form-group full-width" style="margin-bottom: 12px;">
+                            <label style="font-size:0.85rem; color:var(--primary);">--- OpenAI ---</label>
+                        </div>
+                        <div class="form-group">
+                            <label for="openaiApiKey">API KEY</label>
+                            <span class="form-desc">Lấy tại <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a>. Key có định dạng sk-...</span>
+                            <div class="input-with-prefix">
+                                <i class="fa-solid fa-key input-prefix-icon"></i>
+                                <input type="password" class="input-text" id="openaiApiKey" value="<%= settings && settings.openaiApiKey ? settings.openaiApiKey : '' %>" placeholder="sk-... (để trống nếu chưa có)" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="openaiModel">MODEL</label>
+                            <span class="form-desc">Ví dụ: gpt-4o-mini, gpt-4o, gpt-4-turbo...</span>
+                            <div class="input-with-prefix">
+                                <i class="fa-solid fa-cube input-prefix-icon"></i>
+                                <input type="text" class="input-text" id="openaiModel" value="<%= settings && settings.openaiModel ? settings.openaiModel : 'gpt-4o-mini' %>" placeholder="gpt-4o-mini" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="form-group" style="grid-column:1/-1;">
+                            <div id="openaiStatusCard" style="padding: 12px 16px; border-radius: 8px; background: <%= settings && settings.openaiApiKey ? 'rgba(16, 185, 129, 0.08)' : 'rgba(148, 163, 184, 0.08)' %>; display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 10px; height: 10px; border-radius: 50%; background: <%= settings && settings.openaiApiKey ? '#10b981' : '#94a3b8' %>;" id="openaiStatusDot"></div>
+                                <span id="openaiStatusText" style="font-size: 0.85rem; color: var(--text-main);">
+                                    <%= settings && settings.openaiApiKey ? 'Đã cấu hình OpenAI API Key' : 'Chưa cấu hình OpenAI API Key' %>
+                                </span>
+                                <button type="button" class="btn btn-outline btn-sm" id="btnTestOpenAiKey" style="margin-left: auto; white-space: nowrap; padding: 6px 14px; font-size:0.8rem; border-radius:6px; background:var(--bg-hover); border:1px solid var(--border); cursor:pointer; transition:all 0.2s;">
+                                    <i class="fa-solid fa-plug"></i> Test
+                                </button>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <div id="openaiStatusCard" style="padding: 12px 16px; border-radius: 8px; background: <%= settings && settings.openaiApiKey ? 'rgba(16, 185, 129, 0.08)' : 'rgba(148, 163, 184, 0.08)' %>; display: flex; align-items: center; gap: 10px;">
-                            <div style="width: 10px; height: 10px; border-radius: 50%; background: <%= settings && settings.openaiApiKey ? '#10b981' : '#94a3b8' %>;" id="openaiStatusDot"></div>
-                            <span id="openaiStatusText" style="font-size: 0.85rem; color: var(--text-main);">
-                                <%= settings && settings.openaiApiKey ? 'Đã cấu hình OpenAI API Key' : 'Chưa cấu hình OpenAI API Key' %>
-                            </span>
+                    <!-- OpenAI Compatible Settings -->
+                    <div class="ai-provider-fields" id="aiOpenaiCompatibleFields">
+                        <div class="form-group full-width" style="margin-bottom: 12px;">
+                            <label style="font-size:0.85rem; color:var(--primary);">--- OpenAI Compatible (Groq, DeepSeek, v.v.) ---</label>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="openaiCompatibleBaseUrl">BASE URL</label>
+                            <span class="form-desc">Ví dụ: https://api.groq.com/openai/v1, https://api.deepseek.com/v1</span>
+                            <div class="input-with-prefix">
+                                <i class="fa-solid fa-link input-prefix-icon"></i>
+                                <input type="text" class="input-text" id="openaiCompatibleBaseUrl" value="<%= settings && settings.openaiCompatibleBaseUrl ? settings.openaiCompatibleBaseUrl : '' %>" placeholder="https://api.groq.com/openai/v1" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="openaiCompatibleApiKey">API KEY</label>
+                            <span class="form-desc">API key từ nhà cung cấp tương thích OpenAI.</span>
+                            <div class="input-with-prefix">
+                                <i class="fa-solid fa-key input-prefix-icon"></i>
+                                <input type="password" class="input-text" id="openaiCompatibleApiKey" value="<%= settings && settings.openaiCompatibleApiKey ? settings.openaiCompatibleApiKey : '' %>" placeholder="Nhập API key..." autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="openaiCompatibleModel">MODEL</label>
+                            <span class="form-desc">Ví dụ: mixtral-8x7b-32768, deepseek-chat, gpt-3.5-turbo...</span>
+                            <div class="input-with-prefix">
+                                <i class="fa-solid fa-cube input-prefix-icon"></i>
+                                <input type="text" class="input-text" id="openaiCompatibleModel" value="<%= settings && settings.openaiCompatibleModel ? settings.openaiCompatibleModel : '' %>" placeholder="mixtral-8x7b-32768" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="form-group" style="grid-column:1/-1;">
+                            <div id="openaiCompatibleStatusCard" style="padding: 12px 16px; border-radius: 8px; background: <%= settings && settings.openaiCompatibleApiKey && settings.openaiCompatibleBaseUrl ? 'rgba(16, 185, 129, 0.08)' : 'rgba(148, 163, 184, 0.08)' %>; display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 10px; height: 10px; border-radius: 50%; background: <%= settings && settings.openaiCompatibleApiKey && settings.openaiCompatibleBaseUrl ? '#10b981' : '#94a3b8' %>;" id="openaiCompatibleStatusDot"></div>
+                                <span id="openaiCompatibleStatusText" style="font-size: 0.85rem; color: var(--text-main);">
+                                    <%= settings && settings.openaiCompatibleApiKey && settings.openaiCompatibleBaseUrl ? 'Đã cấu hình' : 'Chưa cấu hình' %>
+                                </span>
+                                <button type="button" class="btn btn-outline btn-sm" id="btnTestOpenaiCompatible" style="margin-left: auto; white-space: nowrap; padding: 6px 14px; font-size:0.8rem; border-radius:6px; background:var(--bg-hover); border:1px solid var(--border); cursor:pointer; transition:all 0.2s;">
+                                    <i class="fa-solid fa-plug"></i> Test
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Anthropic Settings -->
+                    <div class="ai-provider-fields" id="aiAnthropicFields">
+                        <div class="form-group full-width" style="margin-bottom: 12px;">
+                            <label style="font-size:0.85rem; color:var(--primary);">--- Anthropic (Claude) ---</label>
+                        </div>
+                        <div class="form-group">
+                            <label for="anthropicApiKey">API KEY</label>
+                            <span class="form-desc">Lấy tại <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a>. Key có định dạng sk-ant-...</span>
+                            <div class="input-with-prefix">
+                                <i class="fa-solid fa-key input-prefix-icon"></i>
+                                <input type="password" class="input-text" id="anthropicApiKey" value="<%= settings && settings.anthropicApiKey ? settings.anthropicApiKey : '' %>" placeholder="sk-ant-... (để trống nếu chưa có)" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="anthropicModel">MODEL</label>
+                            <span class="form-desc">Ví dụ: claude-3-haiku-20240307, claude-3-5-sonnet-20240620, claude-3-opus-20240229</span>
+                            <div class="input-with-prefix">
+                                <i class="fa-solid fa-cube input-prefix-icon"></i>
+                                <input type="text" class="input-text" id="anthropicModel" value="<%= settings && settings.anthropicModel ? settings.anthropicModel : 'claude-3-haiku-20240307' %>" placeholder="claude-3-haiku-20240307" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="form-group" style="grid-column:1/-1;">
+                            <div id="anthropicStatusCard" style="padding: 12px 16px; border-radius: 8px; background: <%= settings && settings.anthropicApiKey ? 'rgba(16, 185, 129, 0.08)' : 'rgba(148, 163, 184, 0.08)' %>; display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 10px; height: 10px; border-radius: 50%; background: <%= settings && settings.anthropicApiKey ? '#10b981' : '#94a3b8' %>;" id="anthropicStatusDot"></div>
+                                <span id="anthropicStatusText" style="font-size: 0.85rem; color: var(--text-main);">
+                                    <%= settings && settings.anthropicApiKey ? 'Đã cấu hình Anthropic API Key' : 'Chưa cấu hình Anthropic API Key' %>
+                                </span>
+                                <button type="button" class="btn btn-outline btn-sm" id="btnTestAnthropic" style="margin-left: auto; white-space: nowrap; padding: 6px 14px; font-size:0.8rem; border-radius:6px; background:var(--bg-hover); border:1px solid var(--border); cursor:pointer; transition:all 0.2s;">
+                                    <i class="fa-solid fa-plug"></i> Test
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

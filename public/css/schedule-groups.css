@@ -90,13 +90,7 @@
 .btn-scan-hero:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(99, 102, 241, 0.5); }
 .btn-scan-hero:active { transform: translateY(0); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
 .btn-scan-hero:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; animation: none; }
-.btn-scan-hero .btn-icon {
-    width: 32px; height: 32px;
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: var(--radius-sm);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 0.9rem;
-}
+/* .btn-scan-hero .btn-icon: uses base .btn-icon--sm from base.css */
 
 /* Mode toggle button */
 .btn-mode-hero {

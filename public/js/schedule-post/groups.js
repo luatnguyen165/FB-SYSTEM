@@ -5,6 +5,7 @@
 let schedulePostFacebookGroups = [];
 let selectedGroupKeys = [];
 let currentGroupSourceChannelId = '';
+let schedulePostGroupsLoading = false;
 
 function toggleFacebookGroupSelectionForSchedulePost() {
     const groupWrapper = document.getElementById('facebookGroupSelectWrapper');
@@ -31,11 +32,13 @@ async function loadSchedulePostFacebookGroups(sourceChannelId) {
     const container = document.getElementById('schedulePostGroupsList');
     if (!container) return;
 
+    schedulePostGroupsLoading = true;
     currentGroupSourceChannelId = sourceChannelId;
     selectedGroupKeys = [];
 
     if (!sourceChannelId) {
         container.innerHTML = `<div class="schedule-accounts-empty"><i class="fa-solid fa-lightbulb"></i> Chọn tài khoản Facebook để hiển thị danh sách nhóm</div>`;
+        schedulePostGroupsLoading = false;
         return;
     }
 
@@ -47,6 +50,7 @@ async function loadSchedulePostFacebookGroups(sourceChannelId) {
         if (!data.success) throw new Error(data.message || 'Không tải được group');
 
         schedulePostFacebookGroups = Array.isArray(data.groups) ? data.groups : [];
+        schedulePostGroupsLoading = false;
 
         if (schedulePostFacebookGroups.length === 0) {
             container.innerHTML = `<div class="schedule-accounts-empty"><i class="fa-solid fa-users-slash"></i> Chưa có nhóm nào. Vui lòng vào trang <a href="/schedule/groups" style="color:var(--primary);font-weight:600;">Quét nhóm Facebook</a> để quét.</div>`;
@@ -57,6 +61,7 @@ async function loadSchedulePostFacebookGroups(sourceChannelId) {
     } catch (err) {
         console.error('Load Facebook groups failed:', err);
         container.innerHTML = `<div class="schedule-accounts-empty"><i class="fa-solid fa-exclamation-triangle"></i> Không tải được group. Vui lòng thử lại.</div>`;
+        schedulePostGroupsLoading = false;
     }
 }
 

@@ -15,5 +15,6 @@ router.get('/api/security', requireAuth, settingsController.getSecurityConfig);
 router.post('/api/save', requireAuth, uploadImage.single('watermark'), settingsController.saveSettings);
 router.post('/api/reset', requireAuth, settingsController.resetSettings);
 router.post('/api/telegram-test', requireAuth, settingsController.testTelegram);
+router.post('/api/test-ai-connection', requireAuth, settingsController.testAiConnection);
 
 module.exports = router;

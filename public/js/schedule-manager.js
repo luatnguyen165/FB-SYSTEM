@@ -52,7 +52,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     editFields.sourceChannelId?.addEventListener('change', () => {
-        void loadEditFacebookGroups(editFields.sourceChannelId.value || '', '');
+        // Clear loaded groups data when source changes, but preserve selected group keys & names (already set from payload)
+        editFacebookGroups = [];
+        renderEditSelectedGroupTags();
+        const list = document.getElementById('editGroupComboboxList');
+        if (list) list.innerHTML = '';
+        const dropdown = document.getElementById('editGroupComboboxDropdown');
+        if (dropdown) dropdown.classList.remove('open');
+        const hint = document.getElementById('editGroupComboboxHint');
+        if (hint) hint.innerHTML = '<i class="fa-solid fa-lightbulb"></i> Click vào ô tìm kiếm để hiển thị danh sách nhóm';
     });
 
     btnRefreshGroups?.addEventListener('click', () => {
@@ -69,7 +77,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelector('#editGroupCombobox .combobox-input-wrapper')?.addEventListener('click', () => {
         const dropdown = document.getElementById('editGroupComboboxDropdown');
-        if (editFacebookGroups.length > 0) dropdown?.classList.toggle('open');
+        const sourceChannelId = editFields.sourceChannelId?.value;
+        if (editFacebookGroups.length === 0 && sourceChannelId) {
+            // Load groups on demand when user clicks on the combobox
+            void loadEditFacebookGroups(sourceChannelId, editSelectedGroupKeys);
+        } else if (editFacebookGroups.length > 0) {
+            dropdown?.classList.toggle('open');
+        }
     });
 
     document.addEventListener('click', (e) => {

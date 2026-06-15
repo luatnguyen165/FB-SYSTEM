@@ -187,7 +187,30 @@ async function crawlPhase(config) {
 
 async function aiAnalyzePhase(config) {
     const settings = await Settings.findOne({ userId: config.userId }).lean();
-    const apiKey = config.openaiApiKey || (settings?.openaiApiKey || '');
+    
+    // Determine provider & API key from config or settings
+    const provider = config.aiProvider || settings?.aiProvider || 'openai';
+    let apiKey = '';
+    if (provider === 'openai') {
+        apiKey = config.openaiApiKey || settings?.openaiApiKey || process.env.OPENAI_API_KEY || '';
+    } else if (provider === 'openai-compatible') {
+        apiKey = config.openaiCompatibleApiKey || settings?.openaiCompatibleApiKey || config.openaiApiKey || settings?.openaiApiKey || process.env.OPENAI_API_KEY || '';
+    } else if (provider === 'anthropic') {
+        apiKey = config.anthropicApiKey || settings?.anthropicApiKey || process.env.ANTHROPIC_API_KEY || '';
+    }
+    
+    // Ensure config has the correct provider fields for analyzeDbResult to use
+    if (provider !== 'openai') {
+        if (provider === 'openai-compatible') {
+            if (!config.openaiCompatibleApiKey) config.openaiCompatibleApiKey = apiKey;
+            if (!config.openaiCompatibleBaseUrl) config.openaiCompatibleBaseUrl = settings?.openaiCompatibleBaseUrl || '';
+            if (!config.openaiCompatibleModel) config.openaiCompatibleModel = settings?.openaiCompatibleModel || 'gpt-3.5-turbo';
+        } else if (provider === 'anthropic') {
+            if (!config.anthropicApiKey) config.anthropicApiKey = apiKey;
+            if (!config.anthropicModel) config.anthropicModel = settings?.anthropicModel || 'claude-3-haiku-20240307';
+        }
+        config.aiProvider = provider;
+    }
 
     const unscannedDocs = await AiScanResult.find({
         configId: config._id,
@@ -249,10 +272,20 @@ async function runAiScan(config) {
     console.log(`[Full Scan] Crawl done: ${crawlResult.totalCrawled} posts`);
     
     const settings = await Settings.findOne({ userId: config.userId }).lean();
-    const apiKey = config.openaiApiKey || (settings?.openaiApiKey || '');
+    
+    // Detect provider and get appropriate API key
+    const provider = config.aiProvider || settings?.aiProvider || 'openai';
+    let hasKey = false;
+    if (provider === 'openai') {
+        hasKey = !!(config.openaiApiKey || settings?.openaiApiKey || process.env.OPENAI_API_KEY);
+    } else if (provider === 'openai-compatible') {
+        hasKey = !!(config.openaiCompatibleApiKey || settings?.openaiCompatibleApiKey || config.openaiApiKey || settings?.openaiApiKey || process.env.OPENAI_API_KEY);
+    } else if (provider === 'anthropic') {
+        hasKey = !!(config.anthropicApiKey || settings?.anthropicApiKey || process.env.ANTHROPIC_API_KEY);
+    }
     
     let aiResult = { totalAnalyzed: 0, matchingPosts: 0, commentedPosts: 0 };
-    if (apiKey && apiKey.trim()) {
+    if (hasKey) {
         try {
             aiResult = await aiAnalyzePhase(config);
             console.log(`[Full Scan] AI done: ${aiResult.totalAnalyzed} analyzed, ${aiResult.matchingPosts} matched`);

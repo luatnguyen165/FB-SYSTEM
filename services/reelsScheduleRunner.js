@@ -8,6 +8,7 @@ const { uploadVideoToTikTok } = require('./tiktokPlaywrightService');
 const { uploadVideoToInstagram, uploadImagesToInstagram } = require('./instagramPlaywrightService');
 const { emitScheduleUpdate } = require('./socketService');
 const { sendTelegramNotification, NOTIFICATION_TYPES } = require('./telegramService');
+const { buildFacebookGroupTargetUrl } = require('./common/facebook');
 
 const CHECK_INTERVAL_MS = 15 * 1000;
 const SCHEDULE_TIMEOUT_MS = 5 * 60 * 1000; // 5 phút timeout cho mỗi schedule
@@ -222,13 +223,16 @@ async function buildPostUploadPayload(schedule) {
     let groupIds = [];
     
     if (schedule.targetGroupIds && Array.isArray(schedule.targetGroupIds) && schedule.targetGroupIds.length > 0) {
-        groupUrls = schedule.targetGroupIds.map(g => {
-            if (typeof g === 'object' && g.groupUrl) return g.groupUrl;
-            return g;
-        });
-        groupIds = schedule.targetGroupIds.map(g => {
-            if (typeof g === 'object' && g.groupId) return g.groupId;
-            return '';
+        schedule.targetGroupIds.forEach(g => {
+            if (typeof g === 'object' && g.groupUrl) {
+                groupUrls.push(g.groupUrl);
+                groupIds.push(g.groupId || '');
+            } else {
+                // Plain group ID string — build Facebook URL from it
+                const plainId = String(g || '').trim();
+                groupUrls.push(buildFacebookGroupTargetUrl('', plainId));
+                groupIds.push(plainId);
+            }
         });
     } else {
         const groupUrl = String(schedule.targetGroupUrl || '').trim();

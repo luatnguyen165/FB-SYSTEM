@@ -103,11 +103,13 @@ const uploadCommentFile = async (req, res) => {
 const createConfig = async (req, res) => {
     try {
         const {
-            name, channelId, niche, scanScript,
+            name, channelId, scanScript,
             maxPostsPerScan, scanIntervalMinutes,
             scheduleEnabled, scheduleHour, scheduleMinute,
             scheduleTimeStart, scheduleTimeEnd, maxPostsPerScanSchedule,
-            maxDaysOld, openaiApiKey, commentItems, model
+            maxDaysOld, openaiApiKey, model,
+            aiProvider, openaiCompatibleApiKey, openaiCompatibleBaseUrl, openaiCompatibleModel,
+            anthropicApiKey, anthropicModel
         } = req.body;
 
         if (!name || !channelId) {
@@ -128,49 +130,12 @@ const createConfig = async (req, res) => {
             groupKeys = Array.isArray(req.body.groupKeys) ? req.body.groupKeys : (req.body.groupKeys ? [req.body.groupKeys] : []);
         }
 
-        // Parse commentItems
-        let parsedCommentItems = [];
-        if (commentItems) {
-            parsedCommentItems = typeof commentItems === 'string' ? JSON.parse(commentItems) : commentItems;
-        } else if (req.body.commentItems) {
-            parsedCommentItems = typeof req.body.commentItems === 'string' ? JSON.parse(req.body.commentItems) : req.body.commentItems;
-        } else {
-            // Legacy fallback: parse từ commentScripts và commentImages
-            let commentScripts = [];
-            let commentImages = [];
-            try {
-                commentScripts = req.body.commentScripts ? JSON.parse(req.body.commentScripts) : [];
-                commentImages = req.body.commentImages ? JSON.parse(req.body.commentImages) : [];
-            } catch (parseErr) {
-                commentScripts = Array.isArray(req.body.commentScripts) ? req.body.commentScripts : (req.body.commentScripts ? [req.body.commentScripts] : []);
-                commentImages = Array.isArray(req.body.commentImages) ? req.body.commentImages : (req.body.commentImages ? [req.body.commentImages] : []);
-            }
-
-            // Convert legacy format to new commentItems
-            commentScripts.forEach(script => {
-                parsedCommentItems.push({
-                    type: 'text',
-                    content: script,
-                    caption: ''
-                });
-            });
-            commentImages.forEach(img => {
-                parsedCommentItems.push({
-                    type: 'image',
-                    content: img,
-                    caption: ''
-                });
-            });
-        }
-
         const config = await AiScanConfig.create({
             userId: req.user._id,
             name: String(name).trim(),
             channelId,
             groupKeys,
-            niche: String(niche || '').trim(),
             scanScript: String(scanScript).trim(),
-            commentItems: parsedCommentItems.filter(Boolean),
             scheduleEnabled: scheduleEnabled === 'true' || scheduleEnabled === true,
             scheduleHour: parseInt(scheduleHour, 10) || 8,
             scheduleMinute: parseInt(scheduleMinute, 10) || 0,
@@ -181,6 +146,12 @@ const createConfig = async (req, res) => {
             scanIntervalMinutes: parseInt(scanIntervalMinutes, 10) || 60,
             maxPostsPerScan: parseInt(maxPostsPerScan || maxPostsPerScanSchedule, 10) || 10,
             model: String(model || 'gpt-4o-mini').trim(),
+            aiProvider: aiProvider || 'openai',
+            openaiCompatibleApiKey: String(openaiCompatibleApiKey || '').trim(),
+            openaiCompatibleBaseUrl: String(openaiCompatibleBaseUrl || '').trim(),
+            openaiCompatibleModel: String(openaiCompatibleModel || 'gpt-3.5-turbo').trim(),
+            anthropicApiKey: String(anthropicApiKey || '').trim(),
+            anthropicModel: String(anthropicModel || 'claude-3-haiku-20240307').trim(),
             isActive: true
         });
 
@@ -207,16 +178,17 @@ const updateConfig = async (req, res) => {
         }
 
         const {
-            name, channelId, niche, scanScript,
+            name, channelId, scanScript,
             maxPostsPerScan, maxPostsPerScanSchedule, scanIntervalMinutes,
             scheduleEnabled, scheduleHour, scheduleMinute,
             scheduleTimeStart, scheduleTimeEnd, maxDaysOld,
-            openaiApiKey, isActive, commentItems, model
+            openaiApiKey, isActive, model,
+            aiProvider, openaiCompatibleApiKey, openaiCompatibleBaseUrl, openaiCompatibleModel,
+            anthropicApiKey, anthropicModel
         } = req.body;
 
         if (name !== undefined) config.name = String(name).trim();
         if (channelId !== undefined) config.channelId = channelId;
-        if (niche !== undefined) config.niche = String(niche || '').trim();
         if (scanScript !== undefined) config.scanScript = String(scanScript).trim();
         if (maxPostsPerScan !== undefined || maxPostsPerScanSchedule !== undefined) {
             config.maxPostsPerScan = parseInt(maxPostsPerScan || maxPostsPerScanSchedule, 10) || 10;
@@ -231,6 +203,12 @@ const updateConfig = async (req, res) => {
         if (openaiApiKey !== undefined) config.openaiApiKey = String(openaiApiKey || '').trim();
         if (isActive !== undefined) config.isActive = isActive === 'true' || isActive === true;
         if (model !== undefined) config.model = String(model || 'gpt-4o-mini').trim();
+        if (aiProvider !== undefined) config.aiProvider = aiProvider;
+        if (openaiCompatibleApiKey !== undefined) config.openaiCompatibleApiKey = String(openaiCompatibleApiKey || '').trim();
+        if (openaiCompatibleBaseUrl !== undefined) config.openaiCompatibleBaseUrl = String(openaiCompatibleBaseUrl || '').trim();
+        if (openaiCompatibleModel !== undefined) config.openaiCompatibleModel = String(openaiCompatibleModel || 'gpt-3.5-turbo').trim();
+        if (anthropicApiKey !== undefined) config.anthropicApiKey = String(anthropicApiKey || '').trim();
+        if (anthropicModel !== undefined) config.anthropicModel = String(anthropicModel || 'claude-3-haiku-20240307').trim();
 
         // Parse groupKeys
         try {
@@ -238,31 +216,6 @@ const updateConfig = async (req, res) => {
                 config.groupKeys = typeof req.body.groupKeys === 'string' ? JSON.parse(req.body.groupKeys) : req.body.groupKeys;
             }
         } catch (parseErr) { /* ignore */ }
-
-        // Parse commentItems
-        if (commentItems) {
-            config.commentItems = typeof commentItems === 'string' ? JSON.parse(commentItems) : commentItems;
-        } else if (req.body.commentItems) {
-            config.commentItems = typeof req.body.commentItems === 'string' ? JSON.parse(req.body.commentItems) : req.body.commentItems;
-        } else {
-            // Legacy fallback
-            try {
-                if (req.body.commentScripts) {
-                    const scripts = typeof req.body.commentScripts === 'string' ? JSON.parse(req.body.commentScripts) : req.body.commentScripts;
-                    const images = req.body.commentImages ?
-                        (typeof req.body.commentImages === 'string' ? JSON.parse(req.body.commentImages) : req.body.commentImages) : [];
-
-                    const items = [];
-                    scripts.forEach(script => {
-                        items.push({ type: 'text', content: script, caption: '' });
-                    });
-                    images.forEach(img => {
-                        items.push({ type: 'image', content: img, caption: '' });
-                    });
-                    config.commentItems = items;
-                }
-            } catch (parseErr) { /* ignore */ }
-        }
 
         config.updatedAt = new Date();
         await config.save();

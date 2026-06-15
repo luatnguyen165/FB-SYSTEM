@@ -155,7 +155,7 @@
                         </div>
                         <div class="ai-schedule-actions">
                             <% if (sch.status === 'active' || sch.status === 'draft') { %>
-                            <button class="btn-sm btn-generate" onclick="generateNow('<%= sch._id %>')" title="Tạo bài ngay"><i class="fa-solid fa-wand-magic-sparkles"></i> Tạo bài</button>
+                            <button class="btn-sm btn-generate" onclick="generateNow(this)" data-id="<%= sch._id %>" title="Tạo bài ngay"><i class="fa-solid fa-wand-magic-sparkles"></i> Tạo bài</button>
                             <% } %>
                             <button class="btn-sm btn-edit" onclick="editSchedule('<%= sch._id %>')" title="Sửa"><i class="fa-solid fa-pen"></i></button>
                             <button class="btn-sm btn-delete" onclick="deleteSchedule('<%= sch._id %>')" title="Xóa"><i class="fa-solid fa-trash"></i></button>

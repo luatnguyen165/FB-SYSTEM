@@ -1317,11 +1317,40 @@ img {
     font-size: 1rem;
 }
 
+/* Base icon button */
 .btn-icon {
     width: 36px;
     height: 36px;
     padding: 0;
     border-radius: var(--radius-sm);
+    border: 1.5px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.btn-icon:hover {
+    background: var(--bg-hover);
+    color: var(--text-main);
+    border-color: var(--border-dark);
+}
+
+.btn-icon--sm {
+    width: 32px;
+    height: 32px;
+    font-size: 0.78rem;
+}
+
+.btn-icon--danger:hover {
+    background: var(--danger-light) !important;
+    color: var(--danger) !important;
+    border-color: var(--danger) !important;
 }
 
 /* ===== CARDS ===== */

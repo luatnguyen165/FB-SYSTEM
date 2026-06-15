@@ -27,8 +27,18 @@ const SettingsSchema = new mongoose.Schema({
     driveApiKey: { type: String, default: '' },
     driveFolderId: { type: String, default: '' },
     driveConnected: { type: Boolean, default: false },
+    // AI Provider - chọn nhà cung cấp AI: 'openai', 'openai-compatible', 'anthropic'
+    aiProvider: { type: String, default: 'openai' },
     // OpenAI (cho AI Scan)
     openaiApiKey: { type: String, default: '' },
+    openaiModel: { type: String, default: 'gpt-4o-mini' },
+    // OpenAI Compatible (ví dụ: Groq, DeepSeek, v.v.)
+    openaiCompatibleApiKey: { type: String, default: '' },
+    openaiCompatibleBaseUrl: { type: String, default: '' },
+    openaiCompatibleModel: { type: String, default: '' },
+    // Anthropic
+    anthropicApiKey: { type: String, default: '' },
+    anthropicModel: { type: String, default: 'claude-3-haiku-20240307' },
     // Bảo mật dữ liệu
     dataEncryptionEnabled: { type: Boolean, default: false },
     updatedAt: { type: Date, default: Date.now }

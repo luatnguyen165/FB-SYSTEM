@@ -252,25 +252,7 @@
     gap: 4px;
     flex-shrink: 0;
 }
-.config-actions .btn-icon {
-    width: 34px;
-    height: 34px;
-    border: 1px solid var(--border);
-    background: var(--bg-card);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-muted);
-    font-size: 0.85rem;
-    transition: all 0.15s;
-}
-.config-actions .btn-icon:hover {
-    background: var(--bg-hover);
-    color: var(--text-main);
-    border-color: var(--primary);
-}
+/* .config-actions .btn-icon uses base .btn-icon styles from base.css */
 /* Config Run Button - prominent Play button */
 .config-run-btn {
     display: inline-flex;
@@ -1683,24 +1665,7 @@
     font-size: 14px;
 }
 
-.scan-progress-header .btn-icon {
-    margin-left: auto;
-    color: rgba(255,255,255,0.8);
-    background: rgba(255,255,255,0.15);
-    border: none;
-    border-radius: 50%;
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.scan-progress-header .btn-icon:hover {
-    background: rgba(255,255,255,0.3);
-}
+/* .scan-progress-header .btn-icon uses base .btn-icon styles from base.css */
 
 .scan-progress-body {
     padding: 16px 20px;

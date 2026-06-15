@@ -43,6 +43,93 @@ async function loadStats() {
 }
 loadStats();
 
+// ==================== CUSTOM CONFIRM DIALOG ====================
+function showConfirm(message, title = 'Xác nhận') {
+    return new Promise((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.className = 'confirm-dialog-overlay';
+        overlay.innerHTML = `
+            <div class="confirm-dialog">
+                <div class="confirm-dialog-header">
+                    <i class="fa-solid fa-circle-question"></i>
+                    <h3>${title}</h3>
+                </div>
+                <div class="confirm-dialog-body">
+                    <p>${message.replace(/\n/g, '<br>')}</p>
+                </div>
+                <div class="confirm-dialog-footer">
+                    <button class="btn-secondary confirm-btn-cancel">Hủy</button>
+                    <button class="btn-primary confirm-btn-ok"><i class="fa-solid fa-check"></i> Xác nhận</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        // Animate in
+        requestAnimationFrame(() => overlay.classList.add('show'));
+
+        const cleanup = () => {
+            overlay.classList.remove('show');
+            setTimeout(() => overlay.remove(), 200);
+        };
+
+        overlay.querySelector('.confirm-btn-ok').addEventListener('click', () => {
+            cleanup();
+            resolve(true);
+        });
+        overlay.querySelector('.confirm-btn-cancel').addEventListener('click', () => {
+            cleanup();
+            resolve(false);
+        });
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                cleanup();
+                resolve(false);
+            }
+        });
+    });
+}
+
+function showAlert(message, title = 'Thông báo') {
+    return new Promise((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.className = 'confirm-dialog-overlay';
+        overlay.innerHTML = `
+            <div class="confirm-dialog">
+                <div class="confirm-dialog-header">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <h3>${title}</h3>
+                </div>
+                <div class="confirm-dialog-body">
+                    <p>${message.replace(/\n/g, '<br>')}</p>
+                </div>
+                <div class="confirm-dialog-footer">
+                    <button class="btn-primary confirm-btn-ok"><i class="fa-solid fa-check"></i> Đồng ý</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        requestAnimationFrame(() => overlay.classList.add('show'));
+
+        const cleanup = () => {
+            overlay.classList.remove('show');
+            setTimeout(() => overlay.remove(), 200);
+        };
+
+        overlay.querySelector('.confirm-btn-ok').addEventListener('click', () => {
+            cleanup();
+            resolve(true);
+        });
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                cleanup();
+                resolve(true);
+            }
+        });
+    });
+}
+
 // ==================== STYLE MODAL ====================
 const styleModal = document.getElementById('styleModal');
 const articlesList = document.getElementById('articlesList');
@@ -118,7 +205,7 @@ document.getElementById('btnSaveStyle').addEventListener('click', async () => {
 
 // ==================== STYLE ACTIONS ====================
 async function analyzeStyle(id) {
-    if (!confirm('Phân tích văn phong bằng AI? Điều này sẽ sử dụng OpenAI API.')) return;
+    if (!(await showConfirm('Phân tích văn phong bằng AI? Điều này sẽ sử dụng OpenAI API.'))) return;
     try {
         showToast('Đang phân tích văn phong...', 'info');
         const res = await fetch(`/ai-content/api/styles/${id}/analyze`, {
@@ -154,7 +241,7 @@ async function editStyle(id) {
 }
 
 async function deleteStyle(id) {
-    if (!confirm('Xóa văn phong này?')) return;
+    if (!(await showConfirm('Xóa văn phong này?'))) return;
     try {
         const res = await fetch(`/ai-content/api/styles/${id}`, { method: 'DELETE' });
         const data = await res.json();
@@ -166,7 +253,7 @@ async function deleteStyle(id) {
 
 // ==================== TRAINING ====================
 async function retrainStyle(id) {
-    if (!confirm('Train lại văn phong từ bài viết tốt nhất?\nAI sẽ phân tích lại style dựa trên top bài có nhiều like, comment, share nhất.')) return;
+    if (!(await showConfirm('Train lại văn phong từ bài viết tốt nhất?<br>AI sẽ phân tích lại style dựa trên top bài có nhiều like, comment, share nhất.'))) return;
     
     try {
         showToast('Đang train lại văn phong... Quá trình này có thể mất 1-2 phút.', 'info');
@@ -214,7 +301,7 @@ async function viewTrainingStats(id) {
             });
         }
         
-        alert(msg);
+        await showAlert(msg);
     } catch (e) {
         showToast(e.message, 'error');
     }
@@ -229,10 +316,14 @@ document.getElementById('btnNewSchedule')?.addEventListener('click', () => {
     document.getElementById('scheduleEditId').value = '';
     document.getElementById('scheduleName').value = '';
     document.getElementById('scheduleStyleId').value = '';
-    document.getElementById('scheduleStartDate').value = '';
-    document.getElementById('scheduleStartDate').type = 'text';
-    document.getElementById('scheduleEndDate').value = '';
-    document.getElementById('scheduleEndDate').type = 'text';
+    // Default dates: today for start, 2 days later for end
+    const today = new Date();
+    const twoDaysLater = new Date(today);
+    twoDaysLater.setDate(twoDaysLater.getDate() + 2);
+    document.getElementById('scheduleStartDate').value = today.toISOString().split('T')[0];
+    document.getElementById('scheduleStartDate').type = 'date';
+    document.getElementById('scheduleEndDate').value = twoDaysLater.toISOString().split('T')[0];
+    document.getElementById('scheduleEndDate').type = 'date';
     document.getElementById('scheduleTopics').value = '';
     document.getElementById('scheduleMaxWords').value = '500';
     document.getElementById('scheduleCustomInstructions').value = '';
@@ -631,19 +722,28 @@ document.getElementById('btnSaveSchedule')?.addEventListener('click', async () =
 });
 
 // ==================== SCHEDULE ACTIONS ====================
-async function generateNow(id) {
-    if (!confirm('Tạo bài viết ngay lập tức?')) return;
+async function generateNow(btn) {
+    const id = typeof btn === 'string' ? btn : btn.dataset.id || btn.getAttribute('data-id');
+    if (!(await showConfirm('Tạo bài lại? Các bài viết cũ của lịch này sẽ bị xóa và tạo mới theo văn phong hiện tại.'))) return;
+    
+    const originalHTML = btn.innerHTML;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang tạo...';
+    btn.disabled = true;
+
     try {
-        showToast('Đang tạo bài viết...', 'info');
         const res = await fetch(`/ai-content/api/schedules/${id}/generate`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({})
         });
         const data = await res.json();
         if (data.error) throw new Error(data.error);
-        showToast(data.message || 'Đã tạo bài viết');
+        showToast(data.message || 'Đã tạo bài viết mới');
         setTimeout(() => location.reload(), 500);
-    } catch (e) { showToast(e.message, 'error'); }
+    } catch (e) {
+        showToast(e.message, 'error');
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+    }
 }
 
 function editSchedule(id) {
@@ -734,7 +834,7 @@ function editSchedule(id) {
 }
 
 async function deleteSchedule(id) {
-    if (!confirm('Xóa lịch này và tất cả bài viết liên quan?')) return;
+    if (!(await showConfirm('Xóa lịch này và tất cả bài viết liên quan?'))) return;
     try {
         const res = await fetch(`/ai-content/api/schedules/${id}`, { method: 'DELETE' });
         const data = await res.json();
@@ -926,7 +1026,7 @@ document.getElementById('btnSavePost')?.addEventListener('click', async () => {
 
 // ==================== POST ACTIONS ====================
 async function publishPost(id) {
-    if (!confirm('Đăng bài viết này ngay?')) return;
+    if (!(await showConfirm('Đăng bài viết này ngay?'))) return;
     try {
         const res = await fetch(`/ai-content/api/posts/${id}/publish`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -940,7 +1040,7 @@ async function publishPost(id) {
 }
 
 async function deletePost(id) {
-    if (!confirm('Xóa bài viết này?')) return;
+    if (!(await showConfirm('Xóa bài viết này?'))) return;
     try {
         const res = await fetch(`/ai-content/api/posts/${id}`, { method: 'DELETE' });
         const data = await res.json();

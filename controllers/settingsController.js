@@ -63,7 +63,10 @@ const saveSettings = async (req, res) => {
             quietHoursEnabled, quietHoursStart, quietHoursEnd,
             telegramBotToken, telegramChatId,
             driveClientId, driveApiKey, driveFolderId,
-            openaiApiKey, dataEncryptionEnabled
+            openaiApiKey, dataEncryptionEnabled,
+            aiProvider, openaiModel,
+            openaiCompatibleApiKey, openaiCompatibleBaseUrl, openaiCompatibleModel,
+            anthropicApiKey, anthropicModel
         } = req.body;
 
         let settings = await Settings.findOne({ userId: req.user._id });
@@ -92,6 +95,13 @@ const saveSettings = async (req, res) => {
         if (driveApiKey !== undefined) settings.driveApiKey = prepareSensitiveValue(normalizeEncryptedValue(driveApiKey), encryptionEnabled);
         if (driveFolderId !== undefined) settings.driveFolderId = prepareSensitiveValue(normalizeEncryptedValue(driveFolderId), encryptionEnabled);
         if (openaiApiKey !== undefined) settings.openaiApiKey = prepareSensitiveValue(normalizeEncryptedValue(openaiApiKey), encryptionEnabled);
+        if (aiProvider !== undefined) settings.aiProvider = aiProvider;
+        if (openaiModel !== undefined) settings.openaiModel = openaiModel;
+        if (openaiCompatibleApiKey !== undefined) settings.openaiCompatibleApiKey = prepareSensitiveValue(normalizeEncryptedValue(openaiCompatibleApiKey), encryptionEnabled);
+        if (openaiCompatibleBaseUrl !== undefined) settings.openaiCompatibleBaseUrl = openaiCompatibleBaseUrl;
+        if (openaiCompatibleModel !== undefined) settings.openaiCompatibleModel = openaiCompatibleModel;
+        if (anthropicApiKey !== undefined) settings.anthropicApiKey = prepareSensitiveValue(normalizeEncryptedValue(anthropicApiKey), encryptionEnabled);
+        if (anthropicModel !== undefined) settings.anthropicModel = anthropicModel;
         settings.dataEncryptionEnabled = encryptionEnabled;
         if (req.file) settings.watermarkUrl = '/uploads/images/' + req.file.filename;
 
@@ -101,12 +111,10 @@ const saveSettings = async (req, res) => {
             'driveClientId',
             'driveApiKey',
             'driveFolderId',
-            'openaiApiKey'
+            'openaiApiKey',
+            'openaiCompatibleApiKey',
+            'anthropicApiKey'
         ];
-
-        sensitiveFields.forEach((field) => {
-            settings[field] = prepareSensitiveValue(settings[field], encryptionEnabled);
-        });
 
         settings.updatedAt = new Date();
         await settings.save();
@@ -165,4 +173,72 @@ const testTelegram = async (req, res) => {
     }
 };
 
-module.exports = { showSettings, saveSettings, resetSettings, getSecurityConfig, testTelegram };
+async function testAiConnection(req, res) {
+    try {
+        const { provider, apiKey, baseUrl, model } = req.body;
+        if (!apiKey) {
+            return res.status(400).json({ success: false, message: 'Thiếu API Key' });
+        }
+
+        if (provider === 'openai') {
+            const response = await fetch('https://api.openai.com/v1/models', {
+                headers: { 'Authorization': `Bearer ${apiKey}` }
+            });
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                return res.json({ success: false, message: errData.error?.message || 'API Key không hợp lệ' });
+            }
+            return res.json({ success: true, message: 'Kết nối OpenAI thành công!' });
+        }
+
+        if (provider === 'openai-compatible') {
+            if (!baseUrl) {
+                return res.status(400).json({ success: false, message: 'Thiếu Base URL' });
+            }
+            try {
+                const response = await fetch(`${baseUrl.replace(/\/+$/, '')}/models`, {
+                    headers: { 'Authorization': `Bearer ${apiKey}` }
+                });
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    return res.json({ success: false, message: errData.error?.message || 'Kết nối thất bại' });
+                }
+                return res.json({ success: true, message: 'Kết nối thành công!' });
+            } catch (fetchErr) {
+                return res.json({ success: false, message: 'Không thể kết nối tới Base URL: ' + fetchErr.message });
+            }
+        }
+
+        if (provider === 'anthropic') {
+            try {
+                const response = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: {
+                        'x-api-key': apiKey,
+                        'anthropic-version': '2023-06-01',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: model || 'claude-3-haiku-20240307',
+                        max_tokens: 10,
+                        messages: [{ role: 'user', content: 'Hi' }]
+                    })
+                });
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    return res.json({ success: false, message: errData.error?.message || 'API Key không hợp lệ' });
+                }
+                return res.json({ success: true, message: 'Kết nối Anthropic thành công!' });
+            } catch (fetchErr) {
+                return res.json({ success: false, message: 'Lỗi kết nối: ' + fetchErr.message });
+            }
+        }
+
+        return res.status(400).json({ success: false, message: 'Provider không hợp lệ' });
+    } catch (error) {
+        console.error('Test AI Connection Error:', error);
+        res.status(500).json({ success: false, message: 'Lỗi server: ' + error.message });
+    }
+}
+
+module.exports = { showSettings, saveSettings, resetSettings, getSecurityConfig, testTelegram, testAiConnection };

@@ -16,17 +16,53 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnTestAi = document.getElementById('btnTestOpenAiKey');
     if (btnTestAi) btnTestAi.addEventListener('click', testOpenAiConnection);
 
+    const btnTestOpenaiCompatible = document.getElementById('btnTestOpenaiCompatible');
+    if (btnTestOpenaiCompatible) btnTestOpenaiCompatible.addEventListener('click', testOpenaiCompatibleConnection);
+
+    const btnTestAnthropic = document.getElementById('btnTestAnthropic');
+    if (btnTestAnthropic) btnTestAnthropic.addEventListener('click', testAnthropicConnection);
+
     // Live update OpenAI status when typing key
     const openaiKeyInput = document.getElementById('openaiApiKey');
     if (openaiKeyInput) {
         openaiKeyInput.addEventListener('input', updateOpenAiStatus);
     }
 
+    // AI Provider toggle
+    const aiProviderSelect = document.getElementById('aiProvider');
+    if (aiProviderSelect) {
+        aiProviderSelect.addEventListener('change', toggleAiProviderFields);
+        toggleAiProviderFields();
+    }
+
+    // Live update OpenAI Compatible status
+    const openaiCompatibleKeyInput = document.getElementById('openaiCompatibleApiKey');
+    const openaiCompatibleUrlInput = document.getElementById('openaiCompatibleBaseUrl');
+    if (openaiCompatibleKeyInput) openaiCompatibleKeyInput.addEventListener('input', updateOpenaiCompatibleStatus);
+    if (openaiCompatibleUrlInput) openaiCompatibleUrlInput.addEventListener('input', updateOpenaiCompatibleStatus);
+
+    // Live update Anthropic status
+    const anthropicKeyInput = document.getElementById('anthropicApiKey');
+    if (anthropicKeyInput) anthropicKeyInput.addEventListener('input', updateAnthropicStatus);
+
     initTelegramStatus();
     initIntervalToggles();
     updateIntervalSummary();
     updateOpenAiStatus();
+    updateOpenaiCompatibleStatus();
+    updateAnthropicStatus();
 });
+
+function toggleAiProviderFields() {
+    const provider = document.getElementById('aiProvider')?.value || 'openai';
+    const openaiFields = document.getElementById('aiOpenaiFields');
+    const openaiCompatibleFields = document.getElementById('aiOpenaiCompatibleFields');
+    const anthropicFields = document.getElementById('aiAnthropicFields');
+
+    if (openaiFields) openaiFields.style.display = provider === 'openai' ? '' : 'none';
+    if (openaiCompatibleFields) openaiCompatibleFields.style.display = provider === 'openai-compatible' ? '' : 'none';
+    if (anthropicFields) anthropicFields.style.display = provider === 'anthropic' ? '' : 'none';
+}
 
 function initIntervalToggles() {
     const randomToggle = document.getElementById('randomDelayEnabled');
@@ -185,6 +221,13 @@ async function saveAllSettingsData() {
     const telegramBotToken = document.getElementById('tgToken')?.value?.trim() || '';
     const telegramChatId = document.getElementById('tgChatId')?.value?.trim() || '';
     const openaiApiKey = document.getElementById('openaiApiKey')?.value?.trim() || '';
+    const aiProvider = document.getElementById('aiProvider')?.value || 'openai';
+    const openaiModel = document.getElementById('openaiModel')?.value?.trim() || 'gpt-4o-mini';
+    const openaiCompatibleApiKey = document.getElementById('openaiCompatibleApiKey')?.value?.trim() || '';
+    const openaiCompatibleBaseUrl = document.getElementById('openaiCompatibleBaseUrl')?.value?.trim() || '';
+    const openaiCompatibleModel = document.getElementById('openaiCompatibleModel')?.value?.trim() || '';
+    const anthropicApiKey = document.getElementById('anthropicApiKey')?.value?.trim() || '';
+    const anthropicModel = document.getElementById('anthropicModel')?.value?.trim() || 'claude-3-haiku-20240307';
 
     try {
         const payload = {
@@ -204,7 +247,14 @@ async function saveAllSettingsData() {
             quietHoursEnd,
             telegramBotToken,
             telegramChatId,
-            openaiApiKey
+            openaiApiKey,
+            aiProvider,
+            openaiModel,
+            openaiCompatibleApiKey,
+            openaiCompatibleBaseUrl,
+            openaiCompatibleModel,
+            anthropicApiKey,
+            anthropicModel
         };
 
         let finalPayload = { ...payload };
@@ -301,10 +351,10 @@ async function testOpenAiConnection() {
     btn.disabled = true;
 
     try {
-        const res = await fetch('/schedule/ai-scan/api/settings/test-openai-key', {
+        const res = await fetch('/settings/api/test-ai-connection', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ openaiApiKey: key })
+            body: JSON.stringify({ provider: 'openai', apiKey: key })
         });
         const data = await res.json();
 
@@ -313,6 +363,149 @@ async function testOpenAiConnection() {
             const dot = document.getElementById('openaiStatusDot');
             const text = document.getElementById('openaiStatusText');
             const card = document.getElementById('openaiStatusCard');
+            if (dot) dot.style.background = '#10b981';
+            if (text) text.textContent = 'Kết nối thành công! Key hoạt động tốt.';
+            if (card) card.style.background = 'rgba(16, 185, 129, 0.12)';
+        } else {
+            showToast(data.message || 'Kết nối thất bại', 'error');
+        }
+    } catch (err) {
+        showToast('Lỗi: ' + err.message, 'error');
+    } finally {
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+    }
+}
+
+// ============================================================
+// OPENAI COMPATIBLE
+// ============================================================
+
+function updateOpenaiCompatibleStatus() {
+    const key = document.getElementById('openaiCompatibleApiKey')?.value?.trim();
+    const baseUrl = document.getElementById('openaiCompatibleBaseUrl')?.value?.trim();
+    const dot = document.getElementById('openaiCompatibleStatusDot');
+    const text = document.getElementById('openaiCompatibleStatusText');
+    const card = document.getElementById('openaiCompatibleStatusCard');
+
+    if (!dot || !text || !card) return;
+
+    if (key && baseUrl) {
+        dot.style.background = '#10b981';
+        text.textContent = 'Đã cấu hình (' + baseUrl + ')';
+        card.style.background = 'rgba(16, 185, 129, 0.08)';
+    } else if (key || baseUrl) {
+        dot.style.background = '#f59e0b';
+        text.textContent = 'Thiếu Base URL hoặc API Key';
+        card.style.background = 'rgba(245, 158, 11, 0.08)';
+    } else {
+        dot.style.background = '#94a3b8';
+        text.textContent = 'Chưa cấu hình';
+        card.style.background = 'rgba(148, 163, 184, 0.08)';
+    }
+}
+
+async function testOpenaiCompatibleConnection() {
+    const btn = document.getElementById('btnTestOpenaiCompatible');
+    const apiKey = document.getElementById('openaiCompatibleApiKey')?.value?.trim();
+    const baseUrl = document.getElementById('openaiCompatibleBaseUrl')?.value?.trim();
+    const model = document.getElementById('openaiCompatibleModel')?.value?.trim() || 'gpt-3.5-turbo';
+
+    if (!apiKey || !baseUrl) {
+        showToast('Vui lòng nhập đầy đủ API Key và Base URL', 'warning');
+        return;
+    }
+
+    const originalHTML = btn.innerHTML;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang test...';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/settings/api/test-ai-connection', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ provider: 'openai-compatible', apiKey, baseUrl, model })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            showToast('Kết nối thành công! ✓', 'success');
+            const dot = document.getElementById('openaiCompatibleStatusDot');
+            const text = document.getElementById('openaiCompatibleStatusText');
+            const card = document.getElementById('openaiCompatibleStatusCard');
+            if (dot) dot.style.background = '#10b981';
+            if (text) text.textContent = 'Kết nối thành công!';
+            if (card) card.style.background = 'rgba(16, 185, 129, 0.12)';
+        } else {
+            showToast(data.message || 'Kết nối thất bại', 'error');
+        }
+    } catch (err) {
+        showToast('Lỗi: ' + err.message, 'error');
+    } finally {
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+    }
+}
+
+// ============================================================
+// ANTHROPIC
+// ============================================================
+
+function updateAnthropicStatus() {
+    const key = document.getElementById('anthropicApiKey')?.value?.trim();
+    const dot = document.getElementById('anthropicStatusDot');
+    const text = document.getElementById('anthropicStatusText');
+    const card = document.getElementById('anthropicStatusCard');
+
+    if (!dot || !text || !card) return;
+
+    if (key && key.startsWith('sk-ant-')) {
+        dot.style.background = '#10b981';
+        text.textContent = 'Đã cấu hình Anthropic API Key (' + key.substring(0, 12) + '...)';
+        card.style.background = 'rgba(16, 185, 129, 0.08)';
+    } else if (key) {
+        dot.style.background = '#f59e0b';
+        text.textContent = 'Key không hợp lệ (phải bắt đầu bằng sk-ant-)';
+        card.style.background = 'rgba(245, 158, 11, 0.08)';
+    } else {
+        dot.style.background = '#94a3b8';
+        text.textContent = 'Chưa cấu hình Anthropic API Key';
+        card.style.background = 'rgba(148, 163, 184, 0.08)';
+    }
+}
+
+async function testAnthropicConnection() {
+    const btn = document.getElementById('btnTestAnthropic');
+    const apiKey = document.getElementById('anthropicApiKey')?.value?.trim();
+    const model = document.getElementById('anthropicModel')?.value?.trim() || 'claude-3-haiku-20240307';
+
+    if (!apiKey) {
+        showToast('Vui lòng nhập Anthropic API Key', 'warning');
+        return;
+    }
+
+    if (!apiKey.startsWith('sk-ant-')) {
+        showToast('API Key không hợp lệ (phải bắt đầu bằng sk-ant-)', 'error');
+        return;
+    }
+
+    const originalHTML = btn.innerHTML;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang test...';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/settings/api/test-ai-connection', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ provider: 'anthropic', apiKey, model })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            showToast('Kết nối Anthropic thành công! ✓', 'success');
+            const dot = document.getElementById('anthropicStatusDot');
+            const text = document.getElementById('anthropicStatusText');
+            const card = document.getElementById('anthropicStatusCard');
             if (dot) dot.style.background = '#10b981';
             if (text) text.textContent = 'Kết nối thành công! Key hoạt động tốt.';
             if (card) card.style.background = 'rgba(16, 185, 129, 0.12)';

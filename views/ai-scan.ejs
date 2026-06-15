@@ -323,31 +323,9 @@
                 <div class="form-section-divider"><i class="fa-solid fa-wand-magic-sparkles"></i> Kịch Bản Quét</div>
 
                 <div class="form-group">
-                    <label>Ngách ngành (Niche) <small class="form-hint-inline">— Dùng cho biến {ten_sp}, {nganh}</small></label>
-                    <input type="text" id="configNiche" placeholder="VD: Bất động sản, xe hơi, thời trang...">
-                </div>
-
-                <div class="form-group">
                     <label>Kịch bản AI Phân Tích <span class="required">*</span> <small class="form-hint-inline">— Prompt gửi cho AI</small></label>
                     <textarea id="configScanScript" rows="6" placeholder="Nhập kịch bản/prompt cho AI phân tích bài viết. VD: Phân tích bài viết có nhu cầu mua BĐS không? Đánh giá điểm từ 0-100..."></textarea>
                     <small class="form-hint">Kịch bản này sẽ được dùng làm prompt chính để AI phân tích mỗi bài viết. Bạn có thể viết tự do.</small>
-                </div>
-
-                <div class="form-group">
-                    <label>Ngân Hàng Comment</label>
-                    <small class="form-hint" style="margin-bottom: 10px; display: block;">Thêm các comment (text/hình ảnh/video) để hệ thống tự động gửi khi bài viết match nhu cầu.</small>
-                    <div class="comment-bank-list" id="commentBankList"></div>
-                    <div class="comment-bank-add">
-                        <button type="button" class="btn btn-sm btn-outline btn-add-comment" data-type="text" id="btnAddCommentText">
-                            <i class="fa-solid fa-font"></i> + Text
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline btn-add-comment" data-type="image" id="btnAddCommentImage">
-                            <i class="fa-solid fa-image"></i> + Hình Ảnh
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline btn-add-comment" data-type="video" id="btnAddCommentVideo">
-                            <i class="fa-solid fa-video"></i> + Video
-                        </button>
-                    </div>
                 </div>
 
                 <!-- Lịch chạy tự động -->
@@ -472,79 +450,6 @@
             <button class="modal-close" id="btnCloseAnalysis"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="modal-body" id="analysisContent"></div>
-    </div>
-</div>
-
-<!-- Template for comment items (hidden) -->
-<div id="commentTextTemplate" style="display: none;">
-    <div class="comment-item" data-type="text">
-        <div class="comment-item-header">
-            <span class="comment-type-badge type-text"><i class="fa-solid fa-font"></i> Text</span>
-            <button type="button" class="btn-icon btn-remove-comment" title="Xóa comment này">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-        </div>
-        <div class="comment-item-body">
-            <textarea class="comment-text-content" rows="2" placeholder="Nhập nội dung comment text..."></textarea>
-        </div>
-    </div>
-</div>
-
-<div id="commentImageTemplate" style="display: none;">
-    <div class="comment-item" data-type="image">
-        <div class="comment-item-header">
-            <span class="comment-type-badge type-image"><i class="fa-solid fa-image"></i> Hình Ảnh</span>
-            <button type="button" class="btn-icon btn-remove-comment" title="Xóa comment này">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-        </div>
-        <div class="comment-item-body">
-            <div class="comment-file-upload">
-                <input type="file" class="comment-file-input" accept="image/*" style="display: none;">
-                <div class="comment-file-preview">
-                    <div class="comment-file-placeholder">
-                        <i class="fa-solid fa-cloud-arrow-up"></i>
-                        <span>Chọn ảnh để upload</span>
-                    </div>
-                    <img class="comment-file-img" style="display: none;" alt="Preview">
-                </div>
-                <input type="hidden" class="comment-file-path" value="">
-                <span class="comment-file-name"></span>
-                <div class="comment-file-progress" style="display: none;">
-                    <div class="comment-file-progress-bar"></div>
-                </div>
-            </div>
-            <input type="text" class="comment-caption" placeholder="Caption (mô tả ảnh, có thể để trống)">
-        </div>
-    </div>
-</div>
-
-<div id="commentVideoTemplate" style="display: none;">
-    <div class="comment-item" data-type="video">
-        <div class="comment-item-header">
-            <span class="comment-type-badge type-video"><i class="fa-solid fa-video"></i> Video</span>
-            <button type="button" class="btn-icon btn-remove-comment" title="Xóa comment này">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-        </div>
-        <div class="comment-item-body">
-            <div class="comment-file-upload">
-                <input type="file" class="comment-file-input" accept="video/*" style="display: none;">
-                <div class="comment-file-preview">
-                    <div class="comment-file-placeholder">
-                        <i class="fa-solid fa-cloud-arrow-up"></i>
-                        <span>Chọn video để upload</span>
-                    </div>
-                    <video class="comment-file-video" style="display: none;" controls></video>
-                </div>
-                <input type="hidden" class="comment-file-path" value="">
-                <span class="comment-file-name"></span>
-                <div class="comment-file-progress" style="display: none;">
-                    <div class="comment-file-progress-bar"></div>
-                </div>
-            </div>
-            <input type="text" class="comment-caption" placeholder="Caption (mô tả video, có thể để trống)">
-        </div>
     </div>
 </div>
 

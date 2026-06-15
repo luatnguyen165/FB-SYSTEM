@@ -70,13 +70,16 @@ function onEditPostPlatformChange() {
     if (groupSection) groupSection.classList.toggle('visible', isFacebook);
     if (isFacebook) {
         renderEditFacebookSourceOptions(currentEditPayload?.sourceChannelId || '');
-        if (currentEditPayload?.sourceChannelId) {
-            setTimeout(() => loadEditFacebookGroups(currentEditPayload.sourceChannelId, currentEditPayload.targetGroupId || []), 100);
-        }
+        // Re-render selected group tags (preserved from payload) so they show below the combobox
+        renderEditSelectedGroupTags();
+        // Do NOT auto-load groups — they will load only when user clicks on combobox
     } else {
-        editSelectedGroupKeys = []; editFacebookGroups = []; renderEditSelectedGroupTags();
+        // Clear groups when switching away from Facebook
+        editSelectedGroupKeys = []; editFacebookGroups = []; editGroupNamesMap = {}; renderEditSelectedGroupTags();
         const list = document.getElementById('editGroupComboboxList');
         if (list) list.innerHTML = '';
+        const hint = document.getElementById('editGroupComboboxHint');
+        if (hint) hint.innerHTML = '<i class="fa-solid fa-lightbulb"></i> Chọn tài khoản Facebook để hiển thị danh sách nhóm';
     }
 }
 
@@ -131,6 +134,7 @@ function openEditModalFromRow(row) {
     applyEditModalHeader('edit');
     currentEditPayload = payload;
     editNewImages = []; editExistingImages = []; editLocalVideoFile = null; editSelectedShopeeLinks = []; editSelectedGroupKeys = []; editFacebookGroups = [];
+    setEditGroupNamesFromPayload(payload);
     if (editFields.id) editFields.id.value = payload.id || row.dataset.id || '';
     if (editFields.caption) editFields.caption.value = payload.caption || '';
     if (editFields.status) editFields.status.value = payload.status || 'pending';
@@ -181,6 +185,7 @@ function openDuplicateModal(row) {
     editSelectedShopeeLinks = [...(payload.shopeeLinkIds || [])];
     editSelectedGroupKeys = Array.isArray(payload.targetGroupId) ? [...payload.targetGroupId] : [];
     editFacebookGroups = [];
+    setEditGroupNamesFromPayload(payload);
     if (editFields.id) editFields.id.value = '';
     if (editFields.caption) editFields.caption.value = payload.caption || '';
     if (editFields.status) editFields.status.value = 'pending';
@@ -195,7 +200,8 @@ function openDuplicateModal(row) {
         const images = Array.isArray(payload.images) ? payload.images : [];
         renderEditPostImages(images);
         editSelectedGroupKeys = Array.isArray(payload.targetGroupId) ? [...payload.targetGroupId] : [];
-        renderEditSelectedGroupTags(); setTimeout(() => onEditPostPlatformChange(), 50);
+        renderEditSelectedGroupTags();
+        setTimeout(() => onEditPostPlatformChange(), 50);
     } else {
         editAllAffiliateLinks = Array.isArray(managerData.shopeeLinks) ? managerData.shopeeLinks : [];
         renderEditVideoOptions(payload.videoId || ''); setTimeout(() => updateEditPhoneFromSelect(), 0);

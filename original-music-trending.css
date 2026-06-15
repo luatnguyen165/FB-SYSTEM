@@ -163,7 +163,20 @@
 .badge-ig, .badge-IG { background: linear-gradient(135deg, #833ab4, #fd1d1d); color: #fff; }
 .badge-zo, .badge-ZO { background: #0068ff; color: #fff; }
 
-/* Icon buttons in table — use base .btn-icon--sm from base.css */
+/* Icon buttons in table */
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-size: 13px;
+    padding: 0;
+}
 
 .btn-soft-primary {
     background: rgba(37, 99, 235, 0.08);

@@ -16,6 +16,8 @@ const AiContentScheduleSchema = new mongoose.Schema({
         minute: { type: Number, required: true, min: 0, max: 59 },
         platforms: [{ type: String, enum: ['FB', 'IG', 'TT'] }],
         accountIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Channel' }],
+        postType: { type: String, enum: ['personal', 'group'], default: 'personal' },
+        groupIds: [{ type: String }],
     }],
 
     // Cấu hình bài viết

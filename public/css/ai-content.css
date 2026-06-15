@@ -2,6 +2,82 @@
    AI Content Creator — Uses Base Design System
    =================================== */
 
+/* ===== Custom Confirm/Alert Dialog ===== */
+.confirm-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+.confirm-dialog-overlay.show {
+    opacity: 1;
+}
+.confirm-dialog {
+    background: var(--bg-card, #fff);
+    border-radius: var(--radius-lg, 16px);
+    width: 90%;
+    max-width: 420px;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+    overflow: hidden;
+    animation: confirmSlideIn 0.2s ease;
+}
+@keyframes confirmSlideIn {
+    from { transform: translateY(20px) scale(0.95); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
+}
+.confirm-dialog-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 24px 0;
+}
+.confirm-dialog-header i {
+    font-size: 28px;
+    color: var(--primary, #6366f1);
+}
+.confirm-dialog-header h3 {
+    font-size: 17px;
+    font-weight: 600;
+    margin: 0;
+    color: var(--text, #1e293b);
+}
+.confirm-dialog-body {
+    padding: 16px 24px 20px;
+}
+.confirm-dialog-body p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-secondary, #64748b);
+}
+.confirm-dialog-footer {
+    display: flex;
+    gap: 10px;
+    padding: 0 24px 20px;
+    justify-content: flex-end;
+}
+.confirm-dialog-footer .btn-primary,
+.confirm-dialog-footer .btn-secondary {
+    min-width: 100px;
+    justify-content: center;
+}
+/* Ensure dark mode compatibility */
+[data-theme="dark"] .confirm-dialog {
+    background: var(--bg-card, #1e293b);
+}
+[data-theme="dark"] .confirm-dialog-header h3 {
+    color: var(--text, #f1f5f9);
+}
+[data-theme="dark"] .confirm-dialog-body p {
+    color: var(--text-secondary, #94a3b8);
+}
+
 /* ===== Hero ===== */
 .ai-content-hero {
     background: var(--primary-gradient);

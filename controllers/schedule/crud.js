@@ -185,12 +185,10 @@ const createSchedule = async (req, res) => {
                     return res.status(404).json({ success: false, message: 'Tài khoản Facebook nguồn không tồn tại hoặc đã bị tắt' });
                 }
 
-                const { groups: joinedGroups } = await getJoinedFacebookGroupsCached({
-                    userId: req.user._id,
-                    channelId: selectedSourceChannel._id,
-                    accountName: selectedSourceChannel.accountName,
-                    accountType: selectedSourceChannel.accountType || 'Cá nhân'
-                });
+                const { groups: joinedGroups } = await getJoinedFacebookGroupsCached(
+                    req.user._id,
+                    selectedSourceChannel._id
+                );
 
                 for (const groupKey of targetGroupIdsArray) {
                     const foundGroup = joinedGroups.find(group =>
@@ -361,12 +359,10 @@ const updateSchedule = async (req, res) => {
                 return res.status(404).json({ success: false, message: 'Tài khoản Facebook nguồn không tồn tại hoặc đã bị tắt' });
             }
 
-            const { groups: joinedGroups } = await getJoinedFacebookGroupsCached({
-                userId: req.user._id,
-                channelId: selectedSourceChannel._id,
-                accountName: selectedSourceChannel.accountName,
-                accountType: selectedSourceChannel.accountType || 'Cá nhân'
-            });
+            const { groups: joinedGroups } = await getJoinedFacebookGroupsCached(
+                req.user._id,
+                selectedSourceChannel._id
+            );
 
             const targetGroupIdArray = typeof targetGroupIds === 'string' 
                 ? (targetGroupIds.startsWith('[') ? JSON.parse(targetGroupIds) : [targetGroupIds])

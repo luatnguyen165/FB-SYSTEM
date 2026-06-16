@@ -20,6 +20,10 @@ const AiContentScheduleSchema = new mongoose.Schema({
         groupIds: [{ type: String }],
     }],
 
+    // Liên kết sản phẩm
+    productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+    direction: { type: String, enum: ['advertising', 'purchase', 'mixed', 'unset'], default: 'unset' },
+
     // Cấu hình bài viết
     contentConfig: {
         topics: [{ type: String }],

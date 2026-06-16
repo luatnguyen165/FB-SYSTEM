@@ -248,7 +248,7 @@
 
                             <% if (hasFB) { %>
                             <label class="platform-chip" data-platform="FB">
-                                <input type="radio" name="platformPick" class="platform-check" value="FB" checked>
+                                <input type="checkbox" class="platform-check" value="FB" checked>
                                 <i class="fa-brands fa-facebook"></i>
                                 <span>Facebook</span>
                                 <div class="platform-chip__check"><i class="fa-solid fa-check"></i></div>
@@ -257,7 +257,7 @@
 
                             <% if (hasIG) { %>
                             <label class="platform-chip" data-platform="IG">
-                                <input type="radio" name="platformPick" class="platform-check" value="IG" <%= !hasFB ? 'checked' : '' %>>
+                                <input type="checkbox" class="platform-check" value="IG">
                                 <i class="fa-brands fa-instagram"></i>
                                 <span>Instagram</span>
                                 <div class="platform-chip__check"><i class="fa-solid fa-check"></i></div>

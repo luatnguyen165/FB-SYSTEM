@@ -1,0 +1,189 @@
+<%
+page = 'analytics';
+%>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Báo cáo & Analytics - FB-SYSTEM</title>
+    <meta name="description" content="Báo cáo chi tiết về hiệu suất marketing đa kênh. Dashboard trực quan, biểu đồ thông minh, phân tích chuyên sâu.">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/landing.css">
+    <link rel="stylesheet" href="/css/features.css">
+</head>
+<body>
+    <%- include('../../partials/header') %>
+
+    <section class="feature-hero">
+        <div class="feature-hero-bg"></div>
+        <div class="container">
+            <div class="feature-hero-inner">
+                <div class="feature-hero-badge"><i class="fas fa-chart-pie"></i> Dữ liệu thông minh</div>
+                <h1>Báo cáo & <span class="highlight">Analytics</span> toàn diện</h1>
+                <p>Dashboard trực quan với đầy đủ chỉ số marketing. Theo dõi hiệu suất tất cả kênh, chiến dịch, nội dung trong một bảng điều khiển duy nhất.</p>
+                <div class="feature-hero-actions">
+                    <a href="/register" class="btn btn-primary btn-lg"><i class="fas fa-rocket"></i> Dùng thử miễn phí</a>
+                    <a href="#details" class="btn btn-secondary btn-lg"><i class="fas fa-play-circle"></i> Xem chi tiết</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="feature-stats">
+        <div class="container">
+            <div class="stats-bar">
+                <div class="stat-item"><div class="stat-number">100+</div><div class="stat-label">Chỉ số theo dõi</div></div>
+                <div class="stat-divider"></div>
+                <div class="stat-item"><div class="stat-number">Real-time</div><div class="stat-label">Dữ liệu cập nhật</div></div>
+                <div class="stat-divider"></div>
+                <div class="stat-item"><div class="stat-number">10+</div><div class="stat-label">Loại biểu đồ</div></div>
+                <div class="stat-divider"></div>
+                <div class="stat-item"><div class="stat-number">365</div><div class="stat-label">Ngày lưu trữ</div></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="feature-details section-padding" id="details">
+        <div class="container">
+            <div class="detail-grid">
+                <div class="detail-content animate-on-scroll">
+                    <div class="detail-label"><i class="fas fa-gauge-high"></i> Dashboard trực quan</div>
+                    <h2>Mọi dữ liệu <span class="highlight">trong tầm mắt</span></h2>
+                    <p>Dashboard toàn diện hiển thị tất cả chỉ số quan trọng: tổng quan tài khoản, hiệu suất bài đăng, tương tác, tăng trưởng theo thời gian thực.</p>
+                    <ul class="detail-list">
+                        <li><i class="fas fa-chart-line"></i> Biểu đồ tương tác theo ngày/tuần/tháng</li>
+                        <li><i class="fas fa-arrow-trend-up"></i> Phân tích xu hướng tăng trưởng</li>
+                        <li><i class="fas fa-flag-checkered"></i> So sánh hiệu suất giữa các kênh</li>
+                        <li><i class="fas fa-file-export"></i> Xuất báo cáo PDF/Excel/CSV</li>
+                        <li><i class="fas fa-envelope"></i> Gửi báo cáo tự động qua email</li>
+                    </ul>
+                </div>
+                <div class="detail-visual animate-on-scroll">
+                    <div class="tech-specs">
+                        <div class="tech-spec"><div class="tech-spec-value"><i class="fas fa-heart"></i> Likes</div><div class="tech-spec-label">+156% growth</div></div>
+                        <div class="tech-spec"><div class="tech-spec-value"><i class="fas fa-comment"></i> Comments</div><div class="tech-spec-label">+89% growth</div></div>
+                        <div class="tech-spec"><div class="tech-spec-value"><i class="fas fa-share"></i> Shares</div><div class="tech-spec-label">+234% growth</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="feature-sub-features section-padding">
+        <div class="container">
+            <div class="section-header">
+                <h2>Phân tích <span class="highlight">chuyên sâu</span></h2>
+                <p>Công cụ phân tích dữ liệu mạnh mẽ cho chiến lược marketing.</p>
+            </div>
+            <div class="sub-features-grid">
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-1"><i class="fas fa-chart-line"></i></div>
+                    <h3>Tổng quan đa kênh</h3>
+                    <p>Xem tất cả chỉ số từ Facebook, Instagram, TikTok, YouTube trên một dashboard duy nhất. So sánh hiệu suất chéo.</p>
+                </div>
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-2"><i class="fas fa-calendar"></i></div>
+                    <h3>Báo cáo theo thời gian</h3>
+                    <p>Lọc dữ liệu theo ngày, tuần, tháng, quý, năm. So sánh cùng kỳ để đánh giá tăng trưởng.</p>
+                </div>
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-3"><i class="fas fa-filter"></i></div>
+                    <h3>Lọc & phân khúc</h3>
+                    <p>Phân khúc dữ liệu theo kênh, loại nội dung, chiến dịch, nhóm đối tượng để phân tích chuyên sâu.</p>
+                </div>
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-4"><i class="fas fa-download"></i></div>
+                    <h3>Xuất báo cáo</h3>
+                    <p>Xuất báo cáo chuyên nghiệp dạng PDF, Excel, CSV. Tùy chỉnh nội dung báo cáo theo nhu cầu.</p>
+                </div>
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-5"><i class="fas fa-bell"></i></div>
+                    <h3>Cảnh báo thông minh</h3>
+                    <p>Thiết lập ngưỡng cảnh báo cho các chỉ số quan trọng. Nhận thông báo khi có biến động bất thường.</p>
+                </div>
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-6"><i class="fas fa-robot"></i></div>
+                    <h3>Insights AI</h3>
+                    <p>AI phân tích dữ liệu và đưa ra insights, đề xuất cải thiện chiến lược dựa trên dữ liệu thực tế.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="feature-screenshot section-padding">
+        <div class="container">
+            <div class="screenshot-card animate-on-scroll">
+                <div class="screenshot-header">
+                    <div class="screenshot-dots"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div>
+                    <span>FB-SYSTEM Analytics Dashboard</span>
+                </div>
+                <div class="screenshot-body">
+                    <div class="screenshot-content" style="flex-direction:column;min-height:auto;">
+                        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
+                            <div style="padding:16px;background:rgba(0,0,0,0.3);border-radius:12px;text-align:center;">
+                                <div style="font-size:20px;font-weight:800;color:#818cf8;">156</div>
+                                <div style="font-size:11px;color:#64748b;">Bài đăng</div>
+                            </div>
+                            <div style="padding:16px;background:rgba(0,0,0,0.3);border-radius:12px;text-align:center;">
+                                <div style="font-size:20px;font-weight:800;color:#34d399;">45.2K</div>
+                                <div style="font-size:11px;color:#64748b;">Likes</div>
+                            </div>
+                            <div style="padding:16px;background:rgba(0,0,0,0.3);border-radius:12px;text-align:center;">
+                                <div style="font-size:20px;font-weight:800;color:#fbbf24;">12.8K</div>
+                                <div style="font-size:11px;color:#64748b;">Comments</div>
+                            </div>
+                            <div style="padding:16px;background:rgba(0,0,0,0.3);border-radius:12px;text-align:center;">
+                                <div style="font-size:20px;font-weight:800;color:#f472b6;">89.5K</div>
+                                <div style="font-size:11px;color:#64748b;">Reach</div>
+                            </div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <div style="padding:16px;background:rgba(0,0,0,0.3);border-radius:12px;">
+                                <div style="font-size:12px;color:#64748b;margin-bottom:8px;">Hiệu suất theo kênh</div>
+                                <div style="display:flex;flex-direction:column;gap:8px;">
+                                    <div style="display:flex;justify-content:space-between;font-size:13px;color:#cbd5e1;"><span><i class="fab fa-facebook" style="color:#1877f2;"></i> Facebook</span><span>45%</span></div>
+                                    <div style="height:6px;background:rgba(255,255,255,0.05);border-radius:3px;"><div style="width:45%;height:100%;background:#1877f2;border-radius:3px;"></div></div>
+                                    <div style="display:flex;justify-content:space-between;font-size:13px;color:#cbd5e1;"><span><i class="fab fa-instagram" style="color:#e4405f;"></i> Instagram</span><span>32%</span></div>
+                                    <div style="height:6px;background:rgba(255,255,255,0.05);border-radius:3px;"><div style="width:32%;height:100%;background:#e4405f;border-radius:3px;"></div></div>
+                                    <div style="display:flex;justify-content:space-between;font-size:13px;color:#cbd5e1;"><span><i class="fab fa-tiktok" style="color:#fff;"></i> TikTok</span><span>15%</span></div>
+                                    <div style="height:6px;background:rgba(255,255,255,0.05);border-radius:3px;"><div style="width:15%;height:100%;background:#fff;border-radius:3px;"></div></div>
+                                </div>
+                            </div>
+                            <div style="padding:16px;background:rgba(0,0,0,0.3);border-radius:12px;">
+                                <div style="font-size:12px;color:#64748b;margin-bottom:8px;">Tương tác gần đây</div>
+                                <div style="display:flex;flex-direction:column;gap:8px;">
+                                    <div style="display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;font-size:12px;color:#94a3b8;">
+                                        <span>20/06</span>
+                                        <div style="height:4px;background:rgba(255,255,255,0.05);border-radius:2px;"><div style="width:85%;height:100%;background:#818cf8;border-radius:2px;"></div></div>
+                                        <span>1,245</span>
+                                    </div>
+                                    <div style="display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;font-size:12px;color:#94a3b8;">
+                                        <span>19/06</span>
+                                        <div style="height:4px;background:rgba(255,255,255,0.05);border-radius:2px;"><div style="width:70%;height:100%;background:#818cf8;border-radius:2px;"></div></div>
+                                        <span>987</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section section-padding">
+        <div class="container">
+            <h2>Dữ liệu <span class="highlight">dẫn đường</span> thành công</h2>
+            <p>Dashboard analytics toàn diện - Đưa quyết định marketing dựa trên dữ liệu thực tế.</p>
+            <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
+                <a href="/register" class="btn btn-primary btn-lg"><i class="fas fa-rocket"></i> Dùng thử miễn phí</a>
+                <a href="/" class="btn btn-secondary btn-lg" style="border-color:rgba(255,255,255,0.3);color:white;"><i class="fas fa-arrow-left"></i> Quay lại trang chủ</a>
+            </div>
+        </div>
+    </section>
+
+    <%- include('../../partials/footer') %>
+</body>
+</html>

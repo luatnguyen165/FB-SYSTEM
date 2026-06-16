@@ -124,6 +124,12 @@
                             <i class="fa-solid fa-play cp-schedule-icon"></i>
                             <span>Đã post: <strong><%= p.metrics.totalToday %> / <%= p.schedule.maxPerDay %> hôm nay</strong></span>
                         </div>
+                        <% if (p.target && p.target.groupIds && p.target.groupIds.length > 0) { %>
+                        <div class="cp-schedule-item">
+                            <i class="fa-solid fa-people-group cp-schedule-icon"></i>
+                            <span>Groups: <strong class="cp-group-badge"><%= p.target.groupIds.length %> đã chọn</strong></span>
+                        </div>
+                        <% } %>
                     </div>
 
                     <div class="cp-card-times">

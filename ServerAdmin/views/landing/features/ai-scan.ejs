@@ -1,0 +1,137 @@
+<%
+page = 'ai-scan';
+%>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Quét & Phân Tích - FB-SYSTEM</title>
+    <meta name="description" content="AI quét và phân tích nội dung Facebook, Instagram tự động. Phát hiện vi phạm, theo dõi hiệu suất bài viết.">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/landing.css">
+    <link rel="stylesheet" href="/css/features.css">
+</head>
+<body>
+    <%- include('../../partials/header') %>
+
+    <section class="feature-hero">
+        <div class="feature-hero-bg"></div>
+        <div class="container">
+            <div class="feature-hero-inner">
+                <div class="feature-hero-badge"><i class="fas fa-search"></i> Phân tích thông minh</div>
+                <h1>AI <span class="highlight">Quét & Phân Tích</span> toàn diện</h1>
+                <p>Trí tuệ nhân tạo quét và phân tích toàn bộ nội dung marketing của bạn. Phát hiện vi phạm, theo dõi hiệu suất, đề xuất cải thiện.</p>
+                <div class="feature-hero-actions">
+                    <a href="/register" class="btn btn-primary btn-lg"><i class="fas fa-rocket"></i> Dùng thử miễn phí</a>
+                    <a href="#details" class="btn btn-secondary btn-lg"><i class="fas fa-play-circle"></i> Xem chi tiết</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="feature-stats">
+        <div class="container">
+            <div class="stats-bar">
+                <div class="stat-item"><div class="stat-number">10M+</div><div class="stat-label">Bài viết đã phân tích</div></div>
+                <div class="stat-divider"></div>
+                <div class="stat-item"><div class="stat-number">99.9%</div><div class="stat-label">Độ chính xác phát hiện</div></div>
+                <div class="stat-divider"></div>
+                <div class="stat-item"><div class="stat-number">50+</div><div class="stat-label">Chỉ số theo dõi</div></div>
+                <div class="stat-divider"></div>
+                <div class="stat-item"><div class="stat-number">24/7</div><div class="stat-label">Quét tự động</div></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="feature-details section-padding" id="details">
+        <div class="container">
+            <div class="detail-grid">
+                <div class="detail-content animate-on-scroll">
+                    <div class="detail-label"><i class="fas fa-microchip"></i> Công nghệ AI</div>
+                    <h2>Phân tích <span class="highlight">thông minh</span> với AI</h2>
+                    <p>AI của chúng tôi quét và phân tích hàng ngàn bài viết mỗi phút, phát hiện các vấn đề tiềm ẩn, đề xuất giải pháp tối ưu.</p>
+                    <ul class="detail-list">
+                        <li><i class="fas fa-flag"></i> Phát hiện nội dung vi phạm chính sách</li>
+                        <li><i class="fas fa-chart-simple"></i> Phân tích hiệu suất bài viết chi tiết</li>
+                        <li><i class="fas fa-bolt"></i> Cảnh báo tài khoản gặp vấn đề</li>
+                        <li><i class="fas fa-clock"></i> Lịch sử quét và báo cáo theo thời gian</li>
+                        <li><i class="fas fa-file-export"></i> Xuất báo cáo PDF/Excel</li>
+                    </ul>
+                </div>
+                <div class="detail-visual animate-on-scroll">
+                    <div class="platform-grid-showcase">
+                        <div class="platform-item" style="border-color:rgba(99,102,241,0.3);background:rgba(99,102,241,0.05);">
+                            <i class="fas fa-shield" style="color:#818cf8;font-size:40px;"></i><span style="color:#818cf8;">Vi phạm</span>
+                        </div>
+                        <div class="platform-item" style="border-color:rgba(16,185,129,0.3);background:rgba(16,185,129,0.05);">
+                            <i class="fas fa-chart-line" style="color:#34d399;font-size:40px;"></i><span style="color:#34d399;">Hiệu suất</span>
+                        </div>
+                        <div class="platform-item" style="border-color:rgba(245,158,11,0.3);background:rgba(245,158,11,0.05);">
+                            <i class="fas fa-triangle-exclamation" style="color:#fbbf24;font-size:40px;"></i><span style="color:#fbbf24;">Cảnh báo</span>
+                        </div>
+                        <div class="platform-item" style="border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.05);">
+                            <i class="fas fa-file-pdf" style="color:#f87171;font-size:40px;"></i><span style="color:#f87171;">Báo cáo</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="feature-sub-features section-padding">
+        <div class="container">
+            <div class="section-header">
+                <h2>Khả năng <span class="highlight">phân tích</span></h2>
+                <p>AI Scan cung cấp bộ công cụ phân tích toàn diện.</p>
+            </div>
+            <div class="sub-features-grid">
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-1"><i class="fas fa-shield"></i></div>
+                    <h3>Phát hiện vi phạm</h3>
+                    <p>AI tự động quét và phát hiện nội dung vi phạm chính sách Facebook, giúp bạn tránh bị khóa tài khoản.</p>
+                </div>
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-2"><i class="fas fa-chart-simple"></i></div>
+                    <h3>Phân tích hiệu suất</h3>
+                    <p>Đo lường tương tác, reach, impressions. So sánh hiệu suất giữa các bài viết, chiến dịch.</p>
+                </div>
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-3"><i class="fas fa-bell"></i></div>
+                    <h3>Cảnh báo thông minh</h3>
+                    <p>Nhận cảnh báo realtime khi phát hiện tài khoản gặp vấn đề, bài viết bị report, giảm tương tác đột ngột.</p>
+                </div>
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-4"><i class="fas fa-calendar-week"></i></div>
+                    <h3>Lịch quét tự động</h3>
+                    <p>Thiết lập lịch quét tự động hàng giờ, hàng ngày, hàng tuần. Không cần can thiệp thủ công.</p>
+                </div>
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-5"><i class="fas fa-file-export"></i></div>
+                    <h3>Xuất báo cáo</h3>
+                    <p>Xuất báo cáo chi tiết dạng PDF, Excel. Gửi báo cáo qua email định kỳ.</p>
+                </div>
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-6"><i class="fas fa-lightbulb"></i></div>
+                    <h3>Đề xuất cải thiện</h3>
+                    <p>AI đề xuất cách cải thiện nội dung, thời gian đăng bài, hashtag để tăng tương tác.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section section-padding">
+        <div class="container">
+            <h2>Bảo vệ & <span class="highlight">tối ưu</span> tài khoản của bạn</h2>
+            <p>Quét và phân tích tự động với AI - Phát hiện sớm, ngăn chặn kịp thời.</p>
+            <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
+                <a href="/register" class="btn btn-primary btn-lg"><i class="fas fa-rocket"></i> Dùng thử miễn phí</a>
+                <a href="/" class="btn btn-secondary btn-lg" style="border-color:rgba(255,255,255,0.3);color:white;"><i class="fas fa-arrow-left"></i> Quay lại trang chủ</a>
+            </div>
+        </div>
+    </section>
+
+    <%- include('../../partials/footer') %>
+</body>
+</html>

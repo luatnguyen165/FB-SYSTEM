@@ -236,20 +236,6 @@ async function aiAnalyzePhase(config) {
     }
 
     const matchingResults = allResults.filter(r => r.isMatching);
-    if (matchingResults.length > 0) {
-        const channel = await Channel.findById(config.channelId).lean();
-        if (channel) {
-            const { context, sessionKey } = await getOrOpenFacebookContext(
-                config.userId, channel.accountName, channel.accountType || 'Cá nhân', 'FB', { headless: false }
-            );
-            const page = context.pages()[0] || await context.newPage();
-            try {
-                await commentOnMatchingResults(page, matchingResults, config);
-            } finally {
-                try { await context.close(); const sessions = global.__facebookPlaywrightSessions; if (sessions) sessions.delete(sessionKey); } catch (e) {}
-            }
-        }
-    }
 
     await AiScanConfig.updateOne({ _id: config._id }, { $set: { lastScanAt: new Date(), updatedAt: new Date() } });
     console.log(`[AI] Done. Analyzed: ${allResults.length}, Matched: ${matchingResults.length}`);
@@ -262,7 +248,7 @@ async function aiAnalyzePhase(config) {
         success: true,
         totalAnalyzed: allResults.length,
         matchingPosts: matchingResults.length,
-        commentedPosts: matchingResults.filter(r => r.commentSent || (r.comments && r.comments.some(c => c.sent))).length
+        commentedPosts: 0
     };
 }
 

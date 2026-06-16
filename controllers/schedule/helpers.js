@@ -8,7 +8,6 @@ const PLATFORM_LABELS = {
     FR: 'Facebook Reels',
     IG: 'Instagram',
     TT: 'TikTok Video',
-    TA: 'TikTok Affiliate',
     YT: 'YouTube',
     YS: 'YouTube Short'
 };

@@ -12,8 +12,7 @@ router.post('/api/create', isAuthenticated, ctrl.createPlay);
 router.put('/api/:playId/update', isAuthenticated, ctrl.updatePlay);
 router.delete('/api/:playId', isAuthenticated, ctrl.deletePlay);
 router.post('/api/:playId/toggle', isAuthenticated, ctrl.togglePlay);
-router.post('/api/:playId/run-now', isAuthenticated, ctrl.runPlayNow);
-router.post('/api/:playId/auto-comment-all', isAuthenticated, ctrl.autoCommentAll);
+router.post('/api/:playId/run', isAuthenticated, ctrl.runAutoCommentPlay);
 
 // Logs
 router.get('/api/:playId/logs', isAuthenticated, ctrl.getPlayLogs);

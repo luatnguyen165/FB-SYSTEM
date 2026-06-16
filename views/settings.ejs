@@ -31,7 +31,7 @@
                     <div class="panel-header__icon panel-header__icon--primary">
                         <i class="fa-solid fa-shield-halved"></i>
                     </div>
-                    <div>
+                    <div class="panel-header__content">
                         <h2>Cấu hình lách bản quyền & Render thông minh</h2>
                         <p>Điều chỉnh cách hệ thống xử lý video trước khi xuất bản.</p>
                     </div>
@@ -97,7 +97,7 @@
                     <div class="panel-header__icon panel-header__icon--accent">
                         <i class="fa-regular fa-clock"></i>
                     </div>
-                    <div>
+                    <div class="panel-header__content">
                         <h2>Cấu hình thời gian & Giãn cách đăng tải</h2>
                         <p>Kiểm soát nhịp đăng bài để hệ thống hoạt động ổn định hơn.</p>
                     </div>
@@ -211,7 +211,7 @@
                     <div class="panel-header__icon panel-header__icon--telegram">
                         <i class="fa-brands fa-telegram"></i>
                     </div>
-                    <div>
+                    <div class="panel-header__content">
                         <h2>Báo cáo tiến độ qua Telegram Bot</h2>
                         <p>Nhận thông báo ngay khi có tiến trình mới hoặc lỗi phát sinh. Thông báo lịch trình đăng bài viết thành công hay thất bại.</p>
                     </div>
@@ -297,7 +297,7 @@
                     <div class="panel-header__icon panel-header__icon--primary">
                         <i class="fa-solid fa-brain"></i>
                     </div>
-                    <div>
+                    <div class="panel-header__content">
                         <h2>Cấu hình AI Provider</h2>
                         <p>Chọn nhà cung cấp AI và cấu hình API key. Dùng chung cho AI Scan và các tính năng AI khác.</p>
                     </div>
@@ -317,8 +317,8 @@
 
                     <!-- OpenAI Settings -->
                     <div class="ai-provider-fields" id="aiOpenaiFields">
-                        <div class="form-group full-width" style="margin-bottom: 12px;">
-                            <label style="font-size:0.85rem; color:var(--primary);">--- OpenAI ---</label>
+                        <div class="section-divider">
+                            <span class="section-divider__label"><i class="fa-solid fa-microchip"></i> OpenAI</span>
                         </div>
                         <div class="form-group">
                             <label for="openaiApiKey">API KEY</label>
@@ -336,13 +336,14 @@
                                 <input type="text" class="input-text" id="openaiModel" value="<%= settings && settings.openaiModel ? settings.openaiModel : 'gpt-4o-mini' %>" placeholder="gpt-4o-mini" autocomplete="off">
                             </div>
                         </div>
-                        <div class="form-group" style="grid-column:1/-1;">
-                            <div id="openaiStatusCard" style="padding: 12px 16px; border-radius: 8px; background: <%= settings && settings.openaiApiKey ? 'rgba(16, 185, 129, 0.08)' : 'rgba(148, 163, 184, 0.08)' %>; display: flex; align-items: center; gap: 10px;">
-                                <div style="width: 10px; height: 10px; border-radius: 50%; background: <%= settings && settings.openaiApiKey ? '#10b981' : '#94a3b8' %>;" id="openaiStatusDot"></div>
-                                <span id="openaiStatusText" style="font-size: 0.85rem; color: var(--text-main);">
-                                    <%= settings && settings.openaiApiKey ? 'Đã cấu hình OpenAI API Key' : 'Chưa cấu hình OpenAI API Key' %>
-                                </span>
-                                <button type="button" class="btn btn-outline btn-sm" id="btnTestOpenAiKey" style="margin-left: auto; white-space: nowrap; padding: 6px 14px; font-size:0.8rem; border-radius:6px; background:var(--bg-hover); border:1px solid var(--border); cursor:pointer; transition:all 0.2s;">
+                        <div class="full-width">
+                            <div id="openaiStatusCard" class="ai-status-card <%= settings && settings.openaiApiKey ? 'is-connected' : 'is-disconnected' %>">
+                                <div class="ai-status-dot <%= settings && settings.openaiApiKey ? 'is-connected' : 'is-disconnected' %>" id="openaiStatusDot"></div>
+                                <div class="ai-status-text">
+                                    <span id="openaiStatusText"><%= settings && settings.openaiApiKey ? 'Đã cấu hình OpenAI API Key' : 'Chưa cấu hình OpenAI API Key' %></span>
+                                    <small><%= settings && settings.openaiApiKey ? 'Nhấn "Test" để xác nhận' : 'Nhập API key và model để kết nối' %></small>
+                                </div>
+                                <button type="button" class="ai-test-btn" id="btnTestOpenAiKey">
                                     <i class="fa-solid fa-plug"></i> Test
                                 </button>
                             </div>
@@ -351,8 +352,8 @@
 
                     <!-- OpenAI Compatible Settings -->
                     <div class="ai-provider-fields" id="aiOpenaiCompatibleFields">
-                        <div class="form-group full-width" style="margin-bottom: 12px;">
-                            <label style="font-size:0.85rem; color:var(--primary);">--- OpenAI Compatible (Groq, DeepSeek, v.v.) ---</label>
+                        <div class="section-divider">
+                            <span class="section-divider__label"><i class="fa-solid fa-layer-group"></i> OpenAI Compatible (Groq, DeepSeek, v.v.)</span>
                         </div>
                         <div class="form-group full-width">
                             <label for="openaiCompatibleBaseUrl">BASE URL</label>
@@ -378,13 +379,14 @@
                                 <input type="text" class="input-text" id="openaiCompatibleModel" value="<%= settings && settings.openaiCompatibleModel ? settings.openaiCompatibleModel : '' %>" placeholder="mixtral-8x7b-32768" autocomplete="off">
                             </div>
                         </div>
-                        <div class="form-group" style="grid-column:1/-1;">
-                            <div id="openaiCompatibleStatusCard" style="padding: 12px 16px; border-radius: 8px; background: <%= settings && settings.openaiCompatibleApiKey && settings.openaiCompatibleBaseUrl ? 'rgba(16, 185, 129, 0.08)' : 'rgba(148, 163, 184, 0.08)' %>; display: flex; align-items: center; gap: 10px;">
-                                <div style="width: 10px; height: 10px; border-radius: 50%; background: <%= settings && settings.openaiCompatibleApiKey && settings.openaiCompatibleBaseUrl ? '#10b981' : '#94a3b8' %>;" id="openaiCompatibleStatusDot"></div>
-                                <span id="openaiCompatibleStatusText" style="font-size: 0.85rem; color: var(--text-main);">
-                                    <%= settings && settings.openaiCompatibleApiKey && settings.openaiCompatibleBaseUrl ? 'Đã cấu hình' : 'Chưa cấu hình' %>
-                                </span>
-                                <button type="button" class="btn btn-outline btn-sm" id="btnTestOpenaiCompatible" style="margin-left: auto; white-space: nowrap; padding: 6px 14px; font-size:0.8rem; border-radius:6px; background:var(--bg-hover); border:1px solid var(--border); cursor:pointer; transition:all 0.2s;">
+                        <div class="full-width">
+                            <div id="openaiCompatibleStatusCard" class="ai-status-card <%= settings && settings.openaiCompatibleApiKey && settings.openaiCompatibleBaseUrl ? 'is-connected' : 'is-disconnected' %>">
+                                <div class="ai-status-dot <%= settings && settings.openaiCompatibleApiKey && settings.openaiCompatibleBaseUrl ? 'is-connected' : 'is-disconnected' %>" id="openaiCompatibleStatusDot"></div>
+                                <div class="ai-status-text">
+                                    <span id="openaiCompatibleStatusText"><%= settings && settings.openaiCompatibleApiKey && settings.openaiCompatibleBaseUrl ? 'Đã cấu hình' : 'Chưa cấu hình' %></span>
+                                    <small><%= settings && settings.openaiCompatibleApiKey && settings.openaiCompatibleBaseUrl ? 'Nhấn "Test" để xác nhận' : 'Nhập thông tin để kết nối' %></small>
+                                </div>
+                                <button type="button" class="ai-test-btn" id="btnTestOpenaiCompatible">
                                     <i class="fa-solid fa-plug"></i> Test
                                 </button>
                             </div>
@@ -393,8 +395,8 @@
 
                     <!-- Anthropic Settings -->
                     <div class="ai-provider-fields" id="aiAnthropicFields">
-                        <div class="form-group full-width" style="margin-bottom: 12px;">
-                            <label style="font-size:0.85rem; color:var(--primary);">--- Anthropic (Claude) ---</label>
+                        <div class="section-divider">
+                            <span class="section-divider__label"><i class="fa-brands fa-avianex"></i> Anthropic (Claude)</span>
                         </div>
                         <div class="form-group">
                             <label for="anthropicApiKey">API KEY</label>
@@ -412,13 +414,14 @@
                                 <input type="text" class="input-text" id="anthropicModel" value="<%= settings && settings.anthropicModel ? settings.anthropicModel : 'claude-3-haiku-20240307' %>" placeholder="claude-3-haiku-20240307" autocomplete="off">
                             </div>
                         </div>
-                        <div class="form-group" style="grid-column:1/-1;">
-                            <div id="anthropicStatusCard" style="padding: 12px 16px; border-radius: 8px; background: <%= settings && settings.anthropicApiKey ? 'rgba(16, 185, 129, 0.08)' : 'rgba(148, 163, 184, 0.08)' %>; display: flex; align-items: center; gap: 10px;">
-                                <div style="width: 10px; height: 10px; border-radius: 50%; background: <%= settings && settings.anthropicApiKey ? '#10b981' : '#94a3b8' %>;" id="anthropicStatusDot"></div>
-                                <span id="anthropicStatusText" style="font-size: 0.85rem; color: var(--text-main);">
-                                    <%= settings && settings.anthropicApiKey ? 'Đã cấu hình Anthropic API Key' : 'Chưa cấu hình Anthropic API Key' %>
-                                </span>
-                                <button type="button" class="btn btn-outline btn-sm" id="btnTestAnthropic" style="margin-left: auto; white-space: nowrap; padding: 6px 14px; font-size:0.8rem; border-radius:6px; background:var(--bg-hover); border:1px solid var(--border); cursor:pointer; transition:all 0.2s;">
+                        <div class="full-width">
+                            <div id="anthropicStatusCard" class="ai-status-card <%= settings && settings.anthropicApiKey ? 'is-connected' : 'is-disconnected' %>">
+                                <div class="ai-status-dot <%= settings && settings.anthropicApiKey ? 'is-connected' : 'is-disconnected' %>" id="anthropicStatusDot"></div>
+                                <div class="ai-status-text">
+                                    <span id="anthropicStatusText"><%= settings && settings.anthropicApiKey ? 'Đã cấu hình Anthropic API Key' : 'Chưa cấu hình Anthropic API Key' %></span>
+                                    <small><%= settings && settings.anthropicApiKey ? 'Nhấn "Test" để xác nhận' : 'Nhập API key và model để kết nối' %></small>
+                                </div>
+                                <button type="button" class="ai-test-btn" id="btnTestAnthropic">
                                     <i class="fa-solid fa-plug"></i> Test
                                 </button>
                             </div>

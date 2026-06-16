@@ -113,6 +113,15 @@ const createSchedule = async (req, res) => {
         const requestedShopeeLinkIds = normalizeIdArray(shopeeLinks);
         const normalizedAccounts = normalizeScheduleAccounts(accounts);
 
+        // Nếu chọn IG (Instagram) cho post, bắt buộc phải có ảnh
+        const hasIg = platforms.includes('IG');
+        if (nextType === 'post' && hasIg) {
+            const hasNewImages = req.files && req.files.length > 0;
+            if (!hasNewImages) {
+                return res.status(400).json({ success: false, message: 'Instagram yêu cầu phải có ít nhất 1 hình ảnh!' });
+            }
+        }
+
         if (nextType === 'reels' && normalizedAccounts.length) {
             const selectedAccounts = await getOwnedChannelsByIds(req.user._id, normalizedAccounts);
             const selectedAccountIds = new Set(selectedAccounts.map(channel => String(channel._id)));
@@ -124,6 +133,14 @@ const createSchedule = async (req, res) => {
 
             if (selectedAccounts.some(isFacebookPersonalChannel)) {
                 return res.status(400).json({ success: false, message: 'Tài khoản Facebook cá nhân không hỗ trợ đăng Reels. Vui lòng chọn Fanpage hoặc Nhà sáng tạo' });
+            }
+        }
+
+        // Nếu là reels, bắt buộc phải có video
+        if (nextType === 'reels') {
+            const normalizedVideoPath = normalizeScheduleVideoPath(videoPath || '');
+            if (!requestedVideoId && !normalizedVideoPath) {
+                return res.status(400).json({ success: false, message: 'Vui lòng chọn video cho lịch Reels!' });
             }
         }
 
@@ -287,13 +304,27 @@ const updateSchedule = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Không tìm thấy lịch đăng' });
         }
 
-        if (schedule.status !== 'pending') {
+        if (schedule.status !== 'pending' && schedule.status !== 'failed') {
             return res.status(400).json({ success: false, message: 'Lịch đã chạy rồi, không thể sửa nữa' });
         }
+
+        // Nếu lịch đang failed → tự động reset về pending để scheduler chạy lại
+        const wasFailed = schedule.status === 'failed';
 
         const nextType = type || schedule.type;
         const nextShopeeLinkIds = normalizeIdArray(shopeeLinks);
         const normalizedAccounts = normalizeScheduleAccounts(accounts);
+
+        // Nếu chọn IG (Instagram) cho post, bắt buộc phải có ảnh
+        const hasIg = platforms.includes('IG');
+        if (nextType === 'post' && hasIg) {
+            const hasExistingImagesObj = Array.isArray(schedule.images) && schedule.images.length > 0;
+            const hasExistingImagesBody = req.body.existingImages ? (Array.isArray(req.body.existingImages) ? req.body.existingImages.length > 0 : true) : false;
+            const hasNewImages = req.files && req.files.length > 0;
+            if (!hasExistingImagesObj && !hasExistingImagesBody && !hasNewImages) {
+                return res.status(400).json({ success: false, message: 'Instagram yêu cầu phải có ít nhất 1 hình ảnh!' });
+            }
+        }
 
         if (nextType === 'reels' && normalizedAccounts.length) {
             const selectedAccounts = await getOwnedChannelsByIds(req.user._id, normalizedAccounts);
@@ -378,7 +409,10 @@ const updateSchedule = async (req, res) => {
         }
 
         schedule.type = nextType;
-        if (status && ['pending', 'posted', 'failed'].includes(status)) {
+        // Nếu lịch đang failed → tự động reset về pending để scheduler chạy lại
+        if (wasFailed) {
+            schedule.status = 'pending';
+        } else if (status && ['pending', 'posted', 'failed'].includes(status)) {
             schedule.status = status;
         }
         schedule.caption = caption || '';

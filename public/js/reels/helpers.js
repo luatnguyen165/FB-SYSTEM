@@ -114,7 +114,6 @@ function getReelsStatusMeta(status) {
 
 function getReelsPrimaryPlatform(schedule) {
     const platforms = Array.isArray(schedule?.platforms) ? schedule.platforms.filter(Boolean) : [];
-    if (platforms.includes('TA')) return 'TA';
     if (platforms.includes('YS')) return 'YS';
     if (platforms.includes('TT')) return 'TT';
     if (platforms.includes('FR')) return 'FR';
@@ -128,8 +127,7 @@ function getReelsPlatformMeta(platformCode) {
         FR: { label: 'Facebook Reels', icon: 'fa-brands fa-facebook', className: 'item-fb' },
         IG: { label: 'Instagram', icon: 'fa-brands fa-instagram', className: 'item-ig' },
         YS: { label: 'YouTube Short', icon: 'fa-brands fa-youtube', className: 'item-yt' },
-        TT: { label: 'TikTok Video', icon: 'fa-brands fa-tiktok', className: 'item-tt' },
-        TA: { label: 'TikTok Affiliate', icon: 'fa-solid fa-link', className: 'item-ta' }
+        TT: { label: 'TikTok Video', icon: 'fa-brands fa-tiktok', className: 'item-tt' }
     };
     return meta[code] || { label: code, icon: 'fa-solid fa-bullhorn', className: 'item-fb' };
 }
@@ -191,7 +189,7 @@ function normalizeReelsAccountType(value) {
 }
 
 function reelsPlatformToChannel(platformCode) {
-    const map = { FR: 'FB', YS: 'YT', IG: 'IG', TT: 'TT', TA: 'TT' };
+    const map = { FR: 'FB', YS: 'YT', IG: 'IG', TT: 'TT' };
     return map[platformCode] || platformCode;
 }
 

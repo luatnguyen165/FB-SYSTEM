@@ -62,6 +62,7 @@
             <button class="ai-tab-btn active" data-tab="styles"><i class="fa-solid fa-palette"></i> Văn Phong</button>
             <button class="ai-tab-btn" data-tab="schedules"><i class="fa-solid fa-calendar"></i> Lịch Nội Dung</button>
             <button class="ai-tab-btn" data-tab="posts"><i class="fa-solid fa-newspaper"></i> Bài Viết AI</button>
+            <button class="ai-tab-btn" data-tab="products"><i class="fa-solid fa-box"></i> Sản Phẩm</button>
         </div>
 
         <!-- Tab: Văn Phong -->
@@ -173,6 +174,64 @@
             <% } %>
         </div>
 
+        <!-- Tab: Sản Phẩm -->
+        <div class="ai-tab-content" id="tab-products">
+            <div class="ai-content-section-header">
+                <h2><i class="fa-solid fa-box"></i> Sản Phẩm</h2>
+                <button class="btn-primary" id="btnNewProduct"><i class="fa-solid fa-plus"></i> Thêm Sản Phẩm</button>
+            </div>
+
+            <div class="ai-content-empty" id="emptyProducts" style="<% if (products && products.length > 0) { %>display:none<% } %>">
+                <i class="fa-solid fa-box"></i>
+                <h3>Chưa có sản phẩm nào</h3>
+                <p>Thêm sản phẩm để AI tự động tạo nội dung quảng cáo / bán hàng thông minh.</p>
+            </div>
+
+            <div class="ai-content-grid" id="productsList" <% if (!products || products.length === 0) { %>style="display:none"<% } %>>
+                <% (products || []).forEach(function(p) { %>
+                <div class="ai-style-card product-card" data-id="<%= p._id %>">
+                    <div class="ai-style-header">
+                        <div class="ai-style-icon"><i class="fa-solid fa-box"></i></div>
+                        <div class="ai-style-info">
+                            <h3><%= p.name %></h3>
+                            <span class="ai-style-meta">
+                                <%= p.category || 'Chưa phân loại' %>
+                                <% if (p.price) { %> • <%= p.price %>đ<% } %>
+                                <% if (p.aiAnalysis && p.aiAnalysis.suggestedDirection) { %>
+                                • <span class="direction-badge direction-<%= p.aiAnalysis.suggestedDirection %>"><%= p.aiAnalysis.suggestedDirection === 'advertising' ? 'Quảng cáo' : p.aiAnalysis.suggestedDirection === 'purchase' ? 'Mua hàng' : 'Kết hợp' %></span>
+                                <% } %>
+                            </span>
+                        </div>
+                        <div class="ai-style-actions">
+                            <button class="btn-sm btn-analyze" onclick="analyzeProductAI('<%= p._id %>')" title="Phân tích AI"><i class="fa-solid fa-magnifying-glass-chart"></i></button>
+                            <button class="btn-sm btn-edit" onclick="editProduct('<%= p._id %>')" title="Sửa"><i class="fa-solid fa-pen"></i></button>
+                            <button class="btn-sm btn-delete" onclick="deleteProduct('<%= p._id %>')" title="Xóa"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <% if (p.description) { %>
+                    <p style="padding:0 15px 5px;color:var(--text-secondary);font-size:13px;"><%= p.description.substring(0, 120) %><%= p.description.length > 120 ? '...' : '' %></p>
+                    <% } %>
+                    <% if (p.aiAnalysis) { %>
+                    <div class="ai-style-analysis">
+                        <div class="analysis-tag"><i class="fa-solid fa-lightbulb"></i> <%= p.aiAnalysis.summary || 'Đã phân tích' %></div>
+                        <% if (p.aiAnalysis.recommendedAngles && p.aiAnalysis.recommendedAngles.length) { %>
+                        <div class="analysis-keywords" style="margin-top:6px;">
+                            <% p.aiAnalysis.recommendedAngles.slice(0, 3).forEach(function(angle) { %>
+                            <span class="keyword-tag"><%= angle %></span>
+                            <% }); %>
+                        </div>
+                        <% } %>
+                    </div>
+                    <% } else { %>
+                    <div class="ai-style-no-analysis">
+                        <i class="fa-solid fa-exclamation-circle"></i> Chưa phân tích. Nhấn nút phân tích để AI đề xuất hướng nội dung.
+                    </div>
+                    <% } %>
+                </div>
+                <% }); %>
+            </div>
+        </div>
+
         <!-- Tab: Bài Viết AI -->
         <div class="ai-tab-content" id="tab-posts">
             <div class="ai-content-section-header">
@@ -267,7 +326,81 @@
     </div>
 </div>
 
-<!-- Modal: Tạo/Sửa Lịch -->
+<!-- Modal: Tạo/Sửa Sản Phẩm -->
+<div class="ai-modal-overlay" id="productModal" style="display:none;">
+    <div class="ai-modal ai-modal-lg">
+        <div class="ai-modal-header">
+            <h2 id="productModalTitle"><i class="fa-solid fa-box"></i> Thêm Sản Phẩm</h2>
+            <button class="ai-modal-close" onclick="closeProductModal()">&times;</button>
+        </div>
+        <div class="ai-modal-body">
+            <input type="hidden" id="productEditId" value="">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Tên sản phẩm <span class="required">*</span></label>
+                    <input type="text" id="productName" placeholder="VD: Serum Vitamin C" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label>Danh mục</label>
+                    <input type="text" id="productCategory" placeholder="VD: Skincare" class="form-input">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Giá</label>
+                    <input type="text" id="productPrice" placeholder="VD: 299,000" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label>Đối tượng mục tiêu</label>
+                    <input type="text" id="productAudience" placeholder="VD: Phụ nữ 25-40 tuổi" class="form-input">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Mô tả sản phẩm</label>
+                <textarea id="productDescription" rows="4" class="form-input" placeholder="Mô tả chi tiết về sản phẩm, công dụng, thành phần..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Điểm bán hàng chính <small>(mỗi dòng 1 điểm)</small></label>
+                <textarea id="productSellingPoints" rows="3" class="form-input" placeholder="VD:&#10;Chứa 20% Vitamin C&#10;Không gây kích ứng&#10;Dạng serum thẩm thấu nhanh"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Sản phẩm đối thủ (tham khảo)</label>
+                <textarea id="productCompetitors" rows="2" class="form-input" placeholder="VD: Obagi, Melano CC, The Ordinary"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Văn phong (tùy chọn)</label>
+                <select id="productStyleId" class="form-input">
+                    <option value="">-- Mặc định --</option>
+                    <% styles.forEach(function(s) { %>
+                    <option value="<%= s._id %>"><%= s.name %></option>
+                    <% }); %>
+                </select>
+            </div>
+            <div class="form-group" id="productDirectionGroup" style="display:none;">
+                <label>Hướng nội dung (sau khi phân tích AI)</label>
+                <div class="direction-selector">
+                    <label class="direction-option" data-direction="advertising">
+                        <input type="radio" name="productDirection" value="advertising">
+                        <i class="fa-solid fa-bullhorn"></i> Quảng cáo
+                    </label>
+                    <label class="direction-option" data-direction="purchase">
+                        <input type="radio" name="productDirection" value="purchase">
+                        <i class="fa-solid fa-cart-shopping"></i> Mua hàng
+                    </label>
+                    <label class="direction-option" data-direction="hybrid">
+                        <input type="radio" name="productDirection" value="hybrid">
+                        <i class="fa-solid fa-merge"></i> Kết hợp
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="ai-modal-footer">
+            <button class="btn-secondary" onclick="closeProductModal()">Hủy</button>
+            <button class="btn-primary" id="btnSaveProduct"><i class="fa-solid fa-save"></i> Lưu</button>
+        </div>
+    </div>
+</div>
+
 <div class="ai-modal-overlay" id="scheduleModal" style="display:none;">
     <div class="ai-modal ai-modal-lg">
         <div class="ai-modal-header">
@@ -373,6 +506,36 @@
                         <option value="vi">Tiếng Việt</option>
                         <option value="en">English</option>
                     </select>
+                </div>
+            </div>
+
+            <!-- Product & Direction Selection -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Sản phẩm liên quan <small>(tùy chọn)</small></label>
+                    <select id="scheduleProductId" class="form-input" onchange="onScheduleProductChange()">
+                        <option value="">-- Không chọn --</option>
+                        <% (products || []).forEach(function(p) { %>
+                        <option value="<%= p._id %>" data-direction="<%= p.direction || '' %>"><%= p.name %></option>
+                        <% }); %>
+                    </select>
+                </div>
+                <div class="form-group" id="scheduleDirectionGroup" style="display:none;">
+                    <label>Hướng nội dung <span class="required">*</span></label>
+                    <div class="direction-selector" id="scheduleDirectionSelector">
+                        <label class="direction-option" data-direction="advertising">
+                            <input type="radio" name="scheduleDirection" value="advertising" checked>
+                            <i class="fa-solid fa-bullhorn"></i> Quảng cáo
+                        </label>
+                        <label class="direction-option" data-direction="purchase">
+                            <input type="radio" name="scheduleDirection" value="purchase">
+                            <i class="fa-solid fa-cart-shopping"></i> Mua hàng
+                        </label>
+                        <label class="direction-option" data-direction="hybrid">
+                            <input type="radio" name="scheduleDirection" value="hybrid">
+                            <i class="fa-solid fa-merge"></i> Kết hợp
+                        </label>
+                    </div>
                 </div>
             </div>
 

@@ -6,6 +6,7 @@ const AiGeneratedPost = require('../models/AiGeneratedPost');
 const ContentTrainingLog = require('../models/ContentTrainingLog');
 const SchedulePost = require('../models/SchedulePost');
 const Channel = require('../models/Channel');
+const Product = require('../models/Product');
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 
@@ -280,6 +281,16 @@ async function generatePostsForSchedule(scheduleId, apiKey, options = {}) {
         throw new Error('Văn phong chưa được phân tích. Vui lòng phân tích lại.');
     }
 
+    // Nếu schedule có productId, lấy thông tin sản phẩm
+    let product = null;
+    let direction = schedule.direction || 'unset';
+    if (schedule.productId) {
+        product = await Product.findOne({ _id: schedule.productId }).lean();
+        if (product && product.direction) {
+            direction = product.direction;
+        }
+    }
+
     // Tính số bài cần tạo:Slots có scheduledAt > now
     const slots = calculateScheduleSlots(schedule, schedule.postsGenerated || 0);
 
@@ -292,13 +303,35 @@ async function generatePostsForSchedule(scheduleId, apiKey, options = {}) {
     let created = 0;
     for (const slot of slots) {
         try {
-            const { title, content, rawPrompt } = await generatePost(
-                writingStyle,
-                slot.topic,
-                schedule.contentConfig,
-                apiKey,
-                options
-            );
+            let title, content, rawPrompt;
+
+            if (product) {
+                // Sử dụng generatePostWithProduct nếu có sản phẩm
+                const result = await generatePostWithProduct(
+                    writingStyle,
+                    product,
+                    direction,
+                    slot.topic,
+                    schedule.contentConfig,
+                    apiKey,
+                    options
+                );
+                title = result.title;
+                content = result.content;
+                rawPrompt = result.rawPrompt;
+            } else {
+                // Sử dụng generatePost thông thường
+                const result = await generatePost(
+                    writingStyle,
+                    slot.topic,
+                    schedule.contentConfig,
+                    apiKey,
+                    options
+                );
+                title = result.title;
+                content = result.content;
+                rawPrompt = result.rawPrompt;
+            }
 
             // Tạo AiGeneratedPost
             const generatedPost = await AiGeneratedPost.create({
@@ -312,6 +345,8 @@ async function generatePostsForSchedule(scheduleId, apiKey, options = {}) {
                 status: 'pending',
                 aiModel: 'gpt-4o-mini',
                 aiPrompt: rawPrompt,
+                productId: product ? product._id : undefined,
+                direction: product ? direction : undefined,
             });
 
             // Tạo SchedulePost tương ứng
@@ -659,10 +694,198 @@ async function getTrainingStats(userId, writingStyleId) {
     };
 }
 
+/**
+ * Phân tích sản phẩm bằng AI - đưa ra hướng tiếp thị tối ưu
+ */
+async function analyzeProduct(product, apiKey, options = {}) {
+    const systemPrompt = `Bạn là chuyên gia marketing và bán hàng online.
+Nhiệm vụ: Phân tích sản phẩm và đưa ra chiến lược nội dung tối ưu.
+Dựa vào thông tin sản phẩm, hãy xác định:
+1. Hướng tiếp thị phù hợp nhất: quảng cáo (advertising - tạo nhận biết thương hiệu, thu hút sự chú ý) hay thúc đẩy mua hàng (purchase - kêu gọi mua ngay, ưu đãi, giảm giá) hay kết hợp cả hai (mixed)
+2. Các góc tiếp cận nội dung hiệu quả
+3. Các câu mở đầu (hook) thu hút
+4. Cảm xúc cần đánh vào
+5. Từ khóa SEO/hashtag
+Trả về JSON hợp lệ, KHÔNG có markdown code block.`;
+
+    const productInfo = `
+Tên sản phẩm: ${product.name}
+Mô tả: ${product.description || 'Không có'}
+Danh mục: ${product.category || 'Không có'}
+Giá: ${product.price || 'Không có'}
+Đối tượng mục tiêu: ${product.targetAudience || 'Không có'}
+Ưu điểm bán hàng chính: ${(product.keySellingPoints || []).join(', ') || 'Không có'}
+Sản phẩm đối thủ: ${product.competitorProducts || 'Không có'}`;
+
+    const userPrompt = `${productInfo}
+
+Hãy phân tích sản phẩm trên và trả về JSON:
+{
+  "suggestedDirection": "advertising | purchase | mixed",
+  "reasoning": "Giải thích ngắn tại sao chọn hướng này",
+  "recommendedAngles": ["Góc tiếp cận 1", "Góc tiếp cận 2", "Góc tiếp cận 3"],
+  "hookIdeas": ["Câu mở đầu 1", "Câu mở đầu 2", "Câu mở đầu 3"],
+  "targetEmotions": ["Cảm xúc 1", "Cảm xúc 2"],
+  "keywords": ["từ khóa 1", "từ khóa 2"],
+  "summary": "Tóm tắt chiến lược nội dung cho sản phẩm này trong 2-3 câu"
+}`;
+
+    const raw = await callAI([
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+    ], { apiKey, temperature: 0.3, maxTokens: 2000, provider: options.provider || 'openai', model: options.model || 'gpt-4o-mini', baseUrl: options.baseUrl });
+
+    try {
+        const cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+        const parsed = JSON.parse(cleaned);
+        return {
+            suggestedDirection: parsed.suggestedDirection || 'unset',
+            reasoning: parsed.reasoning || '',
+            recommendedAngles: Array.isArray(parsed.recommendedAngles) ? parsed.recommendedAngles : [],
+            hookIdeas: Array.isArray(parsed.hookIdeas) ? parsed.hookIdeas : [],
+            targetEmotions: Array.isArray(parsed.targetEmotions) ? parsed.targetEmotions : [],
+            keywords: Array.isArray(parsed.keywords) ? parsed.keywords : [],
+            summary: parsed.summary || '',
+            rawAnalysis: raw,
+        };
+    } catch (e) {
+        return {
+            suggestedDirection: 'unset',
+            reasoning: '',
+            recommendedAngles: [],
+            hookIdeas: [],
+            targetEmotions: [],
+            keywords: [],
+            summary: raw.substring(0, 500),
+            rawAnalysis: raw,
+        };
+    }
+}
+
+/**
+ * Tạo bài viết theo hướng quảng cáo/mua hàng dựa trên sản phẩm
+ * @param {Object} writingStyle - Văn phong
+ * @param {Object} product - Sản phẩm (có thể null)
+ * @param {string} direction - Hướng: 'advertising', 'purchase', 'mixed', 'unset'
+ * @param {string} topic - Chủ đề
+ * @param {Object} contentConfig - Cấu hình nội dung
+ * @param {string} apiKey - API key
+ * @param {Object} options - Options bổ sung
+ */
+async function generatePostWithProduct(writingStyle, product, direction, topic, contentConfig = {}, apiKey, options = {}) {
+    const { styleAnalysis } = writingStyle;
+    const minWords = contentConfig.minWords || 200;
+    const maxWords = contentConfig.maxWords || 500;
+    const customInstructions = contentConfig.customInstructions || '';
+    const language = contentConfig.language === 'en' ? 'English' : 'Tiếng Việt';
+
+    // Xác định hướng viết dựa trên product + direction
+    let directionInstruction = '';
+    let productContext = '';
+
+    if (product) {
+        const analysis = product.aiAnalysis || {};
+        productContext = `
+THÔNG TIN SẢN PHẨM:
+- Tên: ${product.name}
+- Mô tả: ${product.description || 'Không có'}
+- Giá: ${product.price || 'Không có'}
+- Đối tượng: ${product.targetAudience || 'Mọi người'}
+- Ưu điểm: ${(product.keySellingPoints || []).join(', ') || 'Không có'}
+
+PHÂN TÍCH AI VỀ SẢN PHẨM:
+- Hướng đề xuất: ${analysis.suggestedDirection || 'Chưa phân tích'}
+- Góc tiếp cận: ${(analysis.recommendedAngles || []).join(', ')}
+- Ý tưởng hook: ${(analysis.hookIdeas || []).join(', ')}
+- Cảm xúc mục tiêu: ${(analysis.targetEmotions || []).join(', ')}
+- Từ khóa: ${(analysis.keywords || []).join(', ')}
+- Chiến lược: ${analysis.summary || 'Chưa có'}`;
+    }
+
+    // Hướng dẫn theo direction
+    if (direction === 'advertising') {
+        directionInstruction = `📢 HƯỚNG QUẢNG CÁO (Advertising):
+- Mục tiêu: Tạo nhận biết thương hiệu, thu hút sự chú ý, xây dựng uy tín
+- Cách tiếp cận: Kể chuyện thương hiệu, chia sẻ giá trị, giáo dục khách hàng
+- Giọng điệu: Truyền cảm hứng, chuyên nghiệp, đáng tin cậy
+- KHÔNG tập trung vào giảm giá hay kêu gọi mua ngay
+- Kết thúc bằng: Kêu gọi tìm hiểu thêm, theo dõi để cập nhật`;
+    } else if (direction === 'purchase') {
+        directionInstruction = `🛒 HƯỚNG MUA HÀNG (Purchase):
+- Mục tiêu: Thúc đẩy hành động mua ngay lập tức
+- Cách tiếp cận: Nêu bật ưu đãi, giảm giá, số lượng có hạn, FOMO
+- Giọng điệu: Khẩn trương, hấp dẫn, kêu gọi hành động mạnh mẽ
+- Tập trung: Giá trị nhận được, tiết kiệm, quà tặng kèm
+- Kết thúc bằng: Link mua hàng, kêu gọi đặt ngay, số điện thoại`;
+    } else if (direction === 'mixed') {
+        directionInstruction = `🎯 HƯỚNG KẾT HỢP (Mixed):
+- Kết hợp cả xây dựng thương hiệu và kêu gọi mua hàng
+- Phần đầu: Tạo giá trị, chia sẻ kiến thức, xây dựng uy tín
+- Phần cuối: Nhẹ nhàng chuyển sang kêu gọi mua hàng với lý do thuyết phục
+- Giọng điệu: Tự nhiên, chân thật, hữu ích
+- Kết thúc: CTA tinh tế như "Liên hệ mình để được tư vấn" hoặc "Đặt hàng tại..."`;
+    }
+
+    const systemPrompt = `Bạn là chuyên gia tạo nội dung marketing trên mạng xã hội.
+Bạn phải viết bài THỰC SỰ theo đúng văn phong được mô tả.
+KHÔNG được viết chung chung, phải có chiều sâu và thu hút người đọc.
+Bài viết phải có tiêu đề và nội dung.`;
+
+    const userPrompt = `Viết một bài viết trên mạng xã hội với các yêu cầu sau:
+
+📌 CHỦ ĐỀ: ${topic}
+
+✍️ VĂN PHONG CẦN THEO:
+- Giọng văn: ${styleAnalysis.tone || 'Thân mật, gần gũi'}
+- Từ ngữ: ${styleAnalysis.vocabulary || 'Dùng từ đời thường'}
+- Cấu trúc câu: ${styleAnalysis.sentenceStructure || 'Câu ngắn gọn'}
+- Từ khóa nên dùng: ${(styleAnalysis.keywords || []).join(', ')}
+- Độ dài: ${minWords}-${maxWords} từ
+- Ngôn ngữ: ${language}
+${customInstructions ? `\n📌 HƯỚNG DẪN THÊM:\n${customInstructions}` : ''}
+
+${directionInstruction}
+
+${productContext}
+
+Hãy viết bài viết với format:
+TIÊU ĐỀ: [Tiêu đề bài viết]
+
+NỘI DUNG:
+[Nội dung bài viết]`;
+
+    const raw = await callAI([
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+    ], { apiKey, temperature: 0.8, maxTokens: 2500, provider: options.provider || 'openai', model: options.model || 'gpt-4o-mini', baseUrl: options.baseUrl });
+
+    // Parse tiêu đề và nội dung
+    let title = '';
+    let content = raw;
+
+    const titleMatch = raw.match(/TIÊU ĐỀ:\s*(.+)/i);
+    if (titleMatch) {
+        title = titleMatch[1].trim();
+        const contentStart = raw.indexOf('NỘI DUNG:');
+        content = contentStart >= 0 ? raw.substring(contentStart + 10).trim() : raw.replace(titleMatch[0], '').trim();
+    } else {
+        // Thử tách dòng đầu làm title
+        const lines = raw.split('\n').filter(l => l.trim());
+        if (lines.length > 0) {
+            title = lines[0].replace(/^#+\s*/, '').trim();
+            content = lines.slice(1).join('\n').trim();
+        }
+    }
+
+    return { title, content, rawPrompt: raw };
+}
+
 module.exports = {
     callAI,
     analyzeWritingStyle,
     generatePost,
+    generatePostWithProduct,
+    analyzeProduct,
     generateTopics,
     calculateScheduleSlots,
     generatePostsForSchedule,

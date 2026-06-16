@@ -25,6 +25,14 @@ router.put('/api/posts/:id', requireAuth, ctrl.updatePost);
 router.delete('/api/posts/:id', requireAuth, ctrl.deletePost);
 router.post('/api/posts/:id/publish', requireAuth, ctrl.publishPost);
 
+// Products API
+router.get('/api/products', requireAuth, ctrl.getProducts);
+router.get('/api/products/:id', requireAuth, ctrl.getProduct);
+router.post('/api/products', requireAuth, ctrl.createProduct);
+router.put('/api/products/:id', requireAuth, ctrl.updateProduct);
+router.delete('/api/products/:id', requireAuth, ctrl.deleteProduct);
+router.post('/api/products/:id/analyze', requireAuth, ctrl.analyzeProduct);
+
 // Generate Topics
 router.post('/api/generate-topics', requireAuth, ctrl.generateTopics);
 

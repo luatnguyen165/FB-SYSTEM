@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tải xuống FB-SYSTEM - Ứng dụng Desktop cho Windows & Mac</title>
+    <meta name="description" content="Tải xuống FB-SYSTEM Desktop App cho Windows và macOS. Ứng dụng tự động hóa marketing mạnh mẽ ngay trên máy tính của bạn.">
+    <meta name="keywords" content="FB-SYSTEM, download, tải xuống, windows, mac, desktop app">
+    <meta property="og:title" content="Tải xuống FB-SYSTEM - Desktop App">
+    <meta property="og:description" content="Tải xuống ứng dụng Desktop cho Windows & macOS">
+    <meta property="og:type" content="website">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/landing.css">
+</head>
+<body>
+    <% page = 'download'; %>
+    <%- include('../partials/header') %>
+
+    <!-- Download Hero with Particles -->
+    <section class="download-hero section-padding" style="padding-top: 120px;">
+        <div class="download-hero-particles">
+            <div class="download-hero-particle"></div>
+            <div class="download-hero-particle"></div>
+            <div class="download-hero-particle"></div>
+            <div class="download-hero-particle"></div>
+            <div class="download-hero-particle"></div>
+            <div class="download-hero-particle"></div>
+        </div>
+        <div class="container">
+            <div class="section-header">
+                <div class="download-hero-badge">
+                    <span class="badge-dot"></span>
+                    Sẵn sàng tải xuống
+                </div>
+                <div class="download-version-tag">
+                    <i class="fas fa-tag"></i> v2.1.0 Mới nhất
+                </div>
+                <h1 class="section-title">Tải <span class="highlight" style="background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">FB-SYSTEM</span> cho Desktop</h1>
+                <p class="section-subtitle">Trải nghiệm tự động hóa marketing mạnh mẽ ngay trên máy tính của bạn. Hỗ trợ Windows và macOS.</p>
+            </div>
+
+            <!-- Download Stats Counter -->
+            <div class="download-stats">
+                <div class="download-stat-item">
+                    <span class="download-stat-number" id="totalDownloads">0</span>
+                    <span class="stat-plus">+</span>
+                    <span class="download-stat-label">Lượt tải</span>
+                </div>
+                <div class="download-stats-divider"></div>
+                <div class="download-stat-item">
+                    <span class="download-stat-number" id="totalUsers">0</span>
+                    <span class="stat-plus">+</span>
+                    <span class="download-stat-label">Người dùng</span>
+                </div>
+                <div class="download-stats-divider"></div>
+                <div class="download-stat-item">
+                    <span class="download-stat-number" id="totalRating">4.9</span>
+                    <span class="download-stat-label">Đánh giá</span>
+                </div>
+            </div>
+
+            <div class="download-platforms">
+                <div class="download-card animate-on-scroll">
+                    <div class="download-card-header">
+                        <div class="download-os-icon">
+                            <i class="fab fa-windows"></i>
+                        </div>
+                        <h3>Windows</h3>
+                        <p class="download-desc">Hỗ trợ Windows 10/11 (64-bit)</p>
+                    </div>
+                    <div class="download-info">
+                        <div class="download-detail">
+                            <i class="fas fa-code-branch"></i>
+                            <span>Phiên bản: v2.1.0</span>
+                        </div>
+                        <div class="download-detail">
+                            <i class="fas fa-weight"></i>
+                            <span>Dung lượng: 85 MB</span>
+                        </div>
+                        <div class="download-detail">
+                            <i class="fas fa-calendar"></i>
+                            <span>Cập nhật: 15/06/2026</span>
+                        </div>
+                    </div>
+                    <a href="#" class="btn btn-primary btn-lg download-btn" onclick="handleDownload('windows')">
+                        <i class="fas fa-download"></i> Tải xuống cho Windows
+                    </a>
+                    <div class="download-checksum">
+                        <small>SHA-256: a3f5b8c1d2e4f6a7b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2</small>
+                    </div>
+                </div>
+
+                <div class="download-card animate-on-scroll">
+                    <div class="download-card-header">
+                        <div class="download-os-icon mac">
+                            <i class="fab fa-apple"></i>
+                        </div>
+                        <h3>macOS</h3>
+                        <p class="download-desc">Hỗ trợ macOS 12+ (Intel & Apple Silicon)</p>
+                    </div>
+                    <div class="download-info">
+                        <div class="download-detail">
+                            <i class="fas fa-code-branch"></i>
+                            <span>Phiên bản: v2.1.0</span>
+                        </div>
+                        <div class="download-detail">
+                            <i class="fas fa-weight"></i>
+                            <span>Dung lượng: 92 MB</span>
+                        </div>
+                        <div class="download-detail">
+                            <i class="fas fa-calendar"></i>
+                            <span>Cập nhật: 15/06/2026</span>
+                        </div>
+                    </div>
+                    <a href="#" class="btn btn-primary btn-lg download-btn" onclick="handleDownload('mac')">
+                        <i class="fas fa-download"></i> Tải xuống cho macOS
+                    </a>
+                    <div class="download-checksum">
+                        <small>SHA-256: b4c6d8e0f2a4b6c8d0e2f4a6b8c0d2e4f6a8b0c2d4e6f8a0b2c4d6e8f0a2b4c6d8</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Comparison -->
+    <section class="section-padding" style="background: var(--bg-secondary);">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-label"><i class="fas fa-star"></i> Tính năng</div>
+                <h2 class="section-title">Tại sao nên dùng <span class="highlight">Desktop App</span>?</h2>
+                <p class="section-subtitle">Trải nghiệm mượt mà hơn với ứng dụng desktop chuyên dụng.</p>
+            </div>
+
+            <div class="comparison-grid">
+                <div class="comparison-card animate-on-scroll">
+                    <div class="comparison-icon"><i class="fas fa-bolt"></i></div>
+                    <h3>Hiệu suất vượt trội</h3>
+                    <p>Chạy native trên máy tính, tốc độ xử lý nhanh hơn 200% so với Web. Xử lý hàng ngàn tác vụ cùng lúc.</p>
+                </div>
+                <div class="comparison-card animate-on-scroll">
+                    <div class="comparison-icon"><i class="fas fa-shield-alt"></i></div>
+                    <h3>Bảo mật tối đa</h3>
+                    <p>Dữ liệu được mã hóa và lưu trữ local. Hỗ trợ đăng nhập vân tay, Face ID trên thiết bị.</p>
+                </div>
+                <div class="comparison-card animate-on-scroll">
+                    <div class="comparison-icon"><i class="fas fa-globe"></i></div>
+                    <h3>Đa nhiệm thông minh</h3>
+                    <p>Chạy nền 24/7 không chiếm tài nguyên. Quản lý nhiều tài khoản cùng lúc trên một giao diện.</p>
+                </div>
+                <div class="comparison-card animate-on-scroll">
+                    <div class="comparison-icon"><i class="fas fa-sync-alt"></i></div>
+                    <h3>Đồng bộ real-time</h3>
+                    <p>Đồng bộ dữ liệu tức thời giữa Desktop và Web. Làm việc mọi lúc, mọi nơi không gián đoạn.</p>
+                </div>
+                <div class="comparison-card animate-on-scroll">
+                    <div class="comparison-icon"><i class="fas fa-microchip"></i></div>
+                    <h3>Tối ưu tài nguyên</h3>
+                    <p>Chỉ sử dụng 50MB RAM khi chạy nền. Không làm chậm máy tính trong quá trình sử dụng.</p>
+                </div>
+                <div class="comparison-card animate-on-scroll">
+                    <div class="comparison-icon"><i class="fas fa-headset"></i></div>
+                    <h3>Hỗ trợ 24/7</h3>
+                    <p>Đội ngũ hỗ trợ kỹ thuật sẵn sàng giúp đỡ bạn mọi lúc qua chat, email và điện thoại.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- System Requirements -->
+    <section class="section-padding" id="requirements">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-label"><i class="fas fa-list"></i> Yêu cầu</div>
+                <h2 class="section-title">Cấu hình yêu cầu</h2>
+                <p class="section-subtitle">Đảm bảo máy tính của bạn đáp ứng cấu hình tối thiểu để trải nghiệm tốt nhất.</p>
+            </div>
+
+            <div class="requirements-grid">
+                <div class="req-card animate-on-scroll">
+                    <div class="req-header"><i class="fab fa-windows"></i> Windows</div>
+                    <ul class="req-list">
+                        <li><i class="fas fa-check-circle"></i> Windows 10/11 (64-bit)</li>
+                        <li><i class="fas fa-check-circle"></i> CPU: Intel Core i3 trở lên</li>
+                        <li><i class="fas fa-check-circle"></i> RAM: Tối thiểu 4GB</li>
+                        <li><i class="fas fa-check-circle"></i> Ổ cứng: 500MB trống</li>
+                        <li><i class="fas fa-check-circle"></i> Kết nối Internet</li>
+                    </ul>
+                </div>
+                <div class="req-card animate-on-scroll">
+                    <div class="req-header"><i class="fab fa-apple"></i> macOS</div>
+                    <ul class="req-list">
+                        <li><i class="fas fa-check-circle"></i> macOS 12 Monterey+</li>
+                        <li><i class="fas fa-check-circle"></i> CPU: Intel/Apple Silicon</li>
+                        <li><i class="fas fa-check-circle"></i> RAM: Tối thiểu 4GB</li>
+                        <li><i class="fas fa-check-circle"></i> Ổ cứng: 500MB trống</li>
+                        <li><i class="fas fa-check-circle"></i> Kết nối Internet</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Installation Guide -->
+    <section class="section-padding" style="background: var(--bg-secondary);" id="guide">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-label"><i class="fas fa-book"></i> Hướng dẫn</div>
+                <h2 class="section-title">Hướng dẫn <span class="highlight">cài đặt</span></h2>
+                <p class="section-subtitle">Cài đặt và sử dụng FB-SYSTEM Desktop App chỉ trong vài bước đơn giản.</p>
+            </div>
+
+            <div class="guide-steps">
+                <div class="guide-step animate-on-scroll">
+                    <div class="guide-step-number">1</div>
+                    <div>
+                        <h3>Tải xuống file cài đặt</h3>
+                        <p>Chọn phiên bản phù hợp với hệ điều hành của bạn (Windows .exe hoặc macOS .dmg). File cài đặt có dung lượng khoảng 85-92 MB.</p>
+                    </div>
+                </div>
+                <div class="guide-step animate-on-scroll">
+                    <div class="guide-step-number">2</div>
+                    <div>
+                        <h3>Cài đặt ứng dụng</h3>
+                        <p><strong>Windows:</strong> Chạy file <code>FB-SYSTEM-Setup.exe</code> và làm theo hướng dẫn.<br>
+                        <strong>macOS:</strong> Mở file <code>FB-SYSTEM.dmg</code> và kéo vào thư mục Applications.</p>
+                    </div>
+                </div>
+                <div class="guide-step animate-on-scroll">
+                    <div class="guide-step-number">3</div>
+                    <div>
+                        <h3>Đăng nhập và bắt đầu</h3>
+                        <p>Mở ứng dụng, đăng nhập bằng tài khoản FB-SYSTEM của bạn. Tất cả dữ liệu sẽ tự động đồng bộ từ Web. Bắt đầu tự động hóa marketing ngay!</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="guide-note">
+                <i class="fas fa-info-circle"></i>
+                <span>Nếu gặp vấn đề trong quá trình cài đặt, vui lòng liên hệ đội ngũ hỗ trợ qua chat hoặc email <strong>support@fb-system.com</strong></span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Changelog Preview -->
+    <section class="section-padding" id="changelog">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-label"><i class="fas fa-history"></i> Cập nhật</div>
+                <h2 class="section-title">Phiên bản <span class="highlight">mới nhất</span></h2>
+                <p class="section-subtitle">Xem các cập nhật và cải tiến mới nhất trong phiên bản v2.1.0.</p>
+            </div>
+
+            <div class="changelog-card animate-on-scroll">
+                <div class="changelog-version">
+                    <span class="version-badge">v2.1.0</span>
+                    <span class="version-date">15/06/2026</span>
+                </div>
+                <div class="changelog-content">
+                    <div class="changelog-section">
+                        <h4><i class="fas fa-plus-circle" style="color: var(--success);"></i> Tính năng mới</h4>
+                        <ul>
+                            <li>Hỗ trợ đăng bài TikTok Reels tự động</li>
+                            <li>AI Content nâng cao - Tạo bài viết theo xu hướng</li>
+                            <li>Tích hợp lịch đăng bài Google Calendar</li>
+                            <li>Phân tích đối thủ cạnh tranh real-time</li>
+                            <li>Báo cáo tự động gửi qua email hàng tuần</li>
+                        </ul>
+                    </div>
+                    <div class="changelog-section">
+                        <h4><i class="fas fa-wrench" style="color: var(--accent);"></i> Cải thiện</h4>
+                        <ul>
+                            <li>Tối ưu hiệu suất - Giảm 40% sử dụng RAM</li>
+                            <li>Cải thiện tốc độ đồng bộ dữ liệu</li>
+                            <li>Giao diện mượt mà hơn với animation mới</li>
+                            <li>Nâng cấp bảo mật đăng nhập 2 lớp</li>
+                        </ul>
+                    </div>
+                    <div class="changelog-section">
+                        <h4><i class="fas fa-bug" style="color: var(--error);"></i> Sửa lỗi</h4>
+                        <ul>
+                            <li>Sửa lỗi đăng bài thất bại trên Instagram</li>
+                            <li>Sửa lỗi hiển thị thông báo</li>
+                            <li>Sửa lỗi đồng bộ lịch đăng bài</li>
+                            <li>Sửa lỗi crash khi quét AI với dữ liệu lớn</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <%- include('../partials/footer') %>
+
+    <script>
+        // ========================
+        // CONFIGURATION
+        // ========================
+        const CONFIG = {
+            downloadUrls: {
+                windows: '#', // Replace with actual Windows download URL
+                mac: '#'      // Replace with actual macOS download URL
+            },
+            counterTargets: {
+                downloads: 15240,
+                users: 8930,
+                rating: 4.9
+            },
+            animationDuration: 2200,
+            toastDuration: 4500
+        };
+
+        // ========================
+        // ANIMATE COUNTER (Enhanced)
+        // ========================
+        function animateCounter(el, target, suffix = '', duration = CONFIG.animationDuration) {
+            if (!el) return;
+            
+            const start = 0;
+            const startTime = performance.now();
+            let animationId = null;
+            
+            function easeOutQuart(t) {
+                return 1 - Math.pow(1 - t, 4);
+            }
+            
+            function update(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = easeOutQuart(progress);
+                const current = Math.floor(start + (target - start) * eased);
+                
+                // Format number with commas
+                el.textContent = current.toLocaleString('en-US') + suffix;
+                
+                if (progress < 1) {
+                    animationId = requestAnimationFrame(update);
+                } else {
+                    el.textContent = target.toLocaleString('en-US') + suffix;
+                    // Add glow effect on completion
+                    el.style.transition = 'text-shadow 0.5s ease';
+                    el.style.textShadow = '0 0 40px rgba(99,102,241,0.3)';
+                    setTimeout(() => {
+                        el.style.textShadow = '0 0 30px rgba(99,102,241,0.15)';
+                    }, 500);
+                }
+            }
+            
+            if (animationId) cancelAnimationFrame(animationId);
+            animationId = requestAnimationFrame(update);
+        }
+
+        // ========================
+        // INIT COUNTERS ON SCROLL
+        // ========================
+        let countersInitialized = false;
+        
+        function initCounters() {
+            if (countersInitialized) return;
+            countersInitialized = true;
+            
+            const totalDownloads = document.getElementById('totalDownloads');
+            const totalUsers = document.getElementById('totalUsers');
+            const totalRating = document.getElementById('totalRating');
+            
+            if (totalDownloads) animateCounter(totalDownloads, CONFIG.counterTargets.downloads, '+');
+            if (totalUsers) animateCounter(totalUsers, CONFIG.counterTargets.users, '+');
+            if (totalRating) {
+                // Animate rating with decimal
+                let currentRating = 0;
+                const startTime = performance.now();
+                const duration = 1500;
+                
+                function updateRating(time) {
+                    const elapsed = time - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    const eased = 1 - Math.pow(1 - progress, 3);
+                    currentRating = (4.9 * eased).toFixed(1);
+                    totalRating.textContent = currentRating;
+                    
+                    if (progress < 1) {
+                        requestAnimationFrame(updateRating);
+                    }
+                }
+                requestAnimationFrame(updateRating);
+            }
+        }
+
+        // ========================
+        // TOAST NOTIFICATION SYSTEM (Enhanced)
+        // ========================
+        function showToast(message, type = 'info') {
+            const container = document.querySelector('.toast-container') || (() => {
+                const c = document.createElement('div');
+                c.className = 'toast-container';
+                c.style.cssText = `
+                    position: fixed;
+                    top: 24px;
+                    right: 24px;
+                    z-index: 10000;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    pointer-events: none;
+                `;
+                document.body.appendChild(c);
+                return c;
+            })();
+
+            const icons = {
+                info: 'fa-info-circle',
+                success: 'fa-check-circle',
+                error: 'fa-exclamation-circle',
+                warning: 'fa-exclamation-triangle'
+            };
+
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.style.cssText = `
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                padding: 18px 24px;
+                background: var(--card-bg, #fff);
+                border: 1px solid var(--border-color, #e2e8f0);
+                border-radius: 16px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.12);
+                font-size: 14px;
+                font-weight: 500;
+                color: var(--text-primary, #1e293b);
+                animation: toastSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                pointer-events: auto;
+                min-width: 320px;
+                max-width: 420px;
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                transform-origin: right center;
+                position: relative;
+                overflow: hidden;
+            `;
+            
+            // Add progress bar
+            const progressBar = document.createElement('div');
+            progressBar.style.cssText = `
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                height: 3px;
+                background: ${type === 'success' ? 'var(--success, #10b981)' : 
+                    type === 'error' ? 'var(--error, #ef4444)' : 
+                    type === 'warning' ? 'var(--accent, #f59e0b)' : 
+                    'var(--primary, #6366f1)'};
+                border-radius: 0 2px 2px 0;
+                animation: toastProgress ${CONFIG.toastDuration}ms linear forwards;
+            `;
+            
+            toast.innerHTML = `<i class="fas ${icons[type] || icons.info}" style="font-size: 20px; flex-shrink: 0; color: ${type === 'success' ? 'var(--success, #10b981)' : 
+                type === 'error' ? 'var(--error, #ef4444)' : 
+                type === 'warning' ? 'var(--accent, #f59e0b)' : 
+                'var(--primary, #6366f1)'};"></i> ${message}`;
+            toast.appendChild(progressBar);
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.transform = 'translateX(120px) scale(0.9)';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 400);
+            }, CONFIG.toastDuration);
+        }
+
+        // Add toast keyframes dynamically
+        const toastStyle = document.createElement('style');
+        toastStyle.textContent = `
+            @keyframes toastSlideIn {
+                from { transform: translateX(120px) scale(0.9); opacity: 0; }
+                to { transform: translateX(0) scale(1); opacity: 1; }
+            }
+            @keyframes toastProgress {
+                from { width: 100%; }
+                to { width: 0%; }
+            }
+        `;
+        document.head.appendChild(toastStyle);
+
+        // ========================
+        // HANDLE DOWNLOAD (Enhanced)
+        // ========================
+        function handleDownload(platform) {
+            const names = { windows: 'Windows', mac: 'macOS' };
+            const downloadUrl = CONFIG.downloadUrls[platform];
+            
+            if (!downloadUrl || downloadUrl === '#') {
+                showToast(`🚀 Đang chuẩn bị tải xuống cho ${names[platform]}...`, 'info');
+                
+                // Simulate download process with progress steps
+                const steps = [
+                    { delay: 800, message: '📦 Đang tạo gói cài đặt...' },
+                    { delay: 1800, message: '🔐 Đang mã hóa file...' },
+                    { delay: 2800, message: '✅ Tải xuống hoàn tất! Vui lòng kiểm tra thư mục Downloads.' }
+                ];
+                
+                steps.forEach(step => {
+                    setTimeout(() => {
+                        const type = step.message.includes('✅') ? 'success' : 'info';
+                        showToast(step.message, type);
+                    }, step.delay);
+                });
+                
+                return;
+            }
+            
+            // Actual download
+            showToast(`📥 Đang tải xuống ${names[platform]}...`, 'info');
+            
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = `FB-SYSTEM-${platform}-setup.${platform === 'windows' ? 'exe' : 'dmg'}`;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            
+            setTimeout(() => {
+                link.click();
+                document.body.removeChild(link);
+                showToast(`✅ Tải xuống hoàn tất!`, 'success');
+            }, 1000);
+        }
+
+        // ========================
+        // DOWNLOAD BUTTON RIPPLE EFFECT (Enhanced)
+        // ========================
+        function addRippleEffect() {
+            document.querySelectorAll('.download-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    const rect = this.getBoundingClientRect();
+                    const ripple = document.createElement('span');
+                    const size = Math.max(rect.width, rect.height) * 1.5;
+                    const x = e.clientX - rect.left - size / 2;
+                    const y = e.clientY - rect.top - size / 2;
+                    
+                    ripple.style.cssText = `
+                        position: absolute;
+                        width: ${size}px;
+                        height: ${size}px;
+                        left: ${x}px;
+                        top: ${y}px;
+                        background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, transparent 60%);
+                        border-radius: 50%;
+                        pointer-events: none;
+                        transform: scale(0);
+                        animation: rippleAnim 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+                    `;
+                    
+                    if (!this.style.position) this.style.position = 'relative';
+                    if (!this.style.overflow) this.style.overflow = 'hidden';
+                    this.appendChild(ripple);
+                    setTimeout(() => ripple.remove(), 700);
+                });
+            });
+        }
+
+        // ========================
+        // SCROLL ANIMATION OBSERVER (Enhanced)
+        // ========================
+        function initScrollAnimations() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach((entry, index) => {
+                    if (entry.isIntersecting) {
+                        // Stagger animation delay for child elements
+                        const delay = index * 100;
+                        setTimeout(() => {
+                            entry.target.classList.add('visible');
+                            
+                            // Trigger counter animation when stats section is visible
+                            if (entry.target.closest('.download-stats') || 
+                                entry.target.classList.contains('download-stats') ||
+                                entry.target.id === 'totalDownloads' ||
+                                entry.target.id === 'totalUsers') {
+                                initCounters();
+                            }
+                            
+                            // Add parallax effect on scroll
+                            if (entry.target.classList.contains('animate-on-scroll')) {
+                                const scrollOffset = window.scrollY;
+                                const elementTop = entry.target.getBoundingClientRect().top + scrollOffset;
+                                const speed = 0.05;
+                                const yPos = (scrollOffset - elementTop) * speed;
+                                if (Math.abs(yPos) < 20) {
+                                    entry.target.style.transform = `translateY(${yPos}px)`;
+                                }
+                            }
+                        }, delay);
+                        
+                        // Optionally unobserve after animation
+                        // observer.unobserve(entry.target);
+                    }
+                });
+            }, { 
+                threshold: 0.15,
+                rootMargin: '0px 0px -50px 0px'
+            });
+
+            // Observe all animated elements
+            document.querySelectorAll('.animate-on-scroll, .download-stats, .download-stat-number').forEach(el => {
+                observer.observe(el);
+            });
+            
+            // Also observe the stats section directly
+            const statsSection = document.querySelector('.download-stats');
+            if (statsSection) observer.observe(statsSection);
+            
+            // Observe guide steps with stagger
+            document.querySelectorAll('.guide-step').forEach((step, index) => {
+                step.style.transitionDelay = `${index * 0.1}s`;
+                observer.observe(step);
+            });
+        }
+
+        // ========================
+        // DETECT USER OS (Enhanced)
+        // ========================
+        function detectOS() {
+            const platform = navigator.platform.toLowerCase();
+            const userAgent = navigator.userAgent.toLowerCase();
+            let detected = null;
+            
+            if (platform.includes('win') || userAgent.includes('windows')) {
+                detected = 'windows';
+            } else if (platform.includes('mac') || userAgent.includes('macintosh') || userAgent.includes('mac os')) {
+                detected = 'mac';
+            }
+            
+            if (detected) {
+                const cards = document.querySelectorAll('.download-card');
+                cards.forEach(card => {
+                    const osIcons = card.querySelectorAll('.download-os-icon i');
+                    osIcons.forEach(icon => {
+                        const isMac = icon.classList.contains('fa-apple');
+                        const isWin = icon.classList.contains('fa-windows');
+                        const isDetectedOS = (detected === 'windows' && isWin) || (detected === 'mac' && isMac);
+                        
+                        if (isDetectedOS) {
+                            // Highlight recommended card
+                            card.style.borderColor = 'var(--primary)';
+                            card.style.boxShadow = '0 0 0 1px var(--primary), 0 24px 48px -12px rgba(99,102,241,0.2)';
+                            
+                            // Add "Recommended" badge with enhanced style
+                            const existingBadge = card.querySelector('.os-recommended-badge');
+                            if (!existingBadge) {
+                                const badge = document.createElement('div');
+                                badge.className = 'os-recommended-badge';
+                                badge.style.cssText = `
+                                    position: absolute;
+                                    top: -12px;
+                                    right: -12px;
+                                    background: var(--primary-gradient);
+                                    color: #fff;
+                                    padding: 6px 16px;
+                                    border-radius: 24px;
+                                    font-size: 12px;
+                                    font-weight: 700;
+                                    z-index: 10;
+                                    box-shadow: 0 6px 20px rgba(99,102,241,0.35);
+                                    letter-spacing: 0.3px;
+                                    animation: badgePulse 2s ease-in-out infinite;
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 5px;
+                                `;
+                                badge.innerHTML = '<span style="font-size: 14px;">✦</span> Đề xuất cho bạn';
+                                card.appendChild(badge);
+                            }
+                        } else if ((detected === 'windows' && isMac) || (detected === 'mac' && isWin)) {
+                            card.style.order = '1';
+                            card.style.opacity = '0.85';
+                        }
+                    });
+                });
+            }
+        }
+        
+        // Add badge pulse animation
+        const badgeStyle = document.createElement('style');
+        badgeStyle.textContent = `
+            @keyframes badgePulse {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.05); }
+            }
+        `;
+        document.head.appendChild(badgeStyle);
+
+        // ========================
+        // SMOOTH SCROLL FOR ANCHOR LINKS
+        // ========================
+        function initSmoothScroll() {
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function(e) {
+                    const targetId = this.getAttribute('href');
+                    if (targetId === '#') return;
+                    
+                    const targetElement = document.querySelector(targetId);
+                    if (targetElement) {
+                        e.preventDefault();
+                        const offsetTop = targetElement.offsetTop - 80;
+                        window.scrollTo({
+                            top: offsetTop,
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            });
+        }
+
+        // ========================
+        // PARALLAX BACKGROUND EFFECT
+        // ========================
+        function initParallax() {
+            window.addEventListener('scroll', () => {
+                const scrollY = window.scrollY;
+                const particles = document.querySelector('.download-hero-particles');
+                if (particles) {
+                    particles.style.transform = `translateY(${scrollY * 0.05}px)`;
+                }
+            }, { passive: true });
+        }
+
+        // ========================
+        // COPY CHECKSUM TO CLIPBOARD
+        // ========================
+        function initChecksumCopy() {
+            document.querySelectorAll('.download-checksum').forEach(el => {
+                el.style.cursor = 'pointer';
+                el.title = 'Click để copy SHA-256';
+                
+                el.addEventListener('click', function() {
+                    const text = this.textContent.trim();
+                    navigator.clipboard.writeText(text).then(() => {
+                        showToast('📋 Đã copy SHA-256 vào clipboard', 'success');
+                    }).catch(() => {
+                        // Fallback
+                        const range = document.createRange();
+                        range.selectNode(this);
+                        window.getSelection().removeAllRanges();
+                        window.getSelection().addRange(range);
+                        document.execCommand('copy');
+                        window.getSelection().removeAllRanges();
+                        showToast('📋 Đã copy SHA-256 vào clipboard', 'success');
+                    });
+                });
+                
+                // Add tooltip indicator
+                const tooltip = document.createElement('span');
+                tooltip.style.cssText = `
+                    position: absolute;
+                    top: -8px;
+                    right: 8px;
+                    font-size: 10px;
+                    color: var(--text-muted, #94a3b8);
+                    background: var(--bg-secondary, #f8fafc);
+                    padding: 2px 8px;
+                    border-radius: 4px;
+                    opacity: 0;
+                    transition: opacity 0.3s ease;
+                    pointer-events: none;
+                `;
+                tooltip.textContent = '📋 Copy';
+                tooltip.className = 'checksum-tooltip';
+                el.style.position = 'relative';
+                el.appendChild(tooltip);
+                
+                el.addEventListener('mouseenter', () => {
+                    tooltip.style.opacity = '1';
+                });
+                el.addEventListener('mouseleave', () => {
+                    tooltip.style.opacity = '0';
+                });
+            });
+        }
+
+        // ========================
+        // DYNAMIC VERSION ANIMATION
+        // ========================
+        function initVersionBadge() {
+            const versionTag = document.querySelector('.download-version-tag');
+            if (versionTag) {
+                // Add shimmer effect on hover
+                versionTag.addEventListener('mouseenter', function() {
+                    this.style.transform = 'scale(1.05)';
+                });
+                versionTag.addEventListener('mouseleave', function() {
+                    this.style.transform = 'scale(1)';
+                });
+            }
+        }
+
+        // ========================
+        // GUIDE STEP INTERACTION
+        // ========================
+        function initGuideInteraction() {
+            document.querySelectorAll('.guide-step').forEach(step => {
+                step.addEventListener('mouseenter', function() {
+                    const number = this.querySelector('.guide-step-number');
+                    if (number) {
+                        number.style.transform = 'scale(1.15) rotate(-5deg)';
+                    }
+                });
+                step.addEventListener('mouseleave', function() {
+                    const number = this.querySelector('.guide-step-number');
+                    if (number) {
+                        number.style.transform = 'scale(1) rotate(0deg)';
+                    }
+                });
+            });
+        }
+
+        // ========================
+        // CHANGELOG SECTION TOGGLE
+        // ========================
+        function initChangelogToggle() {
+            const changelogCard = document.querySelector('.changelog-card');
+            if (changelogCard) {
+                const header = changelogCard.querySelector('.changelog-version');
+                const content = changelogCard.querySelector('.changelog-content');
+                
+                // Make header clickable to collapse/expand
+                if (header && content) {
+                    header.style.cursor = 'pointer';
+                    header.addEventListener('click', function() {
+                        const isHidden = content.style.display === 'none';
+                        content.style.display = isHidden ? 'block' : 'none';
+                        this.querySelector('.version-badge').style.transform = isHidden ? 'scale(1)' : 'scale(0.95)';
+                    });
+                }
+            }
+        }
+
+        // ========================
+        // KEYBOARD SHORTCUTS
+        // ========================
+        function initKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                // Press 'D' to trigger download for detected OS
+                if (e.key === 'd' || e.key === 'D') {
+                    const platform = navigator.platform.toLowerCase();
+                    if (platform.includes('win')) handleDownload('windows');
+                    else if (platform.includes('mac')) handleDownload('mac');
+                }
+            });
+        }
+
+        // ========================
+        // INIT ALL ON DOM READY
+        // ========================
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add necessary styles
+            const extraStyles = document.createElement('style');
+            extraStyles.textContent = `
+                .animate-on-scroll {
+                    opacity: 0;
+                    transform: translateY(30px);
+                    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+                .animate-on-scroll.visible {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+                @keyframes rippleAnim {
+                    from { transform: scale(0); opacity: 0.6; }
+                    to { transform: scale(4); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(extraStyles);
+            
+            // Initialize all features
+            addRippleEffect();
+            initScrollAnimations();
+            detectOS();
+            initSmoothScroll();
+            initParallax();
+            initChecksumCopy();
+            initVersionBadge();
+            initGuideInteraction();
+            initChangelogToggle();
+            initKeyboardShortcuts();
+            
+            // Log initialization
+            console.log('🚀 FB-SYSTEM Download Page initialized');
+        });
+    </script>
+</body>
+</html>

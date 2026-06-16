@@ -77,6 +77,8 @@ const aiImageRoutes = require('./routes/aiImages');
 const licenseRoutes = require('./routes/licenses');
 const musicTrendingRoutes = require('./routes/musicTrending');
 const aiContentRoutes = require('./routes/aiContent');
+const feedbackRoutes = require('./routes/feedback');
+const { rateLimiter } = require('./middlewares/rateLimiter');
 const { loadFeatureVisibility } = require('./middlewares/authMiddleware');
 const { loadUserChannels } = require('./middlewares/channelMiddleware');
 const { startReelsScheduleRunner } = require('./services/reelsScheduleRunner');
@@ -161,6 +163,9 @@ app.use(loadFeatureVisibility);         // Load feature visibility settings for 
 app.use(loadUserChannels);              // Load user channels for sidebar dropdown
 app.use(i18nMiddleware);                 // Inject t() and lang into all views
 
+// Rate limiter for API routes
+app.use(rateLimiter(120, 60000));       // 120 requests/minute per user/IP
+
 app.use('/auth', authRoutes);           // Auth: login, register, forgot, profile, change-password
 app.use('/dashboard', dashboardRoutes); // Dashboard
 app.use('/videos', videoRoutes);        // Kho Video + API
@@ -177,6 +182,7 @@ app.use('/admin/licenses', licenseRoutes);        // License Key Management
 app.use('/music-trending', musicTrendingRoutes);  // Music Trending
 app.use('/download', require('./routes/download')); // Download YouTube video/audio
 app.use('/ai-content', aiContentRoutes);           // AI Content Creator
+app.use('/feedback', feedbackRoutes);              // Feedback & Feature Requests
 
 // Route mặc định - Chuyển hướng đến trang đăng nhập
 app.get('/', (req, res) => {
@@ -226,19 +232,25 @@ const server = startServer(DEFAULT_PORT);
 const DB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/reelsflow';
 global.mongoConnected = false;
 
-mongoose.connect(DB_URI, {
-    serverSelectionTimeoutMS: 5000,
-    connectTimeoutMS: 5000
-})
-.then(() => {
-    global.mongoConnected = true;
-    console.log('✅ Đã kết nối thành công tới MongoDB');
+// Track scheduled intervals so we can clear them on disconnect
+const schedulerIntervals = [];
+
+function clearAllSchedulers() {
+    schedulerIntervals.forEach(clearInterval);
+    schedulerIntervals.length = 0;
+    console.log('[Scheduler] Đã dọn dẹp tất cả scheduler intervals');
+}
+
+function startSchedulers() {
+    if (global.mongoConnected !== true) return;
+    console.log('[Scheduler] Khởi động tất cả schedulers...');
 
     // === KHỞI ĐỘNG SCHEDULER SAU KHI CÓ DB ===
     try { startReelsScheduleRunner(); } catch(e) { console.error('[Startup] Reels schedule runner error:', e.message); }
 
     // AI Scan scheduler
-    setInterval(() => {
+    schedulerIntervals.push(setInterval(() => {
+        if (!global.mongoConnected) return;
         runScheduledScans().then(results => {
             if (results && results.length > 0) {
                 console.log(`[AI Scan Scheduler] Đã xử lý ${results.length} cấu hình`);
@@ -246,11 +258,12 @@ mongoose.connect(DB_URI, {
         }).catch(err => {
             console.error('[AI Scan Scheduler] Error:', err.message);
         });
-    }, 30 * 1000);
+    }, 30 * 1000));
     console.log('[AI Scan Scheduler] Đã khởi động scheduler (kiểm tra mỗi 30 giây)');
 
     // Comment Play scheduler
-    setInterval(() => {
+    schedulerIntervals.push(setInterval(() => {
+        if (!global.mongoConnected) return;
         try {
             const commentPlayService = require('./services/commentPlayService');
             commentPlayService.processScheduledPlays().then(results => {
@@ -263,11 +276,12 @@ mongoose.connect(DB_URI, {
         } catch(e) {
             console.error('[CommentPlay Scheduler] Error:', e.message);
         }
-    }, 30 * 1000);
+    }, 30 * 1000));
     console.log('[CommentPlay Scheduler] Đã khởi động scheduler (kiểm tra mỗi 30 giây)');
 
     // AI Content Creator scheduler - tạo bài viết theo lịch
-    setInterval(() => {
+    schedulerIntervals.push(setInterval(() => {
+        if (!global.mongoConnected) return;
         try {
             const aiContentService = require('./services/aiContentService');
             const apiKey = process.env.OPENAI_API_KEY;
@@ -282,11 +296,12 @@ mongoose.connect(DB_URI, {
         } catch(e) {
             console.error('[AI Content Scheduler] Error:', e.message);
         }
-    }, 60 * 1000);
+    }, 60 * 1000));
     console.log('[AI Content Scheduler] Đã khởi động scheduler (kiểm tra mỗi 60 giây)');
 
     // AI Content Auto-Retrain - train lại văn phong từ bài viết tốt nhất
-    setInterval(() => {
+    schedulerIntervals.push(setInterval(() => {
+        if (!global.mongoConnected) return;
         try {
             const aiContentService = require('./services/aiContentService');
             const apiKey = process.env.OPENAI_API_KEY;
@@ -301,11 +316,37 @@ mongoose.connect(DB_URI, {
         } catch(e) {
             console.error('[AI Auto-Retrain] Error:', e.message);
         }
-    }, 30 * 60 * 1000); // Kiểm tra mỗi 30 phút
+    }, 30 * 60 * 1000)); // Kiểm tra mỗi 30 phút
     console.log('[AI Auto-Retrain] Đã khởi động scheduler (kiểm tra mỗi 30 phút)');
+}
+
+mongoose.connect(DB_URI, {
+    serverSelectionTimeoutMS: 5000,
+    connectTimeoutMS: 5000
+})
+.then(() => {
+    global.mongoConnected = true;
+    console.log('✅ Đã kết nối thành công tới MongoDB');
+    startSchedulers();
 })
 .catch(err => {
     console.error('❌ Lỗi kết nối MongoDB:', err.message);
     console.error('⚠️ App sẽ chạy nhưng không có database - một số tính năng sẽ không hoạt động');
     // global.mongoConnected vẫn là false, scheduler sẽ không khởi động
+});
+
+// Monitor MongoDB connection events and cleanup/re-create schedulers
+const db = mongoose.connection;
+db.on('disconnected', () => {
+    global.mongoConnected = false;
+    console.log('⚠️ MongoDB mất kết nối - dừng tất cả schedulers');
+    clearAllSchedulers();
+});
+db.on('reconnected', () => {
+    global.mongoConnected = true;
+    console.log('✅ MongoDB đã kết nối lại - khởi động lại schedulers');
+    startSchedulers();
+});
+db.on('error', (err) => {
+    console.error('❌ MongoDB connection error:', err.message);
 });

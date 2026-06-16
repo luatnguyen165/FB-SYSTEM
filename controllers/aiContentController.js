@@ -8,6 +8,7 @@ const SchedulePost = require('../models/SchedulePost');
 const Channel = require('../models/Channel');
 const Settings = require('../models/Settings');
 const FacebookGroupCache = require('../models/FacebookGroupCache');
+const Product = require('../models/Product');
 const aiContentService = require('../services/aiContentService');
 const { isValidApiKey } = aiContentService;
 const { normalizeEncryptedValue } = require('../utils/cryptoVault');
@@ -88,7 +89,7 @@ async function getUserApiKey(userId) {
 exports.renderPage = async (req, res) => {
     try {
         const userId = req.session.userId || req.user?._id;
-        const [styles, schedules, posts, channels, settings, groupCaches] = await Promise.all([
+        const [styles, schedules, posts, channels, settings, groupCaches, products] = await Promise.all([
             WritingStyle.find({ userId }).sort({ createdAt: -1 }).lean(),
             AiContentSchedule.find({ userId })
                 .populate('writingStyleId', 'name')
@@ -98,6 +99,7 @@ exports.renderPage = async (req, res) => {
             Channel.find({ userId, isEnabled: true }).sort({ platform: 1 }).lean(),
             Settings.findOne({ userId }).lean(),
             FacebookGroupCache.find({ userId }).lean(),
+            Product.find({ userId }).sort({ createdAt: -1 }).lean(),
         ]);
 
         res.render('ai-content', {
@@ -106,6 +108,7 @@ exports.renderPage = async (req, res) => {
             schedules,
             posts,
             channels,
+            products,
             openaiApiKey: settings?.openaiApiKey || '',
             groupCaches,
             currentPage: 'ai-content',
@@ -269,7 +272,7 @@ exports.deleteStyle = async (req, res) => {
 exports.createSchedule = async (req, res) => {
     try {
         const userId = req.session.userId || req.user?._id;
-        const { name, writingStyleId, dateRange, timeSlots, contentConfig } = req.body;
+        const { name, writingStyleId, productId, direction, dateRange, timeSlots, contentConfig } = req.body;
         const aiConfig = await getUserApiConfig(userId);
 
         if (!name || !writingStyleId || !dateRange?.startDate || !dateRange?.endDate) {
@@ -290,6 +293,8 @@ exports.createSchedule = async (req, res) => {
                 userId,
                 name,
                 writingStyleId,
+                productId: productId || null,
+                direction: direction || 'unset',
                 dateRange: {
                     startDate: new Date(dateRange.startDate),
                     endDate: new Date(dateRange.endDate),
@@ -311,6 +316,8 @@ exports.createSchedule = async (req, res) => {
             userId,
             name,
             writingStyleId,
+            productId: productId || null,
+            direction: direction || 'unset',
             dateRange: {
                 startDate: new Date(dateRange.startDate),
                 endDate: new Date(dateRange.endDate),
@@ -355,6 +362,8 @@ exports.updateSchedule = async (req, res) => {
 
         if (updates.name !== undefined) schedule.name = updates.name;
         if (updates.writingStyleId !== undefined) schedule.writingStyleId = updates.writingStyleId;
+        if (updates.productId !== undefined) schedule.productId = updates.productId;
+        if (updates.direction !== undefined) schedule.direction = updates.direction;
         if (updates.status !== undefined) schedule.status = updates.status;
         if (updates.dateRange !== undefined) schedule.dateRange = updates.dateRange;
         if (updates.timeSlots !== undefined) schedule.timeSlots = updates.timeSlots;
@@ -722,6 +731,168 @@ exports.checkApiKey = async (req, res) => {
         res.json({ hasKey });
     } catch (err) {
         res.json({ hasKey: false });
+    }
+};
+
+// ==================== PRODUCTS API ====================
+
+/**
+ * GET /ai-content/api/products - Danh sách sản phẩm
+ */
+exports.getProducts = async (req, res) => {
+    try {
+        const userId = req.session.userId || req.user?._id;
+        const products = await Product.find({ userId, isActive: true })
+            .populate('writingStyleId', 'name')
+            .sort({ createdAt: -1 }).lean();
+        res.json({ success: true, products });
+    } catch (err) {
+        console.error('[AI Content] getProducts error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * POST /ai-content/api/products - Tạo sản phẩm mới
+ */
+exports.getProduct = async (req, res) => {
+    try {
+        const userId = req.session.userId || req.user?._id;
+        const { id } = req.params;
+        const product = await Product.findOne({ _id: id, userId, isActive: true })
+            .populate('writingStyleId', 'name')
+            .lean();
+        if (!product) return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
+        res.json(product);
+    } catch (err) {
+        console.error('[AI Content] getProduct error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.createProduct = async (req, res) => {
+    try {
+        const userId = req.session.userId || req.user?._id;
+        const { name, description, category, price, audience, sellingPoints, competitors, writingStyleId, direction } = req.body;
+
+        if (!name) {
+            return res.status(400).json({ error: 'Cần tên sản phẩm' });
+        }
+
+        const product = await Product.create({
+            userId,
+            name,
+            description: description || '',
+            category: category || '',
+            price: price || '',
+            targetAudience: audience || '',
+            keySellingPoints: Array.isArray(sellingPoints) ? sellingPoints : [],
+            competitorProducts: Array.isArray(competitors) ? competitors.join(', ') : (competitors || ''),
+            writingStyleId: writingStyleId || null,
+            direction: direction || 'unset',
+        });
+
+        res.json({ success: true, product });
+    } catch (err) {
+        console.error('[AI Content] createProduct error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * PUT /ai-content/api/products/:id - Cập nhật sản phẩm
+ */
+exports.updateProduct = async (req, res) => {
+    try {
+        const userId = req.session.userId || req.user?._id;
+        const { id } = req.params;
+        const updates = req.body;
+
+        const product = await Product.findOne({ _id: id, userId });
+        if (!product) return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
+
+        if (updates.name !== undefined) product.name = updates.name;
+        if (updates.description !== undefined) product.description = updates.description;
+        if (updates.category !== undefined) product.category = updates.category;
+        if (updates.price !== undefined) product.price = updates.price;
+        if (updates.targetAudience !== undefined) product.targetAudience = updates.targetAudience;
+        if (updates.keySellingPoints !== undefined) product.keySellingPoints = updates.keySellingPoints;
+        if (updates.competitorProducts !== undefined) product.competitorProducts = updates.competitorProducts;
+        if (updates.writingStyleId !== undefined) product.writingStyleId = updates.writingStyleId;
+        if (updates.direction !== undefined) product.direction = updates.direction;
+
+        product.updatedAt = new Date();
+        await product.save();
+
+        res.json({ success: true, product });
+    } catch (err) {
+        console.error('[AI Content] updateProduct error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * DELETE /ai-content/api/products/:id - Xóa sản phẩm
+ */
+exports.deleteProduct = async (req, res) => {
+    try {
+        const userId = req.session.userId || req.user?._id;
+        const { id } = req.params;
+
+        const product = await Product.findOneAndUpdate(
+            { _id: id, userId },
+            { isActive: false, updatedAt: new Date() }
+        );
+        if (!product) return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('[AI Content] deleteProduct error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * POST /ai-content/api/products/:id/analyze - Phân tích sản phẩm bằng AI
+ */
+exports.analyzeProduct = async (req, res) => {
+    try {
+        const userId = req.session.userId || req.user?._id;
+        const { id } = req.params;
+        const aiConfig = await getUserApiConfig(userId);
+
+        const product = await Product.findOne({ _id: id, userId });
+        if (!product) return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
+
+        if (!aiConfig.apiKey || !aiConfig.apiKey.trim()) {
+            return res.status(400).json({
+                error: 'Chưa cấu hình API Key. Vào Cài đặt > Cấu hình AI để nhập API key.',
+                code: 'MISSING_API_KEY'
+            });
+        }
+
+        const analysis = await aiContentService.analyzeProduct(product, aiConfig.apiKey, aiConfig);
+
+        // Cập nhật product
+        product.aiAnalysis = {
+            suggestedDirection: analysis.suggestedDirection,
+            recommendedAngles: analysis.recommendedAngles,
+            hookIdeas: analysis.hookIdeas,
+            targetEmotions: analysis.targetEmotions,
+            keywords: analysis.keywords,
+            summary: analysis.summary,
+        };
+        product.direction = analysis.suggestedDirection;
+        product.updatedAt = new Date();
+        await product.save();
+
+        res.json({ success: true, analysis });
+    } catch (err) {
+        console.error('[AI Content] analyzeProduct error:', err.message);
+        if (err.response?.status === 401) {
+            return res.status(400).json({ error: 'API Key không hợp lệ hoặc đã hết hạn.', code: 'UNAUTHORIZED_API_KEY' });
+        }
+        res.status(500).json({ error: err.message });
     }
 };
 

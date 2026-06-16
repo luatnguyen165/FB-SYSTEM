@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Đăng Nhập - Reels Auto-Uploader</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/toast.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -234,6 +236,13 @@
 
     <script src="/js/toast.js"></script>
     <script>
+    // Show flash message if present
+    (function() {
+        var message = document.body.dataset.flashMessage;
+        var type = document.body.dataset.flashType;
+        if (message) showToast(message, type || 'info');
+    })();
+
     // Generate deviceId and fill hidden field before form submit
     document.querySelector('form').addEventListener('submit', async function(e) {
         var field = document.getElementById('loginDeviceId');

@@ -7,6 +7,23 @@ const Competitor = require('../models/Competitor');
 const CompetitorPost = require('../models/CompetitorPost');
 const { extractUserIdFromUrl } = require('../utils/facebookUrlUtils');
 
+/**
+ * Giới hạn số lượng concurrent scrape để tránh quá tải Playwright/Chrome
+ * P2 FIX: Semaphore pattern - max 2 concurrent scrapes
+ */
+class Semaphore {
+    constructor(max) { this.max = max; this.current = 0; this.queue = []; }
+    async acquire() {
+        if (this.current < this.max) { this.current++; return; }
+        return new Promise(resolve => this.queue.push(resolve));
+    }
+    release() {
+        if (this.queue.length > 0) { const next = this.queue.shift(); next(); }
+        else { this.current--; }
+    }
+}
+const scrapeSemaphore = new Semaphore(2);
+
 class CompetitorService {
     /**
      * Lấy danh sách đối thủ
@@ -307,9 +324,16 @@ class CompetitorService {
      */
     async scrapeCompetitorPosts(userId, competitor) {
         const Channel = require('../models/Channel');
-        const { getOrOpenFacebookContext } = require('../services/facebook/session');
+        const { getOrOpenFacebookContext, ACTIVE_FB_SESSIONS } = require('../services/facebook/session');
         const { fetchPagePosts } = require('../services/facebookPageScraper');
         const SESSION_ROOT = path.join(global.USER_DATA_DIR || path.join(__dirname, '..'), 'social-sessions');
+
+        // P2: Semaphore - wait for turn to avoid N concurrent Playwright/Chrome instances
+        await scrapeSemaphore.acquire();
+        let semaphoreReleased = false;
+        const releaseSemaphore = () => {
+            if (!semaphoreReleased) { semaphoreReleased = true; scrapeSemaphore.release(); }
+        };
 
         console.log(`[Competitor Service] 🚀 scrapeCompetitorPosts started for: ${competitor.name} (userId=${userId})`);
         await Competitor.updateOne({ _id: competitor._id }, { $set: { scraping: true } });
@@ -329,11 +353,32 @@ class CompetitorService {
 
             if (!fs.existsSync(sessionDir)) {
                 await Competitor.updateOne({ _id: competitor._id }, { $set: { scraping: false } });
+                releaseSemaphore();
                 throw new Error(`❌ Chưa có phiên đăng nhập cho kênh "${channel.accountName}". Vui lòng vào trang Kênh Facebook → đăng nhập trước khi scrape đối thủ.`);
             }
 
             console.log(`[Competitor Service] 🌐 Opening Playwright context to get cookies + fb_dtsg...`);
             const { context, sessionKey } = await getOrOpenFacebookContext(String(userId), channel.accountName, channel.accountType || 'Cá nhân', 'FB', { headless: true });
+
+            // P1: Cleanup - đóng context sau khi scrape xong
+            let contextCleanedUp = false;
+            const cleanupContext = async () => {
+                if (contextCleanedUp) return;
+                contextCleanedUp = true;
+                try {
+                    // Đóng tất cả pages
+                    const pages = context.pages();
+                    for (const p of pages) {
+                        try { await p.close(); } catch (e) { /* silent */ }
+                    }
+                    // Nếu context không được shared (chỉ dùng cho scrape), đóng nó
+                    // Không đóng context nếu nó đang được dùng bởi comment play / session
+                    // Chỉ close pages, giữ context alive để tránh mất session
+                    console.log(`[Competitor Service] 🧹 Closed ${pages.length} pages for session ${sessionKey}`);
+                } catch (e) {
+                    console.error(`[Competitor Service] ⚠️ Context page cleanup error: ${e.message}`);
+                }
+            };
 
             console.log(`[Competitor Service] ✅ Playwright context opened, sessionKey: ${sessionKey}`);
             console.log(`[Competitor Service] 🔍 PageId: ${channel.profileUrl}`);
@@ -636,17 +681,25 @@ class CompetitorService {
 
                 console.log(`[Competitor Service] ✅ Scrape completed: ${savedCount}/${posts.length} new posts saved for ${competitor.name}`);
                 await Competitor.updateOne({ _id: competitor._id }, { $set: { scraping: false, lastCheckedAt: new Date() } });
+                // P1+P2: cleanup pages + release semaphore
+                await cleanupContext();
+                releaseSemaphore();
                 return { saved: savedCount, total: posts.length };
 
             } catch (innerErr) {
                 console.error(`[Competitor Service] ❌ Inner error:`, innerErr.message);
                 await Competitor.updateOne({ _id: competitor._id }, { $set: { scraping: false } });
+                // P1+P2: cleanup pages + release semaphore
+                await cleanupContext();
+                releaseSemaphore();
                 throw innerErr;
             }
 
         } catch (err) {
             console.error(`[Competitor Service] ❌ scrapeCompetitorPosts failed:`, err.message);
             await Competitor.updateOne({ _id: competitor._id }, { $set: { scraping: false } });
+            // P2: release semaphore even if context not opened yet
+            releaseSemaphore();
             throw err;
         }
     }

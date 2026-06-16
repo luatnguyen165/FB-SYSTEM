@@ -523,7 +523,7 @@
             this.disabled = true;
 
             try {
-                var res = await fetch('/schedule/ai-comment/play/api/' + id + '/auto-comment-all', { method: 'POST' });
+                var res = await fetch('/schedule/ai-comment/play/api/' + id + '/run', { method: 'POST' });
                 var json = await res.json();
                 if (json.success) {
                     window.__autoCommentActive = true;

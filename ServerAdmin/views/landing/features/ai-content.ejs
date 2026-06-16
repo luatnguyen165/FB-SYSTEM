@@ -1,0 +1,180 @@
+<%
+page = 'ai-content';
+%>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Tạo Nội Dung - FB-SYSTEM</title>
+    <meta name="description" content="AI thông minh tự động tạo nội dung bài viết, caption, hashtag. Học phong cách viết của bạn để tạo nội dung tự nhiên.">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/landing.css">
+    <link rel="stylesheet" href="/css/features.css">
+</head>
+<body>
+    <%- include('../../partials/header') %>
+
+    <section class="feature-hero">
+        <div class="feature-hero-bg"></div>
+        <div class="container">
+            <div class="feature-hero-inner">
+                <div class="feature-hero-badge"><i class="fas fa-robot"></i> AI thông minh</div>
+                <h1>AI <span class="highlight">Tạo Nội Dung</span> thông minh</h1>
+                <p>Trí tuệ nhân tạo thế hệ mới giúp bạn tạo nội dung chất lượng cao chỉ trong vài giây. Học hỏi từ phong cách viết của bạn để tạo ra nội dung tự nhiên, cuốn hút.</p>
+                <div class="feature-hero-actions">
+                    <a href="/register" class="btn btn-primary btn-lg"><i class="fas fa-rocket"></i> Dùng thử miễn phí</a>
+                    <a href="#details" class="btn btn-secondary btn-lg"><i class="fas fa-play-circle"></i> Xem chi tiết</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="feature-stats">
+        <div class="container">
+            <div class="stats-bar">
+                <div class="stat-item"><div class="stat-number">50,000+</div><div class="stat-label">Nội dung đã tạo</div></div>
+                <div class="stat-divider"></div>
+                <div class="stat-item"><div class="stat-number">98.5%</div><div class="stat-label">Tỷ lệ hài lòng</div></div>
+                <div class="stat-divider"></div>
+                <div class="stat-item"><div class="stat-number">30+</div><div class="stat-label">Ngôn ngữ hỗ trợ</div></div>
+                <div class="stat-divider"></div>
+                <div class="stat-item"><div class="stat-number">3s</div><div class="stat-label">Thời gian tạo bài viết</div></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="feature-details section-padding" id="details">
+        <div class="container">
+            <div class="detail-grid">
+                <div class="detail-content animate-on-scroll">
+                    <div class="detail-label"><i class="fas fa-magic"></i> AI tổng quát</div>
+                    <h2>Tạo nội dung <span class="highlight">tự động</span> với AI</h2>
+                    <p>AI của FB-SYSTEM sử dụng mô hình ngôn ngữ lớn, được huấn luyện trên hàng triệu mẫu nội dung marketing để tạo ra bài viết chất lượng cao.</p>
+                    <ul class="detail-list">
+                        <li><i class="fas fa-pen-fancy"></i> Tạo bài viết, caption, mô tả sản phẩm</li>
+                        <li><i class="fas fa-hashtag"></i> Gợi ý hashtag thông minh theo xu hướng</li>
+                        <li><i class="fas fa-language"></i> Đa ngôn ngữ: Việt, Anh, Trung, Nhật, Hàn...</li>
+                        <li><i class="fas fa-book-open"></i> Tạo nội dung theo nhiều phong cách khác nhau</li>
+                        <li><i class="fas fa-graduation-cap"></i> Học phong cách viết cá nhân của bạn</li>
+                    </ul>
+                </div>
+                <div class="detail-visual animate-on-scroll">
+                    <div class="platform-grid-showcase">
+                        <div class="platform-item" style="border-color:rgba(99,102,241,0.3);background:rgba(99,102,241,0.05);">
+                            <i class="fas fa-pen-fancy" style="color:#818cf8;font-size:40px;"></i>
+                            <span style="color:#818cf8;">Bài viết</span>
+                        </div>
+                        <div class="platform-item" style="border-color:rgba(236,72,153,0.3);background:rgba(236,72,153,0.05);">
+                            <i class="fas fa-hashtag" style="color:#f472b6;font-size:40px;"></i>
+                            <span style="color:#f472b6;">Hashtag</span>
+                        </div>
+                        <div class="platform-item" style="border-color:rgba(34,197,94,0.3);background:rgba(34,197,94,0.05);">
+                            <i class="fas fa-comment" style="color:#22c55e;font-size:40px;"></i>
+                            <span style="color:#22c55e;">Bình luận</span>
+                        </div>
+                        <div class="platform-item" style="border-color:rgba(251,191,36,0.3);background:rgba(251,191,36,0.05);">
+                            <i class="fas fa-envelope" style="color:#fbbf24;font-size:40px;"></i>
+                            <span style="color:#fbbf24;">Tin nhắn</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="feature-sub-features section-padding">
+        <div class="container">
+            <div class="section-header">
+                <h2>Khả năng <span class="highlight">của AI</span></h2>
+                <p>AI Content của FB-SYSTEM có thể làm được nhiều hơn bạn nghĩ.</p>
+            </div>
+            <div class="sub-features-grid">
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-1"><i class="fas fa-file-alt"></i></div>
+                    <h3>Tạo bài viết tự động</h3>
+                    <p>Nhập chủ đề, chọn phong cách, AI sẽ tạo bài viết hoàn chỉnh với tiêu đề, nội dung, hashtag và lời kêu gọi hành động.</p>
+                </div>
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-2"><i class="fas fa-copy"></i></div>
+                    <h3>Viết lại nội dung</h3>
+                    <p>Tối ưu nội dung hiện có: viết lại, tóm tắt, mở rộng, điều chỉnh giọng văn phù hợp với từng nền tảng.</p>
+                </div>
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-3"><i class="fas fa-lightbulb"></i></div>
+                    <h3>Gợi ý ý tưởng</h3>
+                    <p>AI phân tích xu hướng và đề xuất ý tưởng nội dung mới, chủ đề hot, góc nhìn độc đáo cho chiến dịch.</p>
+                </div>
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-4"><i class="fas fa-user-check"></i></div>
+                    <h3>Học phong cách viết</h3>
+                    <p>AI phân tích các bài viết trước của bạn và học hỏi phong cách, giọng văn, cách dùng từ để tạo nội dung đồng nhất.</p>
+                </div>
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-5"><i class="fas fa-clock"></i></div>
+                    <h3>Tạo nội dung hàng loạt</h3>
+                    <p>Tạo hàng loạt nội dung cho cả tuần hoặc tháng chỉ với vài cú click. Tiết kiệm thời gian tối đa.</p>
+                </div>
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-6"><i class="fas fa-chart-bar"></i></div>
+                    <h3>Tối ưu SEO</h3>
+                    <p>Tự động tối ưu nội dung cho công cụ tìm kiếm với từ khóa, mô tả meta, thẻ heading phù hợp.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="feature-screenshot section-padding">
+        <div class="container">
+            <div class="screenshot-card animate-on-scroll">
+                <div class="screenshot-header">
+                    <div class="screenshot-dots"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div>
+                    <span>FB-SYSTEM AI Content Generator</span>
+                </div>
+                <div class="screenshot-body">
+                    <div class="screenshot-content" style="flex-direction:column;min-height:auto;">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                            <div style="padding:16px;background:rgba(0,0,0,0.3);border-radius:12px;">
+                                <div style="font-size:13px;color:#64748b;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px;">Nhập chủ đề</div>
+                                <div style="padding:12px;background:rgba(255,255,255,0.05);border:1px solid rgba(99,102,241,0.3);border-radius:8px;color:#cbd5e1;font-size:14px;">
+                                    <i class="fas fa-lightbulb" style="color:#fbbf24;margin-right:8px;"></i> Giới thiệu sản phẩm chăm sóc da mới
+                                </div>
+                                <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+                                    <span style="padding:4px 10px;background:rgba(99,102,241,0.15);color:#818cf8;border-radius:100px;font-size:11px;">Chuyên nghiệp</span>
+                                    <span style="padding:4px 10px;background:rgba(236,72,153,0.15);color:#f472b6;border-radius:100px;font-size:11px;">Sáng tạo</span>
+                                    <span style="padding:4px 10px;background:rgba(16,185,129,0.15);color:#34d399;border-radius:100px;font-size:11px;">Tiếng Việt</span>
+                                </div>
+                            </div>
+                            <div style="padding:16px;background:rgba(0,0,0,0.3);border-radius:12px;">
+                                <div style="font-size:13px;color:#64748b;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px;">Kết quả AI</div>
+                                <div style="color:#cbd5e1;font-size:13px;line-height:1.6;">
+                                    ✨ <strong style="color:#f1f5f9;">Chăm sóc da hoàn hảo cùng Serum Vitamin C</strong><br><br>
+                                    Bạn đã sẵn sàng cho làn da rạng rỡ? 🌟 Serum Vitamin C mới của chúng tôi với công thức đột phá...<br><br>
+                                    <span style="color:#818cf8;">#Skincare #VitaminC #LamDep #ChamSocDa</span>
+                                </div>
+                                <div style="margin-top:12px;display:flex;gap:8px;">
+                                    <span class="badge success"><i class="fas fa-check"></i> Đã tạo</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section section-padding">
+        <div class="container">
+            <h2>Trải nghiệm <span class="highlight">AI Content</span> ngay hôm nay</h2>
+            <p>Tiết kiệm 90% thời gian tạo nội dung với AI thông minh của FB-SYSTEM.</p>
+            <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
+                <a href="/register" class="btn btn-primary btn-lg"><i class="fas fa-rocket"></i> Dùng thử miễn phí</a>
+                <a href="/" class="btn btn-secondary btn-lg" style="border-color:rgba(255,255,255,0.3);color:white;"><i class="fas fa-arrow-left"></i> Quay lại trang chủ</a>
+            </div>
+        </div>
+    </section>
+
+    <%- include('../../partials/footer') %>
+</body>
+</html>

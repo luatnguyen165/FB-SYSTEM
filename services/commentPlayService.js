@@ -198,70 +198,8 @@ class CommentPlayService {
         // _postComment sẽ xử lý việc post lần lượt trong 1 lần mở browser
         const postResult = await this._postComment(play, comments, targetInfo);
 
-        // Tạo log cho từng comment
-        const results = [];
-        let successCount = 0;
-        let errorCount = 0;
-
-        if (postResult.success && postResult.results) {
-            // Nếu playwright trả về kết quả chi tiết cho từng comment
-            for (let i = 0; i < comments.length; i++) {
-                const comment = comments[i];
-                const resultDetail = postResult.results[i] || { success: postResult.success, error: postResult.error };
-                
-                await CommentPlayLog.create({
-                    playId: play._id,
-                    commentId: comment._id,
-                    commentText: comment.type === 'text' ? comment.content : comment.caption,
-                    commentType: comment.type,
-                    targetUrl: targetInfo.url,
-                    targetGroupId: targetInfo.groupId || '',
-                    status: resultDetail.success ? 'success' : 'error',
-                    errorMessage: resultDetail.error || '',
-                    postedAt: new Date()
-                });
-
-                if (resultDetail.success) {
-                    successCount++;
-                } else {
-                    errorCount++;
-                }
-
-                results.push({
-                    commentId: comment._id,
-                    success: resultDetail.success,
-                    error: resultDetail.error || null
-                });
-            }
-        } else {
-            // Fallback: nếu không có kết quả chi tiết, coi tất cả thành công hoặc thất bại
-            for (let i = 0; i < comments.length; i++) {
-                const comment = comments[i];
-                await CommentPlayLog.create({
-                    playId: play._id,
-                    commentId: comment._id,
-                    commentText: comment.type === 'text' ? comment.content : comment.caption,
-                    commentType: comment.type,
-                    targetUrl: targetInfo.url,
-                    targetGroupId: targetInfo.groupId || '',
-                    status: postResult.success ? 'success' : 'error',
-                    errorMessage: postResult.error || '',
-                    postedAt: new Date()
-                });
-
-                if (postResult.success) {
-                    successCount++;
-                } else {
-                    errorCount++;
-                }
-
-                results.push({
-                    commentId: comment._id,
-                    success: postResult.success,
-                    error: postResult.error || null
-                });
-            }
-        }
+        // Tạo log cho từng comment (dùng helper đã extract)
+        const { results, successCount, errorCount } = await this._createCommentLogs(play, comments, targetInfo, postResult);
 
         // Cập nhật metrics
         play.metrics.totalCommentsPosted += successCount;
@@ -412,9 +350,16 @@ class CommentPlayService {
             scanConfigId = new mongoose.Types.ObjectId(scanConfigId);
         }
 
-        // Lấy danh sách postUrl đã được PLAY NÀY comment thành công
+        // CROSS-PLAY DEDUP: Lấy danh sách postUrl đã được TẤT CẢ plays của user này comment thành công
+        const allUserPlays = await CommentPlay.find({
+            userId: play.userId,
+            _id: { $ne: play._id }
+        }).select('_id').lean();
+
+        const allPlayIds = [play._id, ...allUserPlays.map(p => p._id)];
+
         const commentedLogs = await CommentPlayLog.find({
-            playId: play._id,
+            playId: { $in: allPlayIds },
             status: 'success',
             targetUrl: { $ne: '' }
         }).select('targetUrl').lean();
@@ -437,13 +382,13 @@ class CommentPlayService {
             isMatching: true
         }).sort({ scannedAt: -1 }).limit(100).lean();
 
-        console.log(`[CommentPlay] Found ${results.length} matching scan results for play ${play._id}. Commented URLs count: ${commentedSet.size}`);
+        console.log(`[CommentPlay] Found ${results.length} matching scan results for play ${play._id}. Cross-play commented URLs count: ${commentedSet.size}`);
 
-        // Loại bỏ bài đã comment bởi play này (qua CommentPlayLog)
+        // Loại bỏ bài đã comment bởi TẤT CẢ plays (cross-play dedup)
         let uncommented = results.filter(r => r.postUrl && !commentedSet.has(String(r.postUrl)));
 
         if (!uncommented || uncommented.length === 0) {
-            console.log(`[CommentPlay] ⚠ No target post available (isMatching: true). scanConfigId=${scanConfigId || 'ALL'}, commentedByThisPlay=${commentedSet.size}, totalMatchingInDB=${results?.length || 0}`);
+            console.log(`[CommentPlay] ⚠ No target post available (isMatching: true). scanConfigId=${scanConfigId || 'ALL'}, totalCommentedAcrossPlays=${commentedSet.size}, totalMatchingInDB=${results?.length || 0}`);
             return null;
         }
 
@@ -581,43 +526,8 @@ class CommentPlayService {
                 postResult = { success: false, error: e.message };
             }
 
-            // Create logs
-            let successCount = 0;
-            let errorCount = 0;
-            if (postResult.success && postResult.results) {
-                for (let i = 0; i < comments.length; i++) {
-                    const comment = comments[i];
-                    const resultDetail = postResult.results[i] || { success: postResult.success, error: postResult.error };
-                    await CommentPlayLog.create({
-                        playId: playState._id,
-                        commentId: comment._id,
-                        commentText: comment.type === 'text' ? comment.content : comment.caption,
-                        commentType: comment.type,
-                        targetUrl: targetInfo.url,
-                        targetGroupId: targetInfo.groupId || '',
-                        status: resultDetail.success ? 'success' : 'error',
-                        errorMessage: resultDetail.error || '',
-                        postedAt: new Date()
-                    });
-                    if (resultDetail.success) successCount++; else errorCount++;
-                }
-            } else {
-                for (let i = 0; i < comments.length; i++) {
-                    const comment = comments[i];
-                    await CommentPlayLog.create({
-                        playId: playState._id,
-                        commentId: comment._id,
-                        commentText: comment.type === 'text' ? comment.content : comment.caption,
-                        commentType: comment.type,
-                        targetUrl: targetInfo.url,
-                        targetGroupId: targetInfo.groupId || '',
-                        status: postResult.success ? 'success' : 'error',
-                        errorMessage: postResult.error || '',
-                        postedAt: new Date()
-                    });
-                    if (postResult.success) successCount++; else errorCount++;
-                }
-            }
+            // Create logs (dùng helper đã extract)
+            const { successCount, errorCount } = await this._createCommentLogs(playState, comments, targetInfo, postResult);
 
             totalPosted += successCount;
             totalErrors += errorCount;
@@ -662,6 +572,82 @@ class CommentPlayService {
             totalErrors,
             iterations: iteration
         };
+    }
+
+    // ============================================================
+    // HELPER: Comment Logs (extracted to eliminate duplicate code)
+    // ============================================================
+
+    /**
+     * Tạo CommentPlayLog records cho mỗi comment sau khi post
+     * Helper này thay thế ~50 dòng code duplicate trong _executePlay và runAutoCommentAll
+     */
+    async _createCommentLogs(play, comments, targetInfo, postResult) {
+        const results = [];
+        let successCount = 0;
+        let errorCount = 0;
+
+        if (postResult.success && postResult.results) {
+            // Nếu playwright trả về kết quả chi tiết cho từng comment
+            for (let i = 0; i < comments.length; i++) {
+                const comment = comments[i];
+                const resultDetail = postResult.results[i] || { success: postResult.success, error: postResult.error };
+                
+                await CommentPlayLog.create({
+                    playId: play._id,
+                    commentId: comment._id,
+                    commentText: comment.type === 'text' ? comment.content : comment.caption,
+                    commentType: comment.type,
+                    targetUrl: targetInfo.url,
+                    targetGroupId: targetInfo.groupId || '',
+                    status: resultDetail.success ? 'success' : 'error',
+                    errorMessage: resultDetail.error || '',
+                    postedAt: new Date()
+                });
+
+                if (resultDetail.success) {
+                    successCount++;
+                } else {
+                    errorCount++;
+                }
+
+                results.push({
+                    commentId: comment._id,
+                    success: resultDetail.success,
+                    error: resultDetail.error || null
+                });
+            }
+        } else {
+            // Fallback: nếu không có kết quả chi tiết, coi tất cả thành công hoặc thất bại
+            for (let i = 0; i < comments.length; i++) {
+                const comment = comments[i];
+                await CommentPlayLog.create({
+                    playId: play._id,
+                    commentId: comment._id,
+                    commentText: comment.type === 'text' ? comment.content : comment.caption,
+                    commentType: comment.type,
+                    targetUrl: targetInfo.url,
+                    targetGroupId: targetInfo.groupId || '',
+                    status: postResult.success ? 'success' : 'error',
+                    errorMessage: postResult.error || '',
+                    postedAt: new Date()
+                });
+
+                if (postResult.success) {
+                    successCount++;
+                } else {
+                    errorCount++;
+                }
+
+                results.push({
+                    commentId: comment._id,
+                    success: postResult.success,
+                    error: postResult.error || null
+                });
+            }
+        }
+
+        return { results, successCount, errorCount };
     }
 
     // ============================================================

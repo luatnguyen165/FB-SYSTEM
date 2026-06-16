@@ -28,8 +28,8 @@ function fillScheduleForm(schedule) {
     uploadedImagesBlobUrls = existingImages.filter(url => String(url).startsWith('blob:'));
     renderSchedulePostImagePreview(existingImages);
 
-    document.querySelectorAll('.platform-check').forEach(cb => cb.checked = (schedule.platforms || [])[0] === cb.value);
-    renderAccountList();
+    document.querySelectorAll('.platform-check').forEach(cb => cb.checked = (schedule.platforms || []).includes(cb.value));
+    renderAccountList(schedule.accounts || []);
     toggleFacebookGroupSelectionForSchedulePost();
 
     const sourceChannelId = schedule.targetGroupSourceChannelId?._id || schedule.targetGroupSourceChannelId || '';
@@ -64,12 +64,6 @@ function fillScheduleForm(schedule) {
         }
     }
 
-    const accChecks = schedule.accounts || [];
-    setTimeout(() => {
-        document.querySelectorAll('input[name="modalAccSelect"]').forEach(cb => {
-            cb.checked = accChecks.includes(cb.value);
-        });
-    }, 150);
 }
 
 function resetScheduleForm() {
@@ -169,6 +163,15 @@ async function submitPostSchedule() {
     const timeValue = document.getElementById('modalClockInput')?.value || '09:00';
 
     if (isPastDateTime(dateInput, timeValue)) { showToast('Không thể lên lịch vào thời gian trong quá khứ!', 'warning'); return; }
+
+    // Nếu chọn Instagram, bắt buộc phải có ảnh
+    if (platforms.includes('IG')) {
+        const hasImages = uploadedImagesBlobUrls.length > 0 || selectedSchedulePostImages.length > 0 || (document.getElementById('actualImageInput')?.files?.length || 0) > 0;
+        if (!hasImages) {
+            showToast('Instagram yêu cầu phải có ít nhất 1 hình ảnh!', 'warning');
+            return;
+        }
+    }
 
     const formData = new FormData();
     formData.append('type', 'post');

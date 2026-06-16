@@ -206,6 +206,13 @@
         </li>
         <% } %>
 
+        <!-- 💬 PHẢN HỒI & GÓP Ý -->
+        <% if (feat.feedback !== false) { %>
+        <li class="menu-item <%= currentPage === 'feedback' ? 'active' : '' %>">
+            <a href="/feedback"><i class="fa-solid fa-message"></i>Góp Ý & Yêu Cầu</a>
+        </li>
+        <% } %>
+
         <!-- ⚙️ HỆ THỐNG -->
         <li class="menu-section-title">Hệ Thống</li>
         <% if (feat.settings !== false) { %>

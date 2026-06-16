@@ -1,0 +1,234 @@
+<%
+page = 'schedule';
+%>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch đăng bài thông minh - FB-SYSTEM</title>
+    <meta name="description" content="Tự động đăng bài lên Facebook, Instagram, TikTok, YouTube. Lên lịch đăng bài hàng loạt, đăng Reels, Stories tự động.">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/landing.css">
+    <link rel="stylesheet" href="/css/features.css">
+</head>
+<body>
+    <%- include('../../partials/header') %>
+
+    <!-- Feature Hero -->
+    <section class="feature-hero">
+        <div class="feature-hero-bg"></div>
+        <div class="container">
+            <div class="feature-hero-inner">
+                <div class="feature-hero-badge">
+                    <i class="fas fa-calendar-check"></i> Tính năng cốt lõi
+                </div>
+                <h1>Lịch đăng bài <span class="highlight">thông minh</span></h1>
+                <p>Tự động hóa việc đăng bài lên tất cả nền tảng mạng xã hội. Tiết kiệm 90% thời gian với lịch đăng thông minh, hỗ trợ đa kênh, đa định dạng.</p>
+                <div class="feature-hero-actions">
+                    <a href="/register" class="btn btn-primary btn-lg"><i class="fas fa-rocket"></i> Dùng thử miễn phí</a>
+                    <a href="#details" class="btn btn-secondary btn-lg"><i class="fas fa-play-circle"></i> Xem chi tiết</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Bar -->
+    <section class="feature-stats">
+        <div class="container">
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <div class="stat-number">15,200+</div>
+                    <div class="stat-label">Bài đã đăng thành công</div>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <div class="stat-number">99.8%</div>
+                    <div class="stat-label">Tỷ lệ đăng thành công</div>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <div class="stat-number">4.8/5</div>
+                    <div class="stat-label">Đánh giá người dùng</div>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <div class="stat-number">500+</div>
+                    <div class="stat-label">Tài khoản đã kết nối</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Details -->
+    <section class="feature-details section-padding" id="details">
+        <div class="container">
+            <div class="detail-grid">
+                <div class="detail-content animate-on-scroll">
+                    <div class="detail-label"><i class="fas fa-layer-group"></i> Đa nền tảng</div>
+                    <h2>Đăng bài lên <span class="highlight">tất cả</span> nền tảng cùng lúc</h2>
+                    <p>Kết nối và quản lý nhiều tài khoản mạng xã hội từ một bảng điều khiển duy nhất. Hỗ trợ đầy đủ Facebook, Instagram, TikTok, YouTube.</p>
+                    <ul class="detail-list">
+                        <li><i class="fab fa-facebook"></i> Facebook: Page, Group, Profile, Reels</li>
+                        <li><i class="fab fa-instagram"></i> Instagram: Post, Story, Reels</li>
+                        <li><i class="fab fa-tiktok"></i> TikTok: Video, Reels</li>
+                        <li><i class="fab fa-youtube"></i> YouTube: Video, Shorts</li>
+                    </ul>
+                </div>
+                <div class="detail-visual animate-on-scroll">
+                    <div class="platform-grid-showcase">
+                        <div class="platform-item facebook"><i class="fab fa-facebook-f"></i><span>Facebook</span></div>
+                        <div class="platform-item instagram"><i class="fab fa-instagram"></i><span>Instagram</span></div>
+                        <div class="platform-item tiktok"><i class="fab fa-tiktok"></i><span>TikTok</span></div>
+                        <div class="platform-item youtube"><i class="fab fa-youtube"></i><span>YouTube</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Grid -->
+    <section class="feature-sub-features section-padding">
+        <div class="container">
+            <div class="section-header">
+                <h2>Tính năng <span class="highlight">chi tiết</span></h2>
+                <p>Khám phá tất cả những gì bạn có thể làm với lịch đăng bài thông minh.</p>
+            </div>
+            <div class="sub-features-grid">
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-1"><i class="fas fa-clock"></i></div>
+                    <h3>Lên lịch hàng loạt</h3>
+                    <p>Tạo và lên lịch hàng trăm bài viết cùng lúc. Hỗ trợ import từ file CSV, Excel.</p>
+                </div>
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-2"><i class="fas fa-repeat"></i></div>
+                    <h3>Đăng bài định kỳ</h3>
+                    <p>Thiết lập lịch đăng tự động lặp lại hàng ngày, hàng tuần, hàng tháng.</p>
+                </div>
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-3"><i class="fas fa-images"></i></div>
+                    <h3>Đa định dạng</h3>
+                    <p>Hỗ trợ đăng ảnh, video, Reels, Stories, link, bài viết văn bản thuần.</p>
+                </div>
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-4"><i class="fas fa-pencil-alt"></i></div>
+                    <h3>Soạn thảo trực quan</h3>
+                    <p>Trình soạn thảo rich text với đầy đủ định dạng, emoji, hashtag gợi ý.</p>
+                </div>
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-5"><i class="fas fa-history"></i></div>
+                    <h3>Lịch sử đăng bài</h3>
+                    <p>Theo dõi trạng thái bài đăng, lịch sử đăng, bài đăng thất bại và lý do.</p>
+                </div>
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-6"><i class="fas fa-bell"></i></div>
+                    <h3>Thông báo thông minh</h3>
+                    <p>Nhận thông báo qua Telegram, Email khi bài đăng hoàn thành hoặc thất bại.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="feature-how section-padding">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-label"><i class="fas fa-shoe-prints"></i> Cách sử dụng</div>
+                <h2>Bắt đầu với <span class="highlight">3 bước</span></h2>
+            </div>
+            <div class="how-steps">
+                <div class="how-step animate-on-scroll">
+                    <div class="step-num">01</div>
+                    <div class="step-icon"><i class="fas fa-plug"></i></div>
+                    <h3>Kết nối tài khoản</h3>
+                    <p>Đăng nhập và kết nối các trang Facebook, Instagram, TikTok của bạn.</p>
+                </div>
+                <div class="how-step-arrow"><i class="fas fa-arrow-right"></i></div>
+                <div class="how-step animate-on-scroll">
+                    <div class="step-num">02</div>
+                    <div class="step-icon"><i class="fas fa-calendar-plus"></i></div>
+                    <h3>Tạo lịch đăng</h3>
+                    <p>Soạn nội dung, chọn thời gian, thiết lập lịch đăng tự động.</p>
+                </div>
+                <div class="how-step-arrow"><i class="fas fa-arrow-right"></i></div>
+                <div class="how-step animate-on-scroll">
+                    <div class="step-num">03</div>
+                    <div class="step-icon"><i class="fas fa-check-double"></i></div>
+                    <h3>Tự động hóa</h3>
+                    <p>Hệ thống tự động đăng bài đúng lịch. Bạn chỉ cần theo dõi kết quả.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Screenshot -->
+    <section class="feature-screenshot section-padding">
+        <div class="container">
+            <div class="screenshot-card animate-on-scroll">
+                <div class="screenshot-header">
+                    <div class="screenshot-dots">
+                        <span class="dot red"></span>
+                        <span class="dot yellow"></span>
+                        <span class="dot green"></span>
+                    </div>
+                    <span>FB-SYSTEM Schedule Manager</span>
+                </div>
+                <div class="screenshot-body">
+                    <div class="screenshot-content">
+                        <div class="screenshot-sidebar">
+                            <div class="sidebar-item active"><i class="fas fa-calendar"></i> Lịch đăng</div>
+                            <div class="sidebar-item"><i class="fas fa-clock"></i> Đã lên lịch</div>
+                            <div class="sidebar-item"><i class="fas fa-history"></i> Đã đăng</div>
+                            <div class="sidebar-item"><i class="fas fa-exclamation-triangle"></i> Thất bại</div>
+                            <div class="sidebar-item"><i class="fas fa-layer-group"></i> Nhóm</div>
+                        </div>
+                        <div class="screenshot-main">
+                            <div class="schedule-table">
+                                <div class="table-header">
+                                    <span>Bài viết</span>
+                                    <span>Nền tảng</span>
+                                    <span>Thời gian</span>
+                                    <span>Trạng thái</span>
+                                </div>
+                                <div class="table-row">
+                                    <span><i class="fas fa-file-alt"></i> Giới thiệu sản phẩm mới</span>
+                                    <span><i class="fab fa-facebook"></i> <i class="fab fa-instagram"></i></span>
+                                    <span>15/06 08:00</span>
+                                    <span class="badge success">Hoàn thành</span>
+                                </div>
+                                <div class="table-row">
+                                    <span><i class="fas fa-video"></i> Video hướng dẫn</span>
+                                    <span><i class="fab fa-tiktok"></i> <i class="fab fa-youtube"></i></span>
+                                    <span>15/06 14:30</span>
+                                    <span class="badge warning">Đang chờ</span>
+                                </div>
+                                <div class="table-row">
+                                    <span><i class="fas fa-image"></i> Ảnh khuyến mãi</span>
+                                    <span><i class="fab fa-instagram"></i></span>
+                                    <span>16/06 09:00</span>
+                                    <span class="badge info">Đã lên lịch</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section section-padding">
+        <div class="container">
+            <h2>Sẵn sàng <span class="highlight">tự động hóa</span> lịch đăng bài?</h2>
+            <p>Tham gia cùng hàng trăm doanh nghiệp đang tiết kiệm 90% thời gian đăng bài với FB-SYSTEM.</p>
+            <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+                <a href="/register" class="btn btn-primary btn-lg"><i class="fas fa-rocket"></i> Bắt đầu miễn phí</a>
+                <a href="/" class="btn btn-secondary btn-lg" style="border-color: rgba(255,255,255,0.3); color: white;"><i class="fas fa-arrow-left"></i> Quay lại trang chủ</a>
+            </div>
+        </div>
+    </section>
+
+    <%- include('../../partials/footer') %>
+</body>
+</html>

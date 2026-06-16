@@ -136,10 +136,10 @@ function syncSelectedPlatformPreview() {
     if (!preview) return;
 
     const labelMap = {
-        FB: 'Facebook Reels',
-        TT: 'TikTok Reels',
-        IG: 'Instagram Reels',
-        YT: 'YouTube Shorts'
+        FR: 'Facebook Reels',
+        TT: 'TikTok Video',
+        IG: 'Instagram',
+        YS: 'YouTube Short'
     };
     preview.textContent = selected.length ? selected.map(v => labelMap[v] || v).join(' • ') : 'Xem trước Reels';
 }
@@ -364,9 +364,10 @@ function renderShopeeLinkList() {
     const box = document.getElementById('dynamicShopeeLinkBox');
     if (!box) return;
 
-    const selectedPlatform = Array.from(document.querySelectorAll('.platform-check:checked')).map(cb => cb.value)[0] || '';
+    const selectedPlatforms = Array.from(document.querySelectorAll('.platform-check:checked')).map(cb => cb.value);
+    const hasNonTTPlatform = selectedPlatforms.some(p => p !== 'TT');
 
-    if (selectedPlatform === 'TT') {
+    if (!hasNonTTPlatform) {
         box.innerHTML = '<div style="padding: 8px; color: var(--text-muted); font-size: 0.85rem;">TikTok Video không có link affiliate</div>';
         return;
     }
@@ -398,10 +399,10 @@ function syncSelectedShopeeLinksPreview() {
 function toggleShopeeLinkSectionForReels() {
     const section = document.getElementById('dynamicShopeeLinkBox')?.closest('.form-section');
     if (!section) return;
-    const selectedPlatform = Array.from(document.querySelectorAll('.platform-check:checked')).map(cb => cb.value)[0] || '';
-    const showFor = ['FR', 'YS', 'IG', 'TA'];
-    section.style.display = showFor.includes(selectedPlatform) ? '' : 'none';
-    if (showFor.includes(selectedPlatform)) {
+    const selectedPlatforms = Array.from(document.querySelectorAll('.platform-check:checked')).map(cb => cb.value);
+    const showSection = selectedPlatforms.length === 0 || selectedPlatforms.some(p => p !== 'TT');
+    section.style.display = showSection ? '' : 'none';
+    if (showSection) {
         renderShopeeLinkList();
     }
 }

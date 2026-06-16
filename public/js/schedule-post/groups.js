@@ -28,7 +28,7 @@ function toggleFacebookGroupSelectionForSchedulePost() {
     }
 }
 
-async function loadSchedulePostFacebookGroups(sourceChannelId) {
+async function loadSchedulePostFacebookGroups(sourceChannelId, preferredGroupKeys) {
     const container = document.getElementById('schedulePostGroupsList');
     if (!container) return;
 
@@ -58,6 +58,15 @@ async function loadSchedulePostFacebookGroups(sourceChannelId) {
         }
 
         renderSchedulePostGroups(container, schedulePostFacebookGroups);
+
+        // Pre-select groups if preferredGroupKeys is provided (e.g., when editing a schedule)
+        if (preferredGroupKeys && preferredGroupKeys.length > 0) {
+            preferredGroupKeys.forEach(key => {
+                const cb = document.querySelector(`#schedulePostGroupsWrapper input[name="schedulePostGroupSelect"][value="${CSS.escape(key)}"]`);
+                if (cb) cb.checked = true;
+            });
+            onSchedulePostGroupToggle();
+        }
     } catch (err) {
         console.error('Load Facebook groups failed:', err);
         container.innerHTML = `<div class="schedule-accounts-empty"><i class="fa-solid fa-exclamation-triangle"></i> Không tải được group. Vui lòng thử lại.</div>`;

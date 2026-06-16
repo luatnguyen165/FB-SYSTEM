@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ServerAdmin - Feedback & Góp Ý</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+    <div class="admin-container">
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <i class="fas fa-shield-halved"></i>
+                <div class="sidebar-brand-text">
+                    <span class="sidebar-brand-label">ServerAdmin</span>
+                    <span class="sidebar-brand-subtitle">Quản lý hệ thống</span>
+                </div>
+            </div>
+            <ul class="sidebar-menu">
+                <li class="menu-section-title">Chức năng</li>
+                <li class="menu-item" data-section="dashboard">
+                    <a href="#"><i class="fas fa-chart-line"></i> <span>Tổng quan</span></a>
+                </li>
+                <li class="menu-item" data-section="users">
+                    <a href="#"><i class="fas fa-users"></i> <span>Quản lý Users</span></a>
+                </li>
+                <li class="menu-item" data-section="create-user">
+                    <a href="#"><i class="fas fa-user-plus"></i> <span>Tạo User mới</span></a>
+                </li>
+                <li class="menu-item" data-section="features">
+                    <a href="#"><i class="fas fa-toggle-on"></i> <span>Quản lý Tính năng</span></a>
+                </li>
+                <li class="menu-item active" data-section="feedback">
+                    <a href="#"><i class="fas fa-message"></i> <span>Feedback</span></a>
+                </li>
+                <li class="menu-section-title">Tài khoản</li>
+                <li class="menu-item">
+                    <a href="/logout" style="color: #dc2626;"><i class="fas fa-right-from-bracket"></i> <span>Đăng xuất</span></a>
+                </li>
+            </ul>
+            <div class="sidebar-footer-info">
+                <div class="admin-avatar"><i class="fas fa-user-shield"></i></div>
+                <div class="admin-info">
+                    <span class="admin-name"><%= adminName %></span>
+                    <span class="admin-role">Administrator</span>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-nav">
+                <div class="nav-left">
+                    <h2 class="page-title">Feedback & Góp Ý</h2>
+                </div>
+                <div class="nav-right">
+                    <button class="btn btn-sm" onclick="loadFeedback()"><i class="fas fa-sync-alt"></i> Làm mới</button>
+                </div>
+            </header>
+
+            <div class="content-wrapper">
+                <!-- Stats -->
+                <div class="feedback-stats-row" id="feedbackStats">
+                    <div class="feedback-stat"><div class="num" id="stat-total">0</div><div class="label">Tổng</div></div>
+                    <div class="feedback-stat"><div class="num" id="stat-open">0</div><div class="label">Đang chờ</div></div>
+                    <div class="feedback-stat"><div class="num" id="stat-in_progress">0</div><div class="label">Đang xử lý</div></div>
+                    <div class="feedback-stat"><div class="num" id="stat-resolved">0</div><div class="label">Đã xử lý</div></div>
+                    <div class="feedback-stat"><div class="num" id="stat-feature">0</div><div class="label">Yêu cầu tính năng</div></div>
+                    <div class="feedback-stat"><div class="num" id="stat-bug">0</div><div class="label">Báo lỗi</div></div>
+                </div>
+
+                <!-- Filters -->
+                <div class="feedback-filters">
+                    <input type="text" id="searchFeedback" placeholder="🔍 Tìm kiếm..." oninput="debounceSearch()">
+                    <select id="filterStatus" onchange="loadFeedback()">
+                        <option value="">Tất cả trạng thái</option>
+                        <option value="open">Đang chờ</option>
+                        <option value="in_progress">Đang xử lý</option>
+                        <option value="resolved">Đã xử lý</option>
+                        <option value="closed">Đã đóng</option>
+                    </select>
+                    <select id="filterType" onchange="loadFeedback()">
+                        <option value="">Tất cả loại</option>
+                        <option value="feature">Yêu cầu tính năng</option>
+                        <option value="improvement">Cải tiến</option>
+                        <option value="bug">Báo lỗi</option>
+                        <option value="question">Câu hỏi</option>
+                    </select>
+                    <select id="filterPriority" onchange="loadFeedback()">
+                        <option value="">Tất cả ưu tiên</option>
+                        <option value="low">Thấp</option>
+                        <option value="medium">Trung bình</option>
+                        <option value="high">Cao</option>
+                        <option value="critical">Cực kỳ quan trọng</option>
+                    </select>
+                </div>
+
+                <!-- Table -->
+                <div class="table-card">
+                    <h3><i class="fas fa-list"></i> Danh sách góp ý</h3>
+                    <div class="feedback-table-wrap">
+                        <table class="users-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Người gửi</th>
+                                    <th>Loại</th>
+                                    <th>Tiêu đề</th>
+                                    <th>Tính năng</th>
+                                    <th>Ưu tiên</th>
+                                    <th>Trạng thái</th>
+                                    <th>Ngày</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="feedbackTableBody">
+                                <tr><td colspan="9" class="loading-cell">Đang tải...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Detail Modal -->
+    <div class="modal-overlay" id="feedbackModal">
+        <div class="modal feedback-detail-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-message"></i> Chi tiết Góp Ý</h2>
+                <button class="modal-close" onclick="closeDetail()">&times;</button>
+            </div>
+            <div class="modal-body" id="feedbackDetailBody"></div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+        let searchTimeout = null;
+
+        function debounceSearch() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => loadFeedback(), 300);
+        }
+
+        async function loadFeedback() {
+            try {
+                const params = new URLSearchParams({
+                    search: document.getElementById('searchFeedback').value,
+                    status: document.getElementById('filterStatus').value,
+                    type: document.getElementById('filterType').value,
+                    priority: document.getElementById('filterPriority').value
+                });
+                const res = await fetch('/api/feedback?' + params);
+                if (res.status === 401) { window.location.href = '/login'; return; }
+                const data = await res.json();
+                renderFeedbackTable(data.feedbacks || []);
+                renderStats(data.feedbacks || []);
+            } catch (err) {
+                console.error('Lỗi tải feedback:', err);
+            }
+        }
+
+        function renderStats(feedbacks) {
+            document.getElementById('stat-total').textContent = feedbacks.length;
+            document.getElementById('stat-open').textContent = feedbacks.filter(f => f.status === 'open').length;
+            document.getElementById('stat-in_progress').textContent = feedbacks.filter(f => f.status === 'in_progress').length;
+            document.getElementById('stat-resolved').textContent = feedbacks.filter(f => f.status === 'resolved').length;
+            document.getElementById('stat-feature').textContent = feedbacks.filter(f => f.type === 'feature' || f.type === 'improvement').length;
+            document.getElementById('stat-bug').textContent = feedbacks.filter(f => f.type === 'bug').length;
+        }
+
+        function renderFeedbackTable(feedbacks) {
+            const tbody = document.getElementById('feedbackTableBody');
+            if (!feedbacks || feedbacks.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" class="loading-cell">Không có góp ý nào</td></tr>';
+                return;
+            }
+            tbody.innerHTML = feedbacks.map((fb, i) => {
+                const userEmail = fb.userId ? (fb.userId.email || fb.userId.username || 'N/A') : 'N/A';
+                return '<tr style="--row:' + i + '">' +
+                    '<td>' + (i + 1) + '</td>' +
+                    '<td><div class="feedback-user-info"><i class="fas fa-user-circle"></i> ' + escHtml(userEmail) + '</div></td>' +
+                    '<td><span class="type-badge type-' + fb.type + '">' +
+                        (fb.type === 'bug' ? 'Lỗi' : fb.type === 'feature' ? 'T.năng' : fb.type === 'improvement' ? 'C.tiến' : 'Hỏi') +
+                    '</span></td>' +
+                    '<td><strong>' + escHtml(fb.title.substring(0, 50)) + (fb.title.length > 50 ? '...' : '') + '</strong></td>' +
+                    '<td><span style="font-size:12px;color:var(--text-muted)">' + escHtml(fb.feature) + '</span></td>' +
+                    '<td><span class="priority-badge priority-' + fb.priority + '">' +
+                        (fb.priority === 'critical' ? 'C.kỳ Q.trọng' : fb.priority === 'high' ? 'Cao' : fb.priority === 'medium' ? 'TB' : 'Thấp') +
+                    '</span></td>' +
+                    '<td><span class="type-badge type-' + fb.status + '">' +
+                        (fb.status === 'open' ? 'Đang chờ' : fb.status === 'in_progress' ? 'Đ.xử lý' : fb.status === 'resolved' ? 'Đã XL' : 'Đã đóng') +
+                    '</span></td>' +
+                    '<td>' + new Date(fb.createdAt).toLocaleDateString('vi-VN') + '</td>' +
+                    '<td class="actions-cell">' +
+                    '<button class="btn-icon btn-info" onclick="viewFeedback(\'' + fb._id + '\')" title="Xem"><i class="fas fa-eye"></i></button>' +
+                    '</td></tr>';
+            }).join('');
+        }
+
+        async function viewFeedback(id) {
+            try {
+                const res = await fetch('/api/feedback/detail/' + id);
+                if (res.status === 401) { window.location.href = '/login'; return; }
+                const fb = await res.json();
+                const userEmail = fb.userId ? (fb.userId.email || fb.userId.username || 'N/A') : 'N/A';
+                const statusOpts = ['open', 'in_progress', 'resolved', 'closed'].map(s =>
+                    '<option value="' + s + '" ' + (fb.status === s ? 'selected' : '') + '>' +
+                        (s === 'open' ? 'Đang chờ' : s === 'in_progress' ? 'Đang xử lý' : s === 'resolved' ? 'Đã xử lý' : 'Đã đóng') +
+                    '</option>'
+                ).join('');
+                const priorityOpts = ['low', 'medium', 'high', 'critical'].map(p =>
+                    '<option value="' + p + '" ' + (fb.priority === p ? 'selected' : '') + '>' +
+                        (p === 'low' ? 'Thấp' : p === 'medium' ? 'Trung bình' : p === 'high' ? 'Cao' : 'Cực kỳ quan trọng') +
+                    '</option>'
+                ).join('');
+
+                document.getElementById('feedbackDetailBody').innerHTML =
+                    '<div class="detail-row"><label>Người gửi:</label><div class="value"><strong>' + escHtml(userEmail) + '</strong></div></div>' +
+                    '<div class="detail-row"><label>Loại:</label><div class="value"><span class="type-badge type-' + fb.type + '">' +
+                        (fb.type === 'bug' ? 'Lỗi' : fb.type === 'feature' ? 'Yêu cầu tính năng' : fb.type === 'improvement' ? 'Cải tiến' : 'Câu hỏi') +
+                    '</span></div></div>' +
+                    '<div class="detail-row"><label>Tính năng:</label><div class="value"><strong>' + escHtml(fb.feature) + '</strong></div></div>' +
+                    '<div class="detail-row"><label>Tiêu đề:</label><div class="value"><strong>' + escHtml(fb.title) + '</strong></div></div>' +
+                    '<div class="detail-row"><label>Mô tả:</label></div>' +
+                    '<div class="detail-desc">' + escHtml(fb.description) + '</div>' +
+                    '<div class="detail-row"><label>Ngày:</label><div class="value">' + new Date(fb.createdAt).toLocaleString('vi-VN') + '</div></div>' +
+                    '<hr class="divider" style="margin:16px 0">' +
+                    '<h3 style="margin-bottom:12px;font-size:15px;"><i class="fas fa-cog"></i> Quản lý</h3>' +
+                    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">' +
+                        '<div class="form-group"><label>Trạng thái</label><select id="editStatus" class="form-input" style="width:100%">' + statusOpts + '</select></div>' +
+                        '<div class="form-group"><label>Ưu tiên</label><select id="editPriority" class="form-input" style="width:100%">' + priorityOpts + '</select></div>' +
+                    '</div>' +
+                    '<div class="form-group admin-note-area">' +
+                        '<label>Phản hồi của admin (người dùng sẽ thấy phản hồi này)</label>' +
+                        '<textarea id="editAdminNote" placeholder="Nhập phản hồi cho người dùng..." rows="4">' + escHtml(fb.adminNote || '') + '</textarea>' +
+                    '</div>' +
+                    '<div class="form-actions" style="margin-top:16px;justify-content:flex-end;display:flex;gap:8px">' +
+                        '<button class="btn btn-primary" onclick="updateFeedback(\'' + fb._id + '\')"><i class="fas fa-check"></i> Cập nhật</button>' +
+                        '<button class="btn btn-danger" onclick="deleteFeedback(\'' + fb._id + '\')"><i class="fas fa-trash"></i> Xóa</button>' +
+                    '</div>';
+
+                document.getElementById('feedbackModal').classList.add('active');
+            } catch (err) {
+                showToast('Lỗi: ' + err.message, 'error');
+            }
+        }
+
+        async function updateFeedback(id) {
+            try {
+                const body = {
+                    status: document.getElementById('editStatus').value,
+                    priority: document.getElementById('editPriority').value,
+                    adminNote: document.getElementById('editAdminNote').value
+                };
+                const res = await fetch('/api/feedback/' + id, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                if (res.status === 401) { window.location.href = '/login'; return; }
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Lỗi');
+                showToast('Cập nhật thành công!', 'success');
+                closeDetail();
+                loadFeedback();
+            } catch (err) {
+                showToast('Lỗi: ' + err.message, 'error');
+            }
+        }
+
+        async function deleteFeedback(id) {
+            if (!confirm('Xóa góp ý này?')) return;
+            try {
+                const res = await fetch('/api/feedback/' + id, { method: 'DELETE' });
+                if (res.status === 401) { window.location.href = '/login'; return; }
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Lỗi');
+                showToast('Đã xóa', 'success');
+                closeDetail();
+                loadFeedback();
+            } catch (err) {
+                showToast('Lỗi: ' + err.message, 'error');
+            }
+        }
+
+        function closeDetail() { document.getElementById('feedbackModal').classList.remove('active'); }
+
+        function escHtml(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
+        function showToast(msg, type) {
+            type = type || 'info';
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = 'toast show toast-' + type;
+            setTimeout(() => { toast.className = 'toast'; }, 3000);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', loadFeedback);
+    </script>
+</body>
+</html>

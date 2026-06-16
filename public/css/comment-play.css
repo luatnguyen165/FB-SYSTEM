@@ -4,7 +4,7 @@
 
 /* Hero */
 .cp-hero {
-    background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(99, 102, 241, 0.04));
+    background: linear-gradient(135deg, var(--primary-light), var(--bg-hover));
     border: 1px solid var(--border);
     border-radius: var(--radius-xl);
     padding: 28px 32px;
@@ -21,7 +21,7 @@
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, #10b981, #2563eb);
+    background: var(--primary-gradient);
 }
 
 .cp-hero-content {
@@ -41,14 +41,14 @@
 .cp-hero-icon {
     width: 52px;
     height: 52px;
-    background: linear-gradient(135deg, #10b981, #059669);
+    background: var(--primary-gradient);
     border-radius: var(--radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.4rem;
     color: white;
-    box-shadow: 0 8px 16px rgba(16, 185, 129, 0.25);
+    box-shadow: 0 8px 16px rgba(37, 99, 235, 0.25);
 }
 .cp-hero-title h1 {
     font-size: 1.5rem;
@@ -63,8 +63,8 @@
 .cp-hero-badge {
     font-size: 0.7rem;
     font-weight: 700;
-    background: rgba(16,185,129,0.15);
-    color: #059669;
+    background: var(--primary-light);
+    color: var(--primary);
     padding: 3px 10px;
     border-radius: 100px;
     letter-spacing: 0;
@@ -73,11 +73,11 @@
     color: var(--text-muted);
     font-size: 0.875rem;
     margin: 0;
-    max-width: 600px;
+    max-width: 520px;
     line-height: 1.6;
 }
 .btn-cp-hero {
-    background: linear-gradient(135deg, #10b981, #059669);
+    background: var(--primary-gradient);
     color: white;
     border: none;
     padding: 12px 22px;
@@ -89,12 +89,12 @@
     align-items: center;
     gap: 8px;
     transition: all 0.2s;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
     white-space: nowrap;
 }
 .btn-cp-hero:hover {
     transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
 }
 
 /* Stats */
@@ -195,9 +195,9 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(37,99,235,0.05));
+    background: linear-gradient(135deg, var(--primary-light), rgba(37,99,235,0.05));
     border-radius: 50%;
-    color: #10b981;
+    color: var(--primary);
 }
 .cp-empty p {
     margin: 12px 0 20px;
@@ -222,14 +222,14 @@
     box-shadow: var(--shadow-sm);
 }
 .cp-card-active {
-    border-left: 4px solid #10b981;
+    border-left: 4px solid var(--primary);
 }
 .cp-card-paused {
-    border-left: 4px solid #f59e0b;
+    border-left: 4px solid var(--warning);
     opacity: 0.75;
 }
 .cp-card-stopped {
-    border-left: 4px solid #9ca3af;
+    border-left: 4px solid var(--text-light);
     opacity: 0.6;
 }
 
@@ -249,12 +249,12 @@
     font-weight: 600;
 }
 .cp-status-running {
-    background: rgba(16,185,129,0.1);
-    color: #059669;
+    background: var(--primary-light);
+    color: var(--primary);
 }
 .cp-status-paused {
-    background: rgba(245,158,11,0.1);
-    color: #d97706;
+    background: var(--warning-light);
+    color: var(--warning);
 }
 .cp-status-stopped {
     background: rgba(156,163,175,0.1);
@@ -297,14 +297,29 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(16,185,129,0.08);
+    background: var(--primary-light);
     border-radius: 50%;
     font-size: 0.65rem;
-    color: #10b981;
+    color: var(--primary);
     flex-shrink: 0;
 }
 .cp-schedule-item strong {
     color: var(--text-main);
+}
+.cp-group-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: linear-gradient(135deg, var(--primary-light), rgba(139,92,246,0.08));
+    color: var(--primary);
+    padding: 2px 10px;
+    border-radius: 100px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    border: 1px solid rgba(37,99,235,0.15);
+}
+.cp-schedule-item .cp-group-badge {
+    font-size: 0.72rem;
 }
 
 /* Time items */
@@ -364,18 +379,18 @@
     color: var(--text-main);
 }
 .cp-btn-run {
-    background: rgba(16,185,129,0.08);
-    color: #10b981;
+    background: var(--primary-light);
+    color: var(--primary);
     border-color: rgba(16,185,129,0.2);
 }
 .cp-btn-run:hover {
-    background: #10b981 !important;
+    background: var(--primary) !important;
     color: white !important;
-    border-color: #10b981 !important;
+    border-color: var(--primary) !important;
 }
 .cp-btn-toggle:hover {
-    background: rgba(245,158,11,0.1) !important;
-    color: #d97706 !important;
+    background: var(--warning-light) !important;
+    color: var(--warning) !important;
     border-color: rgba(245,158,11,0.3) !important;
 }
 .cp-btn-delete:hover {
@@ -448,8 +463,8 @@
 }
 
 #playModal .modal-header h3 i {
-    background: linear-gradient(135deg, #10b981, #059669);
-    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.25);
+    background: var(--primary-gradient);
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
 }
 
 /* Modal close button - style riêng */
@@ -565,7 +580,7 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.07);
 }
 .cp-tab.active i {
-    color: #10b981;
+    color: var(--primary);
 }
 .cp-tab-content {
     display: none;
@@ -578,7 +593,7 @@
 
 .cp-tab-hint {
     padding: 12px 16px;
-    background: linear-gradient(135deg, rgba(16,185,129,0.06), rgba(99,102,241,0.03));
+    background: linear-gradient(135deg, var(--primary-light), rgba(99,102,241,0.03));
     border: 1px dashed rgba(16,185,129,0.25);
     border-radius: 10px;
     font-size: 0.82rem;
@@ -588,7 +603,7 @@
     gap: 8px;
 }
 .cp-tab-hint i {
-    color: #10b981;
+    color: var(--primary);
 }
 
 /* Form row */
@@ -610,7 +625,7 @@
 }
 .input-group .input-suffix {
     padding: 12px 14px;
-    background: linear-gradient(135deg, rgba(16,185,129,0.06), transparent);
+    background: linear-gradient(135deg, var(--primary-light), transparent);
     border: 1.5px solid var(--border);
     border-left: none;
     border-radius: 0 10px 10px 0;
@@ -640,16 +655,16 @@
     transition: all 0.2s;
 }
 .cp-checkbox-label:hover {
-    border-color: #10b981;
-    background: rgba(16,185,129,0.04);
+    border-color: var(--primary);
+    background: var(--primary-light);
 }
 .cp-checkbox-label:has(input:checked) {
-    border-color: #10b981;
-    background: rgba(16,185,129,0.06);
-    color: #059669;
+    border-color: var(--primary);
+    background: var(--primary-light);
+    color: var(--primary);
 }
 .cp-checkbox-label input[type="checkbox"] {
-    accent-color: #10b981;
+    accent-color: var(--primary);
     width: 16px;
     height: 16px;
 }
@@ -692,8 +707,8 @@
 #playForm input:focus,
 #playForm textarea:focus,
 #playForm select:focus {
-    border-color: #10b981;
-    box-shadow: 0 0 0 3px rgba(16,185,129,0.12);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 #playForm textarea {
     resize: vertical;
@@ -752,7 +767,7 @@
     padding: 11px 28px;
     border: none;
     border-radius: 10px;
-    background: linear-gradient(135deg, #10b981, #059669);
+    background: var(--primary-gradient);
     color: white;
     font-weight: 600;
     font-size: 0.875rem;
@@ -761,12 +776,12 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
     letter-spacing: 0.2px;
 }
 .form-actions .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 22px rgba(16, 185, 129, 0.35);
+    box-shadow: 0 8px 22px rgba(37, 99, 235, 0.35);
 }
 .form-actions .btn-primary:active {
     transform: translateY(0);
@@ -806,12 +821,12 @@
     font-size: 0.75rem;
 }
 .cp-log-success .cp-log-icon {
-    background: rgba(16,185,129,0.1);
-    color: #10b981;
+    background: var(--primary-light);
+    color: var(--primary);
 }
 .cp-log-error .cp-log-icon {
-    background: rgba(239,68,68,0.1);
-    color: #ef4444;
+    background: var(--danger-light);
+    color: var(--danger);
 }
 .cp-log-info {
     flex: 1;
@@ -833,8 +848,8 @@
 .cp-log-status {
     font-weight: 600;
 }
-.cp-log-success .cp-log-status { color: #10b981; }
-.cp-log-error .cp-log-status { color: #ef4444; }
+.cp-log-success .cp-log-status { color: var(--primary); }
+.cp-log-error .cp-log-status { color: var(--danger); }
 .cp-log-time {
     font-size: 0.72rem;
     color: var(--text-light);
@@ -888,12 +903,12 @@
 }
 
 .cp-comment-pick-item:has(input:checked) {
-    border-color: #10b981;
-    background: rgba(16,185,129,0.06);
+    border-color: var(--primary);
+    background: var(--primary-light);
 }
 
 .cp-comment-pick-item input[type="checkbox"] {
-    accent-color: #10b981;
+    accent-color: var(--primary);
     width: 16px;
     height: 16px;
     flex-shrink: 0;

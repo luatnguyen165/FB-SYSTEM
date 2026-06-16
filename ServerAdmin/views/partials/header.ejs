@@ -1,0 +1,142 @@
+<%
+// Determine active page
+var page = typeof page !== 'undefined' ? page : '';
+%>
+<header class="header" id="header">
+    <div class="header-inner">
+        <a href="/" class="header-logo">
+            <div class="logo-icon"><i class="fas fa-bolt"></i></div>
+            <span>FB-SYSTEM</span>
+        </a>
+        <nav class="header-nav" id="headerNav">
+            <a href="/" class="<%= page === 'home' ? 'active' : '' %>">Trang chủ</a>
+            <div class="nav-dropdown">
+                <a href="/<%= page === 'home' ? '#' : '' %>features" class="dropdown-trigger<%= ['schedule','ai-content','auto-comment','ai-scan','competitor','analytics'].includes(page) ? ' active' : '' %>">
+                    Tính năng <i class="fas fa-chevron-down dropdown-arrow"></i>
+                </a>
+                <div class="dropdown-menu">
+                    <a href="/features/schedule" class="dropdown-item<%= page === 'schedule' ? ' active' : '' %>">
+                        <div class="dropdown-icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">
+                            <i class="fas fa-calendar-check"></i>
+                        </div>
+                        <div class="dropdown-text">
+                            <strong>Lịch đăng bài</strong>
+                            <span>Lập lịch đa nền tảng</span>
+                        </div>
+                    </a>
+                    <a href="/features/ai-content" class="dropdown-item<%= page === 'ai-content' ? ' active' : '' %>">
+                        <div class="dropdown-icon" style="background:linear-gradient(135deg,#ec4899,#f472b6)">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div class="dropdown-text">
+                            <strong>AI Content</strong>
+                            <span>Tạo nội dung tự động</span>
+                        </div>
+                    </a>
+                    <a href="/features/auto-comment" class="dropdown-item<%= page === 'auto-comment' ? ' active' : '' %>">
+                        <div class="dropdown-icon" style="background:linear-gradient(135deg,#10b981,#34d399)">
+                            <i class="fas fa-comments"></i>
+                        </div>
+                        <div class="dropdown-text">
+                            <strong>Auto Comment</strong>
+                            <span>Tương tác thông minh</span>
+                        </div>
+                    </a>
+                    <a href="/features/ai-scan" class="dropdown-item<%= page === 'ai-scan' ? ' active' : '' %>">
+                        <div class="dropdown-icon" style="background:linear-gradient(135deg,#f59e0b,#fbbf24)">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <div class="dropdown-text">
+                            <strong>AI Scan</strong>
+                            <span>Quét & phân tích thị trường</span>
+                        </div>
+                    </a>
+                    <a href="/features/competitor" class="dropdown-item<%= page === 'competitor' ? ' active' : '' %>">
+                        <div class="dropdown-icon" style="background:linear-gradient(135deg,#ef4444,#f87171)">
+                            <i class="fas fa-users-viewfinder"></i>
+                        </div>
+                        <div class="dropdown-text">
+                            <strong>Theo dõi đối thủ</strong>
+                            <span>Giám sát cạnh tranh</span>
+                        </div>
+                    </a>
+                    <a href="/features/analytics" class="dropdown-item<%= page === 'analytics' ? ' active' : '' %>">
+                        <div class="dropdown-icon" style="background:linear-gradient(135deg,#0ea5e9,#38bdf8)">
+                            <i class="fas fa-chart-bar"></i>
+                        </div>
+                        <div class="dropdown-text">
+                            <strong>Phân tích</strong>
+                            <span>Báo cáo & Analytics</span>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            <a href="/download" class="<%= page === 'download' ? 'active' : '' %>">Tải xuống</a>
+            <a href="/docs" class="<%= page === 'docs' ? 'active' : '' %>">Tài liệu</a>
+            <!-- <a href="/pricing" class="<%= page === 'pricing' ? 'active' : '' %>">Bảng giá</a> -->
+            <a href="/about" class="<%= page === 'about' ? 'active' : '' %>">Về chúng tôi</a>
+            <a href="/blog" class="<%= page === 'blog' ? 'active' : '' %>">Blog</a>
+            <a href="/careers" class="<%= page === 'careers' ? 'active' : '' %>">Tuyển dụng</a>
+            <!-- <a href="/<%= page === 'home' ? '#' : '' %>faq">FAQ</a> -->
+            <a href="/login" class="btn btn-primary btn-sm"><i class="fas fa-arrow-right"></i> Đăng nhập</a>
+        </nav>
+        <button class="mobile-toggle" id="mobileToggle" aria-label="Menu">
+            <span></span>
+        </button>
+    </div>
+</header>
+
+<!-- Scroll Progress Bar -->
+<div class="scroll-progress"></div>
+
+<script>
+// Mobile toggle
+const mobileToggle = document.getElementById('mobileToggle');
+const headerNav = document.getElementById('headerNav');
+
+mobileToggle?.addEventListener('click', function() {
+    headerNav.classList.toggle('active');
+    headerNav.classList.toggle('open');
+    this.classList.toggle('active');
+});
+
+// Dropdown toggle on mobile
+const dropdownTrigger = document.querySelector('.dropdown-trigger');
+const navDropdown = document.querySelector('.nav-dropdown');
+
+dropdownTrigger?.addEventListener('click', function(e) {
+    if (window.innerWidth <= 768) {
+        e.preventDefault();
+        navDropdown.classList.toggle('open');
+    }
+});
+
+// Header scroll effect
+window.addEventListener('scroll', function() {
+    const header = document.getElementById('header');
+    if (window.scrollY > 50) {
+        header.classList.add('scrolled');
+    } else {
+        header.classList.remove('scrolled');
+    }
+});
+
+// Close mobile menu on link click
+document.querySelectorAll('.header-nav a:not(.dropdown-trigger)').forEach(link => {
+    link.addEventListener('click', function() {
+        if (window.innerWidth <= 768) {
+            headerNav.classList.remove('active', 'open');
+            mobileToggle?.classList.remove('active');
+            navDropdown?.classList.remove('open');
+        }
+    });
+});
+
+// Close dropdown on escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        navDropdown?.classList.remove('open');
+    }
+});
+</script>
+<script src="/js/animations.js"></script>

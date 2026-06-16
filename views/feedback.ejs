@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Góp Ý & Yêu Cầu - ReelsFlow</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/feedback.css">
+    <link rel="stylesheet" href="/css/toast.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<%- include('partials/sidebar', { currentPage: 'feedback' }) %>
+<div class="main-content">
+    <%- include('partials/header') %>
+    <div class="content-body">
+
+        <!-- Hero -->
+        <div class="feedback-hero">
+            <div class="feedback-hero-content">
+                <div class="feedback-hero-left">
+                    <div class="feedback-hero-title">
+                        <div class="feedback-hero-icon"><i class="fa-solid fa-message"></i></div>
+                        <h1>Góp Ý & Yêu Cầu</h1>
+                    </div>
+                    <p class="feedback-hero-subtitle">Bạn muốn AI phát triển theo hướng nào? Hãy gửi ý tưởng, yêu cầu tính năng hoặc báo lỗi tại đây.</p>
+                </div>
+                <button class="btn-primary" id="btnNewFeedback"><i class="fa-solid fa-plus"></i> Gửi Góp Ý</button>
+            </div>
+        </div>
+
+        <!-- Feedback List -->
+        <div class="feedback-list" id="feedbackList">
+            <% if (feedbacks.length === 0) { %>
+            <div class="feedback-empty">
+                <i class="fa-solid fa-message"></i>
+                <h3>Chưa có góp ý nào</h3>
+                <p>Hãy gửi góp ý đầu tiên để giúp chúng tôi phát triển AI theo đúng hướng bạn mong muốn!</p>
+            </div>
+            <% } else { %>
+                <% feedbacks.forEach(function(fb) { %>
+                <div class="feedback-card" data-id="<%= fb._id %>">
+                    <div class="feedback-card-header">
+                        <div class="feedback-type-badge type-<%= fb.type %>">
+                            <i class="fa-solid <%= fb.type === 'bug' ? 'fa-bug' : fb.type === 'feature' ? 'fa-lightbulb' : fb.type === 'improvement' ? 'fa-arrow-up' : 'fa-question' %>"></i>
+                            <%= fb.type === 'bug' ? 'Lỗi' : fb.type === 'feature' ? 'Tính năng' : fb.type === 'improvement' ? 'Cải tiến' : 'Câu hỏi' %>
+                        </div>
+                        <div class="feedback-priority priority-<%= fb.priority %>">
+                            <i class="fa-solid fa-flag"></i> <%= fb.priority === 'critical' ? 'Cực kỳ quan trọng' : fb.priority === 'high' ? 'Quan trọng' : fb.priority === 'medium' ? 'Bình thường' : 'Nhẹ' %>
+                        </div>
+                        <div class="feedback-status status-<%= fb.status %>">
+                            <%= fb.status === 'open' ? 'Đang chờ' : fb.status === 'in_progress' ? 'Đang xử lý' : fb.status === 'resolved' ? 'Đã xử lý' : 'Đã đóng' %>
+                        </div>
+                    </div>
+                    <div class="feedback-card-body">
+                        <div class="feedback-card-title-row">
+                            <h3><%= fb.title %></h3>
+                        </div>
+                        <p><%= fb.description %></p>
+                        <div class="feedback-meta">
+                            <span><i class="fa-solid fa-tag"></i> <%= fb.feature %></span>
+                            <span><i class="fa-solid fa-clock"></i> <%= new Date(fb.createdAt).toLocaleDateString('vi-VN') %></span>
+                        </div>
+                        <% if (fb.adminNote) { %>
+                        <div class="feedback-admin-note">
+                            <i class="fa-solid fa-reply"></i> <strong>Phản hồi:</strong> <%= fb.adminNote %>
+                        </div>
+                        <% } %>
+                    </div>
+                    <div class="feedback-card-actions">
+                        <button class="btn-sm btn-edit" onclick="editFeedback('<%= fb._id %>')"><i class="fa-solid fa-pen"></i> Sửa</button>
+                        <button class="btn-sm btn-delete" onclick="deleteFeedback('<%= fb._id %>')"><i class="fa-solid fa-trash"></i> Xóa</button>
+                    </div>
+                </div>
+                <% }); %>
+            <% } %>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Tạo/Sửa Góp Ý -->
+<div class="feedback-modal-overlay" id="feedbackModal" style="display:none;">
+    <div class="feedback-modal">
+        <div class="feedback-modal-header">
+            <h2 id="feedbackModalTitle"><i class="fa-solid fa-pen"></i> Gửi Góp Ý</h2>
+            <button class="feedback-modal-close" onclick="closeFeedbackModal()">&times;</button>
+        </div>
+        <div class="feedback-modal-body">
+            <input type="hidden" id="feedbackEditId" value="">
+
+            <div class="form-group">
+                <label>Loại góp ý</label>
+                <div class="feedback-type-selector">
+                    <label class="feedback-type-chip active" data-type="feature" onclick="selectFeedbackType(this)">
+                        <input type="radio" name="fbType" value="feature" checked>
+                        <i class="fa-solid fa-lightbulb"></i> <span>Yêu cầu tính năng</span>
+                    </label>
+                    <label class="feedback-type-chip" data-type="improvement" onclick="selectFeedbackType(this)">
+                        <input type="radio" name="fbType" value="improvement">
+                        <i class="fa-solid fa-arrow-up"></i> <span>Cải tiến</span>
+                    </label>
+                    <label class="feedback-type-chip" data-type="bug" onclick="selectFeedbackType(this)">
+                        <input type="radio" name="fbType" value="bug">
+                        <i class="fa-solid fa-bug"></i> <span>Báo lỗi</span>
+                    </label>
+                    <label class="feedback-type-chip" data-type="question" onclick="selectFeedbackType(this)">
+                        <input type="radio" name="fbType" value="question">
+                        <i class="fa-solid fa-question"></i> <span>Câu hỏi</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Tính năng liên quan <span class="required">*</span></label>
+                <select id="feedbackFeature" class="form-input">
+                    <option value="">-- Chọn tính năng --</option>
+                    <option value="AI Content Creator">AI Content Creator</option>
+                    <option value="AI Quét Nhu Cầu">AI Quét Nhu Cầu</option>
+                    <option value="AI Comment">AI Comment</option>
+                    <option value="Kịch Bản Comment">Kịch Bản Comment</option>
+                    <option value="Đăng Bài Hình Ảnh">Đăng Bài Hình Ảnh</option>
+                    <option value="Đăng Reels/Video">Đăng Reels/Video</option>
+                    <% if (typeof features !== 'undefined' && features.competitors !== false) { %>
+                    <option value="Theo Dõi Đối Thủ">Theo Dõi Đối Thủ</option>
+                    <% } %>
+                    <% if (typeof features !== 'undefined' && features['trend-music'] !== false) { %>
+                    <option value="Music Trending">Music Trending</option>
+                    <% } %>
+                    <option value="Kho Video">Kho Video</option>
+                    <option value="Quản Lý Kênh">Quản Lý Kênh</option>
+                    <option value="Cài Đặt">Cài Đặt</option>
+                    <option value="Khác">Khác</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Tiêu đề <span class="required">*</span></label>
+                <input type="text" id="feedbackTitle" class="form-input" placeholder="Tóm tắt ngắn gọn ý tưởng của bạn...">
+            </div>
+
+            <div class="form-group">
+                <label>Mô tả chi tiết <span class="required">*</span></label>
+                <textarea id="feedbackDescription" rows="6" class="form-input" placeholder="Mô tả chi tiết về ý tưởng, cách bạn muốn AI hoạt động, ví dụ cụ thể...&#10;&#10;VD: Tôi muốn AI tự động học theo hướng quảng cáo sản phẩm X, với phong cách Y..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Mức độ ưu tiên</label>
+                <div class="feedback-priority-selector">
+                    <label class="feedback-priority-opt" data-priority="low" onclick="selectFeedbackPriority(this)">
+                        <input type="radio" name="fbPriority" value="low">
+                        <i class="fa-solid fa-flag"></i> Thấp
+                    </label>
+                    <label class="feedback-priority-opt active" data-priority="medium" onclick="selectFeedbackPriority(this)">
+                        <input type="radio" name="fbPriority" value="medium" checked>
+                        <i class="fa-solid fa-flag"></i> Trung bình
+                    </label>
+                    <label class="feedback-priority-opt" data-priority="high" onclick="selectFeedbackPriority(this)">
+                        <input type="radio" name="fbPriority" value="high">
+                        <i class="fa-solid fa-flag"></i> Cao
+                    </label>
+                    <label class="feedback-priority-opt" data-priority="critical" onclick="selectFeedbackPriority(this)">
+                        <input type="radio" name="fbPriority" value="critical">
+                        <i class="fa-solid fa-flag"></i> Cực kỳ quan trọng
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="feedback-modal-footer">
+            <button class="btn-secondary" onclick="closeFeedbackModal()">Hủy</button>
+            <button class="btn-primary" id="btnSaveFeedback"><i class="fa-solid fa-paper-plane"></i> Gửi Góp Ý</button>
+        </div>
+    </div>
+</div>
+
+<script src="/js/base.js"></script>
+<script src="/js/feedback.js"></script>
+</body>
+</html>

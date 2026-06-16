@@ -114,7 +114,23 @@ async function getOrOpenFacebookContext(userId, accountName, accountType, platfo
                     }
                 } catch (e) { }
                 try {
-                    require('child_process').execSync('taskkill /F /IM chrome.exe 2>nul', { stdio: 'ignore', timeout: 5000 });
+                    // P0 FIX: Chỉ kill Chrome processes đang dùng đúng userSessionDir, không kill toàn bộ Chrome
+                    const { execSync } = require('child_process');
+                    try {
+                        const wmicOutput2 = execSync(`wmic process where "name='chrome.exe'" get CommandLine,ProcessId /format:list`, { encoding: 'utf-8', timeout: 5000 });
+                        const lines2 = wmicOutput2.split('\n');
+                        let currentPid2 = '';
+                        for (const line of lines2) {
+                            const trimmed = line.trim();
+                            if (trimmed.startsWith('ProcessId=')) {
+                                currentPid2 = trimmed.replace('ProcessId=', '').trim();
+                            }
+                            if (trimmed.startsWith('CommandLine=') && trimmed.includes(path.basename(userSessionDir)) && currentPid2) {
+                                try { execSync(`taskkill /F /PID ${currentPid2}`, { stdio: 'ignore', timeout: 3000 }); } catch (e2) { }
+                                currentPid2 = '';
+                            }
+                        }
+                    } catch (wmicErr2) { }
                     await new Promise(r => setTimeout(r, 2000));
                 } catch (e) { }
             } else {

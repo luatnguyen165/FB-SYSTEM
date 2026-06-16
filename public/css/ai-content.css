@@ -1139,7 +1139,7 @@ textarea.form-input { resize: vertical; font-family: inherit; line-height: 1.6; 
 }
 .platform-chip i { font-size: 16px; }
 .platform-chip:hover { border-color: var(--border-dark); background: var(--bg-hover); }
-.platform-chip input[type="radio"] { display: none; }
+.platform-chip input { display: none; }
 .platform-chip__check {
     display: none;
     width: 18px;
@@ -1151,12 +1151,12 @@ textarea.form-input { resize: vertical; font-family: inherit; line-height: 1.6; 
     justify-content: center;
     font-size: 10px;
 }
-.platform-chip input[type="radio"]:checked ~ .platform-chip__check { display: inline-flex; }
-.platform-chip[data-platform="FB"] input[type="radio"]:checked ~ span,
+.platform-chip input:checked ~ .platform-chip__check { display: inline-flex; }
+.platform-chip[data-platform="FB"] input:checked ~ span,
 .platform-chip[data-platform="FB"]:has(input:checked) { border-color: var(--fb-color, #1877f2); background: rgba(24,119,242,0.06); color: var(--fb-color, #1877f2); }
-.platform-chip[data-platform="IG"] input[type="radio"]:checked ~ span,
+.platform-chip[data-platform="IG"] input:checked ~ span,
 .platform-chip[data-platform="IG"]:has(input:checked) { border-color: var(--ig-color, #e1306c); background: rgba(225,48,108,0.06); color: var(--ig-color, #e1306c); }
-.platform-chip[data-platform="TT"] input[type="radio"]:checked ~ span,
+.platform-chip[data-platform="TT"] input:checked ~ span,
 .platform-chip[data-platform="TT"]:has(input:checked) { border-color: var(--tt-color, #000); background: rgba(0,0,0,0.04); color: var(--tt-color, #000); }
 .platform-chip:has(input:checked) { font-weight: 700; }
 
@@ -1497,4 +1497,64 @@ textarea.form-input { resize: vertical; font-family: inherit; line-height: 1.6; 
     .ai-content-filter { flex-direction: column; }
     .post-edit-title-input { font-size: 16px; }
     .post-edit-textarea { min-height: 240px; font-size: 14px; }
+}
+
+/* ===== Products Tab ===== */
+.product-card {
+    border-left: 3px solid var(--info, #0ea5e9);
+}
+.direction-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--bg-secondary, #f1f5f9);
+}
+.direction-advertising {
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fcd34d;
+}
+.direction-purchase {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #86efac;
+}
+.direction-hybrid {
+    background: #e0e7ff;
+    color: #4338ca;
+    border: 1px solid #a5b4fc;
+}
+.direction-selector {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+.direction-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: var(--radius-md, 10px);
+    border: 2px solid var(--border-color, #e2e8f0);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+    font-weight: 500;
+    background: var(--card-bg, #fff);
+}
+.direction-option:hover {
+    border-color: var(--primary, #6366f1);
+    background: var(--bg-secondary, #f8fafc);
+}
+.direction-option input[type="radio"] {
+    display: none;
+}
+.direction-option.active,
+.direction-option:has(input:checked) {
+    border-color: var(--primary, #6366f1);
+    background: #eef2ff;
+    color: var(--primary, #6366f1);
 }

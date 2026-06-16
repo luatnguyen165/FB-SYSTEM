@@ -259,7 +259,7 @@
     align-items: center;
     gap: 6px;
     padding: 7px 16px;
-    background: linear-gradient(135deg, #10b981, #059669);
+    background: var(--primary-gradient);
     color: white;
     border: none;
     border-radius: var(--radius-sm);
@@ -268,13 +268,14 @@
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
-    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
 }
 
 .config-run-btn:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
-    background: linear-gradient(135deg, #059669, #047857);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+    background: var(--primary-gradient);
+    filter: brightness(1.1);
 }
 
 .config-run-btn i {

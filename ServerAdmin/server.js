@@ -326,6 +326,144 @@ app.put('/api/features', requireAdmin, async (req, res) => {
     }
 });
 
+// Feedback Schema
+const MessageSchema = new mongoose.Schema({
+    text: { type: String, required: true },
+    isAdmin: { type: Boolean, default: false },
+    userName: { type: String, default: '' },
+    createdAt: { type: Date, default: Date.now }
+}, { _id: false });
+
+const FeedbackSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    feature: { type: String, required: true },
+    type: { type: String, enum: ['bug', 'feature', 'improvement', 'question'], default: 'bug' },
+    title: { type: String, required: true },
+    description: { type: String, required: true },
+    status: { type: String, enum: ['open', 'in_progress', 'resolved', 'closed'], default: 'open' },
+    priority: { type: String, enum: ['low', 'medium', 'high', 'critical'], default: 'medium' },
+    attachments: [{ type: String }],
+    adminNote: { type: String, default: '' },
+    messages: { type: [MessageSchema], default: [] },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+});
+
+const Feedback = mongoose.model('Feedback', FeedbackSchema);
+
+// ========================
+// FEEDBACK API
+// ========================
+
+// POST /api/feedback - Tạo feedback mới (called by FB-SYSTEM)
+app.post('/api/feedback', async (req, res) => {
+    try {
+        const { userId, feature, type, title, description, priority } = req.body;
+        if (!userId || !title || !description) {
+            return res.status(400).json({ success: false, error: 'Thiếu thông tin bắt buộc' });
+        }
+        const feedback = new Feedback({ userId, feature, type, title, description, priority });
+        await feedback.save();
+        console.log('[ServerAdmin] Feedback created:', feedback._id);
+        res.status(201).json({ success: true, feedback });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// PUT /api/feedback/sync/:id - Đồng bộ cập nhật từ FB-SYSTEM
+app.put('/api/feedback/sync/:id', async (req, res) => {
+    try {
+        const { title, description, type, priority, feature, status } = req.body;
+        const updates = { updatedAt: new Date() };
+        if (title) updates.title = title;
+        if (description) updates.description = description;
+        if (type) updates.type = type;
+        if (priority) updates.priority = priority;
+        if (feature) updates.feature = feature;
+        if (status) updates.status = status;
+        const feedback = await Feedback.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true });
+        if (!feedback) return res.status(404).json({ success: false, error: 'Feedback not found' });
+        console.log('[ServerAdmin] Feedback synced:', feedback._id);
+        res.json({ success: true, feedback });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+
+// DELETE /api/feedback/sync/:id - Đồng bộ xóa từ FB-SYSTEM
+app.delete('/api/feedback/sync/:id', async (req, res) => {
+    try {
+        const feedback = await Feedback.findByIdAndDelete(req.params.id);
+        if (!feedback) return res.status(404).json({ success: false, error: 'Feedback not found' });
+        console.log('[ServerAdmin] Feedback deleted (sync):', req.params.id);
+        res.json({ success: true, message: 'Deleted' });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// GET /api/feedback - Danh sách feedback (protected)
+app.get('/api/feedback', requireAdmin, async (req, res) => {
+    try {
+        const search = req.query.search || '';
+        const status = req.query.status || '';
+        const type = req.query.type || '';
+        const priority = req.query.priority || '';
+        const filter = {};
+        if (search) filter.$or = [
+            { title: { $regex: search, $options: 'i' } },
+            { description: { $regex: search, $options: 'i' } }
+        ];
+        if (status) filter.status = status;
+        if (type) filter.type = type;
+        if (priority) filter.priority = priority;
+        const feedbacks = await Feedback.find(filter).populate('userId', 'email username').sort({ createdAt: -1 });
+        res.json({ feedbacks });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/feedback/detail/:id - Chi tiết feedback
+app.get('/api/feedback/detail/:id', requireAdmin, async (req, res) => {
+    try {
+        const feedback = await Feedback.findById(req.params.id).populate('userId', 'email username');
+        if (!feedback) return res.status(404).json({ error: 'Feedback not found' });
+        res.json(feedback);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// PUT /api/feedback/:id - Cập nhật feedback (admin)
+app.put('/api/feedback/:id', requireAdmin, async (req, res) => {
+    try {
+        const { status, priority, adminNote } = req.body;
+        const updates = { updatedAt: new Date() };
+        if (status) updates.status = status;
+        if (priority) updates.priority = priority;
+        if (adminNote !== undefined) updates.adminNote = adminNote;
+        const feedback = await Feedback.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true });
+        if (!feedback) return res.status(404).json({ error: 'Feedback not found' });
+        res.json({ message: 'Cập nhật thành công', feedback });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DELETE /api/feedback/:id - Xóa feedback (admin)
+app.delete('/api/feedback/:id', requireAdmin, async (req, res) => {
+    try {
+        const feedback = await Feedback.findByIdAndDelete(req.params.id);
+        if (!feedback) return res.status(404).json({ error: 'Feedback not found' });
+        res.json({ message: 'Xóa thành công' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ========================
 // API ROUTES (protected)
 // ========================
@@ -453,10 +591,56 @@ app.delete('/api/users/:id/devices/:deviceId', requireAdmin, async (req, res) =>
 });
 
 // ========================
+// LANDING PAGE ROUTES (public - no auth required)
+// ========================
+
+// GET / - Landing page (công ty quảng cáo FB-SYSTEM)
+app.get('/', (req, res) => {
+    // Nếu admin đã đăng nhập, chuyển đến dashboard
+    if (req.session && req.session.adminId) {
+        return res.render('dashboard', {
+            adminName: req.session.adminName || 'Admin',
+            adminEmail: req.session.adminEmail || ''
+        });
+    }
+    // Hiển thị landing page cho khách
+    res.render('landing/index');
+});
+
+// ========================
+// FEATURE PAGES (public)
+// ========================
+app.get('/features/schedule', (req, res) => { res.render('landing/features/schedule'); });
+app.get('/features/ai-content', (req, res) => { res.render('landing/features/ai-content'); });
+app.get('/features/auto-comment', (req, res) => { res.render('landing/features/auto-comment'); });
+app.get('/features/ai-scan', (req, res) => { res.render('landing/features/ai-scan'); });
+app.get('/features/competitor', (req, res) => { res.render('landing/features/competitor'); });
+app.get('/features/analytics', (req, res) => { res.render('landing/features/analytics'); });
+
+// ========================
+// LANDING SUBPAGES (public)
+// ========================
+app.get('/about', (req, res) => { res.render('landing/about'); });
+app.get('/blog', (req, res) => { res.render('landing/blog'); });
+app.get('/careers', (req, res) => { res.render('landing/careers'); });
+app.get('/privacy', (req, res) => { res.render('landing/privacy'); });
+app.get('/terms', (req, res) => { res.render('landing/terms'); });
+app.get('/download', (req, res) => { res.render('landing/download'); });
+app.get('/pricing', (req, res) => { res.render('landing/pricing'); });
+app.get('/docs', (req, res) => { res.render('landing/docs'); });
+
+// ========================
 // PAGE ROUTES (protected)
 // ========================
-app.get('/', requireAdmin, (req, res) => {
+app.get('/dashboard', requireAdmin, (req, res) => {
     res.render('dashboard', {
+        adminName: req.session.adminName || 'Admin',
+        adminEmail: req.session.adminEmail || ''
+    });
+});
+
+app.get('/feedback', requireAdmin, (req, res) => {
+    res.render('feedback', {
         adminName: req.session.adminName || 'Admin',
         adminEmail: req.session.adminEmail || ''
     });

@@ -24,8 +24,12 @@ function initSocketRealtime() {
             if (!data || !data._id) return;
             updateRowFromScheduleData(data);
             updateStatsFromStatusChange(data.status || '');
-            if (data.status === 'posted') showToast('Bài viết đã được đăng thành công!', 'success');
-            else if (data.status === 'failed') showToast('Bài viết đăng thất bại!', 'error');
+            // Chỉ show toast khi tất cả nền tảng đã hoàn tất (final=true)
+            // Bỏ qua toast cho từng platform riêng lẻ
+            if (data.final) {
+                if (data.status === 'posted') showToast('Bài viết đã được đăng thành công!', 'success');
+                else if (data.status === 'failed') showToast('Bài viết đăng thất bại!', 'error');
+            }
         });
 
         socket.on('disconnect', () => {

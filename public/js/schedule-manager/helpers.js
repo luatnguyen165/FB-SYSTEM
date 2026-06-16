@@ -16,13 +16,12 @@ const PLATFORM_META = {
     IG: { label: 'Instagram', icon: 'fa-brands fa-instagram', color: '#e1306c' },
     TT: { label: 'TikTok Video', icon: 'fa-brands fa-tiktok', color: '#000000' },
     YT: { label: 'YouTube Short', icon: 'fa-brands fa-youtube', color: '#ff0000' },
-    FR: { label: 'Facebook Reels', icon: 'fa-brands fa-facebook', color: '#1877f2' },
-    TA: { label: 'TikTok Affiliate', icon: 'fa-solid fa-link', color: '#555555' }
+    FR: { label: 'Facebook Reels', icon: 'fa-brands fa-facebook', color: '#1877f2' }
 };
 
 const POST_PLATFORMS = ['FB', 'IG'];
-const REELS_PLATFORMS = ['FR', 'YS', 'IG', 'TT', 'TA'];
-const PLATFORM_TO_CHANNEL = { FR: 'FB', YS: 'YT', IG: 'IG', TT: 'TT', TA: 'TT', FB: 'FB' };
+const REELS_PLATFORMS = ['FR', 'YS', 'IG', 'TT'];
+const PLATFORM_TO_CHANNEL = { FR: 'FB', YS: 'YT', IG: 'IG', TT: 'TT', FB: 'FB' };
 
 function debounce(fn, delay = 300) {
     let timer;

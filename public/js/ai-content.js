@@ -687,9 +687,19 @@ document.getElementById('btnSaveSchedule')?.addEventListener('click', async () =
 
     const topics = document.getElementById('scheduleTopics').value.split('\n').map(t => t.trim()).filter(Boolean);
 
+    // Get product and direction
+    const productId = document.getElementById('scheduleProductId').value || null;
+    let direction = '';
+    if (productId) {
+        const checkedDir = document.querySelector('input[name="scheduleDirection"]:checked');
+        if (checkedDir) direction = checkedDir.value;
+    }
+
     const body = {
         name,
         writingStyleId,
+        productId,
+        direction,
         dateRange: { startDate, endDate },
         timeSlots,
         contentConfig: {
@@ -1078,4 +1088,175 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         document.querySelectorAll('.ai-modal-overlay').forEach(m => m.style.display = 'none');
     }
+});
+
+// ==================== PRODUCT CRUD ====================
+function openProductModal(data) {
+    document.getElementById('productEditId').value = data ? data._id || '' : '';
+    document.getElementById('productName').value = data ? data.name || '' : '';
+    document.getElementById('productCategory').value = data ? data.category || '' : '';
+    document.getElementById('productPrice').value = data ? data.price || '' : '';
+    document.getElementById('productAudience').value = data ? data.audience || '' : '';
+    document.getElementById('productDescription').value = data ? data.description || '' : '';
+    document.getElementById('productSellingPoints').value = data ? (data.sellingPoints || []).join('\n') : '';
+    document.getElementById('productCompetitors').value = data ? (data.competitors || []).join('\n') : '';
+    document.getElementById('productStyleId').value = data ? data.writingStyleId || '' : '';
+
+    // Set direction
+    if (data && data.direction) {
+        const radio = document.querySelector('input[name="productDirection"][value="' + data.direction + '"]');
+        if (radio) radio.checked = true;
+        updateDirectionUI();
+    }
+
+    document.getElementById('productModalTitle').innerHTML = data
+        ? '<i class="fa-solid fa-box"></i> Sửa Sản Phẩm'
+        : '<i class="fa-solid fa-box"></i> Thêm Sản Phẩm';
+    document.getElementById('productModal').style.display = 'flex';
+
+    // Show direction group if AI analysis exists
+    document.getElementById('productDirectionGroup').style.display = data && data.aiAnalysis ? 'block' : 'none';
+}
+
+function closeProductModal() {
+    document.getElementById('productModal').style.display = 'none';
+}
+
+// Switch product direction option UI
+document.querySelectorAll('.direction-option').forEach(opt => {
+    opt.addEventListener('click', function() {
+        const radio = this.querySelector('input[type="radio"]');
+        if (radio) radio.checked = true;
+        updateDirectionUI();
+    });
+});
+
+function updateDirectionUI() {
+    document.querySelectorAll('.direction-option').forEach(o => {
+        const radio = o.querySelector('input[type="radio"]');
+        if (radio) {
+            o.classList.toggle('active', radio.checked);
+        }
+    });
+}
+
+// Save product
+document.getElementById('btnSaveProduct').addEventListener('click', async function() {
+    const id = document.getElementById('productEditId').value;
+    const name = document.getElementById('productName').value.trim();
+    if (!name) { showToast('Vui lòng nhập tên sản phẩm', 'error'); return; }
+
+    const payload = {
+        name: name,
+        category: document.getElementById('productCategory').value.trim(),
+        price: document.getElementById('productPrice').value.trim(),
+        audience: document.getElementById('productAudience').value.trim(),
+        description: document.getElementById('productDescription').value.trim(),
+        sellingPoints: document.getElementById('productSellingPoints').value.split('\n').filter(Boolean),
+        competitors: document.getElementById('productCompetitors').value.split('\n').filter(Boolean),
+        writingStyleId: document.getElementById('productStyleId').value || null,
+        direction: ''
+    };
+
+    const checkedRadio = document.querySelector('input[name="productDirection"]:checked');
+    if (checkedRadio) payload.direction = checkedRadio.value;
+
+    const btn = this;
+    btn.classList.add('btn-loading');
+    btn.innerHTML = '<i class="fa-solid fa-spinner"></i> Đang lưu...';
+
+    try {
+        const url = id ? `/ai-content/api/products/${id}` : '/ai-content/api/products';
+        const method = id ? 'PUT' : 'POST';
+        const res = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        showToast(id ? 'Đã cập nhật sản phẩm' : 'Đã thêm sản phẩm thành công');
+        closeProductModal();
+        setTimeout(() => location.reload(), 500);
+    } catch(e) {
+        showToast(e.message, 'error');
+    } finally {
+        btn.classList.remove('btn-loading');
+        btn.innerHTML = '<i class="fa-solid fa-save"></i> Lưu';
+    }
+});
+
+// Open new product modal
+document.getElementById('btnNewProduct').addEventListener('click', () => openProductModal(null));
+
+async function editProduct(id) {
+    try {
+        const res = await fetch(`/ai-content/api/products/${id}`);
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        openProductModal(data);
+    } catch(e) {
+        showToast(e.message, 'error');
+    }
+}
+
+async function deleteProduct(id) {
+    if (!(await showConfirm('Xóa sản phẩm này?'))) return;
+    try {
+        const res = await fetch(`/ai-content/api/products/${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        showToast('Đã xóa sản phẩm');
+        setTimeout(() => location.reload(), 500);
+    } catch(e) {
+        showToast(e.message, 'error');
+    }
+}
+
+async function analyzeProductAI(id) {
+    showToast('AI đang phân tích sản phẩm...');
+    try {
+        const res = await fetch(`/ai-content/api/products/${id}/analyze`, { method: 'POST' });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        showToast('Phân tích thành công!');
+        setTimeout(() => location.reload(), 500);
+    } catch(e) {
+        showToast(e.message, 'error');
+    }
+}
+
+// ==================== SCHEDULE PRODUCT INTEGRATION ====================
+function onScheduleProductChange() {
+    const select = document.getElementById('scheduleProductId');
+    const option = select.options[select.selectedIndex];
+    const direction = option ? option.dataset.direction || '' : '';
+    const group = document.getElementById('scheduleDirectionGroup');
+
+    if (select.value && direction) {
+        group.style.display = 'block';
+        // Auto-set direction from product
+        const radio = document.querySelector('input[name="scheduleDirection"][value="' + direction + '"]');
+        if (radio) radio.checked = true;
+        updateScheduleDirectionUI();
+    } else if (select.value) {
+        // Product selected but no direction yet, let user pick
+        group.style.display = 'block';
+    } else {
+        group.style.display = 'none';
+    }
+}
+
+function updateScheduleDirectionUI() {
+    document.querySelectorAll('#scheduleDirectionSelector .direction-option').forEach(o => {
+        const radio = o.querySelector('input[type="radio"]');
+        if (radio) o.classList.toggle('active', radio.checked);
+    });
+}
+
+// Listen for direction clicks in schedule modal
+document.querySelectorAll('#scheduleDirectionSelector .direction-option').forEach(opt => {
+    opt.addEventListener('click', function() {
+        const radio = this.querySelector('input[type="radio"]');
+        if (radio) {
+            radio.checked = true;
+            updateScheduleDirectionUI();
+        }
+    });
 });

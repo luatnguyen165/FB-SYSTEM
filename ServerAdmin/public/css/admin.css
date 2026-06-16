@@ -1013,6 +1013,196 @@ body {
     padding: 20px;
 }
 
+/* ===== FEEDBACK ===== */
+.feedback-stats-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.feedback-stat {
+    flex: 1;
+    min-width: 120px;
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    border: 1px solid var(--border);
+    text-align: center;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.feedback-stat:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+}
+
+.feedback-stat .num {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--primary);
+    line-height: 1.2;
+}
+
+.feedback-stat .label {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+.feedback-filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.feedback-filters select,
+.feedback-filters input {
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    background: var(--bg-card);
+    color: var(--text-main);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.feedback-filters select:focus,
+.feedback-filters input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.feedback-table-wrap {
+    overflow-x: auto;
+    border-radius: var(--radius-sm);
+}
+
+/* Feedback type badges */
+.type-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+}
+
+.type-badge.type-open { background: #dbeafe; color: #2563eb; }
+.type-badge.type-in_progress { background: #fef3c7; color: #d97706; }
+.type-badge.type-resolved { background: #dcfce7; color: #16a34a; }
+.type-badge.type-closed { background: #f3f4f6; color: #6b7280; }
+
+.type-badge.type-bug { background: #fee2e2; color: #dc2626; }
+.type-badge.type-feature { background: #dcfce7; color: #16a34a; }
+.type-badge.type-improvement { background: #dbeafe; color: #2563eb; }
+.type-badge.type-question { background: #fef3c7; color: #d97706; }
+
+/* Priority badges */
+.priority-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.priority-badge.priority-low { background: #f3f4f6; color: #6b7280; }
+.priority-badge.priority-medium { background: #dbeafe; color: #2563eb; }
+.priority-badge.priority-high { background: #fef3c7; color: #d97706; }
+.priority-badge.priority-critical { background: #fee2e2; color: #dc2626; }
+
+/* Feedback user info */
+.feedback-user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-main);
+}
+
+.feedback-user-info i {
+    font-size: 18px;
+    color: var(--primary);
+}
+
+/* Feedback detail modal */
+.feedback-detail-modal {
+    max-width: 700px;
+}
+
+.feedback-detail-modal .detail-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+    align-items: flex-start;
+}
+
+.feedback-detail-modal .detail-row label {
+    min-width: 100px;
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    padding-top: 2px;
+}
+
+.feedback-detail-modal .detail-row .value {
+    flex: 1;
+    font-size: 14px;
+    color: var(--text-main);
+}
+
+.feedback-detail-modal .detail-desc {
+    background: var(--bg-hover);
+    padding: 16px 20px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    white-space: pre-wrap;
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 12px 0;
+    color: var(--text-main);
+}
+
+.feedback-detail-modal .admin-note-area {
+    margin-top: 12px;
+}
+
+.feedback-detail-modal .admin-note-area textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 60px;
+    background: var(--bg-card);
+    color: var(--text-main);
+    transition: border-color var(--transition-fast);
+}
+
+.feedback-detail-modal .admin-note-area textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+/* Feedback row actions */
+#feedbackTableBody tr {
+    animation: fadeSlideDown 0.25s ease both;
+    animation-delay: calc(var(--row, 0) * 0.03s);
+}
+
 /* ===== MODAL ===== */
 .modal-overlay {
     position: fixed;

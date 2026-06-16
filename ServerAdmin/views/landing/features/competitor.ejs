@@ -1,0 +1,137 @@
+<%
+page = 'competitor';
+%>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Theo dõi đối thủ cạnh tranh - FB-SYSTEM</title>
+    <meta name="description" content="Theo dõi và phân tích đối thủ cạnh tranh trên Facebook, Instagram. Giám sát chiến dịch, nội dung, tương tác của đối thủ.">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/landing.css">
+    <link rel="stylesheet" href="/css/features.css">
+</head>
+<body>
+    <%- include('../../partials/header') %>
+
+    <section class="feature-hero">
+        <div class="feature-hero-bg"></div>
+        <div class="container">
+            <div class="feature-hero-inner">
+                <div class="feature-hero-badge"><i class="fas fa-eye"></i> Giám sát đối thủ</div>
+                <h1>Theo dõi <span class="highlight">đối thủ</span> cạnh tranh</h1>
+                <p>Giám sát và phân tích chiến lược marketing của đối thủ. Biết họ đang làm gì, làm thế nào và học hỏi để vượt lên dẫn đầu.</p>
+                <div class="feature-hero-actions">
+                    <a href="/register" class="btn btn-primary btn-lg"><i class="fas fa-rocket"></i> Dùng thử miễn phí</a>
+                    <a href="#details" class="btn btn-secondary btn-lg"><i class="fas fa-play-circle"></i> Xem chi tiết</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="feature-stats">
+        <div class="container">
+            <div class="stats-bar">
+                <div class="stat-item"><div class="stat-number">10,000+</div><div class="stat-label">Đối thủ đang theo dõi</div></div>
+                <div class="stat-divider"></div>
+                <div class="stat-item"><div class="stat-number">500K+</div><div class="stat-label">Bài viết đã thu thập</div></div>
+                <div class="stat-divider"></div>
+                <div class="stat-item"><div class="stat-number">30+</div><div class="stat-label">Chỉ số so sánh</div></div>
+                <div class="stat-divider"></div>
+                <div class="stat-item"><div class="stat-number">98%</div><div class="stat-label">Người dùng hài lòng</div></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="feature-details section-padding" id="details">
+        <div class="container">
+            <div class="detail-grid">
+                <div class="detail-content animate-on-scroll">
+                    <div class="detail-label"><i class="fas fa-binoculars"></i> Giám sát toàn diện</div>
+                    <h2>Biết <span class="highlight">mọi thứ</span> về đối thủ của bạn</h2>
+                    <p>FB-SYSTEM tự động thu thập và phân tích mọi hoạt động của đối thủ trên các nền tảng mạng xã hội, cung cấp cho bạn bức tranh toàn cảnh về chiến lược của họ.</p>
+                    <ul class="detail-list">
+                        <li><i class="fas fa-newspaper"></i> Theo dõi bài viết mới của đối thủ theo thời gian thực</li>
+                        <li><i class="fas fa-chart-bar"></i> Phân tích tương tác, reach, engagement rate</li>
+                        <li><i class="fas fa-tag"></i> Phát hiện chiến dịch quảng cáo và nội dung viral</li>
+                        <li><i class="fas fa-arrows-split"></i> So sánh hiệu suất giữa bạn và đối thủ</li>
+                        <li><i class="fas fa-download"></i> Xuất báo cáo so sánh chi tiết</li>
+                    </ul>
+                </div>
+                <div class="detail-visual animate-on-scroll">
+                    <div class="platform-grid-showcase">
+                        <div class="platform-item" style="border-color:rgba(59,130,246,0.3);background:rgba(59,130,246,0.05);">
+                            <i class="fab fa-facebook-f" style="color:#3b82f6;font-size:40px;"></i><span style="color:#3b82f6;">Facebook</span>
+                        </div>
+                        <div class="platform-item" style="border-color:rgba(236,72,153,0.3);background:rgba(236,72,153,0.05);">
+                            <i class="fab fa-instagram" style="color:#ec4899;font-size:40px;"></i><span style="color:#ec4899;">Instagram</span>
+                        </div>
+                        <div class="platform-item" style="border-color:rgba(139,92,246,0.3);background:rgba(139,92,246,0.05);">
+                            <i class="fab fa-tiktok" style="color:#a78bfa;font-size:40px;"></i><span style="color:#a78bfa;">TikTok</span>
+                        </div>
+                        <div class="platform-item" style="border-color:rgba(34,197,94,0.3);background:rgba(34,197,94,0.05);">
+                            <i class="fab fa-youtube" style="color:#22c55e;font-size:40px;"></i><span style="color:#22c55e;">YouTube</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="feature-sub-features section-padding">
+        <div class="container">
+            <div class="section-header">
+                <h2>Phân tích <span class="highlight">đối thủ</span></h2>
+                <p>Công cụ phân tích đối thủ chuyên sâu.</p>
+            </div>
+            <div class="sub-features-grid">
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-1"><i class="fas fa-bell"></i></div>
+                    <h3>Cảnh báo realtime</h3>
+                    <p>Nhận thông báo ngay khi đối thủ đăng bài mới, thay đổi chiến lược, chạy chiến dịch quảng cáo.</p>
+                </div>
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-2"><i class="fas fa-chart-pie"></i></div>
+                    <h3>Phân tích nội dung</h3>
+                    <p>Phân loại nội dung đối thủ theo chủ đề, định dạng, hiệu suất. Biết dạng nội dung nào đang hoạt động tốt nhất.</p>
+                </div>
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-3"><i class="fas fa-hashtag"></i></div>
+                    <h3>Theo dõi hashtag</h3>
+                    <p>Phát hiện hashtag đối thủ đang sử dụng, hashtag nào mang lại tương tác cao nhất cho họ.</p>
+                </div>
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-4"><i class="fas fa-calendar-days"></i></div>
+                    <h3>Lịch đăng bài</h3>
+                    <p>Phân tích tần suất, thời gian đăng bài tối ưu của đối thủ. Biết khi nào họ đăng để cạnh tranh hiệu quả.</p>
+                </div>
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-5"><i class="fas fa-ranking-star"></i></div>
+                    <h3>Bảng xếp hạng</h3>
+                    <p>So sánh vị trí của bạn với đối thủ dựa trên nhiều chỉ số: tương tác, reach, tốc độ tăng trưởng.</p>
+                </div>
+                <div class="sub-feature-card animate-on-scroll">
+                    <div class="sub-feature-icon gradient-6"><i class="fas fa-bullhorn"></i></div>
+                    <h3>Phát hiện viral</h3>
+                    <p>AI phát hiện bài viết đang viral của đối thủ, phân tích yếu tố thành công để bạn áp dụng.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section section-padding">
+        <div class="container">
+            <h2>Theo dõi <span class="highlight">đối thủ</span> ngay hôm nay</h2>
+            <p>Biết đối thủ đang làm gì - Luôn dẫn đầu cuộc chơi marketing.</p>
+            <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
+                <a href="/register" class="btn btn-primary btn-lg"><i class="fas fa-rocket"></i> Dùng thử miễn phí</a>
+                <a href="/" class="btn btn-secondary btn-lg" style="border-color:rgba(255,255,255,0.3);color:white;"><i class="fas fa-arrow-left"></i> Quay lại trang chủ</a>
+            </div>
+        </div>
+    </section>
+
+    <%- include('../../partials/footer') %>
+</body>
+</html>

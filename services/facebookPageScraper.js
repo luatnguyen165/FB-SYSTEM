@@ -54,6 +54,7 @@ function httpPost(url, headers, body, timeout = 30000) {
 
 function extractDataBlocks(rawText) {
     const blocks = [];
+    if (!rawText || typeof rawText !== 'string') return blocks;
     let i = 0;
     const n = rawText.length;
     while (true) {
@@ -64,7 +65,7 @@ function extractDataBlocks(rawText) {
         let depth = 0, j;
         for (j = bs; j < n; j++) {
             if (rawText[j] === '{') depth++;
-            else if (rawText[j] === '}') { depth--; if (depth === 0) { try { blocks.push(JSON.parse(rawText.slice(bs, j+1))); } catch(e){} i = j+1; break; } }
+            else if (rawText[j] === '}') { depth--; if (depth === 0) { try { blocks.push(JSON.parse(rawText.slice(bs, j+1))); } catch(e){ console.log(`  [extractDataBlocks] JSON parse error at index ${i}: ${e.message}`); } i = j+1; break; } }
         }
         if (j >= n) break;
     }
@@ -72,22 +73,102 @@ function extractDataBlocks(rawText) {
 }
 
 function cleanDataBlocks(blocks) {
-    return blocks.filter(b => { if (!b || typeof b !== 'object') return false; delete b.errors; delete b.extensions; return true; });
+    if (!Array.isArray(blocks)) return [];
+    return blocks.filter(b => { 
+        if (!b || typeof b !== 'object') return false; 
+        try {
+            if (b.errors) delete b.errors;
+            if (b.extensions) delete b.extensions;
+        } catch (e) { /* safe delete */ }
+        return true; 
+    });
 }
 
+/**
+ * P0 FIX: Parse Facebook GraphQL response với fallback mechanisms
+ * - Chính: Dùng extractDataBlocks (regex-based JSON extraction)
+ * - Fallback 1: Thử parse toàn bộ response như JSON
+ * - Fallback 2: Tìm data trong array response
+ */
 function parseFbResponse(text) {
-    if (!text || typeof text !== 'string') {
-        console.log(`  [parseFbResponse] text is empty or not string: ${typeof text}`);
-        return [];
+    const result = [];
+    try {
+        if (!text || typeof text !== 'string') {
+            console.log(`  [parseFbResponse] text is empty or not string: ${typeof text}`);
+            return result;
+        }
+
+        const cleaned = text.replace(/^for\s*\(;;;\s*\)\s*;?\s*/gm, '').trim();
+        console.log(`  [parseFbResponse] rawText length=${text.length} cleaned length=${cleaned.length}`);
+
+        // Chính: Extract data blocks
+        let blocks = cleanDataBlocks(extractDataBlocks(cleaned));
+        
+        // Fallback 1: Nếu không tìm thấy data blocks, thử parse toàn bộ như JSON
+        if (blocks.length === 0 && cleaned.length > 0) {
+            try {
+                console.log('  [parseFbResponse] Trying fallback 1: full JSON parse');
+                const parsed = JSON.parse(cleaned);
+                if (parsed && typeof parsed === 'object') {
+                    // Có thể là array response
+                    if (Array.isArray(parsed)) {
+                        blocks = [].concat(...parsed.map(item => {
+                            if (item?.data) return [item.data];
+                            return [item];
+                        }));
+                    } else if (parsed.data) {
+                        blocks = [parsed.data];
+                    } else {
+                        blocks = [parsed];
+                    }
+                }
+            } catch (e1) {
+                console.log(`  [parseFbResponse] Fallback 1 failed: ${e1.message}`);
+            }
+        }
+
+        // Fallback 2: Tìm tất cả JSON objects trong response
+        if (blocks.length === 0 && cleaned.length > 0) {
+            try {
+                console.log('  [parseFbResponse] Trying fallback 2: extract all JSON objects');
+                const jsonRegex = /\{(?:[^{}]|(?:\{[^{}]*\}))*\}/g;
+                let match;
+                while ((match = jsonRegex.exec(cleaned)) !== null) {
+                    try {
+                        const parsed = JSON.parse(match[0]);
+                        if (parsed && typeof parsed === 'object' && parsed.data) {
+                            blocks.push(parsed.data);
+                        }
+                    } catch (e2) { /* skip invalid JSON */ }
+                }
+            } catch (e2) {
+                console.log(`  [parseFbResponse] Fallback 2 failed: ${e2.message}`);
+            }
+        }
+
+        console.log(`  [parseFbResponse] extracted ${blocks.length} data blocks`);
+
+        if (blocks.length === 0 && cleaned.length > 0) {
+            console.log(`  [parseFbResponse] ⚠️ No blocks found! first 300 chars: ${cleaned.substring(0, 300)}`);
+        }
+
+        // Dedup blocks by JSON.stringify
+        const seen = new Set();
+        for (const block of blocks) {
+            if (!block || typeof block !== 'object') continue;
+            const key = JSON.stringify(block);
+            if (!seen.has(key)) {
+                seen.add(key);
+                result.push(block);
+            }
+        }
+
+        console.log(`  [parseFbResponse] returning ${result.length} unique blocks`);
+        return result;
+    } catch (err) {
+        console.error(`  [parseFbResponse] CRITICAL error: ${err.message}`);
+        return result;
     }
-    const cleaned = text.replace('for (;;);', '').trim();
-    console.log(`  [parseFbResponse] rawText length=${text.length} cleaned length=${cleaned.length}`);
-    const blocks = cleanDataBlocks(extractDataBlocks(cleaned));
-    console.log(`  [parseFbResponse] extracted ${blocks.length} data blocks`);
-    if (blocks.length === 0 && cleaned.length > 0) {
-        console.log(`  [parseFbResponse] first 300 chars: ${cleaned.substring(0, 300)}`);
-    }
-    return blocks;
 }
 
 // ============================================================

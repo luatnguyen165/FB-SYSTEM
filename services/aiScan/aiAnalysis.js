@@ -178,7 +178,7 @@ Trả về JSON: {"isMatching": true/false, "score": 0-100, "analysis": "...", "
 
     doc.aiAnalysis = aiResult.analysis;
     doc.aiScore = aiResult.score;
-    doc.isMatching = true;
+    doc.isMatching = aiResult.isMatching;
     doc.matchReason = aiResult.reason || '';
     doc.aiAnalyzed = true;
     await doc.save();

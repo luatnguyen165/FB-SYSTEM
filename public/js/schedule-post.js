@@ -6,7 +6,7 @@
 let schedulePostAvailablePlatforms = new Set();
 let schedulePostDropdownJustOpened = false;
 
-function renderAccountList() {
+function renderAccountList(preferredAccounts) {
     const checkedPlatforms = Array.from(document.querySelectorAll('.platform-check:checked')).map(cb => cb.value);
     const boxContainer = document.getElementById('dynamicAccountBox');
     if (!boxContainer) return;
@@ -38,8 +38,9 @@ function renderAccountList() {
                 const meta = typeMeta(ch.accountType);
                 const label = document.createElement('label');
                 label.className = `acc-pick-item acc-platform-${ch.platform}`;
+                const isChecked = preferredAccounts && preferredAccounts.includes(ch._id);
                 label.innerHTML = `
-                    <input type="checkbox" name="modalAccSelect" value="${ch._id}">
+                    <input type="checkbox" name="modalAccSelect" value="${ch._id}" ${isChecked ? 'checked' : ''}>
                     <i class="${icons[ch.platform]}" style="color:${colors[ch.platform]}"></i>
                     <span class="acc-pick-item__content">
                         <span class="acc-pick-item__title">${ch.accountName}</span>

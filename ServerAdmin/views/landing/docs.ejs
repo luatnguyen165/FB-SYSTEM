@@ -1,0 +1,1748 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tài liệu hướng dẫn - FB-SYSTEM</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/landing.css">
+    <style>
+        /* ================================================
+           DOCS PAGE - Consistent with FB-SYSTEM Design System
+           All colors use CSS custom properties from landing.css
+           ================================================ */
+
+        /* --- Color Tokens (local overrides for dark hero) --- */
+        :root {
+            --docs-icon-bg-primary: var(--primary-bg);
+            --docs-icon-bg-success: rgba(16, 185, 129, 0.12);
+            --docs-icon-bg-info: rgba(59, 130, 246, 0.12);
+            --docs-icon-bg-warning: rgba(245, 158, 11, 0.12);
+            --docs-icon-bg-error: rgba(239, 68, 68, 0.12);
+            --docs-icon-bg-teal: rgba(13, 148, 136, 0.12);
+            --docs-icon-color-primary: var(--primary);
+            --docs-icon-color-success: var(--success);
+            --docs-icon-color-info: #2563eb;
+            --docs-icon-color-warning: #d97706;
+            --docs-icon-color-error: #dc2626;
+            --docs-icon-color-teal: #0d9488;
+        }
+
+        .docs-page {
+            padding-top: var(--header-height);
+            min-height: 100vh;
+            background: var(--bg-secondary);
+        }
+
+        /* --- Docs Hero --- */
+        .docs-hero {
+            background: linear-gradient(135deg, var(--dark) 0%, var(--dark-2) 100%);
+            padding: 80px 0 60px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .docs-hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(rgba(99, 102, 241, 0.12) 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+
+        .docs-hero-glow {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.2;
+        }
+        .docs-hero-glow-1 { background: var(--primary); top: -100px; right: -100px; }
+        .docs-hero-glow-2 { background: var(--secondary); bottom: -150px; left: -100px; }
+
+        .docs-hero-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+        }
+
+        .docs-hero h1 {
+            font-size: clamp(2rem, 4vw, 2.8rem);
+            font-weight: 800;
+            color: white;
+            margin-bottom: 12px;
+        }
+
+        .docs-hero h1 i {
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .docs-hero p {
+            color: rgba(255,255,255,0.7);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto 32px;
+            line-height: 1.7;
+        }
+
+        /* --- Search Bar --- */
+        .docs-search {
+            max-width: 560px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .docs-search input {
+            width: 100%;
+            padding: 16px 20px 16px 52px;
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(10px);
+            color: white;
+            font-size: 15px;
+            transition: all var(--transition);
+        }
+
+        .docs-search input::placeholder { color: rgba(255,255,255,0.4); }
+        .docs-search input:focus {
+            border-color: var(--primary-light);
+            background: rgba(255,255,255,0.12);
+            box-shadow: 0 0 30px rgba(99, 102, 241, 0.15);
+            outline: none;
+        }
+
+        .docs-search i {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(255,255,255,0.4);
+            font-size: 18px;
+        }
+
+        .docs-search .search-shortcut {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 3px 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+            font-family: var(--font-mono);
+        }
+
+        /* --- Docs Layout --- */
+        .docs-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 40px;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 40px 24px 80px;
+        }
+
+        /* --- Sidebar Navigation --- */
+        .docs-sidebar {
+            position: sticky;
+            top: calc(var(--header-height) + 24px);
+            height: fit-content;
+            max-height: calc(100vh - var(--header-height) - 48px);
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
+        .docs-sidebar::-webkit-scrollbar { width: 4px; }
+        .docs-sidebar::-webkit-scrollbar-track { background: transparent; }
+        .docs-sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        .docs-nav-group {
+            margin-bottom: 28px;
+        }
+
+        .docs-nav-group-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            padding-left: 12px;
+        }
+
+        .docs-nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            transition: all var(--transition);
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .docs-nav-item i {
+            width: 18px;
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-muted);
+            transition: color var(--transition);
+        }
+
+        .docs-nav-item:hover {
+            background: var(--bg-tertiary);
+            color: var(--primary);
+        }
+
+        .docs-nav-item:hover i {
+            color: var(--primary);
+        }
+
+        .docs-nav-item.active {
+            background: var(--primary-bg);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .docs-nav-item.active i {
+            color: var(--primary);
+        }
+
+        .docs-nav-item .nav-badge {
+            margin-left: auto;
+            padding: 2px 8px;
+            border-radius: var(--radius-full);
+            font-size: 10px;
+            font-weight: 600;
+            background: var(--primary-bg);
+            color: var(--primary);
+        }
+
+        .docs-nav-item .nav-badge.green {
+            background: var(--docs-icon-bg-success);
+            color: var(--docs-icon-color-success);
+        }
+
+        .docs-nav-item .nav-badge.orange {
+            background: var(--docs-icon-bg-warning);
+            color: var(--docs-icon-color-warning);
+        }
+
+        /* --- Main Content --- */
+        .docs-content {
+            min-width: 0;
+        }
+
+        .docs-section {
+            margin-bottom: 60px;
+            scroll-margin-top: calc(var(--header-height) + 24px);
+        }
+
+        .docs-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .docs-section-header {
+            margin-bottom: 32px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .docs-section-header h2 {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .docs-section-header h2 i {
+            color: var(--primary);
+            margin-right: 10px;
+        }
+
+        .docs-section-header p {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        /* --- Article Card --- */
+        .docs-article {
+            background: white;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            padding: 32px;
+            margin-bottom: 20px;
+            transition: all var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .docs-article::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--primary-gradient);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform var(--transition);
+        }
+
+        .docs-article:hover {
+            box-shadow: var(--shadow-lg);
+            border-color: transparent;
+            transform: translateY(-2px);
+        }
+
+        .docs-article:hover::before {
+            transform: scaleX(1);
+        }
+
+        .docs-article-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .docs-article-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .docs-article-icon.purple {
+            background: var(--docs-icon-bg-primary);
+            color: var(--docs-icon-color-primary);
+        }
+        .docs-article-icon.green {
+            background: var(--docs-icon-bg-success);
+            color: var(--docs-icon-color-success);
+        }
+        .docs-article-icon.blue {
+            background: var(--docs-icon-bg-info);
+            color: var(--docs-icon-color-info);
+        }
+        .docs-article-icon.orange {
+            background: var(--docs-icon-bg-warning);
+            color: var(--docs-icon-color-warning);
+        }
+        .docs-article-icon.red {
+            background: var(--docs-icon-bg-error);
+            color: var(--docs-icon-color-error);
+        }
+        .docs-article-icon.teal {
+            background: var(--docs-icon-bg-teal);
+            color: var(--docs-icon-color-teal);
+        }
+
+        .docs-article-title {
+            flex: 1;
+        }
+
+        .docs-article-title h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .docs-article-title .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .docs-article-title .article-meta span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .docs-article p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.7;
+            margin-bottom: 16px;
+        }
+
+        .docs-article .article-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .docs-article .article-tag {
+            padding: 4px 12px;
+            border-radius: var(--radius-full);
+            font-size: 11px;
+            font-weight: 600;
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            transition: all var(--transition);
+            cursor: default;
+        }
+
+        .docs-article .article-tag:hover {
+            background: var(--primary-bg);
+            color: var(--primary);
+        }
+
+        .docs-article .article-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary);
+            transition: gap var(--transition);
+        }
+
+        .docs-article .article-link:hover {
+            gap: 10px;
+        }
+
+        /* --- Quick Start Cards --- */
+        .quick-start-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .quick-start-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            text-align: center;
+            transition: all var(--transition);
+            cursor: pointer;
+        }
+
+        .quick-start-card:hover {
+            box-shadow: var(--shadow-lg);
+            border-color: transparent;
+            transform: translateY(-4px);
+        }
+
+        .quick-start-card .qs-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin: 0 auto 16px;
+        }
+
+        .quick-start-card .qs-icon.purple {
+            background: var(--docs-icon-bg-primary);
+            color: var(--docs-icon-color-primary);
+        }
+        .quick-start-card .qs-icon.green {
+            background: var(--docs-icon-bg-success);
+            color: var(--docs-icon-color-success);
+        }
+        .quick-start-card .qs-icon.blue {
+            background: var(--docs-icon-bg-info);
+            color: var(--docs-icon-color-info);
+        }
+        .quick-start-card .qs-icon.orange {
+            background: var(--docs-icon-bg-warning);
+            color: var(--docs-icon-color-warning);
+        }
+        .quick-start-card .qs-icon.teal {
+            background: var(--docs-icon-bg-teal);
+            color: var(--docs-icon-color-teal);
+        }
+
+        .quick-start-card h4 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .quick-start-card p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* --- Code Block --- */
+        .docs-code-block {
+            background: var(--dark);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            margin: 20px 0;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .docs-code-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            background: rgba(255,255,255,0.03);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .docs-code-header .code-lang {
+            font-size: 12px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.4);
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .docs-code-header .code-copy {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.06);
+            color: rgba(255,255,255,0.5);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all var(--transition);
+            border: none;
+        }
+
+        .docs-code-header .code-copy:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .docs-code-block pre {
+            padding: 20px;
+            overflow-x: auto;
+            margin: 0;
+        }
+
+        .docs-code-block code {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            line-height: 1.7;
+            color: #e2e8f0;
+        }
+
+        /* Syntax highlighting (using design system colors) */
+        .docs-code-block .comment { color: var(--text-muted); }
+        .docs-code-block .keyword { color: var(--primary-light); }
+        .docs-code-block .string { color: var(--success); }
+        .docs-code-block .function { color: var(--secondary); }
+        .docs-code-block .number { color: #f472b6; }
+        .docs-code-block .variable { color: var(--accent); }
+        .docs-code-block .operator { color: var(--error); }
+
+        /* --- Info Boxes --- */
+        .docs-info-box {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 20px;
+            border-radius: var(--radius-md);
+            margin: 20px 0;
+            border: 1px solid;
+        }
+
+        .docs-info-box.info {
+            background: var(--docs-icon-bg-primary);
+            border-color: rgba(99, 102, 241, 0.2);
+        }
+        .docs-info-box.warning {
+            background: var(--docs-icon-bg-warning);
+            border-color: rgba(245, 158, 11, 0.2);
+        }
+        .docs-info-box.success {
+            background: var(--docs-icon-bg-success);
+            border-color: rgba(16, 185, 129, 0.2);
+        }
+        .docs-info-box.error {
+            background: var(--docs-icon-bg-error);
+            border-color: rgba(239, 68, 68, 0.2);
+        }
+
+        .docs-info-box i {
+            font-size: 18px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .docs-info-box.info i { color: var(--primary); }
+        .docs-info-box.warning i { color: var(--warning); }
+        .docs-info-box.success i { color: var(--success); }
+        .docs-info-box.error i { color: var(--error); }
+
+        .docs-info-box p {
+            margin: 0;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .docs-info-box.info p { color: var(--docs-icon-color-primary); }
+        .docs-info-box.warning p { color: var(--docs-icon-color-warning); }
+        .docs-info-box.success p { color: var(--docs-icon-color-success); }
+        .docs-info-box.error p { color: var(--docs-icon-color-error); }
+
+        /* --- Step List --- */
+        .docs-step-list {
+            counter-reset: step;
+            margin: 20px 0;
+        }
+
+        .docs-step-item {
+            display: flex;
+            gap: 16px;
+            padding: 20px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            margin-bottom: 12px;
+            transition: all var(--transition);
+        }
+
+        .docs-step-item:hover {
+            border-color: var(--primary-light);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .docs-step-number {
+            counter-increment: step;
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-full);
+            background: var(--primary-gradient);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .docs-step-item .step-content {
+            flex: 1;
+        }
+
+        .docs-step-item .step-content h4 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .docs-step-item .step-content p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        /* --- FAQ Accordion --- */
+        .docs-faq-item {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            margin-bottom: 10px;
+            overflow: hidden;
+            transition: all var(--transition);
+        }
+
+        .docs-faq-question {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 20px;
+            cursor: pointer;
+            transition: background var(--transition);
+            gap: 16px;
+        }
+
+        .docs-faq-question:hover {
+            background: var(--bg-secondary);
+        }
+
+        .docs-faq-question h4 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+            flex: 1;
+        }
+
+        .docs-faq-question .faq-toggle {
+            width: 28px;
+            height: 28px;
+            border-radius: var(--radius-full);
+            background: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: var(--text-muted);
+            transition: all var(--transition);
+            flex-shrink: 0;
+        }
+
+        .docs-faq-item.active .faq-toggle {
+            background: var(--primary-bg);
+            color: var(--primary);
+            transform: rotate(180deg);
+        }
+
+        .docs-faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+            padding: 0 20px;
+        }
+
+        .docs-faq-item.active .docs-faq-answer {
+            max-height: 300px;
+            padding: 0 20px 20px;
+        }
+
+        .docs-faq-answer p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin: 0;
+        }
+
+        /* --- Table --- */
+        .docs-table-wrapper {
+            overflow-x: auto;
+            margin: 20px 0;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+        }
+
+        .docs-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        .docs-table th {
+            background: var(--bg-secondary);
+            padding: 14px 20px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .docs-table td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border-light);
+            color: var(--text-secondary);
+        }
+
+        .docs-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .docs-table tr:hover td {
+            background: var(--bg-secondary);
+        }
+
+        .docs-table .status-badge {
+            padding: 3px 10px;
+            border-radius: var(--radius-full);
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .docs-table .status-badge.done {
+            background: var(--docs-icon-bg-success);
+            color: var(--docs-icon-color-success);
+        }
+        .docs-table .status-badge.beta {
+            background: var(--docs-icon-bg-warning);
+            color: var(--docs-icon-color-warning);
+        }
+        .docs-table .status-badge.new {
+            background: var(--docs-icon-bg-info);
+            color: var(--docs-icon-color-info);
+        }
+
+        /* --- Resource Links --- */
+        .docs-resources {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        .docs-resource-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            text-align: center;
+            transition: all var(--transition);
+            text-decoration: none;
+            display: block;
+        }
+
+        .docs-resource-card:hover {
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-light);
+            transform: translateY(-2px);
+        }
+
+        .docs-resource-card i {
+            font-size: 28px;
+            color: var(--primary);
+            margin-bottom: 12px;
+        }
+
+        .docs-resource-card h4 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .docs-resource-card p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        /* --- Table of Contents (On This Page) --- */
+        .docs-toc {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .docs-toc-title {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .docs-toc-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .docs-toc-item {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            transition: all var(--transition);
+            cursor: pointer;
+            text-decoration: none;
+            border-left: 2px solid transparent;
+        }
+
+        .docs-toc-item:hover {
+            color: var(--primary);
+            background: var(--primary-bg);
+            border-left-color: var(--primary);
+        }
+
+        /* --- Pagination --- */
+        .docs-pagination {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            margin-top: 60px;
+            padding-top: 32px;
+            border-top: 1px solid var(--border);
+        }
+
+        .docs-pagination a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 20px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            transition: all var(--transition);
+            text-decoration: none;
+            max-width: 45%;
+        }
+
+        .docs-pagination a:hover {
+            border-color: var(--primary-light);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .docs-pagination a.prev { text-align: left; }
+        .docs-pagination a.next { text-align: right; }
+
+        .docs-pagination .pag-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+        }
+
+        .docs-pagination .pag-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* --- Responsive --- */
+        @media (max-width: 1024px) {
+            .docs-layout {
+                grid-template-columns: 1fr;
+            }
+            .docs-sidebar {
+                position: relative;
+                top: 0;
+                max-height: none;
+                overflow: visible;
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 16px;
+                padding: 0;
+            }
+            .docs-nav-group-title { padding-left: 0; }
+            .docs-sidebar::-webkit-scrollbar { display: none; }
+        }
+
+        @media (max-width: 768px) {
+            .docs-hero { padding: 60px 0 40px; }
+            .docs-layout { padding: 24px 16px 60px; gap: 24px; }
+            .docs-sidebar { grid-template-columns: 1fr; }
+            .docs-article { padding: 20px; }
+            .docs-article-header { flex-direction: column; }
+            .quick-start-grid { grid-template-columns: 1fr; }
+            .docs-resources { grid-template-columns: 1fr; }
+            .docs-pagination { flex-direction: column; }
+            .docs-pagination a { max-width: 100%; }
+            .docs-section-header h2 { font-size: 1.4rem; }
+            .docs-step-item { flex-direction: column; align-items: flex-start; }
+        }
+
+        @media (max-width: 480px) {
+            .docs-table th,
+            .docs-table td {
+                padding: 10px 14px;
+                font-size: 0.8rem;
+            }
+        }
+
+        /* --- Scroll Animations --- */
+        .docs-section {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+
+        .docs-section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+
+    <%- include('../partials/header', { page: 'docs' }) %>
+
+    <main class="docs-page">
+
+        <!-- Docs Hero -->
+        <section class="docs-hero">
+            <div class="docs-hero-glow docs-hero-glow-1"></div>
+            <div class="docs-hero-glow docs-hero-glow-2"></div>
+            <div class="container docs-hero-content">
+                <h1><i class="fas fa-book-open"></i> Tài liệu hướng dẫn</h1>
+                <p>Khám phá tất cả tính năng của FB-SYSTEM qua các bài viết chi tiết, hướng dẫn từng bước và tài liệu tham khảo đầy đủ.</p>
+                <div class="docs-search">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="docsSearch" placeholder="Tìm kiếm tài liệu..." autocomplete="off">
+                    <span class="search-shortcut">Ctrl+K</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Docs Layout -->
+        <div class="docs-layout">
+
+            <!-- Sidebar -->
+            <aside class="docs-sidebar" id="docsSidebar">
+                <div class="docs-nav-group">
+                    <div class="docs-nav-group-title">Bắt đầu</div>
+                    <a href="#quick-start" class="docs-nav-item active" data-section="quick-start">
+                        <i class="fas fa-rocket"></i> Bắt đầu nhanh
+                    </a>
+                    <a href="#installation" class="docs-nav-item" data-section="installation">
+                        <i class="fas fa-download"></i> Cài đặt
+                    </a>
+                    <a href="#account" class="docs-nav-item" data-section="account">
+                        <i class="fas fa-user-cog"></i> Tài khoản
+                    </a>
+                </div>
+
+                <div class="docs-nav-group">
+                    <div class="docs-nav-group-title">Tính năng</div>
+                    <a href="#schedule" class="docs-nav-item" data-section="schedule">
+                        <i class="fas fa-calendar-check"></i> Lịch đăng bài
+                    </a>
+                    <a href="#ai-content" class="docs-nav-item" data-section="ai-content">
+                        <i class="fas fa-robot"></i> AI Content
+                        <span class="nav-badge">Mới</span>
+                    </a>
+                    <a href="#auto-comment" class="docs-nav-item" data-section="auto-comment">
+                        <i class="fas fa-comments"></i> Auto Comment
+                    </a>
+                    <a href="#ai-scan" class="docs-nav-item" data-section="ai-scan">
+                        <i class="fas fa-search"></i> AI Scan
+                        <span class="nav-badge green">Pro</span>
+                    </a>
+                    <a href="#competitor" class="docs-nav-item" data-section="competitor">
+                        <i class="fas fa-users-viewfinder"></i> Theo dõi đối thủ
+                    </a>
+                    <a href="#analytics" class="docs-nav-item" data-section="analytics">
+                        <i class="fas fa-chart-bar"></i> Phân tích
+                    </a>
+                </div>
+
+                <div class="docs-nav-group">
+                    <div class="docs-nav-group-title">Hỗ trợ</div>
+                    <a href="#faq" class="docs-nav-item" data-section="faq">
+                        <i class="fas fa-question-circle"></i> FAQ
+                    </a>
+                    <a href="#troubleshooting" class="docs-nav-item" data-section="troubleshooting">
+                        <i class="fas fa-exclamation-triangle"></i> Xử lý sự cố
+                        <span class="nav-badge orange">Hot</span>
+                    </a>
+                    <a href="#resources" class="docs-nav-item" data-section="resources">
+                        <i class="fas fa-link"></i> Tài nguyên
+                    </a>
+                </div>
+            </aside>
+
+            <!-- Main Content -->
+            <div class="docs-content" id="docsContent">
+
+                <!-- Quick Start -->
+                <section id="quick-start" class="docs-section">
+                    <div class="docs-section-header">
+                        <h2><i class="fas fa-rocket"></i> Bắt đầu nhanh</h2>
+                        <p>Làm quen với FB-SYSTEM trong vài phút. Chọn hướng dẫn phù hợp với nhu cầu của bạn.</p>
+                    </div>
+
+                    <div class="quick-start-grid">
+                        <a href="#installation" class="quick-start-card">
+                            <div class="qs-icon purple"><i class="fas fa-download"></i></div>
+                            <h4>Cài đặt ứng dụng</h4>
+                            <p>Tải và cài đặt FB-SYSTEM trên Windows/macOS chỉ với vài bước đơn giản.</p>
+                        </a>
+                        <a href="#account" class="quick-start-card">
+                            <div class="qs-icon green"><i class="fas fa-user-plus"></i></div>
+                            <h4>Tạo tài khoản</h4>
+                            <p>Đăng ký tài khoản và kích hoạt bản dùng thử miễn phí 7 ngày.</p>
+                        </a>
+                        <a href="#schedule" class="quick-start-card">
+                            <div class="qs-icon blue"><i class="fas fa-calendar-plus"></i></div>
+                            <h4>Lên lịch bài đầu tiên</h4>
+                            <p>Tạo lịch đăng bài Facebook đầu tiên chỉ với 3 bước.</p>
+                        </a>
+                        <a href="#ai-content" class="quick-start-card">
+                            <div class="qs-icon orange"><i class="fas fa-magic"></i></div>
+                            <h4>Tạo nội dung AI</h4>
+                            <p>Viết nội dung chất lượng cao với sức mạnh của AI.</p>
+                        </a>
+                    </div>
+
+                    <div class="docs-info-box info">
+                        <i class="fas fa-lightbulb"></i>
+                        <p><strong>💡 Mẹo:</strong> Nếu bạn mới bắt đầu, hãy theo dõi các bước theo thứ tự từ trên xuống dưới. Mỗi bước đều có hướng dẫn chi tiết kèm hình ảnh minh họa.</p>
+                    </div>
+                </section>
+
+                <!-- Installation -->
+                <section id="installation" class="docs-section">
+                    <div class="docs-section-header">
+                        <h2><i class="fas fa-download"></i> Hướng dẫn cài đặt</h2>
+                        <p>Tải xuống và cài đặt FB-SYSTEM trên máy tính của bạn.</p>
+                    </div>
+
+                    <div class="docs-step-list">
+                        <div class="docs-step-item animate-on-scroll" data-delay="0">
+                            <div class="docs-step-number">1</div>
+                            <div class="step-content">
+                                <h4>Tải ứng dụng</h4>
+                                <p>Truy cập trang <a href="/download" style="color:var(--primary);font-weight:600;">Tải xuống</a> và chọn phiên bản phù hợp với hệ điều hành của bạn (Windows/macOS). File cài đặt có dung lượng khoảng 150MB.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item animate-on-scroll" data-delay="100">
+                            <div class="docs-step-number">2</div>
+                            <div class="step-content">
+                                <h4>Chạy file cài đặt</h4>
+                                <p>Mở file vừa tải và làm theo hướng dẫn trên màn hình. Quá trình cài đặt thường mất 1-2 phút. Ứng dụng sẽ tự động tạo shortcut trên Desktop.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item animate-on-scroll" data-delay="200">
+                            <div class="docs-step-number">3</div>
+                            <div class="step-content">
+                                <h4>Đăng nhập & Kích hoạt</h4>
+                                <p>Mở ứng dụng, đăng nhập bằng tài khoản đã đăng ký. Nhập mã license (nếu có) hoặc bắt đầu dùng thử 7 ngày miễn phí.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item animate-on-scroll" data-delay="300">
+                            <div class="docs-step-number">4</div>
+                            <div class="step-content">
+                                <h4>Kết nối tài khoản Facebook</h4>
+                                <p>Thêm tài khoản Facebook của bạn vào ứng dụng. FB-SYSTEM hỗ trợ đa tài khoản, cho phép bạn quản lý nhiều trang cùng lúc.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="code-lang">Yêu cầu hệ thống</span>
+                            <button class="code-copy" onclick="copyCode(this)"><i class="fas fa-copy"></i> Copy</button>
+                        </div>
+                        <pre><code>Hệ điều hành: Windows 10/11 (64-bit) hoặc macOS 11+
+RAM: Tối thiểu 4GB (khuyến nghị 8GB)
+Ổ cứng: Tối thiểu 500MB dung lượng trống
+Internet: Kết nối ổn định (tối thiểu 10Mbps)
+.NET Runtime: Windows cần .NET Desktop Runtime 6.0+</code></pre>
+                    </div>
+
+                    <div class="docs-info-box warning">
+                        <i class="fas fa-shield-alt"></i>
+                        <p><strong>🔒 Bảo mật:</strong> FB-SYSTEM không lưu trữ mật khẩu Facebook của bạn. Tất cả thông tin đăng nhập được mã hóa và lưu trữ cục bộ trên máy tính của bạn.</p>
+                    </div>
+                </section>
+
+                <!-- Account -->
+                <section id="account" class="docs-section">
+                    <div class="docs-section-header">
+                        <h2><i class="fas fa-user-cog"></i> Quản lý tài khoản</h2>
+                        <p>Hướng dẫn quản lý tài khoản, license và thiết lập thông tin cá nhân.</p>
+                    </div>
+
+                    <div class="docs-article">
+                        <div class="docs-article-header">
+                            <div class="docs-article-icon purple"><i class="fas fa-id-card"></i></div>
+                            <div class="docs-article-title">
+                                <h3>Đăng ký & Đăng nhập</h3>
+                                <div class="article-meta">
+                                    <span><i class="far fa-clock"></i> 5 phút đọc</span>
+                                    <span><i class="fas fa-signal"></i> Cơ bản</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p>Để sử dụng FB-SYSTEM, bạn cần đăng ký một tài khoản. Truy cập trang <strong>Đăng ký</strong>, điền email, tên người dùng và mật khẩu. Sau khi đăng ký, bạn có thể đăng nhập ngay lập tức.</p>
+                        <p>Sau khi đăng nhập, bạn sẽ được chuyển đến Dashboard - trung tâm điều khiển chính của ứng dụng, nơi hiển thị tổng quan về hiệu suất các chiến dịch của bạn.</p>
+                        <div class="article-tags">
+                            <span class="article-tag">Tài khoản</span>
+                            <span class="article-tag">Đăng nhập</span>
+                            <span class="article-tag">Bảo mật</span>
+                        </div>
+                    </div>
+
+                    <div class="docs-article">
+                        <div class="docs-article-header">
+                            <div class="docs-article-icon green"><i class="fas fa-key"></i></div>
+                            <div class="docs-article-title">
+                                <h3>License & Kích hoạt</h3>
+                                <div class="article-meta">
+                                    <span><i class="far fa-clock"></i> 3 phút đọc</span>
+                                    <span><i class="fas fa-signal"></i> Cơ bản</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p>FB-SYSTEM cung cấp các gói license linh hoạt. Bạn có thể bắt đầu với bản <strong>dùng thử 7 ngày</strong> miễn phí để trải nghiệm tất cả tính năng. Sau đó, nâng cấp lên gói trả phí để tiếp tục sử dụng.</p>
+                        <p>Mỗi license cho phép bạn sử dụng trên <strong>1 thiết bị</strong>. Nếu bạn cần sử dụng trên nhiều thiết bị, vui lòng liên hệ đội ngũ hỗ trợ để được tư vấn gói phù hợp.</p>
+                        <div class="article-tags">
+                            <span class="article-tag">License</span>
+                            <span class="article-tag">Kích hoạt</span>
+                            <span class="article-tag">Bảng giá</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Schedule Feature -->
+                <section id="schedule" class="docs-section">
+                    <div class="docs-section-header">
+                        <h2><i class="fas fa-calendar-check"></i> Lịch đăng bài</h2>
+                        <p>Lập lịch và tự động đăng bài lên Facebook theo thời gian biểu của bạn.</p>
+                    </div>
+
+                    <div class="docs-article">
+                        <div class="docs-article-header">
+                            <div class="docs-article-icon purple"><i class="fas fa-plus-circle"></i></div>
+                            <div class="docs-article-title">
+                                <h3>Tạo lịch đăng bài mới</h3>
+                                <div class="article-meta">
+                                    <span><i class="far fa-clock"></i> 8 phút đọc</span>
+                                    <span><i class="fas fa-signal"></i> Trung bình</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p>Để tạo lịch đăng bài mới, vào mục <strong>Lịch đăng bài</strong> trên sidebar. Nhấn nút <strong>"Tạo lịch mới"</strong> và điền các thông tin sau:</p>
+                        <ul style="list-style:disc;padding-left:20px;margin-bottom:12px;color:var(--text-secondary);font-size:0.9rem;line-height:1.8;">
+                            <li><strong>Nội dung:</strong> Nhập bài viết hoặc chọn từ thư viện nội dung AI</li>
+                            <li><strong>Hình ảnh/Video:</strong> Đính kèm media (hỗ trợ tối đa 10 ảnh/video)</li>
+                            <li><strong>Lịch trình:</strong> Chọn thời gian đăng (hỗ trợ lịch đăng hàng loạt)</li>
+                            <li><strong>Tài khoản:</strong> Chọn tài khoản Facebook sẽ đăng bài</li>
+                        </ul>
+                        <a href="/features/schedule" class="article-link">Xem chi tiết <i class="fas fa-arrow-right"></i></a>
+                    </div>
+
+                    <div class="docs-article">
+                        <div class="docs-article-header">
+                            <div class="docs-article-icon blue"><i class="fas fa-layer-group"></i></div>
+                            <div class="docs-article-title">
+                                <h3>Nhóm & Lịch hàng loạt</h3>
+                                <div class="article-meta">
+                                    <span><i class="far fa-clock"></i> 5 phút đọc</span>
+                                    <span><i class="fas fa-signal"></i> Nâng cao</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p>Tính năng <strong>Nhóm (Groups)</strong> cho phép bạn tổ chức các lịch đăng bài theo chủ đề, chiến dịch hoặc dự án. Bạn có thể tạo nhóm, thêm bài viết vào nhóm và quản lý toàn bộ nhóm một cách dễ dàng.</p>
+                        <p><strong>Lịch hàng loạt</strong> giúp bạn tạo nhiều lịch đăng cùng lúc, tiết kiệm thời gian khi cần triển khai chiến dịch lớn.</p>
+                        <div class="article-tags">
+                            <span class="article-tag">Schedule</span>
+                            <span class="article-tag">Groups</span>
+                            <span class="article-tag">Batch</span>
+                        </div>
+                    </div>
+
+                    <div class="docs-info-box success">
+                        <i class="fas fa-check-circle"></i>
+                        <p><strong>✅ Mẹo:</strong> Sử dụng tính năng <strong>"Lịch định kỳ"</strong> để tự động đăng bài vào các khung giờ vàng (theo nghiên cứu tương tác cao nhất), giúp tối ưu reach và engagement.</p>
+                    </div>
+                </section>
+
+                <!-- AI Content -->
+                <section id="ai-content" class="docs-section">
+                    <div class="docs-section-header">
+                        <h2><i class="fas fa-robot"></i> AI Content</h2>
+                        <p>Tạo nội dung chất lượng cao với AI thông minh, tiết kiệm thời gian và công sức.</p>
+                    </div>
+
+                    <div class="docs-article">
+                        <div class="docs-article-header">
+                            <div class="docs-article-icon orange"><i class="fas fa-wand-magic-sparkles"></i></div>
+                            <div class="docs-article-title">
+                                <h3>Sinh nội dung tự động</h3>
+                                <div class="article-meta">
+                                    <span><i class="far fa-clock"></i> 6 phút đọc</span>
+                                    <span><i class="fas fa-signal"></i> Trung bình</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p>AI Content sử dụng các mô hình ngôn ngữ lớn (LLM) để tạo ra nội dung chất lượng cao cho bài đăng Facebook của bạn. Chỉ cần nhập chủ đề, chọn phong cách viết và AI sẽ làm phần còn lại.</p>
+                        <p>Tính năng nổi bật:</p>
+                        <ul style="list-style:disc;padding-left:20px;margin-bottom:12px;color:var(--text-secondary);font-size:0.9rem;line-height:1.8;">
+                            <li><strong>Đa chủ đề:</strong> Hỗ trợ nhiều lĩnh vực (thương mại điện tử, giáo dục, giải trí,...)</li>
+                            <li><strong>Nhiều phong cách:</strong> Chuyên nghiệp, thân thiện, hài hước, truyền cảm hứng</li>
+                            <li><strong>Tối ưu SEO:</strong> Tự động thêm hashtag và từ khóa phù hợp</li>
+                            <li><strong>Lịch sử:</strong> Lưu trữ tất cả nội dung đã tạo để tái sử dụng</li>
+                        </ul>
+                        <a href="/features/ai-content" class="article-link">Xem chi tiết <i class="fas fa-arrow-right"></i></a>
+                    </div>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="code-lang">Ví dụ</span>
+                            <button class="code-copy" onclick="copyCode(this)"><i class="fas fa-copy"></i> Copy</button>
+                        </div>
+                        <pre><code><span class="comment">// 1. Nhập chủ đề</span>
+Chủ đề: "Bán giày thể thao chạy bộ"
+
+<span class="comment">// 2. Chọn phong cách</span>
+Phong cách: Chuyên nghiệp, thân thiện
+
+<span class="comment">// 3. AI tự động sinh:</span>
+🔥 <span class="string">"Chạy bộ mỗi ngày - Bí quyết sống khỏe cùng đôi giày hoàn hảo!
+
+Bạn đã sẵn sàng chinh phục những cung đường mới? 
+Đôi giày chạy bộ cao cấp với công nghệ đệm khí thế hệ mới...</span>"
+
+<span class="comment">// 4. Hashtag gợi ý:</span>
+<span class="variable">#ChayBo</span> <span class="variable">#GianTheThao</span> <span class="variable">#SucKhoe</span></code></pre>
+                    </div>
+                </section>
+
+                <!-- Auto Comment -->
+                <section id="auto-comment" class="docs-section">
+                    <div class="docs-section-header">
+                        <h2><i class="fas fa-comments"></i> Auto Comment</h2>
+                        <p>Tự động tương tác với bài viết, tăng tương tác và tiếp cận khách hàng tiềm năng.</p>
+                    </div>
+
+                    <div class="docs-article">
+                        <div class="docs-article-header">
+                            <div class="docs-article-icon teal"><i class="fas fa-message"></i></div>
+                            <div class="docs-article-title">
+                                <h3>Thiết lập bình luận tự động</h3>
+                                <div class="article-meta">
+                                    <span><i class="far fa-clock"></i> 10 phút đọc</span>
+                                    <span><i class="fas fa-signal"></i> Nâng cao</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p>Tính năng này cho phép bạn thiết lập các kịch bản bình luận tự động dựa trên từ khóa, nội dung bài viết hoặc lịch trình cụ thể. Phù hợp cho các chiến dịch marketing, chăm sóc khách hàng và tăng tương tác.</p>
+                        <div class="docs-table-wrapper">
+                            <table class="docs-table">
+                                <thead>
+                                    <tr>
+                                        <th>Loại</th>
+                                        <th>Mô tả</th>
+                                        <th>Trạng thái</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Từ khóa</strong></td>
+                                        <td>Bình luận khi phát hiện từ khóa trong bài viết</td>
+                                        <td><span class="status-badge done">Hoạt động</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Lịch trình</strong></td>
+                                        <td>Bình luận theo thời gian định kỳ</td>
+                                        <td><span class="status-badge done">Hoạt động</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>AI thông minh</strong></td>
+                                        <td>AI phân tích nội dung và tạo bình luận phù hợp</td>
+                                        <td><span class="status-badge beta">Beta</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Mẫu câu</strong></td>
+                                        <td>Dùng các mẫu câu có sẵn với biến động</td>
+                                        <td><span class="status-badge new">Sắp ra mắt</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- AI Scan -->
+                <section id="ai-scan" class="docs-section">
+                    <div class="docs-section-header">
+                        <h2><i class="fas fa-search"></i> AI Scan</h2>
+                        <p>Quét và phân tích thị trường, đối thủ cạnh tranh, xu hướng ngành tự động.</p>
+                    </div>
+
+                    <div class="docs-article">
+                        <div class="docs-article-header">
+                            <div class="docs-article-icon red"><i class="fas fa-radar"></i></div>
+                            <div class="docs-article-title">
+                                <h3>Giới thiệu AI Scan</h3>
+                                <div class="article-meta">
+                                    <span><i class="far fa-clock"></i> 4 phút đọc</span>
+                                    <span><i class="fas fa-signal"></i> Trung bình</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p>AI Scan là công cụ phân tích thị trường mạnh mẽ, sử dụng AI để quét và phân tích dữ liệu từ các nguồn khác nhau. Tính năng này giúp bạn nắm bắt xu hướng, theo dõi đối thủ và đưa ra quyết định dựa trên dữ liệu.</p>
+                        <p>AI Scan có thể quét theo lịch trình tự động và gửi báo cáo qua email hoặc Telegram.</p>
+                        <div class="article-tags">
+                            <span class="article-tag">AI Scan</span>
+                            <span class="article-tag">Phân tích</span>
+                            <span class="article-tag">Báo cáo</span>
+                        </div>
+                    </div>
+
+                    <div class="docs-info-box info">
+                        <i class="fas fa-chart-line"></i>
+                        <p><strong>📊 Tính năng Pro:</strong> AI Scan yêu cầu gói Pro để sử dụng đầy đủ tính năng, bao gồm quét không giới hạn và báo cáo chi tiết.</p>
+                    </div>
+                </section>
+
+                <!-- Competitor -->
+                <section id="competitor" class="docs-section">
+                    <div class="docs-section-header">
+                        <h2><i class="fas fa-users-viewfinder"></i> Theo dõi đối thủ</h2>
+                        <p>Giám sát hoạt động và chiến lược của đối thủ cạnh tranh trên Facebook.</p>
+                    </div>
+
+                    <div class="docs-article">
+                        <div class="docs-article-header">
+                            <div class="docs-article-icon purple"><i class="fas fa-binoculars"></i></div>
+                            <div class="docs-article-title">
+                                <h3>Thiết lập giám sát đối thủ</h3>
+                                <div class="article-meta">
+                                    <span><i class="far fa-clock"></i> 7 phút đọc</span>
+                                    <span><i class="fas fa-signal"></i> Nâng cao</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p>Thêm các trang Facebook của đối thủ vào danh sách theo dõi. FB-SYSTEM sẽ tự động thu thập dữ liệu về bài đăng, tương tác, và chiến lược nội dung của họ.</p>
+                        <p>Bạn sẽ nhận được thông báo khi đối thủ đăng bài mới, thay đổi chiến lược hoặc có chiến dịch đặc biệt.</p>
+                        <div class="article-tags">
+                            <span class="article-tag">Competitor</span>
+                            <span class="article-tag">Giám sát</span>
+                            <span class="article-tag">Phân tích</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Analytics -->
+                <section id="analytics" class="docs-section">
+                    <div class="docs-section-header">
+                        <h2><i class="fas fa-chart-bar"></i> Phân tích & Báo cáo</h2>
+                        <p>Dashboard trực quan với các chỉ số hiệu suất chi tiết giúp bạn đưa ra quyết định dựa trên dữ liệu.</p>
+                    </div>
+
+                    <div class="quick-start-grid">
+                        <div class="quick-start-card">
+                            <div class="qs-icon blue"><i class="fas fa-eye"></i></div>
+                            <h4>Lượt tiếp cận</h4>
+                            <p>Phân tích reach, impression và tăng trưởng theo thời gian.</p>
+                        </div>
+                        <div class="quick-start-card">
+                            <div class="qs-icon green"><i class="fas fa-heart"></i></div>
+                            <h4>Tương tác</h4>
+                            <p>Theo dõi like, comment, share và engagement rate.</p>
+                        </div>
+                        <div class="quick-start-card">
+                            <div class="qs-icon orange"><i class="fas fa-users"></i></div>
+                            <h4>Đối tượng</h4>
+                            <p>Phân tích nhân khẩu học và hành vi người dùng.</p>
+                        </div>
+                        <div class="quick-start-card">
+                            <div class="qs-icon purple"><i class="fas fa-file-export"></i></div>
+                            <h4>Xuất báo cáo</h4>
+                            <p>Xuất báo cáo PDF/Excel với một cú nhấp chuột.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- FAQ -->
+                <section id="faq" class="docs-section">
+                    <div class="docs-section-header">
+                        <h2><i class="fas fa-question-circle"></i> Câu hỏi thường gặp</h2>
+                        <p>Giải đáp các thắc mắc phổ biến về FB-SYSTEM.</p>
+                    </div>
+
+                    <div class="docs-faq-item active" onclick="toggleFaq(this)">
+                        <div class="docs-faq-question">
+                            <h4>FB-SYSTEM có an toàn không? Facebook có khóa tài khoản không?</h4>
+                            <div class="faq-toggle"><i class="fas fa-chevron-down"></i></div>
+                        </div>
+                        <div class="docs-faq-answer">
+                            <p>FB-SYSTEM được thiết kế với cơ chế giả lập hành vi người dùng thực, tự động nghỉ giữa các tác vụ, thay đổi thời gian chờ ngẫu nhiên để tránh bị phát hiện. Hàng ngàn người dùng đã sử dụng an toàn trong nhiều tháng. Tuy nhiên, chúng tôi khuyên bạn nên sử dụng tài khoản phụ cho các tác vụ tự động.</p>
+                        </div>
+                    </div>
+
+                    <div class="docs-faq-item" onclick="toggleFaq(this)">
+                        <div class="docs-faq-question">
+                            <h4>Tôi có thể dùng thử trước khi mua không?</h4>
+                            <div class="faq-toggle"><i class="fas fa-chevron-down"></i></div>
+                        </div>
+                        <div class="docs-faq-answer">
+                            <p>Có! Chúng tôi cung cấp bản dùng thử 7 ngày miễn phí với đầy đủ tính năng. Bạn không cần nhập thông tin thanh toán để bắt đầu dùng thử.</p>
+                        </div>
+                    </div>
+
+                    <div class="docs-faq-item" onclick="toggleFaq(this)">
+                        <div class="docs-faq-question">
+                            <h4>Có hỗ trợ đa tài khoản Facebook không?</h4>
+                            <div class="faq-toggle"><i class="fas fa-chevron-down"></i></div>
+                        </div>
+                        <div class="docs-faq-answer">
+                            <p>Có. FB-SYSTEM hỗ trợ thêm và quản lý nhiều tài khoản Facebook cùng lúc. Bạn có thể chuyển đổi giữa các tài khoản dễ dàng và gán tác vụ cho từng tài khoản riêng biệt.</p>
+                        </div>
+                    </div>
+
+                    <div class="docs-faq-item" onclick="toggleFaq(this)">
+                        <div class="docs-faq-question">
+                            <h4>Làm thế nào để nâng cấp license?</h4>
+                            <div class="faq-toggle"><i class="fas fa-chevron-down"></i></div>
+                        </div>
+                        <div class="docs-faq-answer">
+                            <p>Bạn có thể nâng cấp license bất cứ lúc nào trong mục <strong>Cài đặt → License</strong>. Hệ thống sẽ tự động tính toán số tiền còn lại của gói hiện tại và áp dụng vào gói mới.</p>
+                        </div>
+                    </div>
+
+                    <div class="docs-faq-item" onclick="toggleFaq(this)">
+                        <div class="docs-faq-question">
+                            <h4>Tôi quên mật khẩu, phải làm sao?</h4>
+                            <div class="faq-toggle"><i class="fas fa-chevron-down"></i></div>
+                        </div>
+                        <div class="docs-faq-answer">
+                            <p>Tại trang đăng nhập, nhấn vào <strong>"Quên mật khẩu"</strong> và nhập email đã đăng ký. Chúng tôi sẽ gửi link đặt lại mật khẩu vào email của bạn trong vòng 5 phút.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Troubleshooting -->
+                <section id="troubleshooting" class="docs-section">
+                    <div class="docs-section-header">
+                        <h2><i class="fas fa-exclamation-triangle"></i> Xử lý sự cố</h2>
+                        <p>Các vấn đề thường gặp và cách khắc phục nhanh chóng.</p>
+                    </div>
+
+                    <div class="docs-info-box error">
+                        <i class="fas fa-times-circle"></i>
+                        <p><strong>⚠️ Ứng dụng không khởi động được</strong><br>Kiểm tra: (1) Đã cài đặt .NET Runtime chưa? (2) Antivirus có đang chặn không? (3) Thử chạy với quyền Administrator.</p>
+                    </div>
+
+                    <div class="docs-info-box warning">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p><strong>⚠️ Không kết nối được Facebook</strong><br>Kiểm tra: (1) Tài khoản Facebook có đang hoạt động không? (2) Mạng internet có ổn định không? (3) Thử đăng nhập lại tài khoản trong ứng dụng.</p>
+                    </div>
+
+                    <div class="docs-info-box info">
+                        <i class="fas fa-info-circle"></i>
+                        <p><strong>ℹ️ Bài viết không đúng lịch</strong><br>Kiểm tra: (1) Đồng hồ hệ thống có đúng giờ không? (2) Lịch đã được kích hoạt chưa? (3) Tài khoản đăng bài có còn hiệu lực không?</p>
+                    </div>
+
+                    <div class="docs-info-box success">
+                        <i class="fas fa-check-circle"></i>
+                        <p><strong>✅ Vẫn gặp vấn đề?</strong><br>Liên hệ đội ngũ hỗ trợ qua email <strong>support@fb-system.com</strong> hoặc chat trực tiếp trên website. Chúng tôi phản hồi trong vòng 24h.</p>
+                    </div>
+                </section>
+
+                <!-- Resources -->
+                <section id="resources" class="docs-section">
+                    <div class="docs-section-header">
+                        <h2><i class="fas fa-link"></i> Tài nguyên</h2>
+                        <p>Các tài liệu, công cụ và liên kết hữu ích cho người dùng FB-SYSTEM.</p>
+                    </div>
+
+                    <div class="docs-resources">
+                        <a href="/download" class="docs-resource-card">
+                            <i class="fas fa-download"></i>
+                            <h4>Tải ứng dụng</h4>
+                            <p>Phiên bản mới nhất cho Windows/macOS</p>
+                        </a>
+                        <a href="/blog" class="docs-resource-card">
+                            <i class="fas fa-blog"></i>
+                            <h4>Blog</h4>
+                            <p>Mẹo & thủ thuật sử dụng hiệu quả</p>
+                        </a>
+                        <a href="/pricing" class="docs-resource-card">
+                            <i class="fas fa-tags"></i>
+                            <h4>Bảng giá</h4>
+                            <p>So sánh các gói dịch vụ</p>
+                        </a>
+                        <a href="/about" class="docs-resource-card">
+                            <i class="fas fa-info-circle"></i>
+                            <h4>Về chúng tôi</h4>
+                            <p>Tìm hiểu về đội ngũ FB-SYSTEM</p>
+                        </a>
+                    </div>
+                </section>
+
+                <!-- Pagination -->
+                <div class="docs-pagination">
+                    <a href="/features/schedule" class="prev">
+                        <i class="fas fa-arrow-left" style="color:var(--primary);"></i>
+                        <div>
+                            <div class="pag-label">← Trước</div>
+                            <div class="pag-title">Tính năng Lịch đăng bài</div>
+                        </div>
+                    </a>
+                    <a href="/download" class="next">
+                        <div>
+                            <div class="pag-label">Sau →</div>
+                            <div class="pag-title">Tải ứng dụng</div>
+                        </div>
+                        <i class="fas fa-arrow-right" style="color:var(--primary);"></i>
+                    </a>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <%- include('../partials/footer') %>
+
+    <script>
+        // ========================================
+        // DOCS PAGE INTERACTIONS
+        // ========================================
+
+        // --- Smooth scroll & active nav ---
+        document.querySelectorAll('.docs-nav-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href').substring(1);
+                const target = document.getElementById(targetId);
+                if (target) {
+                    const offset = 100;
+                    const top = target.getBoundingClientRect().top + window.scrollY - offset;
+                    window.scrollTo({ top, behavior: 'smooth' });
+                }
+                // Update active
+                document.querySelectorAll('.docs-nav-item').forEach(i => i.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // --- Update active nav on scroll ---
+        const sections = document.querySelectorAll('.docs-section');
+        const navItems = document.querySelectorAll('.docs-nav-item');
+
+        function updateActiveNav() {
+            let current = '';
+            sections.forEach(section => {
+                const rect = section.getBoundingClientRect();
+                if (rect.top <= 150) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navItems.forEach(item => {
+                item.classList.remove('active');
+                if (item.getAttribute('data-section') === current) {
+                    item.classList.add('active');
+                }
+            });
+        }
+
+        window.addEventListener('scroll', updateActiveNav, { passive: true });
+
+        // --- Section reveal animation ---
+        const sectionObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    sectionObserver.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.docs-section').forEach(s => sectionObserver.observe(s));
+
+        // --- FAQ Toggle ---
+        function toggleFaq(element) {
+            element.classList.toggle('active');
+        }
+
+        // Make toggleFaq globally available
+        window.toggleFaq = toggleFaq;
+
+        // --- Code Copy ---
+        function copyCode(btn) {
+            const code = btn.closest('.docs-code-block').querySelector('code');
+            if (code) {
+                navigator.clipboard.writeText(code.textContent).then(() => {
+                    const original = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-check"></i> Đã copy';
+                    btn.style.color = '#34d399';
+                    setTimeout(() => {
+                        btn.innerHTML = original;
+                        btn.style.color = '';
+                    }, 2000);
+                });
+            }
+        }
+
+        window.copyCode = copyCode;
+
+        // --- Search functionality ---
+        const searchInput = document.getElementById('docsSearch');
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                const query = this.value.toLowerCase().trim();
+                const articles = document.querySelectorAll('.docs-article, .quick-start-card, .docs-faq-item, .docs-step-item');
+
+                articles.forEach(article => {
+                    const text = article.textContent.toLowerCase();
+                    if (!query) {
+                        article.style.display = '';
+                        article.style.opacity = '1';
+                    } else if (text.includes(query)) {
+                        article.style.display = '';
+                        article.style.opacity = '1';
+                        // Highlight matching sections
+                        const parent = article.closest('.docs-section');
+                        if (parent) parent.style.opacity = '1';
+                    } else {
+                        article.style.display = 'none';
+                    }
+                });
+
+                // Show/hide sections based on visible children
+                document.querySelectorAll('.docs-section').forEach(section => {
+                    const visible = Array.from(section.querySelectorAll('.docs-article, .quick-start-card, .docs-faq-item, .docs-step-item'))
+                        .some(el => el.style.display !== 'none');
+                    section.style.display = visible || !query ? '' : 'none';
+                });
+            });
+        }
+
+        // --- Keyboard shortcut ---
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                searchInput?.focus();
+            }
+            if (e.key === 'Escape') {
+                searchInput?.blur();
+            }
+        });
+
+        // --- Stagger animation for step items ---
+        const stepObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const delay = parseInt(entry.target.dataset.delay) || 0;
+                    setTimeout(() => {
+                        entry.target.style.opacity = '1';
+                        entry.target.style.transform = 'translateY(0)';
+                    }, delay);
+                    stepObserver.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.docs-step-item').forEach(item => {
+            item.style.opacity = '0';
+            item.style.transform = 'translateY(20px)';
+            item.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            stepObserver.observe(item);
+        });
+
+        console.log('📄 Docs page initialized');
+    </script>
+</body>
+</html>

@@ -1,0 +1,330 @@
+<%
+page = 'blog';
+%>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog - FB-SYSTEM | Kiến thức Marketing & Tự động hóa</title>
+    <meta name="description" content="Blog chia sẻ kiến thức về marketing, tự động hóa, AI và các giải pháp công nghệ giúp doanh nghiệp phát triển.">
+    <meta name="keywords" content="blog marketing, tự động hóa, AI content, facebook marketing, digital marketing">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/landing.css">
+</head>
+<body>
+    <%- include('../partials/header') %>
+
+    <!-- ===== BLOG HERO MODERN ===== -->
+    <section class="blog-hero-modern">
+        <div class="container">
+            <div class="blog-hero-content">
+                <div class="blog-hero-badge">
+                    <i class="fas fa-newspaper"></i>
+                    Kiến thức & Chia sẻ
+                </div>
+                <h1>Blog <span>FB-SYSTEM</span></h1>
+                <p>Những bài viết chất lượng nhất về marketing, tự động hóa và công nghệ từ đội ngũ chuyên gia của chúng tôi.</p>
+                
+                <div class="blog-hero-search">
+                    <input type="text" placeholder="Tìm kiếm bài viết..." id="blogSearchInput">
+                    <button type="button" onclick="document.getElementById('blogSearchInput').focus()"><i class="fas fa-search"></i></button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== BLOG CONTENT ===== -->
+    <section class="blog-section section-padding">
+        <div class="container">
+            <!-- Category & Sort Filters -->
+            <div class="blog-filters">
+                <div class="blog-filters-inner">
+                    <div class="blog-categories-modern">
+                        <button class="category-btn active" data-cat="all">
+                            <i class="fas fa-th-large"></i>
+                            Tất cả
+                        </button>
+                        <button class="category-btn" data-cat="marketing">
+                            <i class="fas fa-bullhorn"></i>
+                            Marketing
+                        </button>
+                        <button class="category-btn" data-cat="automation">
+                            <i class="fas fa-gear"></i>
+                            Tự động hóa
+                        </button>
+                        <button class="category-btn" data-cat="ai">
+                            <i class="fas fa-brain"></i>
+                            AI & Công nghệ
+                        </button>
+                        <button class="category-btn" data-cat="guide">
+                            <i class="fas fa-book"></i>
+                            Hướng dẫn
+                        </button>
+                        <button class="category-btn" data-cat="case-study">
+                            <i class="fas fa-chart-simple"></i>
+                            Case Study
+                        </button>
+                    </div>
+                    <div class="blog-filters-sort">
+                        <label for="sortSelect">Sắp xếp:</label>
+                        <select id="sortSelect">
+                            <option value="newest">Mới nhất</option>
+                            <option value="oldest">Cũ nhất</option>
+                            <option value="popular">Phổ biến</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Featured Post (Modern) -->
+            <article class="blog-featured-modern animate-on-scroll" data-category="marketing">
+                <div class="featured-thumb">
+                    <span class="featured-badge"><i class="fas fa-star"></i> Bài viết nổi bật</span>
+                    <div style="background: linear-gradient(135deg, #6366f1, #8b5cf6); width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:80px; color:rgba(255,255,255,0.2);">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <span class="featured-date"><i class="far fa-calendar-alt"></i> 10/06/2026</span>
+                </div>
+                <div class="featured-body">
+                    <div class="featured-meta">
+                        <span><i class="far fa-calendar-alt"></i> 10/06/2026</span>
+                        <span><i class="far fa-clock"></i> 8 phút đọc</span>
+                        <span><i class="far fa-eye"></i> 1.2K lượt xem</span>
+                    </div>
+                    <h2>Tự động hóa Marketing: Làm thế nào để tiết kiệm 80% thời gian?</h2>
+                    <p>Tự động hóa marketing không còn là xu hướng mà đã trở thành yêu cầu sống còn cho doanh nghiệp trong thời đại số. Khám phá cách FB-SYSTEM giúp bạn tiết kiệm đến 80% thời gian cho các chiến dịch truyền thông.</p>
+                    <div class="featured-footer">
+                        <div class="featured-author">
+                            <span class="author-avatar" style="background: linear-gradient(135deg, #6366f1, #8b5cf6);">N</span>
+                            <div class="author-info">
+                                <span class="author-name">Nguyễn Luật</span>
+                                <span class="author-role">Chuyên gia Marketing</span>
+                            </div>
+                        </div>
+                        <a href="#" class="blog-link">Đọc tiếp <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Blog Grid (Modern) -->
+            <div class="blog-grid-modern stagger-children" id="blogPostsGrid">
+                <!-- Card 1 -->
+                <article class="blog-card-modern stagger-item" data-category="ai">
+                    <div class="card-thumb" style="background: linear-gradient(135deg, #6366f1, #8b5cf6);">
+                        <i class="fas fa-robot"></i>
+                        <span class="card-cat"><i class="fas fa-tag"></i> AI & Công nghệ</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-meta">
+                            <span><i class="far fa-calendar-alt"></i> 05/06/2026</span>
+                            <span><i class="far fa-clock"></i> 6 phút đọc</span>
+                        </div>
+                        <h3>AI Content là gì? Hướng dẫn toàn diện cho người mới bắt đầu</h3>
+                        <p>Tìm hiểu cách AI Content hoạt động và làm thế nào để tận dụng nó cho chiến lược nội dung của bạn.</p>
+                        <div class="card-footer">
+                            <a href="#" class="read-more">Đọc tiếp <i class="fas fa-arrow-right"></i></a>
+                            <span class="read-time"><i class="far fa-clock"></i> 6 phút</span>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Card 2 -->
+                <article class="blog-card-modern stagger-item" data-category="marketing">
+                    <div class="card-thumb" style="background: linear-gradient(135deg, #10b981, #059669);">
+                        <i class="fab fa-facebook"></i>
+                        <span class="card-cat"><i class="fas fa-tag"></i> Marketing</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-meta">
+                            <span><i class="far fa-calendar-alt"></i> 01/06/2026</span>
+                            <span><i class="far fa-clock"></i> 10 phút đọc</span>
+                        </div>
+                        <h3>10 mẹo đăng bài Facebook hiệu quả với công cụ lập lịch</h3>
+                        <p>Đăng bài đúng thời điểm, đúng đối tượng sẽ giúp tăng tương tác lên đến 300%.</p>
+                        <div class="card-footer">
+                            <a href="#" class="read-more">Đọc tiếp <i class="fas fa-arrow-right"></i></a>
+                            <span class="read-time"><i class="far fa-clock"></i> 10 phút</span>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Card 3 -->
+                <article class="blog-card-modern stagger-item" data-category="automation">
+                    <div class="card-thumb" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                        <i class="fas fa-chart-bar"></i>
+                        <span class="card-cat"><i class="fas fa-tag"></i> Tự động hóa</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-meta">
+                            <span><i class="far fa-calendar-alt"></i> 28/05/2026</span>
+                            <span><i class="far fa-clock"></i> 7 phút đọc</span>
+                        </div>
+                        <h3>Phân tích đối thủ cạnh tranh: Chiến lược và công cụ</h3>
+                        <p>Hiểu rõ đối thủ đang làm gì là chìa khóa để xây dựng chiến lược marketing vượt trội.</p>
+                        <div class="card-footer">
+                            <a href="#" class="read-more">Đọc tiếp <i class="fas fa-arrow-right"></i></a>
+                            <span class="read-time"><i class="far fa-clock"></i> 7 phút</span>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Card 4 -->
+                <article class="blog-card-modern stagger-item" data-category="automation">
+                    <div class="card-thumb" style="background: linear-gradient(135deg, #06b6d4, #0891b2);">
+                        <i class="fas fa-comments"></i>
+                        <span class="card-cat"><i class="fas fa-tag"></i> Tự động hóa</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-meta">
+                            <span><i class="far fa-calendar-alt"></i> 20/05/2026</span>
+                            <span><i class="far fa-clock"></i> 5 phút đọc</span>
+                        </div>
+                        <h3>Tự động comment: Bí quyết tăng tương tác Facebook tự nhiên</h3>
+                        <p>Áp dụng AI để tự động tạo comment thông minh, tự nhiên như người thật.</p>
+                        <div class="card-footer">
+                            <a href="#" class="read-more">Đọc tiếp <i class="fas fa-arrow-right"></i></a>
+                            <span class="read-time"><i class="far fa-clock"></i> 5 phút</span>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Card 5 -->
+                <article class="blog-card-modern stagger-item" data-category="guide">
+                    <div class="card-thumb" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                        <i class="fas fa-video"></i>
+                        <span class="card-cat"><i class="fas fa-tag"></i> Hướng dẫn</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-meta">
+                            <span><i class="far fa-calendar-alt"></i> 15/05/2026</span>
+                            <span><i class="far fa-clock"></i> 12 phút đọc</span>
+                        </div>
+                        <h3>Chiến lược Reels cho doanh nghiệp: Xu hướng 2026</h3>
+                        <p>Reels đang thống trị Facebook và Instagram. Xây dựng chiến lược video ngắn hiệu quả.</p>
+                        <div class="card-footer">
+                            <a href="#" class="read-more">Đọc tiếp <i class="fas fa-arrow-right"></i></a>
+                            <span class="read-time"><i class="far fa-clock"></i> 12 phút</span>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Card 6 -->
+                <article class="blog-card-modern stagger-item" data-category="ai">
+                    <div class="card-thumb" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9);">
+                        <i class="fas fa-shield-halved"></i>
+                        <span class="card-cat"><i class="fas fa-tag"></i> AI & Công nghệ</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-meta">
+                            <span><i class="far fa-calendar-alt"></i> 10/05/2026</span>
+                            <span><i class="far fa-clock"></i> 8 phút đọc</span>
+                        </div>
+                        <h3>Bảo mật tài khoản Facebook: Những điều cần biết</h3>
+                        <p>Hướng dẫn toàn diện về bảo mật tài khoản Facebook, tránh bị hack và rủi ro an ninh.</p>
+                        <div class="card-footer">
+                            <a href="#" class="read-more">Đọc tiếp <i class="fas fa-arrow-right"></i></a>
+                            <span class="read-time"><i class="far fa-clock"></i> 8 phút</span>
+                        </div>
+                    </div>
+                </article>
+            </div>
+
+            <!-- Pagination Modern -->
+            <div class="blog-pagination-modern">
+                <a href="#" class="page-btn"><i class="fas fa-chevron-left"></i></a>
+                <a href="#" class="page-btn active">1</a>
+                <a href="#" class="page-btn">2</a>
+                <a href="#" class="page-btn">3</a>
+                <span class="page-dots">...</span>
+                <a href="#" class="page-btn">8</a>
+                <a href="#" class="page-btn"><i class="fas fa-chevron-right"></i></a>
+            </div>
+        </div>
+    </section>
+
+    <%- include('../partials/footer') %>
+    
+    <script>
+        // Category filter
+        document.querySelectorAll('.category-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelector('.category-btn.active')?.classList.remove('active');
+                this.classList.add('active');
+                
+                const cat = this.dataset.cat;
+                // Filter featured post
+                const featured = document.querySelector('.blog-featured-modern');
+                if (featured) {
+                    if (cat === 'all' || featured.dataset.category === cat) {
+                        featured.style.display = '';
+                        setTimeout(() => featured.style.opacity = '1', 50);
+                    } else {
+                        featured.style.opacity = '0';
+                        setTimeout(() => featured.style.display = 'none', 300);
+                    }
+                }
+                // Filter grid cards
+                document.querySelectorAll('.blog-card-modern').forEach(card => {
+                    if (cat === 'all' || card.dataset.category === cat) {
+                        card.style.display = '';
+                        setTimeout(() => card.style.opacity = '1', 50);
+                    } else {
+                        card.style.opacity = '0';
+                        setTimeout(() => card.style.display = 'none', 300);
+                    }
+                });
+            });
+        });
+
+        // Sort functionality
+        document.getElementById('sortSelect')?.addEventListener('change', function() {
+            const cards = Array.from(document.querySelectorAll('.blog-card-modern'));
+            const grid = document.getElementById('blogPostsGrid');
+            const val = this.value;
+            cards.sort((a, b) => {
+                const dateA = a.querySelector('.card-meta span:first-child')?.textContent.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+                const dateB = b.querySelector('.card-meta span:first-child')?.textContent.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+                if (!dateA || !dateB) return 0;
+                const tsA = new Date(`${dateA[3]}-${dateA[2]}-${dateA[1]}`).getTime();
+                const tsB = new Date(`${dateB[3]}-${dateB[2]}-${dateB[1]}`).getTime();
+                return val === 'newest' ? tsB - tsA : val === 'oldest' ? tsA - tsB : 0;
+            });
+            cards.forEach(c => grid.appendChild(c));
+        });
+
+        // Search
+        document.getElementById('blogSearchInput')?.addEventListener('input', function() {
+            const q = this.value.toLowerCase();
+            document.querySelectorAll('.blog-card-modern').forEach(card => {
+                const title = card.querySelector('h3')?.textContent.toLowerCase() || '';
+                const body = card.querySelector('p')?.textContent.toLowerCase() || '';
+                if (title.includes(q) || body.includes(q)) {
+                    card.style.display = '';
+                    card.style.opacity = '1';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+
+        // Intersection Observer for scroll animations
+        if (window.IntersectionObserver) {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.1 });
+            document.querySelectorAll('.animate-on-scroll, .stagger-item').forEach(el => observer.observe(el));
+        } else {
+            document.querySelectorAll('.animate-on-scroll, .stagger-item').forEach(el => el.classList.add('visible'));
+        }
+    </script>
+</body>
+</html>

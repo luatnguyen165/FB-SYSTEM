@@ -574,11 +574,12 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
             let publishedAt = null;
             let publishedAtText = '';
 
-            // Debug: log timestamp-related fields
-            const timestampData = node?.comet_sections?.timestamp;
-            const timestampText = timestampData?.story?.created_time?.text || timestampData?.text || '';
-            const timestampUnix = timestampData?.story?.created_time?.timestamp || timestampData?.timestamp || null;
-            console.log(`[Profile Scraper] Debug ${postId}: timestampText="${timestampText}", timestampUnix=${timestampUnix}`);
+            // Debug: log timestamp object structure
+            const tsObj = node?.comet_sections?.timestamp;
+            console.log(`[Profile Scraper] Debug ${postId}: timestamp type=${typeof tsObj}, keys=${Object.keys(tsObj || {}).join(',')}`);
+            if (tsObj) {
+                console.log(`[Profile Scraper] Debug ${postId}: timestamp=${JSON.stringify(tsObj).substring(0, 500)}`);
+            }
 
             try {
                 // Path 1: comet_sections.timestamp.story.created_time (Unix)

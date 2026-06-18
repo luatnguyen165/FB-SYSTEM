@@ -396,11 +396,15 @@ exports.scrapeTracking = async (req, res) => {
 
                 for (let i = 0; i < (post.images || []).length; i++) {
                     const imgUrl = post.images[i];
+                    console.log(`[Download] URL[${i}]: ${imgUrl}`);
+                    if (!imgUrl || !imgUrl.startsWith('http')) {
+                        console.log(`[Download] Skip invalid URL`);
+                        continue;
+                    }
                     try {
                         const ext = imgUrl.toLowerCase().includes('.png') ? '.png' : imgUrl.toLowerCase().includes('.webp') ? '.webp' : '.jpg';
                         const filename = `${post.postId}_${i + 1}${ext}`;
                         const filepath = path.join(postDir, filename);
-                        console.log(`[Download] ${imgUrl.substring(0, 60)}...`);
                         const r = await axios.get(imgUrl, { responseType: 'arraybuffer', timeout: 30000 });
                         fs.writeFileSync(filepath, r.data);
                         downloadedImages.push(`/uploads/scraper/${post.postId}/${filename}`);

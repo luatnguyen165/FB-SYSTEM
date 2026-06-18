@@ -140,7 +140,7 @@ exports.createTracking = async (req, res) => {
                     console.log(`[Tracking] Auto-scrape: parsed profileId="${profileId}" from url="${url}"`);
 
                     if (profileId) {
-                        const saveDir = path.join(global.USER_DATA_DIR || __dirname, '..', 'uploads', 'tracking');
+                        const saveDir = path.join(global.USER_DATA_DIR || __dirname, '..', 'uploads', 'scraper');
                         console.log(`[Tracking] Auto-scrape: starting scrape, saveDir=${saveDir}`);
                         const posts = await scrapeProfilePosts({ profileId, cookies, fbDtsg, limit: 10, saveDir });
                         console.log(`[Tracking] Auto-scrape: scraped ${posts.length} posts`);
@@ -424,6 +424,23 @@ exports.deleteTrackingPost = async (req, res) => {
         const post = await TrackingPost.findOneAndDelete({ _id: req.params.id, userId });
         if (!post) return res.status(404).json({ success: false, message: 'Không tìm thấy bài viết' });
         res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+// PUT /tracking/api/posts/:id - Cập nhật bài viết
+exports.updateTrackingPost = async (req, res) => {
+    try {
+        const userId = req.session.userId || req.user?.id;
+        const { text } = req.body;
+        const post = await TrackingPost.findOneAndUpdate(
+            { _id: req.params.id, userId },
+            { $set: { text: text || '' } },
+            { new: true }
+        );
+        if (!post) return res.status(404).json({ success: false, message: 'Không tìm thấy bài viết' });
+        res.json({ success: true, data: post });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }

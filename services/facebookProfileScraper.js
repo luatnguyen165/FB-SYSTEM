@@ -185,7 +185,7 @@ async function downloadImage(url, saveDir, filename) {
         const filepath = path.join(saveDir, `${filename}${ext}`);
         const r = await axios.get(url, { responseType: 'arraybuffer', timeout: 30000 });
         fs.writeFileSync(filepath, r.data);
-        return `/uploads/tracking/${path.basename(saveDir)}/${filename}${ext}`;
+        return `/uploads/scraper/${path.basename(saveDir)}/${filename}${ext}`;
     } catch { return null; }
 }
 

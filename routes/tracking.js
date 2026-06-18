@@ -21,6 +21,7 @@ router.get('/api/channels', trackingController.getChannelsByPlatform);
 // Scrape & Posts
 router.post('/api/scrape/:id', trackingController.scrapeTracking);
 router.get('/api/posts/:trackingId', trackingController.getTrackingPosts);
+router.put('/api/posts/:id', trackingController.updateTrackingPost);
 router.delete('/api/posts/:id', trackingController.deleteTrackingPost);
 
 module.exports = router;

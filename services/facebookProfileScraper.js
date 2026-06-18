@@ -719,22 +719,22 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
 
             for (let i = 0; i < rawVideos.length; i++) {
                 const v = rawVideos[i];
-                let videoUrl = v.url;
+                let videoUrl = '';
 
-                // Nếu không có URL trực tiếp, fetch từ reel page
-                if (!videoUrl && v.reelUrl) {
-                    console.log(`[Download] Fetching video from reel: ${v.reelUrl}`);
+                // Luôn thử fetch từ reel page trước (Fb_Downloder approach)
+                const reelUrl = v.reelUrl || v.url;
+                if (reelUrl && reelUrl.includes('facebook.com')) {
+                    console.log(`[Download] Fetching video from: ${reelUrl}`);
                     try {
-                        // Fake cookies như Fb_Downloder
                         const fakeCookies = {
                             sb: randomStr(24),
                             fr: `${randomStr(20)}.${randomStr(30)}.${randomStr(22)}..AAA.0.0.0.0`,
                             datr: randomStr(24),
-                            wd: `1920x1080`,
+                            wd: '1920x1080',
                         };
                         const fakeCookieStr = Object.entries(fakeCookies).map(([k, v]) => `${k}=${v}`).join('; ');
 
-                        const reelPage = await axios.get(v.reelUrl, {
+                        const reelPage = await axios.get(reelUrl, {
                             headers: {
                                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                                 'Cookie': cookieHeader || fakeCookieStr,
@@ -746,7 +746,7 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
 
                         // Regex patterns (giống Fb_Downloder)
                         const patterns = [
-                            /d_url":"(https:\/\/video[^"]+)"/,           // Fb_Downloder pattern
+                            /d_url":"(https:\/\/video[^"]+)"/,
                             /"playable_url":"(https:\/\/[^"]+\.mp4[^"]*)"/,
                             /"browser_native_hd_url":"(https:\/\/[^"]+)"/,
                             /"browser_native_sd_url":"(https:\/\/[^"]+)"/,
@@ -755,13 +755,18 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
                             const m = html.match(p);
                             if (m && m[1]) {
                                 videoUrl = m[1].replace(/\\u0025/g, '%').replace(/\\u0026/g, '&');
-                                console.log(`[Download] Found video URL via regex: ${videoUrl.substring(0, 80)}...`);
+                                console.log(`[Download] Found video URL: ${videoUrl.substring(0, 80)}...`);
                                 break;
                             }
                         }
                     } catch (e) {
                         console.log(`[Download] Fetch reel page failed: ${e.message}`);
                     }
+                }
+
+                // Fallback: dùng URL từ GraphQL
+                if (!videoUrl && v.url && v.url.startsWith('http') && !v.url.includes('facebook.com/reel')) {
+                    videoUrl = v.url;
                 }
 
                 if (!videoUrl || !videoUrl.startsWith('http')) continue;

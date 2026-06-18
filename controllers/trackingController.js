@@ -454,7 +454,7 @@ exports.getTrackingPosts = async (req, res) => {
 
         const [posts, total] = await Promise.all([
             TrackingPost.find({ userId, trackingId: req.params.trackingId })
-                .sort({ scrapedAt: -1 })
+                .sort({ publishedAt: -1, scrapedAt: -1 })
                 .skip(skip).limit(parseInt(limit)).lean(),
             TrackingPost.countDocuments({ userId, trackingId: req.params.trackingId }),
         ]);

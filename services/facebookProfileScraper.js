@@ -718,19 +718,61 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
                     const filename = `${postId}_video_${i + 1}.mp4`;
                     const filepath = path.join(postSaveDir, filename);
                     console.log(`[Download] Video: ${v.url.substring(0, 80)}...`);
-                    const r = await axios.get(v.url, {
-                        responseType: 'arraybuffer',
-                        timeout: 120000,
-                        headers: {
-                            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                            'cookie': cookieHeader,
-                            'referer': 'https://www.facebook.com/',
-                        },
-                    });
-                    fs.mkdirSync(postSaveDir, { recursive: true });
-                    fs.writeFileSync(filepath, r.data);
-                    savedVideos.push(`/uploads/scraper/${postId}/${filename}`);
-                    console.log(`[Download] Saved video: ${filename} (${(r.data.length / 1024 / 1024).toFixed(1)}MB)`);
+
+                    // Thử nhiều cách download
+                    let downloaded = false;
+
+                    // Cách 1: Headers đầy đủ như browser
+                    try {
+                        const r = await axios.get(v.url, {
+                            responseType: 'arraybuffer',
+                            timeout: 120000,
+                            maxRedirects: 5,
+                            headers: {
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                                'Accept': '*/*',
+                                'Accept-Language': 'vi-VN,vi;q=0.9',
+                                'Accept-Encoding': 'gzip, deflate, br',
+                                'Referer': 'https://www.facebook.com/',
+                                'Origin': 'https://www.facebook.com',
+                                'Cookie': cookieHeader,
+                                'Sec-Fetch-Dest': 'video',
+                                'Sec-Fetch-Mode': 'cors',
+                                'Sec-Fetch-Site': 'cross-site',
+                            },
+                        });
+                        fs.mkdirSync(postSaveDir, { recursive: true });
+                        fs.writeFileSync(filepath, r.data);
+                        downloaded = true;
+                    } catch (e1) {
+                        console.log(`[Download] Video attempt 1 failed: ${e1.message}`);
+                    }
+
+                    // Cách 2: Không cookies, chỉ referer
+                    if (!downloaded) {
+                        try {
+                            const r = await axios.get(v.url, {
+                                responseType: 'arraybuffer',
+                                timeout: 120000,
+                                maxRedirects: 5,
+                                headers: {
+                                    'User-Agent': 'Mozilla/5.0',
+                                    'Referer': 'https://www.facebook.com/',
+                                },
+                            });
+                            fs.mkdirSync(postSaveDir, { recursive: true });
+                            fs.writeFileSync(filepath, r.data);
+                            downloaded = true;
+                        } catch (e2) {
+                            console.log(`[Download] Video attempt 2 failed: ${e2.message}`);
+                        }
+                    }
+
+                    if (downloaded) {
+                        savedVideos.push(`/uploads/scraper/${postId}/${filename}`);
+                        const stats = fs.statSync(filepath);
+                        console.log(`[Download] Saved video: ${filename} (${(stats.size / 1024 / 1024).toFixed(1)}MB)`);
+                    }
                 } catch (e) {
                     console.error(`[Download] Video failed: ${e.message}`);
                 }

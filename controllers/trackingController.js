@@ -4,6 +4,8 @@ const TrackingPost = require('../models/TrackingPost');
 const Channel = require('../models/Channel');
 const { scrapeProfilePosts } = require('../services/facebookProfileScraper');
 const path = require('path');
+const fs = require('fs');
+const axios = require('axios');
 
 // GET /tracking - Trang chính theo dõi
 exports.showTracking = async (req, res) => {
@@ -114,7 +116,6 @@ exports.createTracking = async (req, res) => {
             console.log(`[Tracking] Auto-scrape: channel=${channel ? channel.accountName : 'null'}, storageStatePath=${channel?.storageStatePath || 'null'}`);
 
             if (channel) {
-                const fs = require('fs');
                 let cookies = {};
                 let fbDtsg = '';
                 if (channel.storageStatePath && fs.existsSync(channel.storageStatePath)) {
@@ -148,9 +149,26 @@ exports.createTracking = async (req, res) => {
                         let saved = 0;
                         for (const post of posts) {
                             try {
+                                // Download images
+                                const downloadedImages = [];
+                                const postDir = path.join(saveDir, String(post.postId));
+                                fs.mkdirSync(postDir, { recursive: true });
+
+                                for (let i = 0; i < (post.images || []).length; i++) {
+                                    const imgUrl = post.images[i];
+                                    try {
+                                        const ext = imgUrl.toLowerCase().includes('.png') ? '.png' : imgUrl.toLowerCase().includes('.webp') ? '.webp' : '.jpg';
+                                        const filename = `${post.postId}_${i + 1}${ext}`;
+                                        const filepath = path.join(postDir, filename);
+                                        const r = await axios.get(imgUrl, { responseType: 'arraybuffer', timeout: 30000 });
+                                        fs.writeFileSync(filepath, r.data);
+                                        downloadedImages.push(`/uploads/scraper/${post.postId}/${filename}`);
+                                    } catch (e) { console.error('[Download] Failed:', e.message); }
+                                }
+
                                 await TrackingPost.findOneAndUpdate(
                                     { trackingId: tracking._id, postId: post.postId },
-                                    { userId, trackingId: tracking._id, postId: post.postId, text: post.text, permalink: post.permalink, commentCount: post.commentCount, authorName: post.authorName, images: post.images, scrapedAt: new Date() },
+                                    { userId, trackingId: tracking._id, postId: post.postId, text: post.text, permalink: post.permalink, commentCount: post.commentCount, authorName: post.authorName, images: downloadedImages, scrapedAt: new Date() },
                                     { upsert: true, new: true }
                                 );
                                 saved++;
@@ -337,7 +355,6 @@ exports.scrapeTracking = async (req, res) => {
         if (!profileId) return res.status(400).json({ success: false, message: 'Không parse được profile ID từ URL' });
 
         // Lấy cookies từ storage state
-        const fs = require('fs');
         let cookies = {};
         let fbDtsg = '';
         if (channel.storageStatePath && fs.existsSync(channel.storageStatePath)) {
@@ -369,13 +386,33 @@ exports.scrapeTracking = async (req, res) => {
         });
         console.log(`[Scrape] Scrape xong: ${posts.length} posts`);
 
-        // Lưu vào DB
+        // Download images trước khi lưu DB
         let saved = 0;
         for (const post of posts) {
             try {
+                const downloadedImages = [];
+                const postDir = path.join(saveDir, String(post.postId));
+                fs.mkdirSync(postDir, { recursive: true });
+
+                for (let i = 0; i < (post.images || []).length; i++) {
+                    const imgUrl = post.images[i];
+                    try {
+                        const ext = imgUrl.toLowerCase().includes('.png') ? '.png' : imgUrl.toLowerCase().includes('.webp') ? '.webp' : '.jpg';
+                        const filename = `${post.postId}_${i + 1}${ext}`;
+                        const filepath = path.join(postDir, filename);
+                        console.log(`[Download] ${imgUrl.substring(0, 60)}...`);
+                        const r = await axios.get(imgUrl, { responseType: 'arraybuffer', timeout: 30000 });
+                        fs.writeFileSync(filepath, r.data);
+                        downloadedImages.push(`/uploads/scraper/${post.postId}/${filename}`);
+                        console.log(`[Download] Saved: ${filename} (${r.data.length} bytes)`);
+                    } catch (e) {
+                        console.error(`[Download] Failed: ${e.message}`);
+                    }
+                }
+
                 await TrackingPost.findOneAndUpdate(
                     { trackingId: tracking._id, postId: post.postId },
-                    { userId, trackingId: tracking._id, postId: post.postId, text: post.text, permalink: post.permalink, commentCount: post.commentCount, authorName: post.authorName, images: post.images, scrapedAt: new Date() },
+                    { userId, trackingId: tracking._id, postId: post.postId, text: post.text, permalink: post.permalink, commentCount: post.commentCount, authorName: post.authorName, images: downloadedImages, scrapedAt: new Date() },
                     { upsert: true, new: true }
                 );
                 saved++;

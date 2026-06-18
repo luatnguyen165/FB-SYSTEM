@@ -109,7 +109,10 @@ exports.createTracking = async (req, res) => {
         // Auto-scrape bài viết sau khi tạo
         let scrapeResult = { scraped: 0 };
         try {
+            console.log(`[Tracking] Auto-scrape: trackingId=${tracking._id}, sourceAccountId=${tracking.sourceAccountId}`);
             const channel = await Channel.findById(tracking.sourceAccountId);
+            console.log(`[Tracking] Auto-scrape: channel=${channel ? channel.accountName : 'null'}, storageStatePath=${channel?.storageStatePath || 'null'}`);
+
             if (channel) {
                 const fs = require('fs');
                 let cookies = {};
@@ -120,6 +123,9 @@ exports.createTracking = async (req, res) => {
                         cookies[c.name] = c.value;
                         if (c.name === 'fb_dtsg') fbDtsg = c.value;
                     }
+                    console.log(`[Tracking] Auto-scrape: loaded ${Object.keys(cookies).length} cookies, c_user=${cookies.c_user || 'null'}, fb_dtsg=${fbDtsg ? 'yes' : 'no'}`);
+                } else {
+                    console.log(`[Tracking] Auto-scrape: storageStatePath not found or doesn't exist`);
                 }
 
                 if (cookies.c_user) {
@@ -131,10 +137,13 @@ exports.createTracking = async (req, res) => {
                         const userMatch = url.match(/facebook\.com\/([a-zA-Z0-9.]+)\/?/);
                         if (userMatch) profileId = userMatch[1];
                     }
+                    console.log(`[Tracking] Auto-scrape: parsed profileId="${profileId}" from url="${url}"`);
 
                     if (profileId) {
                         const saveDir = path.join(global.USER_DATA_DIR || __dirname, '..', 'uploads', 'tracking');
+                        console.log(`[Tracking] Auto-scrape: starting scrape, saveDir=${saveDir}`);
                         const posts = await scrapeProfilePosts({ profileId, cookies, fbDtsg, limit: 10, saveDir });
+                        console.log(`[Tracking] Auto-scrape: scraped ${posts.length} posts`);
 
                         let saved = 0;
                         for (const post of posts) {

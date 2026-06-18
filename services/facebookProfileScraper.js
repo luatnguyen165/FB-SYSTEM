@@ -189,12 +189,55 @@ async function downloadImage(url, saveDir, filename) {
     } catch { return null; }
 }
 
+// ==================== RESOLVE USERNAME → ID ====================
+
+async function resolveProfileId(profileIdOrUsername, cookies, proxy) {
+    // Nếu đã là numeric ID thì trả về luôn
+    if (/^\d+$/.test(profileIdOrUsername)) return profileIdOrUsername;
+
+    // Visit profile page để lấy numeric ID
+    try {
+        console.log(`[Profile Scraper] Resolving username "${profileIdOrUsername}" → numeric ID...`);
+        const url = `https://www.facebook.com/${profileIdOrUsername}`;
+        const r = await axios.get(url, {
+            headers: {
+                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                cookie: Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; '),
+            },
+            timeout: 15000,
+            httpsAgent: getHttpsAgent(proxy),
+            maxRedirects: 5,
+        });
+
+        // Tìm numeric ID từ HTML: "userID":"123456" hoặc profile.php?id=123456
+        const html = r.data || '';
+        const patterns = [
+            /"userID":"(\d+)"/,
+            /"user_id":"(\d+)"/,
+            /profile\.php\?id=(\d+)/,
+            /"entity_id":"(\d+)"/,
+            /"actorID":"(\d+)"/,
+        ];
+        for (const p of patterns) {
+            const m = html.match(p);
+            if (m) {
+                console.log(`[Profile Scraper] Resolved: ${profileIdOrUsername} → ${m[1]}`);
+                return m[1];
+            }
+        }
+        console.log(`[Profile Scraper] Không tìm thấy numeric ID trong HTML`);
+    } catch (e) {
+        console.log(`[Profile Scraper] Lỗi resolve username: ${e.message}`);
+    }
+    return profileIdOrUsername; // fallback
+}
+
 // ==================== MAIN SCRAPER ====================
 
 /**
  * Scrape bài viết từ Facebook profile
  * @param {Object} options
- * @param {string} options.profileId - Facebook profile ID
+ * @param {string} options.profileId - Facebook profile ID hoặc username
  * @param {Object} options.cookies - Facebook cookies { c_user, xs, ... }
  * @param {string} options.fbDtsg - FB_DTSG token
  * @param {number} options.limit - Số bài tối đa
@@ -207,12 +250,14 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
     let cursor = null;
     let pageNum = 0;
 
-    console.log(`[Profile Scraper] Bắt đầu scrape profile ${profileId}, limit=${limit}`);
+    // Resolve username → numeric ID
+    const numericId = await resolveProfileId(profileId, cookies, proxy);
+    console.log(`[Profile Scraper] Bắt đầu scrape profile ${profileId} (ID: ${numericId}), limit=${limit}`);
 
     while (allPosts.length < limit) {
         pageNum++;
         const variables = {
-            count: 3, cursor, id: profileId,
+            count: 3, cursor, id: numericId,
             feedLocation: 'TIMELINE', renderLocation: 'timeline',
             scale: 2, useDefaultActor: false,
         };
@@ -226,11 +271,14 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
         for (let retry = 0; retry < 3; retry++) {
             try {
                 const r = await axios.post(GRAPHQL_URL, new URLSearchParams(payload).toString(), {
-                    headers: { 'user-agent': 'Mozilla/5.0', 'content-type': 'application/x-www-form-urlencoded', origin: 'https://www.facebook.com', referer: `https://www.facebook.com/profile.php?id=${profileId}` },
+                    headers: { 'user-agent': 'Mozilla/5.0', 'content-type': 'application/x-www-form-urlencoded', origin: 'https://www.facebook.com', referer: `https://www.facebook.com/profile.php?id=${numericId}` },
                     timeout: 30000, httpsAgent: getHttpsAgent(proxy),
                 });
+                console.log(`[Profile Scraper] GraphQL response status: ${r.status}, data length: ${(r.data || '').length}`);
                 cleanedData = parseFbResponse(r.data);
+                console.log(`[Profile Scraper] Parsed ${cleanedData.length} data blocks`);
                 if (cleanedData.length > 0) break;
+                else console.log(`[Profile Scraper] Empty response, retry ${retry + 1}/3`);
             } catch (e) {
                 console.log(`[Profile Scraper] Retry ${retry + 1}/3: ${e.message}`);
                 await sleep(2000);

@@ -246,6 +246,102 @@ async function resolveProfileIdAndToken(profileIdOrUsername, cookies, proxy) {
     return { numericId, fbDtsg };
 }
 
+// ==================== SCRAPE FROM HTML ====================
+
+/**
+ * Scrape bài viết trực tiếp từ HTML (không cần GraphQL)
+ */
+async function scrapeFromHtml(profileUrl, cookies, proxy, limit = 10) {
+    const posts = [];
+    try {
+        const cookieHeader = Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ');
+        console.log(`[HTML Scraper] Fetching ${profileUrl}...`);
+
+        const r = await axios.get(profileUrl, {
+            headers: {
+                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'cookie': cookieHeader,
+                'accept': 'text/html,application/xhtml+xml',
+                'accept-language': 'vi-VN,vi;q=0.9',
+            },
+            timeout: 30000,
+            httpsAgent: getHttpsAgent(proxy),
+        });
+
+        const html = r.data || '';
+        console.log(`[HTML Scraper] Page length: ${html.length}`);
+
+        // Tìm bài viết từ HTML - Facebook embed post data trong script tags
+        // Pattern 1: Tìm "story" objects trong JSON data
+        const storyPattern = /\{"__typename":"Story".*?"post_id":"(\d+)".*?\}/g;
+        let match;
+        while ((match = storyPattern.exec(html)) !== null && posts.length < limit) {
+            try {
+                const storyJson = JSON.parse(match[0] + '}');
+                const postId = storyJson.post_id;
+                const text = storyJson?.comet_sections?.content?.story?.message?.text || '';
+                const permalink = storyJson?.attachments?.[0]?.styles?.attachment?.url || '';
+                if (postId && text) {
+                    posts.push({ postId, text, permalink, images: [], commentCount: 0 });
+                    console.log(`[HTML Scraper] Found post ${postId}: "${text.substring(0, 50)}..."`);
+                }
+            } catch {}
+        }
+
+        // Pattern 2: Tìm từ "data" blocks
+        if (posts.length === 0) {
+            console.log(`[HTML Scraper] Trying data blocks...`);
+            const dataBlocks = extractDataBlocks(html);
+            console.log(`[HTML Scraper] Found ${dataBlocks.length} data blocks`);
+
+            for (const block of dataBlocks) {
+                if (posts.length >= limit) break;
+                try {
+                    // Tìm story nodes trong block
+                    const stories = findStoryNodes(block);
+                    for (const story of stories) {
+                        if (posts.length >= limit) break;
+                        const postId = story.post_id;
+                        const text = story?.comet_sections?.content?.story?.message?.text || '';
+                        const permalink = story?.attachments?.[0]?.styles?.attachment?.url || '';
+                        if (postId && text) {
+                            posts.push({ postId, text, permalink, images: [], commentCount: 0 });
+                            console.log(`[HTML Scraper] Found post ${postId}: "${text.substring(0, 50)}..."`);
+                        }
+                    }
+                } catch {}
+            }
+        }
+
+        console.log(`[HTML Scraper] Total: ${posts.length} posts`);
+    } catch (e) {
+        console.error(`[HTML Scraper] Error: ${e.message}`);
+    }
+    return posts;
+}
+
+function findStoryNodes(obj) {
+    const results = [];
+    if (!obj || typeof obj !== 'object') return results;
+
+    if (obj.__typename === 'Story' && obj.post_id) {
+        results.push(obj);
+    }
+
+    if (obj.edges && Array.isArray(obj.edges)) {
+        for (const edge of obj.edges) {
+            if (edge?.node?.__typename === 'Story') results.push(edge.node);
+        }
+    }
+
+    for (const key of Object.keys(obj)) {
+        if (typeof obj[key] === 'object') {
+            results.push(...findStoryNodes(obj[key]));
+        }
+    }
+    return results;
+}
+
 // ==================== MAIN SCRAPER ====================
 
 /**
@@ -260,10 +356,6 @@ async function resolveProfileIdAndToken(profileIdOrUsername, cookies, proxy) {
  * @returns {Array} Danh sách bài viết
  */
 async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, proxy = null, saveDir = 'uploads/tracking' }) {
-    const allPosts = [];
-    let cursor = null;
-    let pageNum = 0;
-
     console.log(`[Profile Scraper] === START === profileId="${profileId}", limit=${limit}, c_user=${cookies.c_user || 'null'}, fb_dtsg=${fbDtsg ? 'yes' : 'no'}`);
 
     // Resolve username → numeric ID + lấy fb_dtsg
@@ -280,6 +372,11 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
         console.error(`[Profile Scraper] Lỗi resolve profileId: ${e.message}`);
         return [];
     }
+
+    // Thử GraphQL trước
+    const allPosts = [];
+    let cursor = null;
+    let pageNum = 0;
 
     while (allPosts.length < limit) {
         pageNum++;
@@ -399,6 +496,14 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
         cursor = pageInfo?.end_cursor;
         if (!cursor) break;
         await sleep(1000);
+    }
+
+    // Fallback: nếu GraphQL không có bài, thử scrape từ HTML
+    if (allPosts.length === 0) {
+        console.log(`[Profile Scraper] GraphQL 0 posts, fallback to HTML scraping...`);
+        const profileUrl = `https://www.facebook.com/profile.php?id=${numericId}`;
+        const htmlPosts = await scrapeFromHtml(profileUrl, cookies, proxy, limit);
+        allPosts.push(...htmlPosts);
     }
 
     console.log(`[Profile Scraper] Hoàn thành: ${allPosts.length} bài viết`);

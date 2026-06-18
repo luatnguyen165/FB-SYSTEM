@@ -240,7 +240,7 @@ exports.updateTracking = async (req, res) => {
         const tracking = await Tracking.findOneAndUpdate(
             { _id: id, userId },
             { $set: updateData },
-            { new: true }
+            { returnDocument: "after" }
         );
 
         if (!tracking) {
@@ -485,7 +485,7 @@ exports.updateTrackingPost = async (req, res) => {
         const post = await TrackingPost.findOneAndUpdate(
             { _id: req.params.id, userId },
             { $set: { text: text || '' } },
-            { new: true }
+            { returnDocument: "after" }
         );
         if (!post) return res.status(404).json({ success: false, message: 'Không tìm thấy bài viết' });
         res.json({ success: true, data: post });

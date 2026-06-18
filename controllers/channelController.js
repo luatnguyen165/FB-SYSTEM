@@ -230,7 +230,7 @@ const openPlatformConnect = async (req, res) => {
         const matchedChannel = await findMatchingChannel(req.user._id, platform, finalAccountName, finalAccountType);
         let channel;
         if (matchedChannel) {
-            channel = await Channel.findByIdAndUpdate(matchedChannel._id, updateData, { new: true });
+            channel = await Channel.findByIdAndUpdate(matchedChannel._id, updateData, { returnDocument: "after" });
         } else {
             channel = await Channel.create(updateData);
         }

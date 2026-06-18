@@ -167,6 +167,7 @@ function extractMediaUrls(node, postId) {
 
     // Tìm reel URL từ timestamp.story.url hoặc attachment url
     const reelUrl = node?.comet_sections?.timestamp?.story?.url || node?.attachments?.[0]?.styles?.attachment?.url || '';
+    console.log(`[Profile Scraper] Debug ${postId}: reelUrl=${reelUrl}`);
 
     for (const att of (node?.attachments || [])) {
         const attachment = att?.styles?.attachment || {};
@@ -176,7 +177,7 @@ function extractMediaUrls(node, postId) {
         }
         for (const m of (attachment?.all_subattachments?.nodes || [])) {
             if (m?.media) {
-                if (isVideo(m.media)) addVideo(m.media);
+                if (isVideo(m.media)) addVideo(m.media, reelUrl);
                 else addPhoto(m.media);
             }
         }
@@ -186,8 +187,13 @@ function extractMediaUrls(node, postId) {
     if (videos.length === 0 && images.length === 0) {
         const reelMedia = node?.attachments?.[0]?.styles?.attachment?.media;
         if (reelMedia && isVideo(reelMedia)) {
-            addVideo(reelMedia);
+            addVideo(reelMedia, reelUrl);
         }
+    }
+
+    // Fallback: nếu vẫn không có video nhưng có reelUrl, thêm vào để download sau
+    if (videos.length === 0 && reelUrl && reelUrl.includes('/reel/')) {
+        videos.push({ url: '', reelUrl, duration: 0 });
     }
 
     return { images, videos, lastMediaId };
@@ -732,10 +738,15 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
 
                     console.log(`[Download] Video via yt-dlp: ${videoUrl.substring(0, 80)}...`);
 
-                    // Dùng yt-dlp download (giống facebook-reels-downloader)
+                    // Tạo cookie file Netscape format cho yt-dlp
                     const cookieFile = path.join(postSaveDir, 'cookies.txt');
-                    const cookieHeader = Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ');
-                    fs.writeFileSync(cookieFile, `# Netscape HTTP Cookie File\n.facebook.com\tTRUE\t/\tTRUE\t0\t${Object.entries(cookies).map(([k, v]) => `${k}\t${v}`).join('\n')}\n`);
+                    const cookieLines = ['# Netscape HTTP Cookie File'];
+                    for (const [name, value] of Object.entries(cookies)) {
+                        if (name && value) {
+                            cookieLines.push(`.facebook.com\tTRUE\t/\tTRUE\t0\t${name}\t${value}`);
+                        }
+                    }
+                    fs.writeFileSync(cookieFile, cookieLines.join('\n') + '\n');
 
                     try {
                         execSync(`yt-dlp -f best --cookies "${cookieFile}" -o "${filepath}" "${videoUrl}"`, {

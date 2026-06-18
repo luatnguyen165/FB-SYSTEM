@@ -49,6 +49,7 @@ if (isSilent) {
             msg.includes('KET QUA:') || msg.includes('step=') ||
             msg.includes('[Profile Scraper]') ||
             msg.includes('[Scrape]') ||
+            msg.includes('[Download] ') ||
             msg.includes('#####')) {
             originalLog(...args);
         }

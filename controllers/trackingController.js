@@ -375,7 +375,7 @@ exports.scrapeTracking = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Tài khoản Facebook chưa đăng nhập' });
         }
 
-        const saveDir = path.join(global.USER_DATA_DIR || __dirname, '..', 'uploads', 'tracking');
+        const saveDir = path.join(global.USER_DATA_DIR || path.join(__dirname, '..'), 'uploads', 'scraper');
         console.log(`[Scrape] Bắt đầu scrape, saveDir=${saveDir}`);
 
         // Scrape

@@ -128,16 +128,34 @@ function extractMediaUrls(node, postId) {
 
     const addVideo = (mediaNode) => {
         // Lấy video URL từ nhiều sources (bao gồm Reels)
-        const url = mediaNode?.playable_url
+        let url = mediaNode?.playable_url
             || mediaNode?.playable_url_quality_hd
             || mediaNode?.playable_url_quality_sd
             || mediaNode?.browser_native_hd_url
             || mediaNode?.browser_native_sd_url
             || mediaNode?.video_url
-            || mediaNode?.url
-            || mediaNode?.src
             || '';
-        if (url && url.startsWith('http')) {
+
+        // Reels: URL nằm trong videoDeliveryResponseFragment
+        if (!url) {
+            const delivery = mediaNode?.videoDeliveryResponseFragment || mediaNode?.videoDeliveryLegacyFields;
+            if (delivery) {
+                // Tìm mp4 URL trong delivery JSON
+                const deliveryStr = JSON.stringify(delivery);
+                const mp4Match = deliveryStr.match(/https?:\/\/[^"'\s]+\.mp4[^"'\s]*/);
+                if (mp4Match) url = mp4Match[0];
+            }
+        }
+
+        // Last resort: media.url (có thể là webpage, kiểm tra extension)
+        if (!url) {
+            const mediaUrl = mediaNode?.url || '';
+            if (mediaUrl && (mediaUrl.includes('.mp4') || mediaUrl.includes('video'))) {
+                url = mediaUrl;
+            }
+        }
+
+        if (url && url.startsWith('http') && !url.includes('facebook.com/reel')) {
             videos.push({ url, duration: mediaNode?.video_duration || mediaNode?.length_in_second || 0 });
         }
     };

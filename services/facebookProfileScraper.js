@@ -754,7 +754,7 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
                     }
 
                     try {
-                        execSync(`yt-dlp -f best --cookies "${cookieFile}" -o "${filepath}" "${videoUrl}"`, {
+                        execSync(`yt-dlp --cookies "${cookieFile}" -f "bestvideo+bestaudio/best" -o "${filepath}" "${videoUrl}"`, {
                             timeout: 120000,
                             stdio: 'pipe',
                         });

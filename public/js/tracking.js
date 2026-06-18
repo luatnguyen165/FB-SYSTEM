@@ -196,7 +196,8 @@ function editTracking(id) {
             // Set radio
             var radio = document.querySelector('input[name="sourcePlatform"][value="' + item.sourcePlatform + '"]');
             if (radio) radio.checked = true;
-            if (cookiesGroup) cookiesGroup.style.display = item.sourcePlatform === 'tiktok' ? 'block' : 'none';
+            var cg = document.getElementById('cookiesUploadGroup');
+            if (cg) cg.style.display = item.sourcePlatform === 'tiktok' ? 'block' : 'none';
 
             // Set source account
             if (item.sourceAccountId) {

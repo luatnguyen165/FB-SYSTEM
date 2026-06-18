@@ -127,17 +127,18 @@ function extractMediaUrls(node, postId) {
     };
 
     const addVideo = (mediaNode) => {
-        // Lấy video URL từ nhiều sources
+        // Lấy video URL từ nhiều sources (bao gồm Reels)
         const url = mediaNode?.playable_url
             || mediaNode?.playable_url_quality_hd
             || mediaNode?.playable_url_quality_sd
             || mediaNode?.browser_native_hd_url
             || mediaNode?.browser_native_sd_url
             || mediaNode?.video_url
+            || mediaNode?.url
             || mediaNode?.src
             || '';
         if (url && url.startsWith('http')) {
-            videos.push({ url, duration: mediaNode?.video_duration || 0 });
+            videos.push({ url, duration: mediaNode?.video_duration || mediaNode?.length_in_second || 0 });
         }
     };
 
@@ -145,6 +146,7 @@ function extractMediaUrls(node, postId) {
         if (!media) return false;
         if (media.__typename === 'Video') return true;
         if (media.playable_url || media.playable_url_quality_hd || media.browser_native_hd_url) return true;
+        if (media.url && media.__typename === 'Video') return true;
         return false;
     };
 
@@ -685,14 +687,23 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
 
             // Download videos
             const savedVideos = [];
+            const cookieHeader = Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ');
             for (let i = 0; i < rawVideos.length; i++) {
                 const v = rawVideos[i];
                 if (!v.url || !v.url.startsWith('http')) continue;
                 try {
                     const filename = `${postId}_video_${i + 1}.mp4`;
                     const filepath = path.join(postSaveDir, filename);
-                    console.log(`[Download] Video: ${v.url.substring(0, 60)}...`);
-                    const r = await axios.get(v.url, { responseType: 'arraybuffer', timeout: 120000 });
+                    console.log(`[Download] Video: ${v.url.substring(0, 80)}...`);
+                    const r = await axios.get(v.url, {
+                        responseType: 'arraybuffer',
+                        timeout: 120000,
+                        headers: {
+                            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                            'cookie': cookieHeader,
+                            'referer': 'https://www.facebook.com/',
+                        },
+                    });
                     fs.mkdirSync(postSaveDir, { recursive: true });
                     fs.writeFileSync(filepath, r.data);
                     savedVideos.push(`/uploads/scraper/${postId}/${filename}`);

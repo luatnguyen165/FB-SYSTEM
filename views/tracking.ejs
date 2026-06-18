@@ -139,14 +139,15 @@
                                     <i class="fa-solid fa-user"></i> <%= t.sourceAccountId.accountName %>
                                 </span>
                                 <% } %>
-                                <% if (t.targetPlatforms && t.targetPlatforms.length > 0) { %>
+                                <% /* TẠM ẨN targetPlatforms
+                                if (t.targetPlatforms && t.targetPlatforms.length > 0) { %>
                                 <span class="meta-badge">
-                                    <i class="fa-solid fa-share-nodes"></i> Đăng lên: 
+                                    <i class="fa-solid fa-share-nodes"></i> Đăng lên:
                                     <% t.targetPlatforms.forEach(function(tp, idx) { %>
                                         <%= tp.platform %><%= idx < t.targetPlatforms.length - 1 ? ', ' : '' %>
                                     <% }); %>
                                 </span>
-                                <% } %>
+                                <% } */ %>
                                 <span class="meta-badge <%= t.isActive ? 'badge-active' : 'badge-paused' %>">
                                     <i class="fa-solid <%= t.isActive ? 'fa-play' : 'fa-pause' %>"></i>
                                     <%= t.isActive ? 'Đang theo dõi' : 'Tạm dừng' %>
@@ -233,54 +234,14 @@
                         </select>
                     </div>
 
-                    <!-- Nền tảng đăng -->
+                    <!-- Nền tảng đăng — TẠM ẨN
                     <div class="form-group">
                         <label class="form-label">Nền tảng đăng (chọn nhiều)</label>
                         <div class="target-platforms-selector" id="targetPlatformsContainer">
-                            <div class="target-platform-row" data-platform="facebook">
-                                <input type="checkbox" value="facebook" class="target-cb">
-                                <span><i class="fa-brands fa-facebook"></i> Facebook</span>
-                                <select class="target-account-select" disabled>
-                                    <option value="">Chọn tài khoản FB</option>
-                                </select>
-                            </div>
-                            <div class="target-platform-row" data-platform="tiktok">
-                                <input type="checkbox" value="tiktok" class="target-cb">
-                                <span><i class="fa-brands fa-tiktok"></i> TikTok</span>
-                                <select class="target-account-select" disabled>
-                                    <option value="">Chọn tài khoản TT</option>
-                                </select>
-                            </div>
-                            <div class="target-platform-row" data-platform="instagram">
-                                <input type="checkbox" value="instagram" class="target-cb">
-                                <span><i class="fa-brands fa-instagram"></i> Instagram</span>
-                                <select class="target-account-select" disabled>
-                                    <option value="">Chọn tài khoản IG</option>
-                                </select>
-                            </div>
-                            <div class="target-platform-row" data-platform="youtube">
-                                <input type="checkbox" value="youtube" class="target-cb">
-                                <span><i class="fa-brands fa-youtube"></i> YouTube</span>
-                                <select class="target-account-select" disabled>
-                                    <option value="">Chọn tài khoản YT</option>
-                                </select>
-                            </div>
-                            <div class="target-platform-row" data-platform="pinterest">
-                                <input type="checkbox" value="pinterest" class="target-cb">
-                                <span><i class="fa-brands fa-pinterest"></i> Pinterest</span>
-                                <select class="target-account-select" disabled>
-                                    <option value="">Chọn tài khoản PI</option>
-                                </select>
-                            </div>
-                            <div class="target-platform-row" data-platform="threads">
-                                <input type="checkbox" value="threads" class="target-cb">
-                                <span><i class="fa-brands fa-threads"></i> Threads</span>
-                                <select class="target-account-select" disabled>
-                                    <option value="">Chọn tài khoản TH</option>
-                                </select>
-                            </div>
+                            ...
                         </div>
                     </div>
+                    -->
 
                     <!-- Upload cookies (chỉ cho TikTok) -->
                     <div class="form-group" id="cookiesUploadGroup" style="display: none;">

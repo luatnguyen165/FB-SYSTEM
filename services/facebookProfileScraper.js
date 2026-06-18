@@ -250,9 +250,17 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
     let cursor = null;
     let pageNum = 0;
 
+    console.log(`[Profile Scraper] === START === profileId="${profileId}", limit=${limit}, c_user=${cookies.c_user || 'null'}, fb_dtsg=${fbDtsg ? 'yes' : 'no'}`);
+
     // Resolve username → numeric ID
-    const numericId = await resolveProfileId(profileId, cookies, proxy);
-    console.log(`[Profile Scraper] Bắt đầu scrape profile ${profileId} (ID: ${numericId}), limit=${limit}`);
+    let numericId;
+    try {
+        numericId = await resolveProfileId(profileId, cookies, proxy);
+        console.log(`[Profile Scraper] Resolved: ${profileId} → ${numericId}`);
+    } catch (e) {
+        console.error(`[Profile Scraper] Lỗi resolve profileId: ${e.message}`);
+        return [];
+    }
 
     while (allPosts.length < limit) {
         pageNum++;
@@ -267,6 +275,8 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
             doc_id: DOC_ID, variables: JSON.stringify(variables),
         };
 
+        console.log(`[Profile Scraper] Page ${pageNum}: calling GraphQL with id=${numericId}, cursor=${cursor || 'null'}`);
+
         let cleanedData = [];
         for (let retry = 0; retry < 3; retry++) {
             try {
@@ -274,13 +284,19 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
                     headers: { 'user-agent': 'Mozilla/5.0', 'content-type': 'application/x-www-form-urlencoded', origin: 'https://www.facebook.com', referer: `https://www.facebook.com/profile.php?id=${numericId}` },
                     timeout: 30000, httpsAgent: getHttpsAgent(proxy),
                 });
-                console.log(`[Profile Scraper] GraphQL response status: ${r.status}, data length: ${(r.data || '').length}`);
+                console.log(`[Profile Scraper] GraphQL response: status=${r.status}, length=${(r.data || '').length}`);
+                if (r.data && typeof r.data === 'string') {
+                    console.log(`[Profile Scraper] Response preview: ${r.data.substring(0, 200)}`);
+                }
                 cleanedData = parseFbResponse(r.data);
                 console.log(`[Profile Scraper] Parsed ${cleanedData.length} data blocks`);
                 if (cleanedData.length > 0) break;
                 else console.log(`[Profile Scraper] Empty response, retry ${retry + 1}/3`);
             } catch (e) {
-                console.log(`[Profile Scraper] Retry ${retry + 1}/3: ${e.message}`);
+                console.error(`[Profile Scraper] GraphQL error retry ${retry + 1}/3: ${e.message}`);
+                if (e.response) {
+                    console.error(`[Profile Scraper] Response status: ${e.response.status}, data: ${JSON.stringify(e.response.data).substring(0, 200)}`);
+                }
                 await sleep(2000);
             }
         }

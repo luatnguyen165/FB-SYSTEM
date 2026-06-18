@@ -213,7 +213,8 @@ function extractMediaUrls(node, postId) {
 
     // Tìm reel URL từ timestamp.story.url hoặc attachment url
     const reelUrl = node?.comet_sections?.timestamp?.story?.url || node?.attachments?.[0]?.styles?.attachment?.url || '';
-    console.log(`[Profile Scraper] Debug ${postId}: reelUrl=${reelUrl}`);
+    const isReel = reelUrl.includes('/reel/');
+    console.log(`[Profile Scraper] Debug ${postId}: reelUrl=${reelUrl}, isReel=${isReel}`);
 
     for (const att of (node?.attachments || [])) {
         const attachment = att?.styles?.attachment || {};
@@ -237,8 +238,9 @@ function extractMediaUrls(node, postId) {
         }
     }
 
-    // Fallback: nếu vẫn không có video nhưng có reelUrl, thêm vào để download sau
-    if (videos.length === 0 && reelUrl && reelUrl.includes('/reel/')) {
+    // Fallback: nếu vẫn không có video nhưng là Reel, thêm reelUrl để download bằng yt-dlp
+    if (videos.length === 0 && isReel) {
+        console.log(`[Profile Scraper] ${postId}: Reel detected, adding reelUrl for yt-dlp download`);
         videos.push({ url: '', reelUrl, duration: 0 });
     }
 

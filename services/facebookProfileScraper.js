@@ -574,73 +574,55 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
             let publishedAt = null;
             let publishedAtText = '';
 
-            // Debug: log top-level keys và timestamp fields
-            const nodeKeys = Object.keys(node || {});
-            const cometKeys = Object.keys(node?.comet_sections || {});
-            const contentKeys = Object.keys(node?.comet_sections?.content || {});
-            const storyKeys = Object.keys(node?.comet_sections?.content?.story || {});
-            console.log(`[Profile Scraper] Debug ${postId}: nodeKeys=${nodeKeys.join(',')}`);
-            console.log(`[Profile Scraper] Debug ${postId}: cometKeys=${cometKeys.join(',')}`);
-            console.log(`[Profile Scraper] Debug ${postId}: contentKeys=${contentKeys.join(',')}`);
-            console.log(`[Profile Scraper] Debug ${postId}: storyKeys=${storyKeys.join(',')}`);
-
-            // Tìm timestamp trong nhiều paths
-            const debugTime = {
-                // Path 1: trực tiếp trong story
-                story_created_time: node?.comet_sections?.content?.story?.created_time,
-                story_creation_time: node?.comet_sections?.content?.story?.creation_time,
-                // Path 2: trong feedback
-                feedback_creation_time: node?.feedback?.story?.creation_time,
-                feedback_created_time: node?.feedback?.story?.created_time,
-                // Path 3: trong attachment target
-                attachment_post_time: node?.attachments?.[0]?.styles?.attachment?.target?.post_time,
-                // Path 4: trong actors subtitle
-                actors_subtitle: node?.comet_sections?.content?.story?.actors?.[0]?.subtitle?.text,
-                // Path 5: trong context_layout
-                context_layout_keys: Object.keys(node?.comet_sections?.content?.story?.comet_sections?.context_layout?.story?.comet_sections || {}),
-                // Path 6: trong metadata
-                metadata_keys: Object.keys(node?.comet_sections?.content?.story?.comet_sections?.metadata?.[0]?.story?.comet_sections || {}),
-                // Path 7: raw timestamp fields
-                raw_timestamp: node?.timestamp,
-                raw_created: node?.created_time,
-                raw_comet_sections_keys: cometKeys,
-            };
-            console.log(`[Profile Scraper] Debug ${postId} time:`, JSON.stringify(debugTime));
+            // Debug: log timestamp-related fields
+            const timestampData = node?.comet_sections?.timestamp;
+            const timestampText = timestampData?.story?.created_time?.text || timestampData?.text || '';
+            const timestampUnix = timestampData?.story?.created_time?.timestamp || timestampData?.timestamp || null;
+            console.log(`[Profile Scraper] Debug ${postId}: timestampText="${timestampText}", timestampUnix=${timestampUnix}`);
 
             try {
-                // Path 1: Unix timestamp từ created_time
-                const createdTime = node?.comet_sections?.content?.story?.created_time;
-                if (createdTime) {
-                    publishedAt = new Date(createdTime * 1000);
-                    publishedAtText = publishedAt.toISOString();
+                // Path 1: comet_sections.timestamp.story.created_time (Unix)
+                const tsData = node?.comet_sections?.timestamp;
+                const tsUnix = tsData?.story?.created_time?.timestamp || tsData?.timestamp;
+                if (tsUnix) {
+                    publishedAt = new Date(tsUnix * 1000);
+                    publishedAtText = publishedAt.toLocaleString('vi-VN');
                 }
 
-                // Path 2: feedback.story.creation_time
+                // Path 2: comet_sections.timestamp.story.created_time.text
+                if (!publishedAt) {
+                    const tsText = tsData?.story?.created_time?.text || tsData?.text || '';
+                    if (tsText) {
+                        publishedAtText = tsText;
+                        const parsed = parseVietnameseDate(tsText);
+                        if (parsed) publishedAt = parsed;
+                    }
+                }
+
+                // Path 3: comet_sections.content.story.created_time
+                if (!publishedAt) {
+                    const createdTime = node?.comet_sections?.content?.story?.created_time;
+                    if (createdTime) {
+                        publishedAt = new Date(createdTime * 1000);
+                        publishedAtText = publishedAt.toLocaleString('vi-VN');
+                    }
+                }
+
+                // Path 4: feedback.story.creation_time
                 if (!publishedAt) {
                     const creationTime = node?.feedback?.story?.creation_time;
                     if (creationTime) {
                         publishedAt = new Date(creationTime * 1000);
-                        publishedAtText = publishedAt.toISOString();
+                        publishedAtText = publishedAt.toLocaleString('vi-VN');
                     }
                 }
 
-                // Path 3: target.post_time
+                // Path 5: attachment target.post_time
                 if (!publishedAt) {
                     const postTime = node?.attachments?.[0]?.styles?.attachment?.target?.post_time;
                     if (postTime) {
                         publishedAt = new Date(postTime * 1000);
-                        publishedAtText = publishedAt.toISOString();
-                    }
-                }
-
-                // Path 4: Text thời gian từ UI (encoded spans)
-                if (!publishedAt) {
-                    const timeText = extractTimestampText(node);
-                    if (timeText) {
-                        publishedAtText = timeText;
-                        // Parse "3 thg 6, 2025 14:30" → Date
-                        const parsed = parseVietnameseDate(timeText);
-                        if (parsed) publishedAt = parsed;
+                        publishedAtText = publishedAt.toLocaleString('vi-VN');
                     }
                 }
             } catch {}

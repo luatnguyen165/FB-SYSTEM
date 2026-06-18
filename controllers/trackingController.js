@@ -307,12 +307,22 @@ exports.getChannelsByPlatform = async (req, res) => {
 exports.scrapeTracking = async (req, res) => {
     try {
         const userId = req.session.userId || req.user?.id;
+        console.log(`[Scrape] Bắt đầu: userId=${userId}, trackingId=${req.params.id}`);
+
         const tracking = await Tracking.findOne({ _id: req.params.id, userId });
-        if (!tracking) return res.status(404).json({ success: false, message: 'Không tìm thấy đối tượng' });
+        if (!tracking) {
+            console.log(`[Scrape] Không tìm thấy tracking`);
+            return res.status(404).json({ success: false, message: 'Không tìm thấy đối tượng' });
+        }
+        console.log(`[Scrape] Tracking: name=${tracking.name}, url=${tracking.url}, sourceAccountId=${tracking.sourceAccountId}`);
 
         // Lấy cookies từ channel
         const channel = await Channel.findById(tracking.sourceAccountId);
-        if (!channel) return res.status(400).json({ success: false, message: 'Chưa liên kết tài khoản Facebook' });
+        if (!channel) {
+            console.log(`[Scrape] Không tìm thấy channel`);
+            return res.status(400).json({ success: false, message: 'Chưa liên kết tài khoản Facebook' });
+        }
+        console.log(`[Scrape] Channel: ${channel.accountName}, storageStatePath=${channel.storageStatePath || 'null'}`);
 
         // Parse profile ID từ URL
         const url = tracking.url;
@@ -323,6 +333,7 @@ exports.scrapeTracking = async (req, res) => {
             const userMatch = url.match(/facebook\.com\/([a-zA-Z0-9.]+)\/?/);
             if (userMatch) profileId = userMatch[1];
         }
+        console.log(`[Scrape] Parsed profileId="${profileId}" from url="${url}"`);
         if (!profileId) return res.status(400).json({ success: false, message: 'Không parse được profile ID từ URL' });
 
         // Lấy cookies từ storage state
@@ -336,12 +347,19 @@ exports.scrapeTracking = async (req, res) => {
                     cookies[c.name] = c.value;
                     if (c.name === 'fb_dtsg') fbDtsg = c.value;
                 }
-            } catch (e) { console.error('[Tracking] Lỗi đọc cookies:', e.message); }
+                console.log(`[Scrape] Loaded ${Object.keys(cookies).length} cookies, c_user=${cookies.c_user || 'null'}`);
+            } catch (e) { console.error('[Scrape] Lỗi đọc cookies:', e.message); }
+        } else {
+            console.log(`[Scrape] storageStatePath không tồn tại: ${channel.storageStatePath}`);
         }
 
-        if (!cookies.c_user) return res.status(400).json({ success: false, message: 'Tài khoản Facebook chưa đăng nhập' });
+        if (!cookies.c_user) {
+            console.log(`[Scrape] Không có c_user cookie`);
+            return res.status(400).json({ success: false, message: 'Tài khoản Facebook chưa đăng nhập' });
+        }
 
         const saveDir = path.join(global.USER_DATA_DIR || __dirname, '..', 'uploads', 'tracking');
+        console.log(`[Scrape] Bắt đầu scrape, saveDir=${saveDir}`);
 
         // Scrape
         const posts = await scrapeProfilePosts({
@@ -349,6 +367,7 @@ exports.scrapeTracking = async (req, res) => {
             limit: parseInt(req.body.limit) || 10,
             saveDir,
         });
+        console.log(`[Scrape] Scrape xong: ${posts.length} posts`);
 
         // Lưu vào DB
         let saved = 0;

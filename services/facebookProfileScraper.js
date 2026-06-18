@@ -738,15 +738,20 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
 
                     console.log(`[Download] Video via yt-dlp: ${videoUrl.substring(0, 80)}...`);
 
-                    // Tạo cookie file Netscape format cho yt-dlp
-                    const cookieFile = path.join(postSaveDir, 'cookies.txt');
-                    const cookieLines = ['# Netscape HTTP Cookie File'];
-                    for (const [name, value] of Object.entries(cookies)) {
-                        if (name && value) {
-                            cookieLines.push(`.facebook.com\tTRUE\t/\tTRUE\t0\t${name}\t${value}`);
+                    // Dùng cookies.txt từ project root nếu có
+                    const defaultCookieFile = path.join(global.USER_DATA_DIR || path.join(__dirname, '..', '..'), 'www.facebook.com_cookies.txt');
+                    const cookieFile = fs.existsSync(defaultCookieFile) ? defaultCookieFile : path.join(postSaveDir, 'cookies.txt');
+
+                    // Nếu không có file cookies mặc định, tạo từ session cookies
+                    if (!fs.existsSync(defaultCookieFile)) {
+                        const cookieLines = ['# Netscape HTTP Cookie File'];
+                        for (const [name, value] of Object.entries(cookies)) {
+                            if (name && value) {
+                                cookieLines.push(`.facebook.com\tTRUE\t/\tTRUE\t0\t${name}\t${value}`);
+                            }
                         }
+                        fs.writeFileSync(cookieFile, cookieLines.join('\n') + '\n');
                     }
-                    fs.writeFileSync(cookieFile, cookieLines.join('\n') + '\n');
 
                     try {
                         execSync(`yt-dlp -f best --cookies "${cookieFile}" -o "${filepath}" "${videoUrl}"`, {

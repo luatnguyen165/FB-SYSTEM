@@ -47,6 +47,8 @@ if (isSilent) {
             msg.includes('[Scheduler]') || msg.includes('[Comment]') ||
             msg.includes('[CommentPlay]') || msg.includes('[Competitor Service]') || msg.includes('[AI Image]') || msg.includes('[Download API]') || msg.includes('BAT DAU CHAY PLAY') ||
             msg.includes('KET QUA:') || msg.includes('step=') ||
+            msg.includes('[Profile Scraper]') ||
+            msg.includes('[Scrape]') ||
             msg.includes('#####')) {
             originalLog(...args);
         }

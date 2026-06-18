@@ -277,11 +277,20 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
 
         console.log(`[Profile Scraper] Page ${pageNum}: calling GraphQL with id=${numericId}, cursor=${cursor || 'null'}`);
 
+        // Build cookie header
+        const cookieHeader = Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ');
+
         let cleanedData = [];
         for (let retry = 0; retry < 3; retry++) {
             try {
                 const r = await axios.post(GRAPHQL_URL, new URLSearchParams(payload).toString(), {
-                    headers: { 'user-agent': 'Mozilla/5.0', 'content-type': 'application/x-www-form-urlencoded', origin: 'https://www.facebook.com', referer: `https://www.facebook.com/profile.php?id=${numericId}` },
+                    headers: {
+                        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                        'content-type': 'application/x-www-form-urlencoded',
+                        'origin': 'https://www.facebook.com',
+                        'referer': `https://www.facebook.com/profile.php?id=${numericId}`,
+                        'cookie': cookieHeader,
+                    },
                     timeout: 30000, httpsAgent: getHttpsAgent(proxy),
                 });
                 console.log(`[Profile Scraper] GraphQL response: status=${r.status}, length=${(r.data || '').length}`);

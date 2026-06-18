@@ -396,11 +396,12 @@ exports.scrapeTracking = async (req, res) => {
 
                 for (let i = 0; i < (post.images || []).length; i++) {
                     const imgUrl = post.images[i];
-                    console.log(`[Download] URL[${i}]: ${imgUrl}`);
-                    if (!imgUrl || !imgUrl.startsWith('http')) {
-                        console.log(`[Download] Skip invalid URL`);
+                    // Nếu đã là đường dẫn local (bắt đầu bằng /uploads/) thì giữ nguyên
+                    if (imgUrl && imgUrl.startsWith('/uploads/')) {
+                        downloadedImages.push(imgUrl);
                         continue;
                     }
+                    if (!imgUrl || !imgUrl.startsWith('http')) continue;
                     try {
                         const ext = imgUrl.toLowerCase().includes('.png') ? '.png' : imgUrl.toLowerCase().includes('.webp') ? '.webp' : '.jpg';
                         const filename = `${post.postId}_${i + 1}${ext}`;

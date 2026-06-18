@@ -33,7 +33,6 @@ exports.showTracking = async (req, res) => {
         const stats = {
             total: await Tracking.countDocuments({ userId, type: trackingType }),
             facebook: await Tracking.countDocuments({ userId, type: trackingType, sourcePlatform: 'facebook' }),
-            tiktok: await Tracking.countDocuments({ userId, type: trackingType, sourcePlatform: 'tiktok' }),
             active: await Tracking.countDocuments({ userId, type: trackingType, isActive: true })
         };
 

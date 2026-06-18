@@ -13,8 +13,8 @@ const TrackingSchema = new mongoose.Schema({
     // Loại đối tượng: 'profile' | 'page' | 'group'
     type: { type: String, enum: ['profile', 'page', 'group'], default: 'profile' },
 
-    // Nền tảng gốc: 'facebook' | 'tiktok'
-    sourcePlatform: { type: String, enum: ['facebook', 'tiktok'], required: true },
+    // Nền tảng gốc
+    sourcePlatform: { type: String, enum: ['facebook'], default: 'facebook' },
     
     // Tài khoản nguồn dùng để lấy dữ liệu (Channel._id)
     sourceAccountId: { type: mongoose.Schema.Types.ObjectId, ref: 'Channel' },

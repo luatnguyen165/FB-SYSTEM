@@ -36,13 +36,13 @@
                         </div>
                         <p class="tracking-hero-subtitle">
                             <% if (tType === 'profile') { %>
-                                Theo dõi bài viết mới từ Profile đối thủ, KOL trên <strong>Facebook</strong> và <strong>TikTok</strong>.
+                                Theo dõi bài viết mới từ Profile đối thủ, KOL trên <strong>Facebook</strong>.
                             <% } else if (tType === 'page') { %>
-                                Theo dõi bài viết mới từ <strong>Facebook Page</strong> và <strong>TikTok</strong>.
+                                Theo dõi bài viết mới từ <strong>Facebook Page</strong>.
                             <% } else { %>
                                 Theo dõi bài viết mới từ <strong>Facebook Group</strong>.
                             <% } %>
-                            Tự động phát hiện nội dung mới và đăng lại lên các nền tảng bạn chọn.
+                            Tự động phát hiện nội dung mới.
                         </p>
                     </div>
                     <div class="tracking-hero-actions">
@@ -74,15 +74,6 @@
                     </div>
                 </div>
                 <div class="tracking-stat-card">
-                    <div class="stat-icon" style="background: rgba(17, 17, 17, 0.1); color: #111;">
-                        <i class="fa-brands fa-tiktok"></i>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-value"><%= stats.tiktok %></span>
-                        <span class="stat-label">TikTok</span>
-                    </div>
-                </div>
-                <div class="tracking-stat-card">
                     <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
                         <i class="fa-solid fa-play"></i>
                     </div>
@@ -101,9 +92,6 @@
                 <button class="tracking-tab <%= activePlatform === 'facebook' ? 'active' : '' %>" data-platform="facebook">
                     <i class="fa-brands fa-facebook"></i> Facebook
                 </button>
-                <button class="tracking-tab <%= activePlatform === 'tiktok' ? 'active' : '' %>" data-platform="tiktok">
-                    <i class="fa-brands fa-tiktok"></i> TikTok
-                </button>
             </div>
 
             <!-- Tracking List -->
@@ -112,7 +100,7 @@
                 <div class="tracking-empty">
                     <div class="empty-icon"><i class="fa-solid fa-crosshairs"></i></div>
                     <h3>Chưa có đối tượng theo dõi</h3>
-                    <p>Thêm đối tượng Facebook hoặc TikTok để bắt đầu theo dõi.</p>
+                    <p>Thêm đối tượng Facebook để bắt đầu theo dõi.</p>
                     <button class="btn-tracking-hero" id="btnAddTrackingEmpty">
                         <i class="fa-solid fa-plus"></i> Thêm Đối Tượng
                     </button>
@@ -121,14 +109,8 @@
                 <% trackings.forEach(function(t) { %>
                 <div class="tracking-card" data-id="<%= t._id %>" data-platform="<%= t.sourcePlatform %>">
                     <div class="tracking-card-main">
-                        <div class="tracking-card-icon 
-                            <%= t.sourcePlatform === 'facebook' ? 'icon-fb' : '' %>
-                            <%= t.sourcePlatform === 'tiktok' ? 'icon-tt' : '' %>
-                        ">
-                            <i class="fa-brands 
-                                <%= t.sourcePlatform === 'facebook' ? 'fa-facebook' : '' %>
-                                <%= t.sourcePlatform === 'tiktok' ? 'fa-tiktok' : '' %>
-                            "></i>
+                        <div class="tracking-card-icon icon-fb">
+                            <i class="fa-brands fa-facebook"></i>
                         </div>
                         <div class="tracking-card-info">
                             <h3 class="tracking-card-name"><%= t.name %></h3>
@@ -203,7 +185,7 @@
                     <!-- URL đối tượng -->
                     <div class="form-group">
                         <label class="form-label">URL đối tượng <span class="required">*</span></label>
-                        <input type="url" class="form-input" id="trackingUrl" placeholder="https://facebook.com/... hoặc https://tiktok.com/@..." required>
+                        <input type="url" class="form-input" id="trackingUrl" placeholder="https://facebook.com/..." required>
                     </div>
 
                     <!-- Nền tảng gốc -->
@@ -213,10 +195,6 @@
                             <label class="platform-option" data-platform="facebook">
                                 <input type="radio" name="sourcePlatform" value="facebook" checked>
                                 <span class="platform-label"><i class="fa-brands fa-facebook"></i> Facebook</span>
-                            </label>
-                            <label class="platform-option" data-platform="tiktok">
-                                <input type="radio" name="sourcePlatform" value="tiktok">
-                                <span class="platform-label"><i class="fa-brands fa-tiktok"></i> TikTok</span>
                             </label>
                         </div>
                     </div>
@@ -243,15 +221,7 @@
                     </div>
                     -->
 
-                    <!-- Upload cookies (chỉ cho TikTok) -->
-                    <div class="form-group" id="cookiesUploadGroup" style="display: none;">
-                        <label class="form-label">Upload cookies.txt (TikTok)</label>
-                        <div class="file-upload-wrapper">
-                            <input type="file" class="form-input" id="cookiesFile" accept=".txt">
-                            <input type="hidden" id="cookiesPath" value="">
-                            <small class="form-help">Upload file cookies.txt để tăng độ ổn định khi theo dõi TikTok</small>
-                        </div>
-                    </div>
+                    <!-- Upload cookies — TẠM ẨN (chỉ cho TikTok) -->
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-ghost" onclick="closeModal()">Hủy</button>

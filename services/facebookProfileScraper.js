@@ -6,6 +6,9 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const { HttpsProxyAgent } = require('https-proxy-agent');
+const crypto = require('crypto');
+
+function randomStr(len) { return crypto.randomBytes(len).toString('hex').substring(0, len); }
 
 const GRAPHQL_URL = 'https://www.facebook.com/api/graphql/';
 const DOC_ID = '25430544756617998'; // ProfileCometTimelineFeedRefetchQuery
@@ -718,30 +721,41 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
                 const v = rawVideos[i];
                 let videoUrl = v.url;
 
-                // Nếu không có URL trực tiếp, thử fetch từ reel page
+                // Nếu không có URL trực tiếp, fetch từ reel page
                 if (!videoUrl && v.reelUrl) {
                     console.log(`[Download] Fetching video from reel: ${v.reelUrl}`);
                     try {
+                        // Fake cookies như Fb_Downloder
+                        const fakeCookies = {
+                            sb: randomStr(24),
+                            fr: `${randomStr(20)}.${randomStr(30)}.${randomStr(22)}..AAA.0.0.0.0`,
+                            datr: randomStr(24),
+                            wd: `1920x1080`,
+                        };
+                        const fakeCookieStr = Object.entries(fakeCookies).map(([k, v]) => `${k}=${v}`).join('; ');
+
                         const reelPage = await axios.get(v.reelUrl, {
                             headers: {
-                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                                'Cookie': cookieHeader,
-                                'Accept': 'text/html',
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                                'Cookie': cookieHeader || fakeCookieStr,
+                                'Accept': 'text/html,application/xhtml+xml',
                             },
                             timeout: 15000,
                         });
-                        const html = reelPage.data || '';
-                        // Tìm video URL trong HTML
+                        const html = (reelPage.data || '').replace(/\\/g, '');
+
+                        // Regex patterns (giống Fb_Downloder)
                         const patterns = [
-                            /"playable_url":"([^"]+\.mp4[^"]*)"/,
-                            /"browser_native_hd_url":"([^"]+)"/,
-                            /"browser_native_sd_url":"([^"]+)"/,
-                            /src="(https:\/\/[^"]+\.mp4[^"]*)"/,
+                            /d_url":"(https:\/\/video[^"]+)"/,           // Fb_Downloder pattern
+                            /"playable_url":"(https:\/\/[^"]+\.mp4[^"]*)"/,
+                            /"browser_native_hd_url":"(https:\/\/[^"]+)"/,
+                            /"browser_native_sd_url":"(https:\/\/[^"]+)"/,
                         ];
                         for (const p of patterns) {
                             const m = html.match(p);
-                            if (m) {
+                            if (m && m[1]) {
                                 videoUrl = m[1].replace(/\\u0025/g, '%').replace(/\\u0026/g, '&');
+                                console.log(`[Download] Found video URL via regex: ${videoUrl.substring(0, 80)}...`);
                                 break;
                             }
                         }

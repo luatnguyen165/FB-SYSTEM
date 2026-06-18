@@ -183,10 +183,16 @@ async function downloadImage(url, saveDir, filename) {
         fs.mkdirSync(saveDir, { recursive: true });
         const ext = url.toLowerCase().includes('.png') ? '.png' : url.toLowerCase().includes('.webp') ? '.webp' : '.jpg';
         const filepath = path.join(saveDir, `${filename}${ext}`);
+        console.log(`[Download] Downloading: ${url.substring(0, 80)}...`);
         const r = await axios.get(url, { responseType: 'arraybuffer', timeout: 30000 });
         fs.writeFileSync(filepath, r.data);
-        return `/uploads/scraper/${path.basename(saveDir)}/${filename}${ext}`;
-    } catch { return null; }
+        const relativePath = `/uploads/scraper/${path.basename(saveDir)}/${filename}${ext}`;
+        console.log(`[Download] Saved: ${relativePath} (${r.data.length} bytes)`);
+        return relativePath;
+    } catch (e) {
+        console.error(`[Download] Failed: ${e.message}`);
+        return null;
+    }
 }
 
 // ==================== RESOLVE USERNAME → ID ====================
@@ -249,6 +255,29 @@ async function resolveProfileIdAndToken(profileIdOrUsername, cookies, proxy) {
 // ==================== SCRAPE FROM HTML ====================
 
 /**
+ * Extract ảnh từ story node
+ */
+function extractImagesFromStory(story) {
+    const images = [];
+    try {
+        const attachments = story?.attachments || [];
+        for (const att of attachments) {
+            const media = att?.styles?.attachment?.media;
+            if (media) {
+                const url = media?.photo_image?.uri || media?.image?.uri || media?.viewer_image?.uri;
+                if (url) images.push(url);
+            }
+            const allMedia = att?.styles?.attachment?.all_subattachments?.nodes || [];
+            for (const m of allMedia) {
+                const url = m?.media?.photo_image?.uri || m?.media?.image?.uri || m?.media?.viewer_image?.uri;
+                if (url) images.push(url);
+            }
+        }
+    } catch (e) { /* skip */ }
+    return images;
+}
+
+/**
  * Scrape bài viết trực tiếp từ HTML (không cần GraphQL)
  */
 async function scrapeFromHtml(profileUrl, cookies, proxy, limit = 10) {
@@ -271,45 +300,37 @@ async function scrapeFromHtml(profileUrl, cookies, proxy, limit = 10) {
         const html = r.data || '';
         console.log(`[HTML Scraper] Page length: ${html.length}`);
 
-        // Tìm bài viết từ HTML - Facebook embed post data trong script tags
-        // Pattern 1: Tìm "story" objects trong JSON data
-        const storyPattern = /\{"__typename":"Story".*?"post_id":"(\d+)".*?\}/g;
-        let match;
-        while ((match = storyPattern.exec(html)) !== null && posts.length < limit) {
+        // Tìm bài viết từ data blocks
+        const dataBlocks = extractDataBlocks(html);
+        console.log(`[HTML Scraper] Found ${dataBlocks.length} data blocks`);
+
+        for (const block of dataBlocks) {
+            if (posts.length >= limit) break;
             try {
-                const storyJson = JSON.parse(match[0] + '}');
-                const postId = storyJson.post_id;
-                const text = storyJson?.comet_sections?.content?.story?.message?.text || '';
-                const permalink = storyJson?.attachments?.[0]?.styles?.attachment?.url || '';
-                if (postId && text) {
-                    posts.push({ postId, text, permalink, images: [], commentCount: 0 });
-                    console.log(`[HTML Scraper] Found post ${postId}: "${text.substring(0, 50)}..."`);
+                const stories = findStoryNodes(block);
+                for (const story of stories) {
+                    if (posts.length >= limit) break;
+                    const postId = story.post_id;
+                    const text = story?.comet_sections?.content?.story?.message?.text || '';
+                    const permalink = story?.attachments?.[0]?.styles?.attachment?.url || '';
+                    const images = extractImagesFromStory(story);
+                    const commentCount = story?.feedback?.comment_rendering_instance?.comments?.total_count || 0;
+                    if (postId && (text || images.length > 0)) {
+                        posts.push({ postId, text, permalink, images, commentCount });
+                        console.log(`[HTML Scraper] Found post ${postId}: "${text.substring(0, 50)}..." (${images.length} images)`);
+                    }
                 }
-            } catch {}
+            } catch (e) { /* skip */ }
         }
 
-        // Pattern 2: Tìm từ "data" blocks
+        // Fallback: tìm ảnh trực tiếp từ HTML nếu không có data blocks
         if (posts.length === 0) {
-            console.log(`[HTML Scraper] Trying data blocks...`);
-            const dataBlocks = extractDataBlocks(html);
-            console.log(`[HTML Scraper] Found ${dataBlocks.length} data blocks`);
-
-            for (const block of dataBlocks) {
-                if (posts.length >= limit) break;
-                try {
-                    // Tìm story nodes trong block
-                    const stories = findStoryNodes(block);
-                    for (const story of stories) {
-                        if (posts.length >= limit) break;
-                        const postId = story.post_id;
-                        const text = story?.comet_sections?.content?.story?.message?.text || '';
-                        const permalink = story?.attachments?.[0]?.styles?.attachment?.url || '';
-                        if (postId && text) {
-                            posts.push({ postId, text, permalink, images: [], commentCount: 0 });
-                            console.log(`[HTML Scraper] Found post ${postId}: "${text.substring(0, 50)}..."`);
-                        }
-                    }
-                } catch {}
+            console.log(`[HTML Scraper] Trying direct HTML image extraction...`);
+            const imgPattern = /https:\/\/scontent[^"'\s]+\.(?:jpg|png|webp|jpeg)[^"'\s]*/gi;
+            const foundImages = [...new Set((html.match(imgPattern) || []).slice(0, 20))];
+            if (foundImages.length > 0) {
+                posts.push({ postId: 'html_' + Date.now(), text: '', permalink: profileUrl, images: foundImages, commentCount: 0 });
+                console.log(`[HTML Scraper] Found ${foundImages.length} images from HTML`);
             }
         }
 

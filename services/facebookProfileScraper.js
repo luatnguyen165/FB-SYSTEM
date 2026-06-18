@@ -126,7 +126,7 @@ function extractMediaUrls(node, postId) {
         }
     };
 
-    const addVideo = (mediaNode) => {
+    const addVideo = (mediaNode, reelUrl) => {
         // Lấy video URL từ nhiều sources (bao gồm Reels)
         let url = mediaNode?.playable_url
             || mediaNode?.playable_url_quality_hd
@@ -140,19 +140,16 @@ function extractMediaUrls(node, postId) {
         if (!url) {
             const delivery = mediaNode?.videoDeliveryResponseFragment || mediaNode?.videoDeliveryLegacyFields;
             if (delivery) {
-                // Tìm mp4 URL trong delivery JSON
                 const deliveryStr = JSON.stringify(delivery);
                 const mp4Match = deliveryStr.match(/https?:\/\/[^"'\s]+\.mp4[^"'\s]*/);
                 if (mp4Match) url = mp4Match[0];
             }
         }
 
-        // Last resort: media.url (có thể là webpage, kiểm tra extension)
-        if (!url) {
-            const mediaUrl = mediaNode?.url || '';
-            if (mediaUrl && (mediaUrl.includes('.mp4') || mediaUrl.includes('video'))) {
-                url = mediaUrl;
-            }
+        // Lưu reel URL để fetch video sau
+        if (!url && reelUrl) {
+            videos.push({ url: '', reelUrl, duration: mediaNode?.video_duration || mediaNode?.length_in_second || 0 });
+            return;
         }
 
         if (url && url.startsWith('http') && !url.includes('facebook.com/reel')) {
@@ -168,10 +165,13 @@ function extractMediaUrls(node, postId) {
         return false;
     };
 
+    // Tìm reel URL từ timestamp.story.url hoặc attachment url
+    const reelUrl = node?.comet_sections?.timestamp?.story?.url || node?.attachments?.[0]?.styles?.attachment?.url || '';
+
     for (const att of (node?.attachments || [])) {
         const attachment = att?.styles?.attachment || {};
         if (attachment.media) {
-            if (isVideo(attachment.media)) addVideo(attachment.media);
+            if (isVideo(attachment.media)) addVideo(attachment.media, reelUrl);
             else addPhoto(attachment.media);
         }
         for (const m of (attachment?.all_subattachments?.nodes || [])) {
@@ -713,60 +713,81 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
             // Download videos
             const savedVideos = [];
             const cookieHeader = Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ');
+
             for (let i = 0; i < rawVideos.length; i++) {
                 const v = rawVideos[i];
-                if (!v.url || !v.url.startsWith('http')) continue;
+                let videoUrl = v.url;
+
+                // Nếu không có URL trực tiếp, thử fetch từ reel page
+                if (!videoUrl && v.reelUrl) {
+                    console.log(`[Download] Fetching video from reel: ${v.reelUrl}`);
+                    try {
+                        const reelPage = await axios.get(v.reelUrl, {
+                            headers: {
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                                'Cookie': cookieHeader,
+                                'Accept': 'text/html',
+                            },
+                            timeout: 15000,
+                        });
+                        const html = reelPage.data || '';
+                        // Tìm video URL trong HTML
+                        const patterns = [
+                            /"playable_url":"([^"]+\.mp4[^"]*)"/,
+                            /"browser_native_hd_url":"([^"]+)"/,
+                            /"browser_native_sd_url":"([^"]+)"/,
+                            /src="(https:\/\/[^"]+\.mp4[^"]*)"/,
+                        ];
+                        for (const p of patterns) {
+                            const m = html.match(p);
+                            if (m) {
+                                videoUrl = m[1].replace(/\\u0025/g, '%').replace(/\\u0026/g, '&');
+                                break;
+                            }
+                        }
+                    } catch (e) {
+                        console.log(`[Download] Fetch reel page failed: ${e.message}`);
+                    }
+                }
+
+                if (!videoUrl || !videoUrl.startsWith('http')) continue;
+
                 try {
                     const filename = `${postId}_video_${i + 1}.mp4`;
                     const filepath = path.join(postSaveDir, filename);
-                    console.log(`[Download] Video: ${v.url.substring(0, 80)}...`);
+                    console.log(`[Download] Video: ${videoUrl.substring(0, 80)}...`);
 
-                    // Thử nhiều cách download
                     let downloaded = false;
 
-                    // Cách 1: Headers đầy đủ như browser
+                    // Cách 1: Headers đầy đủ
                     try {
-                        const r = await axios.get(v.url, {
-                            responseType: 'arraybuffer',
-                            timeout: 120000,
-                            maxRedirects: 5,
+                        const r = await axios.get(videoUrl, {
+                            responseType: 'arraybuffer', timeout: 120000, maxRedirects: 5,
                             headers: {
                                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                                'Accept': '*/*',
-                                'Accept-Language': 'vi-VN,vi;q=0.9',
-                                'Accept-Encoding': 'gzip, deflate, br',
-                                'Referer': 'https://www.facebook.com/',
-                                'Origin': 'https://www.facebook.com',
-                                'Cookie': cookieHeader,
-                                'Sec-Fetch-Dest': 'video',
-                                'Sec-Fetch-Mode': 'cors',
-                                'Sec-Fetch-Site': 'cross-site',
+                                'Accept': '*/*', 'Referer': 'https://www.facebook.com/',
+                                'Origin': 'https://www.facebook.com', 'Cookie': cookieHeader,
                             },
                         });
                         fs.mkdirSync(postSaveDir, { recursive: true });
                         fs.writeFileSync(filepath, r.data);
                         downloaded = true;
                     } catch (e1) {
-                        console.log(`[Download] Video attempt 1 failed: ${e1.message}`);
+                        console.log(`[Download] Attempt 1 failed: ${e1.message}`);
                     }
 
-                    // Cách 2: Không cookies, chỉ referer
+                    // Cách 2: Không cookies
                     if (!downloaded) {
                         try {
-                            const r = await axios.get(v.url, {
-                                responseType: 'arraybuffer',
-                                timeout: 120000,
-                                maxRedirects: 5,
-                                headers: {
-                                    'User-Agent': 'Mozilla/5.0',
-                                    'Referer': 'https://www.facebook.com/',
-                                },
+                            const r = await axios.get(videoUrl, {
+                                responseType: 'arraybuffer', timeout: 120000, maxRedirects: 5,
+                                headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://www.facebook.com/' },
                             });
                             fs.mkdirSync(postSaveDir, { recursive: true });
                             fs.writeFileSync(filepath, r.data);
                             downloaded = true;
                         } catch (e2) {
-                            console.log(`[Download] Video attempt 2 failed: ${e2.message}`);
+                            console.log(`[Download] Attempt 2 failed: ${e2.message}`);
                         }
                     }
 

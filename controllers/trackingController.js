@@ -140,7 +140,7 @@ exports.createTracking = async (req, res) => {
                     console.log(`[Tracking] Auto-scrape: parsed profileId="${profileId}" from url="${url}"`);
 
                     if (profileId) {
-                        const saveDir = path.join(global.USER_DATA_DIR || __dirname, '..', 'uploads', 'scraper');
+                        const saveDir = path.join(global.USER_DATA_DIR || path.join(__dirname, '..'), 'uploads', 'scraper');
                         console.log(`[Tracking] Auto-scrape: starting scrape, saveDir=${saveDir}`);
                         const posts = await scrapeProfilePosts({ profileId, cookies, fbDtsg, limit: 10, saveDir });
                         console.log(`[Tracking] Auto-scrape: scraped ${posts.length} posts`);

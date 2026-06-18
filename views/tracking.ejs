@@ -13,27 +13,41 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <%- include('partials/sidebar', { currentPage: 'tracking' }) %>
+    <%- include('partials/sidebar', { currentPage: typeof currentPage !== 'undefined' ? currentPage : 'tracking-profile' }) %>
 
     <div class="main-content">
         <%- include('partials/header') %>
 
         <main class="content-body tracking-page">
             <!-- Hero Section -->
+            <%
+                const tType = typeof trackingType !== 'undefined' ? trackingType : 'profile';
+                const typeLabels = { profile: 'Profile', page: 'Page', group: 'Group' };
+                const typeIcons = { profile: 'fa-user', page: 'fa-flag', group: 'fa-users' };
+                const typeLabel = typeLabels[tType] || 'Profile';
+                const typeIcon = typeIcons[tType] || 'fa-user';
+            %>
             <div class="tracking-hero">
                 <div class="tracking-hero-content">
                     <div class="tracking-hero-left">
                         <div class="tracking-hero-title">
-                            <div class="tracking-hero-icon"><i class="fa-solid fa-crosshairs"></i></div>
-                            <h1>Theo Dõi Đối Tượng</h1>
+                            <div class="tracking-hero-icon"><i class="fa-solid <%= typeIcon %>"></i></div>
+                            <h1>Theo Dõi <%= typeLabel %></h1>
                         </div>
                         <p class="tracking-hero-subtitle">
-                            Theo dõi bài viết mới từ đối thủ, KOL, group trên <strong>Facebook</strong> và <strong>TikTok</strong>. Tự động phát hiện nội dung mới và đăng lại lên các nền tảng bạn chọn.
+                            <% if (tType === 'profile') { %>
+                                Theo dõi bài viết mới từ Profile đối thủ, KOL trên <strong>Facebook</strong> và <strong>TikTok</strong>.
+                            <% } else if (tType === 'page') { %>
+                                Theo dõi bài viết mới từ <strong>Facebook Page</strong> và <strong>TikTok</strong>.
+                            <% } else { %>
+                                Theo dõi bài viết mới từ <strong>Facebook Group</strong>.
+                            <% } %>
+                            Tự động phát hiện nội dung mới và đăng lại lên các nền tảng bạn chọn.
                         </p>
                     </div>
                     <div class="tracking-hero-actions">
-                        <button class="btn-tracking-hero" id="btnAddTracking">
-                            <i class="fa-solid fa-plus"></i> Thêm Đối Tượng
+                        <button class="btn-tracking-hero" id="btnAddTracking" data-type="<%= tType %>">
+                            <i class="fa-solid fa-plus"></i> Thêm <%= typeLabel %>
                         </button>
                     </div>
                 </div>
@@ -177,6 +191,7 @@
             </div>
             <form id="trackingForm">
                 <input type="hidden" id="trackingId" value="">
+                <input type="hidden" id="trackingType" value="<%= typeof tType !== 'undefined' ? tType : 'profile' %>">
                 <div class="modal-body">
                     <!-- Tên đối tượng -->
                     <div class="form-group">

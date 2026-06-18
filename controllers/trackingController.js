@@ -9,6 +9,9 @@ exports.showTracking = async (req, res) => {
         if (!userId) return res.redirect('/auth/login');
 
         const filter = { userId };
+        const trackingType = req.query.type || 'profile';
+        filter.type = trackingType;
+
         // Filter by platform tab if specified
         if (req.query.platform) {
             filter.sourcePlatform = req.query.platform;
@@ -26,24 +29,29 @@ exports.showTracking = async (req, res) => {
             .sort('platform')
             .lean();
 
-        // Thống kê nhanh
+        // Thống kê nhanh theo type
         const stats = {
-            total: await Tracking.countDocuments({ userId }),
-            facebook: await Tracking.countDocuments({ userId, sourcePlatform: 'facebook' }),
-            tiktok: await Tracking.countDocuments({ userId, sourcePlatform: 'tiktok' }),
-            active: await Tracking.countDocuments({ userId, isActive: true })
+            total: await Tracking.countDocuments({ userId, type: trackingType }),
+            facebook: await Tracking.countDocuments({ userId, type: trackingType, sourcePlatform: 'facebook' }),
+            tiktok: await Tracking.countDocuments({ userId, type: trackingType, sourcePlatform: 'tiktok' }),
+            active: await Tracking.countDocuments({ userId, type: trackingType, isActive: true })
         };
 
+        // currentPage cho sidebar active
+        const pageMap = { profile: 'tracking-profile', page: 'tracking-page', group: 'tracking-group' };
+        const currentPage = pageMap[trackingType] || 'tracking-profile';
+
         res.render('tracking', {
-            currentPage: 'tracking',
+            currentPage,
             trackings,
             channels,
             stats,
+            trackingType,
             activePlatform: req.query.platform || 'all',
             features: res.locals.features || {},
             user: req.session.user || req.user || null,
             flash: req.flash ? { success: req.flash('success'), error: req.flash('error') } : null,
-            t: (key) => key // i18n fallback
+            t: (key) => key
         });
     } catch (err) {
         console.error('[Tracking] Error loading page:', err.message);
@@ -58,11 +66,14 @@ exports.createTracking = async (req, res) => {
         const userId = req.session.userId || req.user?.id;
         if (!userId) return res.status(401).json({ success: false, message: 'Chưa đăng nhập' });
 
-        const { name, url, sourcePlatform, sourceAccountId, targetPlatforms, cookiesPath } = req.body;
+        const { name, url, sourcePlatform, sourceAccountId, targetPlatforms, cookiesPath, type } = req.body;
 
         if (!name || !url || !sourcePlatform) {
             return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ: tên, URL, nền tảng' });
         }
+
+        // Validate type
+        const trackingType = ['profile', 'page', 'group'].includes(type) ? type : 'profile';
 
         // Parse targetPlatforms từ JSON string nếu gửi từ form
         let parsedTargets = [];
@@ -78,6 +89,7 @@ exports.createTracking = async (req, res) => {
             userId,
             name,
             url,
+            type: trackingType,
             sourcePlatform,
             sourceAccountId: sourceAccountId || undefined,
             targetPlatforms: parsedTargets,

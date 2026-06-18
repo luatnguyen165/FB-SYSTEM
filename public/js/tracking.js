@@ -27,7 +27,8 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.tracking-tab').forEach(function (tab) {
         tab.addEventListener('click', function () {
             const platform = this.dataset.platform;
-            window.location.href = '/tracking?platform=' + platform;
+            const type = document.getElementById('trackingType')?.value || 'profile';
+            window.location.href = '/tracking?type=' + type + '&platform=' + platform;
         });
     });
 
@@ -83,6 +84,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const body = {
             name: nameInput.value.trim(),
             url: urlInput.value.trim(),
+            type: document.getElementById('trackingType')?.value || 'profile',
             sourcePlatform: document.querySelector('input[name="sourcePlatform"]:checked').value,
             sourceAccountId: sourceAccountSelect.value,
             targetPlatforms: JSON.stringify(targetPlatforms),

@@ -196,8 +196,30 @@
 
         <!-- 🎯 THEO DÕI -->
         <% if (feat.tracking !== false) { %>
-        <li class="menu-item <%= currentPage === 'tracking' ? 'active' : '' %>">
-            <a href="/tracking"><i class="fa-solid fa-crosshairs"></i>Theo Dõi Đối Tượng</a>
+        <li class="sidebar-group">
+            <button
+                type="button"
+                class="sidebar-group-toggle"
+                data-sidebar-group-toggle
+                aria-expanded="<%= ['tracking-profile','tracking-page','tracking-group'].includes(currentPage) ? 'true' : 'false' %>"
+            >
+                <span class="sidebar-group-toggle__label">
+                    <i class="fa-solid fa-crosshairs"></i>
+                    Theo Dõi
+                </span>
+                <i class="fa-solid fa-chevron-down sidebar-group-chevron"></i>
+            </button>
+            <ul class="sidebar-submenu" style="<%= ['tracking-profile','tracking-page','tracking-group'].includes(currentPage) ? 'display:block' : '' %>">
+                <li class="menu-item <%= currentPage === 'tracking-profile' ? 'active' : '' %>">
+                    <a href="/tracking?type=profile"><i class="fa-solid fa-user"></i>Theo Dõi Profile</a>
+                </li>
+                <li class="menu-item <%= currentPage === 'tracking-page' ? 'active' : '' %>">
+                    <a href="/tracking?type=page"><i class="fa-solid fa-flag"></i>Theo Dõi Page</a>
+                </li>
+                <li class="menu-item <%= currentPage === 'tracking-group' ? 'active' : '' %>">
+                    <a href="/tracking?type=group"><i class="fa-solid fa-users"></i>Theo Dõi Group</a>
+                </li>
+            </ul>
         </li>
         <% } %>
 

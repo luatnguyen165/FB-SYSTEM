@@ -3,13 +3,16 @@ const mongoose = require('mongoose');
 
 const TrackingSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    
+
     // Tên đối tượng theo dõi
     name: { type: String, required: true, trim: true },
-    
+
     // URL đối tượng (profile/group/page)
     url: { type: String, required: true, trim: true },
-    
+
+    // Loại đối tượng: 'profile' | 'page' | 'group'
+    type: { type: String, enum: ['profile', 'page', 'group'], default: 'profile' },
+
     // Nền tảng gốc: 'facebook' | 'tiktok'
     sourcePlatform: { type: String, enum: ['facebook', 'tiktok'], required: true },
     
@@ -40,5 +43,6 @@ const TrackingSchema = new mongoose.Schema({
 // Index cho tìm kiếm nhanh
 TrackingSchema.index({ userId: 1, sourcePlatform: 1 });
 TrackingSchema.index({ userId: 1, isActive: 1 });
+TrackingSchema.index({ userId: 1, type: 1 });
 
 module.exports = mongoose.model('Tracking', TrackingSchema);

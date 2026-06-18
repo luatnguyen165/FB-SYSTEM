@@ -5,10 +5,7 @@
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-const { HttpsProxyAgent } = require('https-proxy-agent');
-const crypto = require('crypto');
-
-function randomStr(len) { return crypto.randomBytes(len).toString('hex').substring(0, len); }
+const { execSync } = require('child_process');
 
 const GRAPHQL_URL = 'https://www.facebook.com/api/graphql/';
 const DOC_ID = '25430544756617998'; // ProfileCometTimelineFeedRefetchQuery
@@ -713,107 +710,40 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
                 if (saved) savedImages.push(saved);
             }
 
-            // Download videos
+            // Download videos dùng yt-dlp (giống facebook-reels-downloader)
             const savedVideos = [];
-            const cookieHeader = Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ');
-
             for (let i = 0; i < rawVideos.length; i++) {
                 const v = rawVideos[i];
-                let videoUrl = '';
-
-                // Luôn thử fetch từ reel page trước (Fb_Downloder approach)
-                const reelUrl = v.reelUrl || v.url;
-                if (reelUrl && reelUrl.includes('facebook.com')) {
-                    console.log(`[Download] Fetching video from: ${reelUrl}`);
-                    try {
-                        const fakeCookies = {
-                            sb: randomStr(24),
-                            fr: `${randomStr(20)}.${randomStr(30)}.${randomStr(22)}..AAA.0.0.0.0`,
-                            datr: randomStr(24),
-                            wd: '1920x1080',
-                        };
-                        const fakeCookieStr = Object.entries(fakeCookies).map(([k, v]) => `${k}=${v}`).join('; ');
-
-                        const reelPage = await axios.get(reelUrl, {
-                            headers: {
-                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                                'Cookie': cookieHeader || fakeCookieStr,
-                                'Accept': 'text/html,application/xhtml+xml',
-                            },
-                            timeout: 15000,
-                        });
-                        const html = (reelPage.data || '').replace(/\\/g, '');
-
-                        // Regex patterns (giống Fb_Downloder)
-                        const patterns = [
-                            /d_url":"(https:\/\/video[^"]+)"/,
-                            /"playable_url":"(https:\/\/[^"]+\.mp4[^"]*)"/,
-                            /"browser_native_hd_url":"(https:\/\/[^"]+)"/,
-                            /"browser_native_sd_url":"(https:\/\/[^"]+)"/,
-                        ];
-                        for (const p of patterns) {
-                            const m = html.match(p);
-                            if (m && m[1]) {
-                                videoUrl = m[1].replace(/\\u0025/g, '%').replace(/\\u0026/g, '&');
-                                console.log(`[Download] Found video URL: ${videoUrl.substring(0, 80)}...`);
-                                break;
-                            }
-                        }
-                    } catch (e) {
-                        console.log(`[Download] Fetch reel page failed: ${e.message}`);
-                    }
-                }
-
-                // Fallback: dùng URL từ GraphQL
-                if (!videoUrl && v.url && v.url.startsWith('http') && !v.url.includes('facebook.com/reel')) {
-                    videoUrl = v.url;
-                }
-
+                const videoUrl = v.reelUrl || v.url;
                 if (!videoUrl || !videoUrl.startsWith('http')) continue;
 
                 try {
                     const filename = `${postId}_video_${i + 1}.mp4`;
                     const filepath = path.join(postSaveDir, filename);
-                    console.log(`[Download] Video: ${videoUrl.substring(0, 80)}...`);
+                    fs.mkdirSync(postSaveDir, { recursive: true });
 
-                    let downloaded = false;
+                    console.log(`[Download] Video via yt-dlp: ${videoUrl.substring(0, 80)}...`);
 
-                    // Cách 1: Headers đầy đủ
+                    // Dùng yt-dlp download (giống facebook-reels-downloader)
+                    const cookieFile = path.join(postSaveDir, 'cookies.txt');
+                    const cookieHeader = Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ');
+                    fs.writeFileSync(cookieFile, `# Netscape HTTP Cookie File\n.facebook.com\tTRUE\t/\tTRUE\t0\t${Object.entries(cookies).map(([k, v]) => `${k}\t${v}`).join('\n')}\n`);
+
                     try {
-                        const r = await axios.get(videoUrl, {
-                            responseType: 'arraybuffer', timeout: 120000, maxRedirects: 5,
-                            headers: {
-                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                                'Accept': '*/*', 'Referer': 'https://www.facebook.com/',
-                                'Origin': 'https://www.facebook.com', 'Cookie': cookieHeader,
-                            },
+                        execSync(`yt-dlp -f best --cookies "${cookieFile}" -o "${filepath}" "${videoUrl}"`, {
+                            timeout: 120000,
+                            stdio: 'pipe',
                         });
-                        fs.mkdirSync(postSaveDir, { recursive: true });
-                        fs.writeFileSync(filepath, r.data);
-                        downloaded = true;
-                    } catch (e1) {
-                        console.log(`[Download] Attempt 1 failed: ${e1.message}`);
-                    }
-
-                    // Cách 2: Không cookies
-                    if (!downloaded) {
-                        try {
-                            const r = await axios.get(videoUrl, {
-                                responseType: 'arraybuffer', timeout: 120000, maxRedirects: 5,
-                                headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://www.facebook.com/' },
-                            });
-                            fs.mkdirSync(postSaveDir, { recursive: true });
-                            fs.writeFileSync(filepath, r.data);
-                            downloaded = true;
-                        } catch (e2) {
-                            console.log(`[Download] Attempt 2 failed: ${e2.message}`);
+                        if (fs.existsSync(filepath)) {
+                            savedVideos.push(`/uploads/scraper/${postId}/${filename}`);
+                            const stats = fs.statSync(filepath);
+                            console.log(`[Download] Saved video: ${filename} (${(stats.size / 1024 / 1024).toFixed(1)}MB)`);
                         }
-                    }
-
-                    if (downloaded) {
-                        savedVideos.push(`/uploads/scraper/${postId}/${filename}`);
-                        const stats = fs.statSync(filepath);
-                        console.log(`[Download] Saved video: ${filename} (${(stats.size / 1024 / 1024).toFixed(1)}MB)`);
+                    } catch (e) {
+                        console.log(`[Download] yt-dlp failed: ${e.message}`);
+                    } finally {
+                        // Xóa cookie file temp
+                        try { fs.unlinkSync(cookieFile); } catch {}
                     }
                 } catch (e) {
                     console.error(`[Download] Video failed: ${e.message}`);

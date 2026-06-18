@@ -315,9 +315,14 @@ async function scrapeFromHtml(profileUrl, cookies, proxy, limit = 10) {
                     const permalink = story?.attachments?.[0]?.styles?.attachment?.url || '';
                     const images = extractImagesFromStory(story);
                     const commentCount = story?.feedback?.comment_rendering_instance?.comments?.total_count || 0;
+                    let publishedAt = null;
+                    try {
+                        const ct = story?.comet_sections?.content?.story?.created_time || story?.feedback?.story?.creation_time;
+                        if (ct) publishedAt = new Date(ct * 1000);
+                    } catch {}
                     if (postId && (text || images.length > 0)) {
-                        posts.push({ postId, text, permalink, images, commentCount });
-                        console.log(`[HTML Scraper] Found post ${postId}: "${text.substring(0, 50)}..." (${images.length} images)`);
+                        posts.push({ postId, text, permalink, images, commentCount, publishedAt });
+                        console.log(`[HTML Scraper] Found post ${postId}: "${text.substring(0, 50)}..." (${images.length} images) ${publishedAt ? publishedAt.toISOString() : ''}`);
                     }
                 }
             } catch (e) { /* skip */ }
@@ -485,6 +490,32 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
             const commentCount = extractCommentCount(node);
             const authorName = extractPageName(node) || '';
 
+            // Extract thời gian đăng bài
+            let publishedAt = null;
+            try {
+                // Path 1: comet_sections.content.story.created_time
+                const createdTime = node?.comet_sections?.content?.story?.created_time;
+                if (createdTime) publishedAt = new Date(createdTime * 1000);
+
+                // Path 2: feedback.story.creation_time
+                if (!publishedAt) {
+                    const creationTime = node?.feedback?.story?.creation_time;
+                    if (creationTime) publishedAt = new Date(creationTime * 1000);
+                }
+
+                // Path 3: attachments[0].styles.attachment.target.post_time
+                if (!publishedAt) {
+                    const postTime = node?.attachments?.[0]?.styles?.attachment?.target?.post_time;
+                    if (postTime) publishedAt = new Date(postTime * 1000);
+                }
+
+                // Path 4: Default timestamp text from UI
+                if (!publishedAt) {
+                    const timeEl = node?.comet_sections?.content?.story?.comet_sections?.context_layout?.story?.comet_sections?.metadata?.[0]?.story?.creation_time;
+                    if (timeEl) publishedAt = new Date(timeEl * 1000);
+                }
+            } catch {}
+
             // Extract images
             const { images: rawUrls, lastMediaId } = extractMediaUrls(node, postId);
             let allImageUrls = [...rawUrls];
@@ -503,8 +534,8 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
                 if (saved) savedImages.push(saved);
             }
 
-            allPosts.push({ postId, text, permalink, commentCount, authorName, images: savedImages });
-            console.log(`[Profile Scraper] ✓ ${postId}: "${text.substring(0, 50)}..." (${savedImages.length} ảnh)`);
+            allPosts.push({ postId, text, permalink, commentCount, authorName, images: savedImages, publishedAt });
+            console.log(`[Profile Scraper] ✓ ${postId}: "${text.substring(0, 50)}..." (${savedImages.length} ảnh) ${publishedAt ? publishedAt.toISOString() : ''}`);
         }
 
         // Pagination

@@ -306,10 +306,13 @@
                         `<img src="${img}" class="post-img-thumb" onclick="previewImage('${img}')" loading="lazy">`
                     ).join('')}${images.length > 4 ? `<div class="post-img-more">+${images.length - 4}</div>` : ''}</div>`
                     : '';
+                const publishTime = p.publishedAt ? new Date(p.publishedAt).toLocaleString('vi-VN') : '';
                 html += `
                 <div class="post-card-item">
                     <div class="post-card-header">
-                        <span class="post-card-time"><i class="fa-regular fa-clock"></i> ${new Date(p.scrapedAt).toLocaleString('vi-VN')}</span>
+                        <span class="post-card-time">
+                            ${publishTime ? `<i class="fa-solid fa-calendar"></i> ${publishTime}` : `<i class="fa-regular fa-clock"></i> ${new Date(p.scrapedAt).toLocaleString('vi-VN')}`}
+                        </span>
                         <div class="post-card-actions">
                             <button class="btn-sm btn-view" onclick="editPost('${p._id}')" title="Chỉnh sửa"><i class="fa-solid fa-pen"></i></button>
                             <button class="btn-sm btn-delete" onclick="deletePost('${p._id}')" title="Xóa"><i class="fa-solid fa-trash"></i></button>

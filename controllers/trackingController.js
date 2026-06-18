@@ -168,7 +168,7 @@ exports.createTracking = async (req, res) => {
 
                                 await TrackingPost.findOneAndUpdate(
                                     { trackingId: tracking._id, postId: post.postId },
-                                    { userId, trackingId: tracking._id, postId: post.postId, text: post.text, permalink: post.permalink, commentCount: post.commentCount, authorName: post.authorName, images: downloadedImages, scrapedAt: new Date() },
+                                    { userId, trackingId: tracking._id, postId: post.postId, text: post.text, permalink: post.permalink, commentCount: post.commentCount, authorName: post.authorName, images: downloadedImages, publishedAt: post.publishedAt, scrapedAt: new Date() },
                                     { upsert: true, new: true }
                                 );
                                 saved++;
@@ -417,7 +417,7 @@ exports.scrapeTracking = async (req, res) => {
 
                 await TrackingPost.findOneAndUpdate(
                     { trackingId: tracking._id, postId: post.postId },
-                    { userId, trackingId: tracking._id, postId: post.postId, text: post.text, permalink: post.permalink, commentCount: post.commentCount, authorName: post.authorName, images: downloadedImages, scrapedAt: new Date() },
+                    { userId, trackingId: tracking._id, postId: post.postId, text: post.text, permalink: post.permalink, commentCount: post.commentCount, authorName: post.authorName, images: downloadedImages, publishedAt: post.publishedAt, scrapedAt: new Date() },
                     { upsert: true, new: true }
                 );
                 saved++;

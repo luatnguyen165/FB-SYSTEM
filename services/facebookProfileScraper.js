@@ -191,45 +191,59 @@ async function downloadImage(url, saveDir, filename) {
 
 // ==================== RESOLVE USERNAME → ID ====================
 
-async function resolveProfileId(profileIdOrUsername, cookies, proxy) {
-    // Nếu đã là numeric ID thì trả về luôn
-    if (/^\d+$/.test(profileIdOrUsername)) return profileIdOrUsername;
+async function resolveProfileIdAndToken(profileIdOrUsername, cookies, proxy) {
+    let numericId = profileIdOrUsername;
+    let fbDtsg = '';
 
-    // Visit profile page để lấy numeric ID
+    // Nếu đã là numeric ID thì chỉ cần lấy fb_dtsg
+    const needsResolve = !/^\d+$/.test(profileIdOrUsername);
+
     try {
-        console.log(`[Profile Scraper] Resolving username "${profileIdOrUsername}" → numeric ID...`);
-        const url = `https://www.facebook.com/${profileIdOrUsername}`;
+        console.log(`[Profile Scraper] Resolving "${profileIdOrUsername}"...`);
+        const url = needsResolve
+            ? `https://www.facebook.com/${profileIdOrUsername}`
+            : `https://www.facebook.com/profile.php?id=${profileIdOrUsername}`;
+
+        const cookieHeader = Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ');
         const r = await axios.get(url, {
             headers: {
                 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                cookie: Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; '),
+                cookie: cookieHeader,
             },
             timeout: 15000,
             httpsAgent: getHttpsAgent(proxy),
             maxRedirects: 5,
         });
 
-        // Tìm numeric ID từ HTML: "userID":"123456" hoặc profile.php?id=123456
         const html = r.data || '';
-        const patterns = [
-            /"userID":"(\d+)"/,
-            /"user_id":"(\d+)"/,
-            /profile\.php\?id=(\d+)/,
-            /"entity_id":"(\d+)"/,
-            /"actorID":"(\d+)"/,
-        ];
-        for (const p of patterns) {
-            const m = html.match(p);
-            if (m) {
-                console.log(`[Profile Scraper] Resolved: ${profileIdOrUsername} → ${m[1]}`);
-                return m[1];
+
+        // Tìm numeric ID
+        if (needsResolve) {
+            const idPatterns = [/"userID":"(\d+)"/, /"user_id":"(\d+)"/, /profile\.php\?id=(\d+)/, /"entity_id":"(\d+)"/, /"actorID":"(\d+)"/];
+            for (const p of idPatterns) {
+                const m = html.match(p);
+                if (m) { numericId = m[1]; break; }
             }
         }
-        console.log(`[Profile Scraper] Không tìm thấy numeric ID trong HTML`);
+
+        // Tìm fb_dtsg từ HTML
+        const dtsgPatterns = [
+            /"DTSGInitialData".*?"token"\s*:\s*"([^"]+)"/,
+            /"fb_dtsg"\s*:\s*"([^"]+)"/,
+            /name="fb_dtsg"\s+value="([^"]+)"/,
+            /"async_get_token"\s*:\s*"([^"]+)"/,
+        ];
+        for (const p of dtsgPatterns) {
+            const m = html.match(p);
+            if (m) { fbDtsg = m[1]; break; }
+        }
+
+        console.log(`[Profile Scraper] Resolved: id=${numericId}, fb_dtsg=${fbDtsg ? 'yes' : 'no'}`);
     } catch (e) {
-        console.log(`[Profile Scraper] Lỗi resolve username: ${e.message}`);
+        console.log(`[Profile Scraper] Lỗi resolve: ${e.message}`);
     }
-    return profileIdOrUsername; // fallback
+
+    return { numericId, fbDtsg };
 }
 
 // ==================== MAIN SCRAPER ====================
@@ -252,11 +266,16 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
 
     console.log(`[Profile Scraper] === START === profileId="${profileId}", limit=${limit}, c_user=${cookies.c_user || 'null'}, fb_dtsg=${fbDtsg ? 'yes' : 'no'}`);
 
-    // Resolve username → numeric ID
+    // Resolve username → numeric ID + lấy fb_dtsg
     let numericId;
     try {
-        numericId = await resolveProfileId(profileId, cookies, proxy);
-        console.log(`[Profile Scraper] Resolved: ${profileId} → ${numericId}`);
+        const resolved = await resolveProfileIdAndToken(profileId, cookies, proxy);
+        numericId = resolved.numericId;
+        if (resolved.fbDtsg && !fbDtsg) {
+            fbDtsg = resolved.fbDtsg;
+            console.log(`[Profile Scraper] Got fb_dtsg from page`);
+        }
+        console.log(`[Profile Scraper] Resolved: ${profileId} → ${numericId}, fb_dtsg=${fbDtsg ? 'yes' : 'no'}`);
     } catch (e) {
         console.error(`[Profile Scraper] Lỗi resolve profileId: ${e.message}`);
         return [];

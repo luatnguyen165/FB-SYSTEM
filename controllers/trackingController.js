@@ -7,6 +7,24 @@ const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
 
+/**
+ * Parse Facebook ID từ URL (profile, page, group)
+ * Hỗ trợ: profile.php?id=, /username/, /pages/Page-Name/123456
+ */
+function parseFacebookId(url) {
+    if (!url) return '';
+    // profile.php?id=123456
+    const idMatch = url.match(/profile\.php\?id=(\d+)/);
+    if (idMatch) return idMatch[1];
+    // /pages/Page-Name/123456
+    const pageMatch = url.match(/\/pages\/[^/]+\/(\d+)/);
+    if (pageMatch) return pageMatch[1];
+    // /username/ hoặc /pagename/
+    const userMatch = url.match(/facebook\.com\/([a-zA-Z0-9.]+)\/?/);
+    if (userMatch) return userMatch[1];
+    return '';
+}
+
 // GET /tracking - Trang chính theo dõi
 exports.showTracking = async (req, res) => {
     try {
@@ -130,14 +148,8 @@ exports.createTracking = async (req, res) => {
                 }
 
                 if (cookies.c_user) {
-                    // Parse profile ID
-                    let profileId = '';
-                    const idMatch = url.match(/profile\.php\?id=(\d+)/);
-                    if (idMatch) profileId = idMatch[1];
-                    else {
-                        const userMatch = url.match(/facebook\.com\/([a-zA-Z0-9.]+)\/?/);
-                        if (userMatch) profileId = userMatch[1];
-                    }
+                    // Parse ID từ URL (profile hoặc page)
+                    let profileId = parseFacebookId(url);
                     console.log(`[Tracking] Auto-scrape: parsed profileId="${profileId}" from url="${url}"`);
 
                     if (profileId) {
@@ -342,17 +354,11 @@ exports.scrapeTracking = async (req, res) => {
         }
         console.log(`[Scrape] Channel: ${channel.accountName}, storageStatePath=${channel.storageStatePath || 'null'}`);
 
-        // Parse profile ID từ URL
+        // Parse ID từ URL (profile hoặc page)
         const url = tracking.url;
-        let profileId = '';
-        const idMatch = url.match(/profile\.php\?id=(\d+)/);
-        if (idMatch) profileId = idMatch[1];
-        else {
-            const userMatch = url.match(/facebook\.com\/([a-zA-Z0-9.]+)\/?/);
-            if (userMatch) profileId = userMatch[1];
-        }
+        const profileId = parseFacebookId(url);
         console.log(`[Scrape] Parsed profileId="${profileId}" from url="${url}"`);
-        if (!profileId) return res.status(400).json({ success: false, message: 'Không parse được profile ID từ URL' });
+        if (!profileId) return res.status(400).json({ success: false, message: 'Không parse được ID từ URL' });
 
         // Lấy cookies từ storage state
         let cookies = {};

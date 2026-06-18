@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const sourceAccountSelect = document.getElementById('sourceAccountId');
     const cookiesFile = document.getElementById('cookiesFile');
     const cookiesPathInput = document.getElementById('cookiesPath');
-    const cookiesGroup = document.getElementById('cookiesUploadGroup');
+    const cookiesGroup = document.getElementById('cookiesUploadGroup'); // may be null
 
     // ---- Open modal: Add ----
     document.querySelectorAll('#btnAddTracking, #btnAddTrackingEmpty').forEach(function (btn) {
@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // ---- Radio platform toggle (show/hide cookies + filter source accounts) ----
     document.querySelectorAll('input[name="sourcePlatform"]').forEach(function (radio) {
         radio.addEventListener('change', function () {
-            cookiesGroup.style.display = this.value === 'tiktok' ? 'block' : 'none';
+            if (cookiesGroup) cookiesGroup.style.display = this.value === 'tiktok' ? 'block' : 'none';
 
             // Filter source account options by selected platform
             var platformCode = platformToChannelCode(this.value);
@@ -170,7 +170,8 @@ function openAddModal() {
         sel.disabled = true;
         sel.innerHTML = '<option value="">Chọn tài khoản</option>';
     });
-    document.getElementById('cookiesUploadGroup').style.display = 'none';
+    var cookiesGroup = document.getElementById('cookiesUploadGroup');
+    if (cookiesGroup) cookiesGroup.style.display = 'none';
     document.getElementById('trackingModal').style.display = 'flex';
 }
 
@@ -195,7 +196,7 @@ function editTracking(id) {
             // Set radio
             var radio = document.querySelector('input[name="sourcePlatform"][value="' + item.sourcePlatform + '"]');
             if (radio) radio.checked = true;
-            cookiesGroup.style.display = item.sourcePlatform === 'tiktok' ? 'block' : 'none';
+            if (cookiesGroup) cookiesGroup.style.display = item.sourcePlatform === 'tiktok' ? 'block' : 'none';
 
             // Set source account
             if (item.sourceAccountId) {

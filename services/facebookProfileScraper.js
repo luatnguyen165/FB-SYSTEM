@@ -195,6 +195,86 @@ async function downloadImage(url, saveDir, filename) {
     }
 }
 
+// ==================== EXTRACT TIMESTAMP ====================
+
+/**
+ * Extract thời gian từ Facebook story node
+ * Facebook encode timestamp bằng CSS classes trong spans
+ */
+function extractTimestampText(node) {
+    try {
+        // Path 1: Text từ metadata
+        const metadata = node?.comet_sections?.content?.story?.comet_sections?.context_layout?.story?.comet_sections?.metadata;
+        if (metadata && metadata.length > 0) {
+            for (const meta of metadata) {
+                const text = meta?.story?.comet_sections?.creation_time?.creation_time?.text;
+                if (text) return text;
+                const ranges = meta?.story?.comet_sections?.creation_time?.creation_time?.ranges;
+                if (ranges && ranges.length > 0) {
+                    return ranges.map(r => r?.entity?.title?.text || '').join('');
+                }
+            }
+        }
+
+        // Path 2: Từ timestamp_renderer
+        const timestampRenderer = node?.comet_sections?.content?.story?.comet_sections?.context_layout?.story?.comet_sections?.timestamp_renderer?.story?.created_time?.text;
+        if (timestampRenderer) return timestampRenderer;
+
+        // Path 3: Từ actors[0].subtitle.text
+        const subtitle = node?.comet_sections?.content?.story?.actors?.[0]?.subtitle?.text;
+        if (subtitle) return subtitle;
+
+        // Path 4: Từ feedback.story.url
+        const feedbackTime = node?.feedback?.story?.comet_sections?.creation_time?.creation_time?.text;
+        if (feedbackTime) return feedbackTime;
+
+        return '';
+    } catch { return ''; }
+}
+
+/**
+ * Parse ngày giờ tiếng Việt: "3 thg 6, 2025 14:30" hoặc "14:30 03/06/2025"
+ */
+function parseVietnameseDate(text) {
+    if (!text) return null;
+    try {
+        // Pattern: "3 thg 6, 2025 14:30" hoặc "3 tháng 6, 2025 lúc 14:30"
+        const match1 = text.match(/(\d{1,2})\s*th(?:á)?ng?\s*(\d{1,2}),?\s*(\d{4})(?:\s*lúc)?\s*(\d{1,2}):(\d{2})/);
+        if (match1) {
+            const [, day, month, year, hour, minute] = match1;
+            return new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
+        }
+
+        // Pattern: "14:30 03/06/2025" hoặc "03/06/2025 14:30"
+        const match2 = text.match(/(\d{1,2}):(\d{2})\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+        if (match2) {
+            const [, hour, minute, day, month, year] = match2;
+            return new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
+        }
+        const match3 = text.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s*(\d{1,2}):(\d{2})/);
+        if (match3) {
+            const [, day, month, year, hour, minute] = match3;
+            return new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
+        }
+
+        // Pattern: "2 giờ" / "3 ngày" / "1 tuần" (relative)
+        const relMatch = text.match(/(\d+)\s*(giờ|phút|ngày|tuần|tháng)/);
+        if (relMatch) {
+            const [, num, unit] = relMatch;
+            const now = new Date();
+            const n = parseInt(num);
+            if (unit === 'phút') now.setMinutes(now.getMinutes() - n);
+            else if (unit === 'giờ') now.setHours(now.getHours() - n);
+            else if (unit === 'ngày') now.setDate(now.getDate() - n);
+            else if (unit === 'tuần') now.setDate(now.getDate() - n * 7);
+            else if (unit === 'tháng') now.setMonth(now.getMonth() - n);
+            return now;
+        }
+
+        return null;
+    } catch { return null; }
+}
+
 // ==================== RESOLVE USERNAME → ID ====================
 
 async function resolveProfileIdAndToken(profileIdOrUsername, cookies, proxy) {
@@ -492,27 +572,42 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
 
             // Extract thời gian đăng bài
             let publishedAt = null;
+            let publishedAtText = '';
             try {
-                // Path 1: comet_sections.content.story.created_time
+                // Path 1: Unix timestamp từ created_time
                 const createdTime = node?.comet_sections?.content?.story?.created_time;
-                if (createdTime) publishedAt = new Date(createdTime * 1000);
+                if (createdTime) {
+                    publishedAt = new Date(createdTime * 1000);
+                    publishedAtText = publishedAt.toISOString();
+                }
 
                 // Path 2: feedback.story.creation_time
                 if (!publishedAt) {
                     const creationTime = node?.feedback?.story?.creation_time;
-                    if (creationTime) publishedAt = new Date(creationTime * 1000);
+                    if (creationTime) {
+                        publishedAt = new Date(creationTime * 1000);
+                        publishedAtText = publishedAt.toISOString();
+                    }
                 }
 
-                // Path 3: attachments[0].styles.attachment.target.post_time
+                // Path 3: target.post_time
                 if (!publishedAt) {
                     const postTime = node?.attachments?.[0]?.styles?.attachment?.target?.post_time;
-                    if (postTime) publishedAt = new Date(postTime * 1000);
+                    if (postTime) {
+                        publishedAt = new Date(postTime * 1000);
+                        publishedAtText = publishedAt.toISOString();
+                    }
                 }
 
-                // Path 4: Default timestamp text from UI
+                // Path 4: Text thời gian từ UI (encoded spans)
                 if (!publishedAt) {
-                    const timeEl = node?.comet_sections?.content?.story?.comet_sections?.context_layout?.story?.comet_sections?.metadata?.[0]?.story?.creation_time;
-                    if (timeEl) publishedAt = new Date(timeEl * 1000);
+                    const timeText = extractTimestampText(node);
+                    if (timeText) {
+                        publishedAtText = timeText;
+                        // Parse "3 thg 6, 2025 14:30" → Date
+                        const parsed = parseVietnameseDate(timeText);
+                        if (parsed) publishedAt = parsed;
+                    }
                 }
             } catch {}
 
@@ -534,8 +629,8 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
                 if (saved) savedImages.push(saved);
             }
 
-            allPosts.push({ postId, text, permalink, commentCount, authorName, images: savedImages, publishedAt });
-            console.log(`[Profile Scraper] ✓ ${postId}: "${text.substring(0, 50)}..." (${savedImages.length} ảnh) ${publishedAt ? publishedAt.toISOString() : ''}`);
+            allPosts.push({ postId, text, permalink, commentCount, authorName, images: savedImages, publishedAt, publishedAtText });
+            console.log(`[Profile Scraper] ✓ ${postId}: "${text.substring(0, 50)}..." (${savedImages.length} ảnh) time="${publishedAtText || 'N/A'}"`);
         }
 
         // Pagination

@@ -306,7 +306,7 @@
                         `<img src="${img}" class="post-img-thumb" onclick="previewImage('${img}')" loading="lazy">`
                     ).join('')}${images.length > 4 ? `<div class="post-img-more">+${images.length - 4}</div>` : ''}</div>`
                     : '';
-                const publishTime = p.publishedAt ? new Date(p.publishedAt).toLocaleString('vi-VN') : '';
+                const publishTime = p.publishedAtText || (p.publishedAt ? new Date(p.publishedAt).toLocaleString('vi-VN') : '');
                 html += `
                 <div class="post-card-item">
                     <div class="post-card-header">

@@ -17,6 +17,7 @@ const TrackingPostSchema = new mongoose.Schema({
     // Metadata
     authorName: { type: String, default: '' },
     publishedAt: { type: Date }, // Thời gian đăng bài trên Facebook
+    publishedAtText: { type: String, default: '' }, // Text gốc từ Facebook
     scrapedAt: { type: Date, default: Date.now },
 }, { timestamps: true });
 

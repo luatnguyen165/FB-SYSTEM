@@ -673,6 +673,8 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
             if (allPosts.length >= limit) break;
 
             const postId = node.post_id;
+            const postIndex = allPosts.length + 1;
+            console.log(`[Profile Scraper] ──────────── Post ${postIndex}/${limit} ────────────`);
             if (!postId) continue;
 
             const text = node?.comet_sections?.content?.story?.message?.text || '';
@@ -750,35 +752,44 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
             const { images: rawUrls, videos: rawVideos, lastMediaId } = extractMediaUrls(node, postId);
             let allImageUrls = [...rawUrls];
 
+            console.log(`[Post ${postIndex}] ${postId}: ${allImageUrls.length} ảnh, ${rawVideos.length} video`);
+
             // Fetch remaining if 5 images (may have more)
             if (rawUrls.length === 5 && lastMediaId) {
+                console.log(`[Post ${postIndex}] Fetch thêm ảnh...`);
                 const extra = await fetchRemainingImageUrls(lastMediaId, postId, cookies, fbDtsg, proxy);
                 allImageUrls.push(...extra);
             }
 
-            // Download images
+            // Download images (tuần tự)
             const postSaveDir = path.join(saveDir, String(postId));
             const savedImages = [];
             for (let i = 0; i < allImageUrls.length; i++) {
+                console.log(`[Post ${postIndex}] Download ảnh ${i + 1}/${allImageUrls.length}...`);
                 const saved = await downloadImage(allImageUrls[i], postSaveDir, `${postId}_${i + 1}`);
                 if (saved) savedImages.push(saved);
             }
+            console.log(`[Post ${postIndex}] ✓ ${savedImages.length}/${allImageUrls.length} ảnh`);
 
-            // Download videos
+            // Download videos (tuần tự, chờ xong mới qua post tiếp)
             const savedVideos = [];
             for (let i = 0; i < rawVideos.length; i++) {
                 const v = rawVideos[i];
                 const videoUrl = v.reelUrl || v.url;
                 if (!videoUrl || !videoUrl.includes('facebook.com')) continue;
 
+                console.log(`[Post ${postIndex}] Download video ${i + 1}/${rawVideos.length}...`);
                 const savedPath = downloadFacebookReel(videoUrl, postSaveDir, `${postId}_video_${i + 1}.mp4`);
                 if (savedPath) {
                     savedVideos.push(`/uploads/scraper/${postId}/${postId}_video_${i + 1}.mp4`);
+                    console.log(`[Post ${postIndex}] ✓ Video ${i + 1} xong`);
+                } else {
+                    console.log(`[Post ${postIndex}] ✗ Video ${i + 1} thất bại`);
                 }
             }
 
             allPosts.push({ postId, text, permalink, commentCount, authorName, images: savedImages, videos: savedVideos, publishedAt, publishedAtText });
-            console.log(`[Profile Scraper] ✓ ${postId}: "${text.substring(0, 50)}..." (${savedImages.length} ảnh, ${savedVideos.length} video) time="${publishedAtText || 'N/A'}"`);
+            console.log(`[Post ${postIndex}] ✓ HOÀN THÀNH: "${text.substring(0, 40)}..." (${savedImages.length} ảnh, ${savedVideos.length} video)`);
         }
 
         // Pagination

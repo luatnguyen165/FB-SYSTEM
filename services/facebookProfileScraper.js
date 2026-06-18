@@ -574,16 +574,38 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
             let publishedAt = null;
             let publishedAtText = '';
 
-            // Debug: log available timestamp fields
+            // Debug: log top-level keys và timestamp fields
+            const nodeKeys = Object.keys(node || {});
+            const cometKeys = Object.keys(node?.comet_sections || {});
+            const contentKeys = Object.keys(node?.comet_sections?.content || {});
+            const storyKeys = Object.keys(node?.comet_sections?.content?.story || {});
+            console.log(`[Profile Scraper] Debug ${postId}: nodeKeys=${nodeKeys.join(',')}`);
+            console.log(`[Profile Scraper] Debug ${postId}: cometKeys=${cometKeys.join(',')}`);
+            console.log(`[Profile Scraper] Debug ${postId}: contentKeys=${contentKeys.join(',')}`);
+            console.log(`[Profile Scraper] Debug ${postId}: storyKeys=${storyKeys.join(',')}`);
+
+            // Tìm timestamp trong nhiều paths
             const debugTime = {
-                created_time: node?.comet_sections?.content?.story?.created_time,
-                creation_time: node?.feedback?.story?.creation_time,
-                post_time: node?.attachments?.[0]?.styles?.attachment?.target?.post_time,
-                timestamp_text: node?.comet_sections?.content?.story?.comet_sections?.context_layout?.story?.comet_sections?.timestamp_renderer?.story?.created_time?.text,
-                metadata_time: node?.comet_sections?.content?.story?.comet_sections?.metadata?.[0]?.story?.comet_sections?.creation_time?.creation_time?.text,
+                // Path 1: trực tiếp trong story
+                story_created_time: node?.comet_sections?.content?.story?.created_time,
+                story_creation_time: node?.comet_sections?.content?.story?.creation_time,
+                // Path 2: trong feedback
+                feedback_creation_time: node?.feedback?.story?.creation_time,
+                feedback_created_time: node?.feedback?.story?.created_time,
+                // Path 3: trong attachment target
+                attachment_post_time: node?.attachments?.[0]?.styles?.attachment?.target?.post_time,
+                // Path 4: trong actors subtitle
                 actors_subtitle: node?.comet_sections?.content?.story?.actors?.[0]?.subtitle?.text,
+                // Path 5: trong context_layout
+                context_layout_keys: Object.keys(node?.comet_sections?.content?.story?.comet_sections?.context_layout?.story?.comet_sections || {}),
+                // Path 6: trong metadata
+                metadata_keys: Object.keys(node?.comet_sections?.content?.story?.comet_sections?.metadata?.[0]?.story?.comet_sections || {}),
+                // Path 7: raw timestamp fields
+                raw_timestamp: node?.timestamp,
+                raw_created: node?.created_time,
+                raw_comet_sections_keys: cometKeys,
             };
-            console.log(`[Profile Scraper] Debug time for ${postId}:`, JSON.stringify(debugTime));
+            console.log(`[Profile Scraper] Debug ${postId} time:`, JSON.stringify(debugTime));
 
             try {
                 // Path 1: Unix timestamp từ created_time

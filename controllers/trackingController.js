@@ -13,7 +13,13 @@ exports.showTracking = async (req, res) => {
 
         const filter = { userId };
         const trackingType = req.query.type || 'profile';
-        filter.type = trackingType;
+
+        // Query cả data cũ (không có field type) và data mới
+        if (trackingType === 'profile') {
+            filter.$or = [{ type: 'profile' }, { type: { $exists: false } }];
+        } else {
+            filter.type = trackingType;
+        }
 
         // Filter by platform tab if specified
         if (req.query.platform) {

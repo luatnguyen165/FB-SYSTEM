@@ -1,6 +1,7 @@
 // services/facebook/comment.js
 const fs = require('fs');
 const { getOrOpenFacebookContext, ACTIVE_FB_SESSIONS } = require('./session');
+const { normalizeEncryptedValue } = require('../../utils/cryptoVault');
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
@@ -201,12 +202,13 @@ async function commentOnPost(params) {
 
     try {
         console.log('step=1: Goi getOrOpenFacebookContext(headless: false) cho account', channel.accountName);
+        const decryptedStoragePath = channel.storageStatePath ? normalizeEncryptedValue(channel.storageStatePath) : '';
         var ctx = await getOrOpenFacebookContext(
             channel.userId,
             channel.accountName,
             channel.accountType || 'Ca nhan',
             'FB',
-            { headless: false }
+            { headless: false, existingSessionDir: decryptedStoragePath ? require('path').dirname(decryptedStoragePath) : '' }
         );
         context = ctx.context;
         sessionKey = ctx.sessionKey;

@@ -1,7 +1,10 @@
 // services/facebook/session.js
 const fs = require('fs');
 const path = require('path');
-const { chromium } = require('playwright');
+const { chromium } = require('playwright-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+
+chromium.use(StealthPlugin());
 
 const { SESSION_ROOT, ensureDir, sanitizeFolderName, buildAccountFolder, getChromeArgs, getUserAgent } = require('../common/browser');
 
@@ -11,14 +14,17 @@ const PROFILE_URL_WATCHERS = global.__facebookProfileUrlWatchers || (global.__fa
 // Alias for backward compatibility
 const buildFacebookAccountFolder = buildAccountFolder;
 
-async function getOrOpenFacebookContext(userId, accountName, accountType, platform = 'FB', { headless = true } = {}) {
+async function getOrOpenFacebookContext(userId, accountName, accountType, platform = 'FB', { headless = true, existingSessionDir = '' } = {}) {
     if (!userId) throw new Error('Missing user id');
     if (!accountName || !String(accountName).trim()) {
         throw new Error('Vui lòng nhập tên tài khoản Facebook');
     }
 
     ensureDir(SESSION_ROOT);
-    const userSessionDir = buildFacebookAccountFolder(userId, accountName, platform);
+    // Ưu tiên dùng session dir đã có (từ channel storageStatePath) để tránh mismatch khi accountName đổi
+    const userSessionDir = (existingSessionDir && fs.existsSync(existingSessionDir))
+        ? existingSessionDir
+        : buildFacebookAccountFolder(userId, accountName, platform);
     ensureDir(userSessionDir);
 
     const folderName = path.basename(userSessionDir);
@@ -74,76 +80,24 @@ async function getOrOpenFacebookContext(userId, accountName, accountType, platfo
         await new Promise(r => setTimeout(r, 1000));
     } catch (e) { /* Non-critical */ }
 
-    // Launch persistent context with retry
-    console.log(`[Facebook Context] Launching new/persistent context for: ${sessionKey}`);
-    let context;
-    const launchOptions = {
+    // Dùng launchPersistentContext với user data dir riêng
+    console.log(`[Facebook Context] Launching persistent context for: ${sessionKey}`);
+    const context = await chromium.launchPersistentContext(userSessionDir, {
         headless: headless,
         channel: 'chrome',
         viewport: null,
         args: [
-            '--no-sandbox',
             '--start-maximized',
             '--disable-blink-features=AutomationControlled',
-            '--disable-features=TranslateUI,AutomationControlled',
-            '--no-default-browser-check',
-            '--disable-component-update',
-            '--disable-sync',
-            '--disable-background-networking',
-            '--disable-dev-shm-usage',
-            '--disable-breakpad',
-            '--disable-crash-reporter',
-            '--mute-audio'
+            '--disable-features=AutomationControlled'
         ],
-        ignoreDefaultArgs: ['--enable-automation', '--enable-logging'],
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
-    };
-
-    const MAX_RETRIES = 2;
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-        try {
-            context = await chromium.launchPersistentContext(userSessionDir, launchOptions);
-            break;
-        } catch (launchErr) {
-            console.error(`[Facebook Context] Launch attempt ${attempt + 1} failed: ${launchErr.message}`);
-            if (attempt < MAX_RETRIES) {
-                try {
-                    for (const lockFile of ['SingletonLock', 'SingletonCookie', 'SingletonSocket']) {
-                        const lockPath = path.join(userSessionDir, lockFile);
-                        if (fs.existsSync(lockPath)) fs.unlinkSync(lockPath);
-                    }
-                } catch (e) { }
-                try {
-                    // P0 FIX: Chỉ kill Chrome processes đang dùng đúng userSessionDir, không kill toàn bộ Chrome
-                    const { execSync } = require('child_process');
-                    try {
-                        const wmicOutput2 = execSync(`wmic process where "name='chrome.exe'" get CommandLine,ProcessId /format:list`, { encoding: 'utf-8', timeout: 5000 });
-                        const lines2 = wmicOutput2.split('\n');
-                        let currentPid2 = '';
-                        for (const line of lines2) {
-                            const trimmed = line.trim();
-                            if (trimmed.startsWith('ProcessId=')) {
-                                currentPid2 = trimmed.replace('ProcessId=', '').trim();
-                            }
-                            if (trimmed.startsWith('CommandLine=') && trimmed.includes(path.basename(userSessionDir)) && currentPid2) {
-                                try { execSync(`taskkill /F /PID ${currentPid2}`, { stdio: 'ignore', timeout: 3000 }); } catch (e2) { }
-                                currentPid2 = '';
-                            }
-                        }
-                    } catch (wmicErr2) { }
-                    await new Promise(r => setTimeout(r, 2000));
-                } catch (e) { }
-            } else {
-                throw launchErr;
-            }
-        }
-    }
-
-    // Inject anti-detection script
-    const { getAntiDetectionScript } = require('../humanBehaviorService');
-    context.on('page', async (page) => {
-        await page.addInitScript(getAntiDetectionScript());
+        ignoreDefaultArgs: ['--enable-automation'],
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36'
     });
+
+    // Inject anti-detection
+    const { getAntiDetectionScript } = require('../humanBehaviorService');
+    await context.addInitScript(getAntiDetectionScript());
 
     ACTIVE_FB_SESSIONS.set(sessionKey, {
         context,

@@ -2,14 +2,18 @@
 const Channel = require('../../models/Channel');
 const FacebookGroupCache = require('../../models/FacebookGroupCache');
 const { emitGroupsBatch, emitGroupsProgress, emitGroupsComplete } = require('../../services/socketService');
+const { restoreRecordForView } = require('../../utils/cryptoVault');
+
+const CHANNEL_VIEW_FIELDS = ['platform', 'accountName', 'accountType', 'avatarUrl', 'storageStatePath'];
 
 const showScheduleGroups = async (req, res) => {
     try {
         const { channelId } = req.query;
-        const facebookChannels = await Channel.find({ userId: req.user._id, platform: 'FB', isEnabled: true })
-            .select('_id accountName accountType avatarUrl')
+        const rawFacebookChannels = await Channel.find({ userId: req.user._id, platform: 'FB', isEnabled: true })
+            .select('_id platform accountName accountType avatarUrl')
             .sort({ createdAt: -1 })
             .lean();
+        const facebookChannels = rawFacebookChannels.map(channel => restoreRecordForView(channel, CHANNEL_VIEW_FIELDS));
 
         let currentChannelId = channelId || null;
         let groups = [];
@@ -91,14 +95,22 @@ const scanFacebookGroupsAPI = async (req, res) => {
         }
 
         const { getJoinedFacebookGroupsCached: getGroupsCached } = require('../../services/facebook/groups');
-        
+        const safeChannel = restoreRecordForView(channel, CHANNEL_VIEW_FIELDS);
+
+        // Resolve session dir từ channel's storageStatePath
+        const path = require('path');
+        const existingSessionDir = safeChannel.storageStatePath
+            ? path.dirname(safeChannel.storageStatePath)
+            : '';
+
         const result = await getGroupsCached({
             userId: req.user._id,
             channelId: channel._id,
-            accountName: channel.accountName,
-            accountType: channel.accountType || 'Cá nhân',
+            accountName: safeChannel.accountName,
+            accountType: safeChannel.accountType || 'Cá nhân',
             forceRefresh: true,
-            scanMode: scanMode === 'deep' ? 'deep' : 'fast'
+            scanMode: scanMode === 'deep' ? 'deep' : 'fast',
+            existingSessionDir
         });
 
         return res.json({
@@ -150,17 +162,25 @@ const scrapeGroupMembersAPI = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Tài khoản Facebook không tồn tại hoặc đã bị tắt' });
         }
 
-        const { 
+        const {
             getOrOpenFacebookContext,
             scrapeGroupsFromUrl,
             persistFacebookGroupCache
         } = require('../../services/facebook/groups');
+        const safeChannel = restoreRecordForView(channel, CHANNEL_VIEW_FIELDS);
+
+        // Resolve session dir từ channel's storageStatePath để tránh mismatch khi accountName đổi
+        const path = require('path');
+        const existingSessionDir = safeChannel.storageStatePath
+            ? path.dirname(safeChannel.storageStatePath)
+            : '';
 
         const { context: browserContext, sessionKey, isExternal } = await getOrOpenFacebookContext(
             req.user._id,
-            channel.accountName,
-            channel.accountType || 'Cá nhân',
-            { headless: true }
+            safeChannel.accountName,
+            safeChannel.accountType || 'Cá nhân',
+            'FB',
+            { headless: true, existingSessionDir }
         );
 
         context = browserContext;
@@ -198,8 +218,8 @@ const scrapeGroupMembersAPI = async (req, res) => {
                 await persistFacebookGroupCache({
                     userId: req.user._id,
                     channelId: channel._id,
-                    accountName: channel.accountName,
-                    accountType: channel.accountType || 'Cá nhân',
+                    accountName: safeChannel.accountName,
+                    accountType: safeChannel.accountType || 'Cá nhân',
                     groups: mergedGroups
                 });
                 
@@ -248,8 +268,8 @@ const scrapeGroupMembersAPI = async (req, res) => {
         const savedCache = await persistFacebookGroupCache({
             userId: req.user._id,
             channelId: channel._id,
-            accountName: channel.accountName,
-            accountType: channel.accountType || 'Cá nhân',
+            accountName: safeChannel.accountName,
+            accountType: safeChannel.accountType || 'Cá nhân',
             groups: finalGroups
         });
 
@@ -305,18 +325,25 @@ const scrapeGroupsFromJoinsAPI = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Tài khoản Facebook không tồn tại hoặc đã bị tắt' });
         }
 
-        const { 
+        const {
             getOrOpenFacebookContext,
             scrapeGroupsFromJoinsPage,
-            persistFacebookGroupCache 
+            persistFacebookGroupCache
         } = require('../../services/facebook/groups');
+        const safeChannel = restoreRecordForView(channel, CHANNEL_VIEW_FIELDS);
+
+        // Resolve session dir từ channel's storageStatePath để tránh mismatch khi accountName đổi
+        const path = require('path');
+        const existingSessionDir = safeChannel.storageStatePath
+            ? path.dirname(safeChannel.storageStatePath)
+            : '';
 
         const { context: browserContext, sessionKey, isExternal, userSessionDir } = await getOrOpenFacebookContext(
             req.user._id,
-            channel.accountName,
-            channel.accountType || 'Cá nhân',
-            channel.platform,
-            { headless: true }
+            safeChannel.accountName,
+            safeChannel.accountType || 'Cá nhân',
+            safeChannel.platform || 'FB',
+            { headless: true, existingSessionDir }
         );
         console.log(`[Group Scrape Joins API>>>>>>>>] Opened userSessionDir context for userSessionDir: ${sessionKey},  userSessionDir: ${userSessionDir}`);
         context = browserContext;
@@ -371,8 +398,8 @@ const scrapeGroupsFromJoinsAPI = async (req, res) => {
                 await persistFacebookGroupCache({
                     userId: req.user._id,
                     channelId: channel._id,
-                    accountName: channel.accountName,
-                    accountType: channel.accountType || 'Cá nhân',
+                    accountName: safeChannel.accountName,
+                    accountType: safeChannel.accountType || 'Cá nhân',
                     groups: mergedGroups
                 });
                 
@@ -413,8 +440,8 @@ const scrapeGroupsFromJoinsAPI = async (req, res) => {
         const savedCache = await persistFacebookGroupCache({
             userId: req.user._id,
             channelId: channel._id,
-            accountName: channel.accountName,
-            accountType: channel.accountType || 'Cá nhân',
+            accountName: safeChannel.accountName,
+            accountType: safeChannel.accountType || 'Cá nhân',
             groups: finalGroups
         });
 

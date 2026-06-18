@@ -6,7 +6,10 @@ const {
     openYoutubeLoginWindow,
     openTiktokLoginWindow,
     openInstagramLoginWindow,
-    openZaloLoginWindow
+    openZaloLoginWindow,
+    openPinterestLoginWindow,
+    openThreadsLoginWindow,
+    openExistingSocialBrowserWindow
 } = require('../services/socialPlaywrightService');
 const {
     normalizeEncryptedValue,
@@ -47,6 +50,11 @@ function normalizeAccountType(value, platform) {
             return 'Personal';
         case 'ZO':
             return 'Personal';
+        case 'PI':
+            if (type === 'business') return 'Business';
+            return 'Personal';
+        case 'TH':
+            return 'Personal';
         default:
             return 'Cá nhân';
     }
@@ -59,16 +67,18 @@ const PLATFORM_OPENERS = {
     IG: openInstagramLoginWindow,
     YT: openYoutubeLoginWindow,
     ZO: openZaloLoginWindow,
+    PI: openPinterestLoginWindow,
+    TH: openThreadsLoginWindow,
 };
 
 /** Platform display names */
-const PLATFORM_LABELS = { FB: 'Facebook', TT: 'TikTok', IG: 'Instagram', YT: 'YouTube', ZO: 'Zalo' };
+const PLATFORM_LABELS = { FB: 'Facebook', TT: 'TikTok', IG: 'Instagram', YT: 'YouTube', ZO: 'Zalo', PI: 'Pinterest', TH: 'Threads' };
 
-const ALLOWED_PLATFORMS = ['FB', 'TT', 'IG', 'YT', 'ZO'];
+const ALLOWED_PLATFORMS = ['FB', 'TT', 'IG', 'YT', 'ZO', 'PI', 'TH'];
 
 /** Fields to strip from channel objects sent to views/clients */
 const SENSITIVE_FIELDS = ['storageStatePath', 'accessToken'];
-const VIEW_RESTORE_FIELDS = ['platform', 'accountName', 'accountType', 'profileUrl', 'followers', 'storageStatePath', 'accessToken'];
+const VIEW_RESTORE_FIELDS = ['platform', 'accountName', 'accountType', 'profileUrl', 'avatarUrl', 'followers', 'storageStatePath', 'accessToken'];
 
 async function getEncryptionEnabledForUser(userId) {
     const Settings = require('../models/Settings');
@@ -108,7 +118,7 @@ const showChannels = async (req, res) => {
         // (cheap) for every record, and reserve the full field decryption for the
         // subset actually rendered (active platform) — avoids decrypting accountName,
         // profileUrl, etc. for channels the user isn't viewing.
-        const stats = { total: 0, fb: 0, tt: 0, ig: 0, yt: 0, zo: 0 };
+        const stats = { total: 0, fb: 0, tt: 0, ig: 0, yt: 0, zo: 0, pi: 0, th: 0 };
         const availableSet = new Set();
         const activeRaw = [];
 
@@ -137,7 +147,7 @@ const showChannels = async (req, res) => {
         res.render('channels', {
             user: req.user,
             channels: [],
-            stats: { total: 0, fb: 0, tt: 0, ig: 0, yt: 0, zo: 0 },
+            stats: { total: 0, fb: 0, tt: 0, ig: 0, yt: 0, zo: 0, pi: 0, th: 0 },
             activePlatform: 'FB',
             platformLabel: 'Facebook',
             availablePlatforms: []
@@ -178,7 +188,9 @@ const openPlatformConnect = async (req, res) => {
         const avatarUrl = req.file ? `/uploads/images/${req.file.filename}` : undefined;
 
         // Open Playwright browser and wait for login
+        console.log(`[openPlatformConnect:${platform}] Opening login window for ${accountName.trim()}...`);
         const result = await opener(req.user._id, accountName.trim(), normalizedAccountType, platform);
+        console.log(`[openPlatformConnect:${platform}] Login result: success=${result.success} cookiesSaved=${result.cookiesSaved}`);
 
         if (!result.success || !result.cookiesSaved) {
             return res.json({
@@ -190,20 +202,32 @@ const openPlatformConnect = async (req, res) => {
 
         const encryptionEnabled = await getEncryptionEnabledForUser(req.user._id);
 
+        // Dùng accountName thật từ scrape, fallback về tên nhập tay
+        const finalAccountName = result.myName ? result.myName : accountName.trim();
+        // Dùng profileUrl từ scrape, fallback về URL nhập tay
+        const finalProfileUrl = result.myProfileUrl ? result.myProfileUrl : profileUrl;
+        // Dùng avatarUrl từ scrape, fallback về URL upload
+        const finalAvatarUrl = result.myAvatarUrl ? result.myAvatarUrl : avatarUrl;
+
+        // FB: ưu tiên dùng scrapedAccountType (từ scrape profile), fallback về normalizedAccountType (từ form)
+        const finalAccountType = (platform === 'FB' && result.scrapedAccountType)
+            ? normalizeFacebookAccountType(result.scrapedAccountType)
+            : normalizedAccountType;
+
         const updateData = {
             userId: req.user._id,
             platform,
-            accountName: accountName.trim(),
-            accountType: normalizedAccountType,
-            profileUrl,
+            accountName: finalAccountName,
+            accountType: finalAccountType,
+            profileUrl: finalProfileUrl,
             storageStatePath: prepareSensitiveValue(normalizeEncryptedValue(result.storageStatePath), encryptionEnabled),
             apiStatus: 'active',
             isEnabled: true,
-            ...(avatarUrl && { avatarUrl })
+            ...(finalAvatarUrl && { avatarUrl: finalAvatarUrl })
         };
 
-        // Upsert: update existing or create new
-        const matchedChannel = await findMatchingChannel(req.user._id, platform, accountName.trim(), normalizedAccountType);
+        // Upsert: update existing or create new (dùng finalAccountName để match)
+        const matchedChannel = await findMatchingChannel(req.user._id, platform, finalAccountName, finalAccountType);
         let channel;
         if (matchedChannel) {
             channel = await Channel.findByIdAndUpdate(matchedChannel._id, updateData, { new: true });
@@ -211,13 +235,14 @@ const openPlatformConnect = async (req, res) => {
             channel = await Channel.create(updateData);
         }
 
-        // FB: start profile URL watcher
-        if (platform === 'FB' && result.sessionKey) {
+        // FB: profile URL đã được scrape ngay trong openFacebookLoginWindow, không cần watcher riêng
+        // FB: start profile URL watcher (dự phòng nếu scrape không lấy được URL)
+        if (platform === 'FB' && result.sessionKey && !result.myProfileUrl) {
             startFacebookProfileUrlWatcher({
                 sessionKey: result.sessionKey,
                 userId: req.user._id,
                 channelId: channel._id,
-                accountName: accountName.trim(),
+                accountName: finalAccountName,
                 accountType: normalizedAccountType
             });
         }
@@ -317,12 +342,17 @@ const openChannelBrowser = async (req, res) => {
 
         const safeChannel = restoreRecordForView(channel, VIEW_RESTORE_FIELDS);
 
-        const opener = PLATFORM_OPENERS[safeChannel.platform];
-        if (!opener) {
+        if (!ALLOWED_PLATFORMS.includes(safeChannel.platform)) {
             return res.status(400).json({ success: false, message: 'Không hỗ trợ mở Chromium cho nền tảng này' });
         }
 
-        const result = await opener(req.user._id, safeChannel.accountName, safeChannel.accountType || 'Cá nhân', safeChannel.platform);
+        const result = await openExistingSocialBrowserWindow(
+            req.user._id,
+            safeChannel.accountName,
+            safeChannel.accountType || 'Cá nhân',
+            safeChannel.platform,
+            safeChannel.storageStatePath
+        );
 
         return res.json({
             success: true,

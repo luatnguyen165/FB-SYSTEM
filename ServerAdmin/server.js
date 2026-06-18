@@ -53,7 +53,6 @@ const FeatureVisibilitySchema = new mongoose.Schema({
     'ai-comments': { type: Boolean, default: true },
     'comment-play': { type: Boolean, default: true },
     'ai-reply-messenger': { type: Boolean, default: true },
-    'competitors': { type: Boolean, default: true },
     'trend-music': { type: Boolean, default: true },
     profile: { type: Boolean, default: true },
     settings: { type: Boolean, default: true },
@@ -614,7 +613,6 @@ app.get('/features/schedule', (req, res) => { res.render('landing/features/sched
 app.get('/features/ai-content', (req, res) => { res.render('landing/features/ai-content'); });
 app.get('/features/auto-comment', (req, res) => { res.render('landing/features/auto-comment'); });
 app.get('/features/ai-scan', (req, res) => { res.render('landing/features/ai-scan'); });
-app.get('/features/competitor', (req, res) => { res.render('landing/features/competitor'); });
 app.get('/features/analytics', (req, res) => { res.render('landing/features/analytics'); });
 
 // ========================

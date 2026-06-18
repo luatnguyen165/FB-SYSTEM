@@ -8,6 +8,7 @@ const { uploadVideoToTikTok } = require('./tiktokPlaywrightService');
 const { uploadVideoToInstagram, uploadImagesToInstagram } = require('./instagramPlaywrightService');
 const { emitScheduleUpdate } = require('./socketService');
 const { sendTelegramNotification, NOTIFICATION_TYPES } = require('./telegramService');
+const { normalizeEncryptedValue } = require('../utils/cryptoVault');
 const { buildFacebookGroupTargetUrl } = require('./common/facebook');
 
 const CHECK_INTERVAL_MS = 15 * 1000;
@@ -76,7 +77,7 @@ async function resolveTikTokAccountForSchedule(schedule) {
             platform: 'TT',
             isEnabled: true
         })
-            .select('_id accountName accountType platform profileUrl')
+            .select('_id accountName accountType platform profileUrl storageStatePath')
             .sort({ createdAt: -1 })
             .lean();
 
@@ -89,7 +90,7 @@ async function resolveTikTokAccountForSchedule(schedule) {
         platform: 'TT',
         isEnabled: true
     })
-        .select('_id accountName accountType platform profileUrl')
+        .select('_id accountName accountType platform profileUrl storageStatePath')
         .sort({ createdAt: -1 })
         .lean();
 }
@@ -159,7 +160,7 @@ async function resolveFacebookAccountForSchedule(schedule) {
             platform: 'FB',
             isEnabled: true
         })
-            .select('_id accountName accountType platform profileUrl')
+            .select('_id accountName accountType platform profileUrl storageStatePath')
             .sort({ createdAt: -1 })
             .lean();
 
@@ -174,7 +175,7 @@ async function resolveFacebookAccountForSchedule(schedule) {
             platform: 'FB',
             isEnabled: true
         })
-            .select('_id accountName accountType platform profileUrl')
+            .select('_id accountName accountType platform profileUrl storageStatePath')
             .lean();
 
         if (matchedSource) return matchedSource;
@@ -186,7 +187,7 @@ async function resolveFacebookAccountForSchedule(schedule) {
         platform: 'FB',
         isEnabled: true
     })
-        .select('_id accountName accountType platform profileUrl')
+        .select('_id accountName accountType platform profileUrl storageStatePath')
         .sort({ createdAt: -1 })
         .lean();
 }
@@ -286,7 +287,7 @@ async function resolveInstagramAccountForSchedule(schedule) {
             platform: 'IG',
             isEnabled: true
         })
-            .select('_id accountName accountType platform profileUrl')
+            .select('_id accountName accountType platform profileUrl storageStatePath')
             .sort({ createdAt: -1 })
             .lean();
 
@@ -299,7 +300,7 @@ async function resolveInstagramAccountForSchedule(schedule) {
         platform: 'IG',
         isEnabled: true
     })
-        .select('_id accountName accountType platform profileUrl')
+        .select('_id accountName accountType platform profileUrl storageStatePath')
         .sort({ createdAt: -1 })
         .lean();
 }
@@ -331,6 +332,7 @@ async function executeSinglePlatform(schedule, platform, { persistStatus } = {})
                 userId: schedule.userId,
                 accountName: account.accountName,
                 accountType: account.accountType || 'Personal',
+                existingSessionDir: account.storageStatePath ? path.dirname(normalizeEncryptedValue(account.storageStatePath)) : '',
                 videoPath: payload.videoPath,
                 title: payload.title,
                 hashtags: payload.hashtags,
@@ -367,6 +369,7 @@ async function executeSinglePlatform(schedule, platform, { persistStatus } = {})
                 userId: schedule.userId,
                 accountName: account.accountName,
                 accountType: account.accountType || 'Personal',
+                existingSessionDir: account.storageStatePath ? path.dirname(normalizeEncryptedValue(account.storageStatePath)) : '',
                 videoPath: payload.videoPath,
                 caption: payload.content,
                 headless: false
@@ -404,6 +407,7 @@ async function executeSinglePlatform(schedule, platform, { persistStatus } = {})
                 userId: schedule.userId,
                 accountName: account.accountName,
                 accountType: account.accountType || 'Cá nhân',
+                existingSessionDir: account.storageStatePath ? path.dirname(normalizeEncryptedValue(account.storageStatePath)) : '',
                 post: {
                     ...payload,
                     profileUrl: account.profileUrl || ''
@@ -463,6 +467,7 @@ async function executeSinglePostPlatform(schedule, platform) {
                         userId: schedule.userId,
                         accountName: account.accountName,
                         accountType: account.accountType || 'Cá nhân',
+                        existingSessionDir: account.storageStatePath ? path.dirname(normalizeEncryptedValue(account.storageStatePath)) : '',
                         post: {
                             groupUrl: group.groupUrl,
                             groupId: group.groupId,
@@ -513,6 +518,7 @@ async function executeSinglePostPlatform(schedule, platform) {
                 userId: schedule.userId,
                 accountName: account.accountName,
                 accountType: account.accountType || 'Personal',
+                existingSessionDir: account.storageStatePath ? path.dirname(normalizeEncryptedValue(account.storageStatePath)) : '',
                 images: post.images,
                 caption: post.content,
                 headless: false
@@ -608,27 +614,32 @@ async function executeSchedule(schedule, { persistStatus = true, markAsPosted = 
     };
 
     // Chạy với timeout
+    let timeoutId;
     const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error(`Schedule execution timed out after ${SCHEDULE_TIMEOUT_MS / 1000}s`)), SCHEDULE_TIMEOUT_MS);
+        timeoutId = setTimeout(() => reject(new Error(`Schedule execution timed out after ${SCHEDULE_TIMEOUT_MS / 1000}s`)), SCHEDULE_TIMEOUT_MS);
     });
 
     try {
         const { result, account } = await Promise.race([executeWithTimeout(), timeoutPromise]);
+        clearTimeout(timeoutId);
 
         console.log(`[Schedule Runner] executeSchedule done schedule=${schedule._id} success=${Boolean(result?.success)} publishedUrl=${result?.publishedUrl || ''}`);
 
         if (persistStatus) {
             if (result?.success) {
                 // Upload thành công - luôn set status = 'posted'
-                await SchedulePost.updateOne(
+                console.log(`[Schedule Runner] Updating status to 'posted' for schedule ${schedule._id}`);
+                const updateResult = await SchedulePost.updateOne(
                     { _id: schedule._id },
-                    { $set: { 
-                        status: 'posted', 
-                        publishedUrl: result?.publishedUrl || '' 
+                    { $set: {
+                        status: 'posted',
+                        publishedUrl: result?.publishedUrl || ''
                     } }
                 );
+                console.log(`[Schedule Runner] Status update result: matched=${updateResult.matchedCount} modified=${updateResult.modifiedCount}`);
             } else {
                 // Upload thất bại
+                console.log(`[Schedule Runner] Updating status to 'failed' for schedule ${schedule._id}`);
                 await SchedulePost.updateOne(
                     { _id: schedule._id },
                     { $set: { status: 'failed' } }

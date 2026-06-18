@@ -8,6 +8,7 @@ const { getOrOpenFacebookContext } = require('../facebook/session');
 const { fetchGroupPosts } = require('../facebookGraphqlScraper');
 const socketService = require('../socketService');
 const { wait, randomInt } = require('./helpers');
+const { normalizeEncryptedValue } = require('../../utils/cryptoVault');
 const { analyzeDbResult } = require('./aiAnalysis');
 const { savePostsToDb, crawlGroupPosts } = require('./crawler');
 const { commentOnMatchingResults, sendMultipleComments, commentOnPostLegacy } = require('./comments');
@@ -43,7 +44,7 @@ async function extractFbSessionFromPlaywright(channel) {
     console.log(`[Crawl] Opening Playwright to extract session cookies + fb_dtsg...`);
 
     const { context, sessionKey } = await getOrOpenFacebookContext(
-        channel.userId || '', channel.accountName, channel.accountType || 'Cá nhân', 'FB', { headless: true }
+        channel.userId || '', channel.accountName, channel.accountType || 'Cá nhân', 'FB', { headless: true, existingSessionDir: channel.storageStatePath ? require('path').dirname(normalizeEncryptedValue(channel.storageStatePath)) : '' }
     );
 
     try {
@@ -358,7 +359,7 @@ async function playCommentForResult(resultId) {
     let sessionKey = null;
     try {
         const ctx = await getOrOpenFacebookContext(
-            config.userId, channel.accountName, channel.accountType || 'Cá nhân', 'FB', { headless: false }
+            config.userId, channel.accountName, channel.accountType || 'Cá nhân', 'FB', { headless: false, existingSessionDir: channel.storageStatePath ? require('path').dirname(normalizeEncryptedValue(channel.storageStatePath)) : '' }
         );
         context = ctx.context;
         sessionKey = ctx.sessionKey;

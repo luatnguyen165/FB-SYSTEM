@@ -2,6 +2,7 @@
 const SchedulePost = require('../../models/SchedulePost');
 const Channel = require('../../models/Channel');
 const ShopeeLink = require('../../models/ShopeeLink');
+const { restoreRecordForView } = require('../../utils/cryptoVault');
 
 const PLATFORM_LABELS = {
     FB: 'Facebook',
@@ -96,10 +97,12 @@ function isMongoObjectId(value) {
 }
 
 async function getActiveFacebookChannelForUser(userId) {
-    return Channel.findOne({ userId, platform: 'FB', isEnabled: true })
-        .select('_id accountName accountType profileUrl')
+    const channel = await Channel.findOne({ userId, platform: 'FB', isEnabled: true })
+        .select('_id accountName accountType profileUrl storageStatePath')
         .sort({ createdAt: -1 })
         .lean();
+    if (!channel) return null;
+    return restoreRecordForView(channel, ['accountName', 'accountType', 'profileUrl', 'storageStatePath']);
 }
 
 async function resolveShopeeLinksForUpload(userId, shopeeLinksInput) {

@@ -6,9 +6,13 @@
     <title>AI Content Creator - ReelsFlow</title>
     <link rel="stylesheet" href="/css/base.css">
     <link rel="stylesheet" href="/css/style.css">
-    <link rel="stylesheet" href="/css/ai-content.css">
+    <link rel="stylesheet" href="/css/ai-content-base.css">
+    <link rel="stylesheet" href="/css/ai-content-cards.css">
+    <link rel="stylesheet" href="/css/ai-content-modal.css">
+    <link rel="stylesheet" href="/css/ai-content-schedule.css">
+    <link rel="stylesheet" href="/css/ai-content-responsive.css">
     <link rel="stylesheet" href="/css/toast.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -63,13 +67,86 @@
             <button class="ai-tab-btn" data-tab="schedules"><i class="fa-solid fa-calendar"></i> Lịch Nội Dung</button>
             <button class="ai-tab-btn" data-tab="posts"><i class="fa-solid fa-newspaper"></i> Bài Viết AI</button>
             <button class="ai-tab-btn" data-tab="products"><i class="fa-solid fa-box"></i> Sản Phẩm</button>
+            <button class="ai-tab-btn" data-tab="autopipeline"><i class="fa-solid fa-robot"></i> Auto Pipeline</button>
         </div>
 
         <!-- Tab: Văn Phong -->
         <div class="ai-tab-content active" id="tab-styles">
             <div class="ai-content-section-header">
                 <h2><i class="fa-solid fa-palette"></i> Quản lý Văn Phong</h2>
-                <button class="btn-primary" id="btnNewStyle"><i class="fa-solid fa-plus"></i> Tạo Văn Phong Mới</button>
+                <div style="display:flex;gap:10px;">
+                    <button class="btn-secondary" id="btnResearchStyle"><i class="fa-solid fa-magnifying-glass-chart"></i> Học từ Group / Đối thủ</button>
+                    <button class="btn-primary" id="btnNewStyle"><i class="fa-solid fa-plus"></i> Tạo Văn Phong Mới</button>
+                </div>
+            </div>
+
+            <!-- Research Section -->
+            <div class="ai-schedule-card" id="researchSection" style="display:none;margin-bottom:24px;border-left:3px solid var(--primary);">
+                <div class="ai-schedule-header">
+                    <div class="ai-schedule-icon active"><i class="fa-solid fa-graduation-cap"></i></div>
+                    <div class="ai-schedule-info">
+                        <h3>Học văn phong từ Group / Đối thủ</h3>
+                        <div class="ai-schedule-meta">AI sẽ crawl bài viết và phân tích văn phong tự động</div>
+                    </div>
+                </div>
+                <div style="padding-top:16px;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>📍 Loại nguồn</label>
+                            <select id="researchType" class="form-input">
+                                <option value="group">Facebook Group</option>
+                                <option value="profile">Profile đối thủ</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>🔗 URL <span class="required">*</span></label>
+                            <input type="text" id="researchUrl" class="form-input" placeholder="https://www.facebook.com/groups/... hoặc /profile/...">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>📝 Tên văn phong</label>
+                            <input type="text" id="researchStyleName" class="form-input" placeholder="VD: Văn phong từ Group Skincare">
+                        </div>
+                        <div class="form-group">
+                            <label>📊 Số bài crawl</label>
+                            <select id="researchMaxPosts" class="form-input">
+                                <option value="10">10 bài (nhanh)</option>
+                                <option value="20" selected>20 bài (khuyến nghị)</option>
+                                <option value="50">50 bài (chính xác hơn)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Hiển thị groups đã cache -->
+                    <% if (groupCaches && groupCaches.length > 0) { %>
+                    <div class="form-group">
+                        <label>📋 Hoặc chọn từ Group đã lưu:</label>
+                        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
+                            <% groupCaches.forEach(gc => { %>
+                            <% (gc.groups || []).slice(0, 10).forEach(g => { %>
+                            <button type="button" class="btn-sm btn-view" onclick="selectGroupUrl('<%= g.groupUrl || '' %>')" style="font-size:11px;">
+                                <i class="fa-solid fa-users"></i> <%= (g.groupName || '').substring(0, 30) %>
+                            </button>
+                            <% }); %>
+                            <% }); %>
+                        </div>
+                    </div>
+                    <% } %>
+
+                    <div style="display:flex;gap:10px;margin-top:8px;">
+                        <button class="btn-primary" id="btnStartResearch" onclick="startResearch()">
+                            <i class="fa-solid fa-brain"></i> Bắt đầu học
+                        </button>
+                        <button class="btn-secondary" onclick="document.getElementById('researchSection').style.display='none'">Đóng</button>
+                    </div>
+                    <div id="researchProgress" style="display:none;margin-top:16px;">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div class="btn-loading" style="width:20px;height:20px;"></div>
+                            <span id="researchProgressText" style="font-size:13px;color:var(--text-muted);">Đang crawl bài viết...</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <% if (styles.length === 0) { %>
@@ -285,6 +362,80 @@
                 <% }); %>
             </div>
             <% } %>
+        </div>
+
+        <!-- Tab: Auto Pipeline -->
+        <div class="ai-tab-content" id="tab-autopipeline">
+            <div class="ai-content-section-header">
+                <h2><i class="fa-solid fa-robot"></i> Auto Content Pipeline</h2>
+                <button class="btn-primary" id="btnNewPipeline"><i class="fa-solid fa-plus"></i> Tạo Pipeline Mới</button>
+            </div>
+
+            <div id="pipelinesList">
+                <% if (pipelines && pipelines.length > 0) { %>
+                    <div class="ai-content-list">
+                        <% pipelines.forEach(pipeline => { %>
+                            <div class="ai-schedule-card" data-id="<%= pipeline._id %>">
+                                <div class="ai-schedule-header">
+                                    <div class="ai-schedule-icon <%= pipeline.status %>">
+                                        <i class="fa-solid fa-<%= pipeline.status === 'active' ? 'play' : 'pause' %>"></i>
+                                    </div>
+                                    <div class="ai-schedule-info">
+                                        <h3><%= pipeline.productId?.name || 'Sản phẩm' %></h3>
+                                        <div class="ai-schedule-meta">
+                                            <span class="status-badge status-<%= pipeline.status %>">
+                                                <%= pipeline.status === 'active' ? 'ĐANG CHẠY' : 'TẠM DỪNG' %>
+                                            </span>
+                                            <span><%= pipeline.postsPerDay %> bài/ngày</span>
+                                            <span>•</span>
+                                            <span><%= (pipeline.platforms || []).join(', ') %></span>
+                                        </div>
+                                    </div>
+                                    <div class="ai-schedule-actions">
+                                        <button class="btn-sm btn-analyze" onclick="runPipelineNow('<%= pipeline._id %>')" title="Chạy ngay">
+                                            <i class="fa-solid fa-play"></i> Chạy
+                                        </button>
+                                        <button class="btn-sm btn-edit" onclick="togglePipeline('<%= pipeline._id %>')" title="Bật/Tắt">
+                                            <i class="fa-solid fa-power-off"></i>
+                                        </button>
+                                        <button class="btn-sm btn-delete" onclick="deletePipeline('<%= pipeline._id %>')" title="Xóa">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="ai-schedule-details">
+                                    <div class="schedule-detail">
+                                        <i class="fa-solid fa-box"></i>
+                                        <span><%= pipeline.productId?.name || 'N/A' %></span>
+                                    </div>
+                                    <div class="schedule-detail">
+                                        <i class="fa-solid fa-clock"></i>
+                                        <span><%= (pipeline.timeSlots || []).map(s => s.hour + ':' + String(s.minute || 0).padStart(2, '0')).join(', ') %></span>
+                                    </div>
+                                    <div class="schedule-detail">
+                                        <i class="fa-solid fa-bullseye"></i>
+                                        <span><%= pipeline.contentDirection === 'advertising' ? 'Quảng cáo' : pipeline.contentDirection === 'purchase' ? 'Mua hàng' : 'Kết hợp' %></span>
+                                    </div>
+                                    <div class="schedule-detail">
+                                        <i class="fa-solid fa-chart-line"></i>
+                                        <span><%= pipeline.totalPosts %> bài đã tạo</span>
+                                    </div>
+                                    <div class="schedule-detail">
+                                        <i class="fa-solid fa-clock-rotate-left"></i>
+                                        <span><%= pipeline.lastRunAt ? new Date(pipeline.lastRunAt).toLocaleString('vi-VN') : 'Chưa chạy' %></span>
+                                    </div>
+                                </div>
+                            </div>
+                        <% }); %>
+                    </div>
+                <% } else { %>
+                    <div class="ai-content-empty">
+                        <i class="fa-solid fa-robot"></i>
+                        <h3>Chưa có Pipeline nào</h3>
+                        <p>Tạo pipeline mới để tự động tạo và đăng bài viết hàng ngày theo sản phẩm</p>
+                    </div>
+                <% } %>
+            </div>
         </div>
     </div>
 </div>
@@ -618,8 +769,275 @@
     window.__stylesData = <%- JSON.stringify(styles || []) %>;
     window.__groupCaches = <%- JSON.stringify(groupCaches || []) %>;
     window.__schedulesData = <%- JSON.stringify(schedules || []) %>;
+    window.__productsData = <%- JSON.stringify(products || []) %>;
+    window.__pipelinesData = <%- JSON.stringify(pipelines || []) %>;
 </script>
 <script src="/js/base.js"></script>
 <script src="/js/ai-content.js"></script>
+
+<!-- Auto Pipeline Modal -->
+<div class="ai-modal-overlay" id="pipelineModal" style="display:none;">
+    <div class="ai-modal ai-modal-lg">
+        <div class="ai-modal-header">
+            <h2><i class="fa-solid fa-robot"></i> Tạo Auto Content Pipeline</h2>
+            <button class="ai-modal-close" onclick="closePipelineModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="ai-modal-body">
+            <form id="pipelineForm">
+                <div class="form-group">
+                    <label>📦 Sản phẩm <span class="required">*</span></label>
+                    <select name="productId" class="form-input" required id="pipelineProductSelect">
+                        <option value="">-- Chọn sản phẩm --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>✍️ Văn phong</label>
+                    <select name="writingStyleId" class="form-input" id="pipelineStyleSelect">
+                        <option value="">-- Mặc định (từ sản phẩm) --</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>📝 Số bài/ngày</label>
+                        <input type="number" name="postsPerDay" class="form-input" value="2" min="1" max="10">
+                    </div>
+                    <div class="form-group">
+                        <label>🎯 Hướng nội dung</label>
+                        <select name="contentDirection" class="form-input">
+                            <option value="mixed">Kết hợp</option>
+                            <option value="advertising">Quảng cáo</option>
+                            <option value="purchase">Mua hàng</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>📱 Nền tảng đăng <span class="required">*</span></label>
+                    <div class="platform-checkbox-group" id="pipelinePlatforms"></div>
+                </div>
+                <div class="form-group">
+                    <label>👤 Tài khoản đăng</label>
+                    <div class="schedule-accounts-list" id="pipelineAccounts"></div>
+                </div>
+                <div class="form-group">
+                    <label>👥 Group IDs (Facebook)</label>
+                    <textarea name="groupIds" class="form-input" rows="3" placeholder="Mỗi group ID trên một dòng"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>⏰ Khung giờ đăng</label>
+                    <div class="time-slot-entry">
+                        <div style="display:flex;align-items:center;gap:8px;flex:1;">
+                            <span style="font-size:13px;font-weight:600;color:var(--text-muted);min-width:60px;">Slot 1:</span>
+                            <input type="number" name="slot_hour_0" class="form-input" value="9" min="0" max="23" style="width:80px;">
+                            <span style="font-weight:700;color:var(--text-light);">:</span>
+                            <input type="number" name="slot_minute_0" class="form-input" value="0" min="0" max="59" style="width:80px;">
+                        </div>
+                    </div>
+                    <div class="time-slot-entry">
+                        <div style="display:flex;align-items:center;gap:8px;flex:1;">
+                            <span style="font-size:13px;font-weight:600;color:var(--text-muted);min-width:60px;">Slot 2:</span>
+                            <input type="number" name="slot_hour_1" class="form-input" value="18" min="0" max="23" style="width:80px;">
+                            <span style="font-weight:700;color:var(--text-light);">:</span>
+                            <input type="number" name="slot_minute_1" class="form-input" value="0" min="0" max="59" style="width:80px;">
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="ai-modal-footer">
+            <button class="btn-secondary" onclick="closePipelineModal()">Hủy</button>
+            <button class="btn-primary" onclick="submitPipeline()"><i class="fa-solid fa-check"></i> Tạo Pipeline</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ===== Research Functions =====
+document.getElementById('btnResearchStyle')?.addEventListener('click', function() {
+    const section = document.getElementById('researchSection');
+    section.style.display = section.style.display === 'none' ? 'block' : 'none';
+});
+
+function selectGroupUrl(url) {
+    if (url) {
+        document.getElementById('researchUrl').value = url;
+        document.getElementById('researchType').value = 'group';
+    }
+}
+
+async function startResearch() {
+    const type = document.getElementById('researchType').value;
+    const url = document.getElementById('researchUrl').value.trim();
+    const styleName = document.getElementById('researchStyleName').value.trim();
+    const maxPosts = document.getElementById('researchMaxPosts').value;
+
+    if (!url) {
+        showToast('Vui lòng nhập URL', 'error');
+        return;
+    }
+
+    // Show progress
+    document.getElementById('researchProgress').style.display = 'block';
+    document.getElementById('btnStartResearch').disabled = true;
+    document.getElementById('researchProgressText').textContent = 'Đang crawl bài viết từ ' + (type === 'group' ? 'group' : 'profile') + '...';
+
+    try {
+        const res = await fetch('/ai-content/api/research', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type, url, styleName, maxPosts: parseInt(maxPosts) }),
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            document.getElementById('researchProgressText').innerHTML =
+                `<span style="color:var(--success);font-weight:600;">✅ ${data.message}</span>`;
+            showToast(data.message, 'success');
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            document.getElementById('researchProgressText').innerHTML =
+                `<span style="color:var(--danger);font-weight:600;">❌ ${data.error}</span>`;
+            showToast(data.error || 'Lỗi research', 'error');
+        }
+    } catch (err) {
+        document.getElementById('researchProgressText').innerHTML =
+            `<span style="color:var(--danger);font-weight:600;">❌ Lỗi: ${err.message}</span>`;
+        showToast('Lỗi: ' + err.message, 'error');
+    } finally {
+        document.getElementById('btnStartResearch').disabled = false;
+    }
+}
+
+// ===== Auto Pipeline Functions =====
+(function() {
+    const products = window.__productsData || [];
+    const styles = window.__stylesData || [];
+    const channels = window.__channelsData || [];
+    const pipelines = window.__pipelinesData || [];
+
+    // Open modal
+    document.getElementById('btnNewPipeline')?.addEventListener('click', openPipelineModal);
+
+    function openPipelineModal() {
+        // Populate products
+        const sel = document.getElementById('pipelineProductSelect');
+        sel.innerHTML = '<option value="">-- Chọn sản phẩm --</option>';
+        products.forEach(p => {
+            sel.innerHTML += `<option value="${p._id}">${p.name} (${p.category || 'N/A'})</option>`;
+        });
+
+        // Populate styles
+        const styleSel = document.getElementById('pipelineStyleSelect');
+        styleSel.innerHTML = '<option value="">-- Mặc định --</option>';
+        styles.forEach(s => {
+            styleSel.innerHTML += `<option value="${s._id}">${s.name}</option>`;
+        });
+
+        // Populate platforms
+        const platformsDiv = document.getElementById('pipelinePlatforms');
+        platformsDiv.innerHTML = '';
+        [{v:'FB',i:'facebook',l:'Facebook'},{v:'TT',i:'tiktok',l:'TikTok'},{v:'IG',i:'instagram',l:'Instagram'}].forEach(p => {
+            platformsDiv.innerHTML += `
+                <label class="platform-chip" data-platform="${p.v}">
+                    <input type="checkbox" name="platforms" value="${p.v}" ${p.v==='FB'?'checked':''}>
+                    <i class="fa-brands fa-${p.i}"></i>
+                    <span>${p.l}</span>
+                    <span class="platform-chip__check"><i class="fa-solid fa-check"></i></span>
+                </label>`;
+        });
+
+        // Populate accounts
+        const accDiv = document.getElementById('pipelineAccounts');
+        accDiv.innerHTML = '';
+        if (channels.length === 0) {
+            accDiv.innerHTML = '<div class="schedule-accounts-empty"><i class="fa-solid fa-link"></i> Chưa có tài khoản. <a href="/channels">Thêm ngay</a></div>';
+        } else {
+            channels.forEach(ch => {
+                const icon = ch.platform==='FB'?'facebook':ch.platform==='TT'?'tiktok':'instagram';
+                accDiv.innerHTML += `
+                    <label class="schedule-account-item">
+                        <input type="checkbox" name="accountIds" value="${ch._id}">
+                        <div class="schedule-account-avatar"><i class="fa-brands fa-${icon}"></i></div>
+                        <div class="schedule-account-info">
+                            <span class="schedule-account-name">${ch.accountName}</span>
+                            <span class="schedule-account-type">[${ch.platform}] ${ch.accountType}</span>
+                        </div>
+                        <span class="schedule-account-check"><i class="fa-solid fa-check"></i></span>
+                    </label>`;
+            });
+        }
+
+        document.getElementById('pipelineModal').style.display = 'flex';
+    }
+
+    window.closePipelineModal = function() {
+        document.getElementById('pipelineModal').style.display = 'none';
+    };
+
+    window.submitPipeline = async function() {
+        const form = document.getElementById('pipelineForm');
+        const fd = new FormData(form);
+        const platforms = fd.getAll('platforms');
+        if (!fd.get('productId')) return showToast('Vui lòng chọn sản phẩm', 'error');
+        if (platforms.length === 0) return showToast('Vui lòng chọn ít nhất 1 nền tảng', 'error');
+
+        const accountIds = fd.getAll('accountIds');
+        const groupIds = (fd.get('groupIds')||'').split('\n').map(s=>s.trim()).filter(Boolean);
+        const timeSlots = [];
+        for (let i=0;i<2;i++) {
+            const h=parseInt(fd.get(`slot_hour_${i}`)), m=parseInt(fd.get(`slot_minute_${i}`));
+            if(!isNaN(h)) timeSlots.push({hour:h,minute:m||0});
+        }
+
+        try {
+            const res = await fetch('/ai-content/api/pipelines', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({
+                    productId:fd.get('productId'), writingStyleId:fd.get('writingStyleId')||null,
+                    postsPerDay:parseInt(fd.get('postsPerDay'))||2, platforms, accountIds, groupIds,
+                    timeSlots, contentDirection:fd.get('contentDirection')||'mixed'
+                })
+            });
+            const data = await res.json();
+            if(data.success) { showToast('Tạo pipeline thành công!','success'); closePipelineModal(); setTimeout(()=>location.reload(),1000); }
+            else showToast(data.error||'Lỗi','error');
+        } catch(e) { showToast('Lỗi: '+e.message,'error'); }
+    };
+
+    window.runPipelineNow = async function(id) {
+        if (!(await showConfirm('Chạy pipeline ngay? Sẽ tạo bài viết mới.'))) return;
+        try {
+            showToast('Đang tạo bài viết...','info');
+            const res = await fetch(`/ai-content/api/pipelines/${id}/run`,{method:'POST'});
+            const data = await res.json();
+            if(data.success) { showToast(data.message,'success'); setTimeout(()=>location.reload(),2000); }
+            else showToast(data.error||'Lỗi','error');
+        } catch(e) { showToast('Lỗi: '+e.message,'error'); }
+    };
+
+    window.togglePipeline = async function(id) {
+        try {
+            const res = await fetch(`/ai-content/api/pipelines/${id}/toggle`,{method:'POST'});
+            const data = await res.json();
+            if(data.success) { showToast(data.message,'success'); setTimeout(()=>location.reload(),1000); }
+            else showToast(data.error||'Lỗi','error');
+        } catch(e) { showToast('Lỗi: '+e.message,'error'); }
+    };
+
+    window.deletePipeline = async function(id) {
+        if (!(await showConfirm('Xóa pipeline này?'))) return;
+        try {
+            const res = await fetch(`/ai-content/api/pipelines/${id}`,{method:'DELETE'});
+            const data = await res.json();
+            if(data.success) { showToast('Đã xóa','success'); setTimeout(()=>location.reload(),1000); }
+            else showToast(data.error||'Lỗi','error');
+        } catch(e) { showToast('Lỗi: '+e.message,'error'); }
+    };
+
+    // Close on overlay click
+    document.getElementById('pipelineModal')?.addEventListener('click', function(e) {
+        if(e.target===this) closePipelineModal();
+    });
+})();
+</script>
 </body>
 </html>

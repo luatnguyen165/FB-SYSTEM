@@ -11,7 +11,7 @@ var page = typeof page !== 'undefined' ? page : '';
         <nav class="header-nav" id="headerNav">
             <a href="/" class="<%= page === 'home' ? 'active' : '' %>">Trang chủ</a>
             <div class="nav-dropdown">
-                <a href="/<%= page === 'home' ? '#' : '' %>features" class="dropdown-trigger<%= ['schedule','ai-content','auto-comment','ai-scan','competitor','analytics'].includes(page) ? ' active' : '' %>">
+                <a href="/<%= page === 'home' ? '#' : '' %>features" class="dropdown-trigger<%= ['schedule','ai-content','auto-comment','ai-scan','analytics'].includes(page) ? ' active' : '' %>">
                     Tính năng <i class="fas fa-chevron-down dropdown-arrow"></i>
                 </a>
                 <div class="dropdown-menu">
@@ -49,15 +49,6 @@ var page = typeof page !== 'undefined' ? page : '';
                         <div class="dropdown-text">
                             <strong>AI Scan</strong>
                             <span>Quét & phân tích thị trường</span>
-                        </div>
-                    </a>
-                    <a href="/features/competitor" class="dropdown-item<%= page === 'competitor' ? ' active' : '' %>">
-                        <div class="dropdown-icon" style="background:linear-gradient(135deg,#ef4444,#f87171)">
-                            <i class="fas fa-users-viewfinder"></i>
-                        </div>
-                        <div class="dropdown-text">
-                            <strong>Theo dõi đối thủ</strong>
-                            <span>Giám sát cạnh tranh</span>
                         </div>
                     </a>
                     <a href="/features/analytics" class="dropdown-item<%= page === 'analytics' ? ' active' : '' %>">

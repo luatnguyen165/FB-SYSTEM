@@ -44,11 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', (event) => {
             event.stopPropagation();
             openOAuthModal(btn.dataset.platform || 'FB', {
-                id: btn.dataset.id,
-                accountName: btn.dataset.accountName || '',
-                accountType: btn.dataset.accountType || 'Cá nhân',
-                profileUrl: btn.dataset.profileUrl || '',
-                avatarUrl: btn.dataset.avatarUrl || ''
+                id: btn.dataset.id
             });
         });
     });
@@ -99,23 +95,17 @@ let currentPlatform = '';
 let pagePlatform = document.querySelector('.btn-platform')?.dataset.platform || 'FB';
 let isFacebookConnectInProgress = false;
 let currentEditingChannelId = '';
-let currentEditAvatarUrl = '';
 let currentEditMode = false;
+let currentEditAvatarUrl = '';
 
 const platformConfig = {
     FB: { icon: 'fa-brands fa-facebook', title: 'Kết nối Facebook API', color: '#1877f2' },
     TT: { icon: 'fa-brands fa-tiktok', title: 'Kết nối TikTok API', color: '#000' },
     IG: { icon: 'fa-brands fa-instagram', title: 'Kết nối Instagram API', color: '#e1306c' },
     YT: { icon: 'fa-brands fa-youtube', title: 'Kết nối YouTube API', color: '#ff0000' },
-    ZO: { icon: 'fa-solid fa-message', title: 'Kết nối Zalo API', color: '#0068ff' }
+    PI: { icon: 'fa-brands fa-pinterest', title: 'Kết nối Pinterest API', color: '#e60023' },
+    TH: { icon: 'fa-brands fa-threads', title: 'Kết nối Threads API', color: '#000' }
 };
-
-function normalizeFacebookAccountType(value) {
-    const type = String(value || '').trim();
-    if (type === 'Fanpage') return 'Fanpage';
-    if (type === 'Nhà sáng tạo') return 'Nhà sáng tạo';
-    return 'Cá nhân';
-}
 
 function openOAuthModal(platform, channelData = null) {
     currentPlatform = platform;
@@ -127,10 +117,8 @@ function openOAuthModal(platform, channelData = null) {
     const iconBox = document.getElementById('oauthIconBox');
     const titleEl = document.getElementById('oauthTitle');
     const descEl = document.getElementById('oauthDesc');
+    const formFields = document.getElementById('oauthFormFields');
     const secondaryField = document.getElementById('oauthSecondaryField');
-    const submitBtn = document.getElementById('btnOAuthSubmit');
-    const avatarPreviewWrap = document.getElementById('oauthEditAvatarPreviewWrap');
-    const currentAvatarText = document.getElementById('oauthCurrentAvatarText');
 
     // Platform-specific icon color class
     const iconClass = `oauth-icon-box oauth-icon-box--${platform.toLowerCase()}`;
@@ -143,119 +131,49 @@ function openOAuthModal(platform, channelData = null) {
         ? 'Cập nhật thông tin tài khoản kết nối.'
         : 'Cấp quyền để hệ thống kết nối từng tài khoản riêng biệt.';
 
-    const submitBtnEl = document.getElementById('btnOAuthSubmit');
-    if (submitBtnEl) {
-        submitBtnEl.innerHTML = currentEditMode
-            ? '<i class="fa-solid fa-floppy-disk"></i> Lưu thay đổi'
-            : '<i class="fa-solid fa-link"></i> Ủy quyền kết nối';
+    // Ẩn toàn bộ form fields cho tất cả platforms (auto-scrape sau login)
+    if (formFields) {
+        formFields.style.display = 'none';
     }
-    if (modal) modal.classList.add('open');
 
+    // Reset các field
     const nameInput = document.getElementById('oauthAccountName');
     if (nameInput) nameInput.value = '';
     const profileUrlInput = document.getElementById('oauthProfileUrl');
-    const profileUrlFieldWrapper = document.getElementById('profileUrlFieldWrapper');
     if (profileUrlInput) profileUrlInput.value = '';
-    // Hiện field profile URL cho FB, TikTok, Instagram, YouTube (trừ Zalo)
-    const showProfileUrl = ['FB', 'TT', 'IG', 'YT'].includes(platform);
-    if (profileUrlFieldWrapper) profileUrlFieldWrapper.style.display = showProfileUrl ? 'block' : 'none';
-    if (profileUrlInput && !showProfileUrl) profileUrlInput.value = '';
-    // Cập nhật placeholder theo platform
+    // Cập nhật placeholder theo platform (chỉ khi field được show)
     if (profileUrlInput) {
         const platformKey = platform.toLowerCase();
         const platformPlaceholder = profileUrlInput.getAttribute(`data-placeholder-${platformKey}`);
         if (platformPlaceholder) profileUrlInput.placeholder = platformPlaceholder;
     }
 
-    // Disable tên tài khoản khi edit (đã tạo profile rồi thì k cho sửa tên)
-    if (nameInput) {
-        nameInput.disabled = currentEditMode;
-        nameInput.classList.toggle('input-disabled-locked', currentEditMode);
-        // Xóa hint cũ nếu có
-        const existingHint = nameInput.parentNode?.querySelector('.input-lock-hint');
-        if (existingHint) existingHint.remove();
-        // Thêm hint khi edit mode
-        if (currentEditMode) {
-            const hint = document.createElement('div');
-            hint.className = 'input-lock-hint';
-            hint.innerHTML = '<i class="fa-solid fa-lock"></i> Tên tài khoản được lấy từ hồ sơ và không thể thay đổi.';
-            nameInput.parentNode?.appendChild(hint);
-        }
+    // Reset avatar preview
+    const avatarPreviewWrap = document.getElementById('oauthEditAvatarPreviewWrap');
+    if (avatarPreviewWrap) avatarPreviewWrap.style.display = 'none';
+    const currentAvatarBox = document.getElementById('oauthCurrentAvatarBox');
+    if (currentAvatarBox) {
+        currentAvatarBox.innerHTML = '<div class="oauth-current-avatar-text" id="oauthCurrentAvatarText">Chưa có avatar</div>';
     }
+    const avatarInput = document.getElementById('oauthAvatar');
+    if (avatarInput) avatarInput.value = '';
+    currentEditAvatarUrl = '';
 
-    if (channelData) {
+    if (channelData && platform !== 'FB') {
         if (nameInput) nameInput.value = channelData.accountName || '';
         if (profileUrlInput) profileUrlInput.value = channelData.profileUrl || '';
+        const currentAvatarText = document.getElementById('oauthCurrentAvatarText');
         if (currentAvatarText) currentAvatarText.textContent = channelData.avatarUrl ? 'Đã có avatar' : 'Chưa có avatar';
-        // Hiển thị ảnh avatar hiện tại trong modal edit
         if (avatarPreviewWrap) avatarPreviewWrap.style.display = 'block';
-        const currentAvatarBox = document.getElementById('oauthCurrentAvatarBox');
         if (currentAvatarBox && channelData.avatarUrl) {
             currentAvatarBox.innerHTML = `<img class="oauth-current-avatar-img" src="${channelData.avatarUrl}" alt="Avatar hiện tại"><span class="oauth-current-avatar-text" id="oauthCurrentAvatarText">Avatar hiện tại</span>`;
         }
-        if (currentPlatform === 'FB') {
-            const checkedType = normalizeFacebookAccountType(channelData.accountType || 'Cá nhân');
-            setTimeout(() => {
-                initAccountTypeCards(checkedType);
-            }, 0);
-        }
-    } else {
-        if (avatarPreviewWrap) avatarPreviewWrap.style.display = 'none';
-        // Reset avatar preview về trạng thái mặc định
-        const currentAvatarBox = document.getElementById('oauthCurrentAvatarBox');
-        if (currentAvatarBox) {
-            currentAvatarBox.innerHTML = '<div class="oauth-current-avatar-text" id="oauthCurrentAvatarText">Chưa có avatar</div>';
-        }
-        currentEditAvatarUrl = '';
-        if (currentPlatform === 'FB') {
-            setTimeout(() => initAccountTypeCards('Cá nhân'), 0);
-        }
+        currentEditAvatarUrl = channelData.avatarUrl || '';
     }
 
+    // Render account type selector cho các platform cần (không phải FB)
     if (secondaryField) {
-        if (platform === 'FB') {
-            // Facebook: Cá nhân / Fanpage / Nhà sáng tạo
-            secondaryField.innerHTML = `
-                <div class="oauth-account-type-section">
-                    <div class="oauth-account-type-label">Loại tài khoản</div>
-                    <div class="oauth-type-grid" id="oauthTypeGrid">
-                        <label class="oauth-type-card" data-type="Cá nhân">
-                            <input type="radio" name="oauthAccountType" value="Cá nhân" checked>
-                            <div class="oauth-type-icon personal"><i class="fa-regular fa-user"></i></div>
-                            <div class="oauth-type-content">
-                                <strong>Tài khoản cá nhân</strong>
-                                <span>Dành cho profile Facebook riêng</span>
-                            </div>
-                            <div class="oauth-type-check"><i class="fa-solid fa-check"></i></div>
-                        </label>
-                        <label class="oauth-type-card" data-type="Fanpage">
-                            <input type="radio" name="oauthAccountType" value="Fanpage">
-                            <div class="oauth-type-icon fanpage"><i class="fa-solid fa-flag"></i></div>
-                            <div class="oauth-type-content">
-                                <strong>Fanpage / Page</strong>
-                                <span>Dành cho trang Facebook doanh nghiệp</span>
-                            </div>
-                            <div class="oauth-type-check"><i class="fa-solid fa-check"></i></div>
-                        </label>
-                        <label class="oauth-type-card" data-type="Nhà sáng tạo">
-                            <input type="radio" name="oauthAccountType" value="Nhà sáng tạo">
-                            <div class="oauth-type-icon creator"><i class="fa-solid fa-pen-nib"></i></div>
-                            <div class="oauth-type-content">
-                                <strong>Nhà sáng tạo</strong>
-                                <span>Dành cho tài khoản Facebook Creator</span>
-                            </div>
-                            <div class="oauth-type-check"><i class="fa-solid fa-check"></i></div>
-                        </label>
-                    </div>
-                    <div class="oauth-helper-text">
-                        <i class="fa-solid fa-circle-info"></i>
-                        Chọn đúng loại tài khoản để hệ thống lưu cookie và hiển thị cấu hình chính xác.
-                    </div>
-                </div>
-            `;
-            initAccountTypeCards('Cá nhân');
-        } else if (platform === 'IG') {
-            // Instagram: Cá nhân / Nhà sáng tạo / Business
+        if (platform === 'IG') {
             secondaryField.innerHTML = `
                 <div class="oauth-account-type-section">
                     <div class="oauth-account-type-label">Loại tài khoản Instagram</div>
@@ -294,75 +212,29 @@ function openOAuthModal(platform, channelData = null) {
                     </div>
                 </div>
             `;
-            initAccountTypeCards('Cá nhân');
-        } else {
-            // TikTok, YouTube, Zalo: mặc định là "Cá nhân"
+            if (channelData) {
+                setTimeout(() => initAccountTypeCards(channelData.accountType || 'Cá nhân'), 0);
+            } else {
+                setTimeout(() => initAccountTypeCards('Cá nhân'), 0);
+            }
+        } else if (platform !== 'FB') {
+            // TT, YT, PI, TH: mặc định là "Cá nhân"
             secondaryField.innerHTML = `<input type="hidden" name="oauthAccountType" value="Cá nhân">`;
+        } else {
+            secondaryField.innerHTML = '';
         }
     }
 
-    const existingImageField = document.getElementById('oauthAvatar');
-    if (existingImageField) existingImageField.value = '';
-
-    // Focus first input
-    setTimeout(() => nameInput?.focus(), 100);
+    const submitBtnEl = document.getElementById('btnOAuthSubmit');
+    if (submitBtnEl) {
+        submitBtnEl.innerHTML = currentEditMode
+            ? '<i class="fa-solid fa-floppy-disk"></i> Lưu thay đổi'
+            : '<i class="fa-solid fa-link"></i> Ủy quyền kết nối';
+    }
+    if (modal) modal.classList.add('open');
 }
 
-/**
- * Wire up the avatar file input to show an instant preview in #oauthCurrentAvatarBox.
- * Called once after DOM is ready — the listener persists across modal open/close cycles.
- */
-function initAvatarPreview() {
-    const avatarInput = document.getElementById('oauthAvatar');
-    const previewWrap = document.getElementById('oauthEditAvatarPreviewWrap');
-    const previewBox  = document.getElementById('oauthCurrentAvatarBox');
-    if (!avatarInput) return;
 
-    avatarInput.addEventListener('change', () => {
-        const file = avatarInput.files?.[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            // Show the preview section
-            if (previewWrap) previewWrap.style.display = 'block';
-
-            // Swap content of the preview box to an <img>
-            if (previewBox) {
-                previewBox.innerHTML = `
-                    <img class="oauth-current-avatar-img" src="${e.target.result}" alt="Preview avatar">
-                    <span class="oauth-current-avatar-text">Ảnh mới chọn</span>
-                `;
-            }
-        };
-        reader.readAsDataURL(file);
-    });
-}
-
-function initAccountTypeCards(defaultType = 'Cá nhân') {
-    const grid = document.getElementById('oauthTypeGrid');
-    if (!grid) return;    const updateSelection = () => {
-        const checked = grid.querySelector('input[name="oauthAccountType"]:checked');
-        grid.querySelectorAll('.oauth-type-card').forEach(card => {
-            const radio = card.querySelector('input[type="radio"]');
-            card.classList.toggle('is-selected', radio?.checked);
-        });
-    };
-
-    grid.querySelectorAll('.oauth-type-card').forEach(card => {
-        const radio = card.querySelector('input[type="radio"]');
-        if (radio) {
-            if (radio.value === defaultType) radio.checked = true;
-            radio.addEventListener('change', updateSelection);
-            card.addEventListener('click', () => {
-                radio.checked = true;
-                updateSelection();
-            });
-        }
-    });
-
-    updateSelection();
-}
 
 async function connectFacebookDirectly() {
     await submitNewChannel();
@@ -397,33 +269,15 @@ async function submitNewChannel() {
         return true;
     }
 
-    // FB connect đặc biệt vì mở browser thủ công
-    if (currentPlatform === 'FB') {
+    // Tất cả platforms: fields đã ẩn trên UI, auto-generate tên để backend không báo lỗi
+    {
         if (isFacebookConnectInProgress) return;
-        const accountNameEl = document.getElementById('oauthAccountName');
-        if (!validateField(accountNameEl, 'Vui lòng nhập tên tài khoản Facebook!')) return;
-
-        const profileUrlEl = document.getElementById('oauthProfileUrl');
-        if (!validateField(profileUrlEl, 'Vui lòng nhập Link Profile Facebook!')) return;
-
-        // Validate URL format
-        const profileUrlValue = profileUrlEl?.value?.trim() || '';
-        if (profileUrlValue && !/^https?:\/\/(www\.)?facebook\.com\/.+/.test(profileUrlValue)) {
-            profileUrlEl.classList.add('oauth-input--error');
-            showToast('Link Profile phải đúng định dạng facebook.com/...', 'warning');
-            profileUrlEl.addEventListener('input', () => profileUrlEl.classList.remove('oauth-input--error'), { once: true });
-            return;
-        }
-
-        const accountName = accountNameEl.value.trim();
-        const profileUrl = profileUrlValue;
-        const accountType = document.querySelector('input[name="oauthAccountType"]:checked')?.value || 'Cá nhân';
-        const avatarInput = document.getElementById('oauthAvatar');
 
         isFacebookConnectInProgress = true;
         setLoading(true);
         try {
-            const data = await doSubmitChannel(accountName, profileUrl || '', accountType, '0', avatarInput);
+            const autoName = `${currentPlatform}_${Date.now()}`;
+            const data = await doSubmitChannel(autoName, '', 'Cá nhân', '0', null);
             if (data.success) {
                 showToast(data.message, 'success');
                 closeOAuthModal();
@@ -441,7 +295,7 @@ async function submitNewChannel() {
         return;
     }
 
-    // Các platform còn lại: TikTok, Instagram, YouTube, Zalo
+    // Các platform còn lại: TikTok, Instagram, YouTube, Pinterest, Threads
     const accountNameEl = document.getElementById('oauthAccountName');
     if (!validateField(accountNameEl, 'Vui lòng nhập tên kênh!')) return;
 
@@ -533,6 +387,59 @@ async function deleteChannel(channelId, cardEl) {
             showToast('Lỗi kết nối server', 'error');
         }
     });
+}
+
+/**
+ * Wire up the avatar file input to show an instant preview in #oauthCurrentAvatarBox.
+ */
+function initAvatarPreview() {
+    const avatarInput = document.getElementById('oauthAvatar');
+    const previewWrap = document.getElementById('oauthEditAvatarPreviewWrap');
+    const previewBox  = document.getElementById('oauthCurrentAvatarBox');
+    if (!avatarInput) return;
+
+    avatarInput.addEventListener('change', () => {
+        const file = avatarInput.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            if (previewWrap) previewWrap.style.display = 'block';
+            if (previewBox) {
+                previewBox.innerHTML = `
+                    <img class="oauth-current-avatar-img" src="${e.target.result}" alt="Preview avatar">
+                    <span class="oauth-current-avatar-text">Ảnh mới chọn</span>
+                `;
+            }
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function initAccountTypeCards(defaultType = 'Cá nhân') {
+    const grid = document.getElementById('oauthTypeGrid');
+    if (!grid) return;
+    const updateSelection = () => {
+        const checked = grid.querySelector('input[name="oauthAccountType"]:checked');
+        grid.querySelectorAll('.oauth-type-card').forEach(card => {
+            const radio = card.querySelector('input[type="radio"]');
+            card.classList.toggle('is-selected', radio?.checked);
+        });
+    };
+
+    grid.querySelectorAll('.oauth-type-card').forEach(card => {
+        const radio = card.querySelector('input[type="radio"]');
+        if (radio) {
+            if (radio.value === defaultType) radio.checked = true;
+            radio.addEventListener('change', updateSelection);
+            card.addEventListener('click', () => {
+                radio.checked = true;
+                updateSelection();
+            });
+        }
+    });
+
+    updateSelection();
 }
 
 async function openChannelBrowser(channelId, platform) {

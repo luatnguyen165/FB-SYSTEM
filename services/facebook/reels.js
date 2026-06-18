@@ -213,8 +213,8 @@ async function runBotUploadInstant({ page, post }) {
     };
 }
 
-async function runBotUploadInstantWithAccount({ userId, accountName, accountType = 'Cá nhân', post, headless = false }) {
-    const { context, sessionKey, isExternal } = await getOrOpenFacebookContext(userId, accountName, accountType, 'FB', { headless });
+async function runBotUploadInstantWithAccount({ userId, accountName, accountType = 'Cá nhân', post, headless = false, existingSessionDir = '' }) {
+    const { context, sessionKey, isExternal } = await getOrOpenFacebookContext(userId, accountName, accountType, 'FB', { headless, existingSessionDir });
 
     try {
         const page = context.pages()[0] || await context.newPage();

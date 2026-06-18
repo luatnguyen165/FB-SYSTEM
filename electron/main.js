@@ -24,8 +24,8 @@ autoUpdater.allowPrerelease = false; // Chỉ nhận bản stable
 function ensureUserDirectories() {
     const dirs = ['uploads', 'uploads/ai-images', 'uploads/competitor-posts', 
                   'uploads/crypto-keys', 'uploads/images', 'uploads/video-projects', 
-                  'uploads/videos', 'page_post', 'page_post/PANZI', 
-                  'views/fb_session', 'public/music', 'public/output'];
+                  'uploads/videos', 'page_post', 'page_post/PANZI',
+                  'social-sessions', 'views/fb_session', 'public/music', 'public/output'];
     
     dirs.forEach(dir => {
         const fullPath = path.join(USER_DATA_DIR, dir);

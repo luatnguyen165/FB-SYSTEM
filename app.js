@@ -13,10 +13,10 @@ global.USER_DATA_DIR = USER_DATA_DIR;
 
 // Tạo các thư mục nếu chưa tồn tại
 const ensureDirectories = [
-    '', 'uploads', 'uploads/ai-images', 'uploads/competitor-posts',
+    '', 'uploads', 'uploads/ai-images', 'uploads/avatars', 'uploads/competitor-posts',
     'uploads/crypto-keys', 'uploads/images', 'uploads/video-projects',
     'uploads/videos', 'page_post', 'page_post/PANZI',
-    'views/fb_session', 'public/music', 'public/output'
+    'social-sessions', 'views/fb_session', 'public/music', 'public/output'
 ];
 ensureDirectories.forEach(dir => {
     const fullPath = path.join(USER_DATA_DIR, dir);
@@ -64,14 +64,12 @@ const morgan = require('morgan');
 // Import Routes
 const authRoutes = require('./routes/auth');
 const dashboardRoutes = require('./routes/dashboard');
-const videoRoutes = require('./routes/videos');
 const channelRoutes = require('./routes/channels');
 const shopeeRoutes = require('./routes/shopee');
 const scheduleRoutes = require('./routes/schedule');
 const settingsRoutes = require('./routes/settings');
 const storageRoutes = require('./routes/storage');
 const featureRoutes = require('./routes/features');
-const competitorRoutes = require('./routes/competitors');
 const commentPlayRoutes = require('./routes/commentPlay');
 const aiImageRoutes = require('./routes/aiImages');
 const licenseRoutes = require('./routes/licenses');
@@ -82,6 +80,7 @@ const { rateLimiter } = require('./middlewares/rateLimiter');
 const { loadFeatureVisibility } = require('./middlewares/authMiddleware');
 const { loadUserChannels } = require('./middlewares/channelMiddleware');
 const { startReelsScheduleRunner } = require('./services/reelsScheduleRunner');
+const { startAutoContentRunner } = require('./services/autoContentRunner');
 const { runScheduledScans } = require('./services/aiScanService');
 const i18nMiddleware = require('./middlewares/i18nMiddleware');
 const http = require('http');
@@ -168,21 +167,20 @@ app.use(rateLimiter(120, 60000));       // 120 requests/minute per user/IP
 
 app.use('/auth', authRoutes);           // Auth: login, register, forgot, profile, change-password
 app.use('/dashboard', dashboardRoutes); // Dashboard
-app.use('/videos', videoRoutes);        // Kho Video + API
 app.use('/channels', channelRoutes);    // Quản lý kênh + API
 app.use('/shopee', shopeeRoutes);       // Shopee Links + API
 app.use('/schedule', scheduleRoutes);   // Lịch đăng Post & Reels + API
 app.use('/settings', settingsRoutes);   // Cấu hình + API
 app.use('/storage', storageRoutes);     // Lưu trữ Google Drive + API
 app.use('/features', featureRoutes);    // Quản lý tính năng (Admin only)
-app.use('/competitors', competitorRoutes); // Theo dõi đối thủ
 app.use('/schedule/ai-comment/play', commentPlayRoutes); // Khúc Play Comment
 app.use('/ai-images', aiImageRoutes);              // Tạo Ảnh AI
 app.use('/admin/licenses', licenseRoutes);        // License Key Management
 app.use('/music-trending', musicTrendingRoutes);  // Music Trending
 app.use('/download', require('./routes/download')); // Download YouTube video/audio
-app.use('/ai-content', aiContentRoutes);           // AI Content Creator
+app.use('/ai-content', aiContentRoutes);           // AI Content Creator + Auto Pipeline
 app.use('/feedback', feedbackRoutes);              // Feedback & Feature Requests
+app.use('/tracking', require('./routes/tracking')); // Theo dõi đối tượng
 
 // Route mặc định - Chuyển hướng đến trang đăng nhập
 app.get('/', (req, res) => {
@@ -247,6 +245,7 @@ function startSchedulers() {
 
     // === KHỞI ĐỘNG SCHEDULER SAU KHI CÓ DB ===
     try { startReelsScheduleRunner(); } catch(e) { console.error('[Startup] Reels schedule runner error:', e.message); }
+    try { startAutoContentRunner(); } catch(e) { console.error('[Startup] Auto content runner error:', e.message); }
 
     // AI Scan scheduler
     schedulerIntervals.push(setInterval(() => {

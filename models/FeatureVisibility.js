@@ -23,8 +23,8 @@ const FeatureVisibilitySchema = new mongoose.Schema({
     'analytics': { type: Boolean, default: true },
     'hashtag-manager': { type: Boolean, default: true },
     'telegram-notifications': { type: Boolean, default: true },
-    'competitors': { type: Boolean, default: true },
     'trend-music': { type: Boolean, default: true },
+    'tracking': { type: Boolean, default: true },
 }, { timestamps: true });
 
 module.exports = mongoose.model('FeatureVisibility', FeatureVisibilitySchema);

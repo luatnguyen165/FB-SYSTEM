@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 
 const ChannelSchema = new mongoose.Schema({
     userId:           { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    platform:         { type: String, enum: ['FB', 'TT', 'IG', 'YT', 'ZO'], required: true },
+    platform:         { type: String, enum: ['FB', 'TT', 'IG', 'YT', 'ZO', 'PI', 'TH'], required: true },
     accountName:      { type: String, required: true },
     accountType:      { type: String, default: 'Cá nhân' },
     profileUrl:       { type: String, default: '' },

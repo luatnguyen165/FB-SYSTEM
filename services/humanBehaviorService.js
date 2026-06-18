@@ -374,63 +374,225 @@ async function simulateHumanAfterPost(page, {
  */
 function getAntiDetectionScript() {
     return `
-        Object.defineProperty(navigator, 'webdriver', { get: () => false });
-        
-        if (window.chrome && window.chrome.runtime) {
-            delete window.chrome.runtime;
+        // === 1. navigator.webdriver ===
+        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+        delete navigator.__proto__.webdriver;
+
+        // === 2. window.chrome ===
+        if (!window.chrome) window.chrome = {};
+        if (!window.chrome.runtime) {
+            window.chrome.runtime = {
+                connect: function(){},
+                sendMessage: function(){},
+                onMessage: { addListener: function(){}, removeListener: function(){} },
+                id: 'mhjfbmdgcfjbbpaeojofohoefgiehjai',
+                PlatformOs: { MAC: 'mac', WIN: 'win', ANDROID: 'android', CROS: 'cros', LINUX: 'linux', OPENBSD: 'openbsd' },
+                PlatformArch: { ARM: 'arm', X86_32: 'x86-32', X86_64: 'x86-64', MIPS: 'mips', MIPS64: 'mips64' },
+                PlatformNaclArch: { ARM: 'arm', X86_32: 'x86-32', X86_64: 'x86-64', MIPS: 'mips', MIPS64: 'mips64' },
+                RequestUpdateCheckStatus: { THROTTLED: 'throttled', NO_UPDATE: 'no_update', UPDATE_AVAILABLE: 'update_available' },
+                OnInstalledReason: { INSTALL: 'install', UPDATE: 'update', CHROME_UPDATE: 'chrome_update', SHARED_MODULE_UPDATE: 'shared_module_update' },
+                OnRestartRequiredReason: { APP_UPDATE: 'app_update', OS_UPDATE: 'os_update', PERIODIC: 'periodic' }
+            };
         }
-        
+        if (!window.chrome.csi) window.chrome.csi = function(){ return { onloadT: Date.now(), startE: Date.now(), pageT: Date.now() - performance.timing.navigationStart }; };
+        if (!window.chrome.loadTimes) window.chrome.loadTimes = function(){ return { requestTime: Date.now()/1000 - 1, startLoadTime: Date.now()/1000 - 0.5, commitLoadTime: Date.now()/1000, finishDocumentLoadTime: Date.now()/1000 + 0.5, firstPaintTime: Date.now()/1000 + 0.3, finishLoadTime: Date.now()/1000 + 1, navigationType: 'Other' }; };
+
+        // === 3. plugins ===
         Object.defineProperty(navigator, 'plugins', {
-            get: () => [
-                { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer' },
-                { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai' },
-                { name: 'Native Client', filename: 'internal-nacl-plugin' }
-            ]
+            get: function() {
+                var p = [
+                    { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer', description: 'Portable Document Format', length: 1 },
+                    { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai', description: '', length: 1 },
+                    { name: 'Native Client', filename: 'internal-nacl-plugin', description: '', length: 2 }
+                ];
+                p.refresh = function(){};
+                p.item = function(i){ return this[i]; };
+                p.namedItem = function(n){ for(var i=0;i<this.length;i++) if(this[i].name===n) return this[i]; return null; };
+                return p;
+            }
         });
-        
+
+        // === 4. languages ===
         Object.defineProperty(navigator, 'languages', { get: () => ['vi-VN', 'vi', 'en-US', 'en'] });
-        
-        const originalQuery = navigator.permissions.query;
-        navigator.permissions.query = (params) => {
-            if (params.name === 'notifications' || params.name === 'clipboard-read' || params.name === 'clipboard-write') {
-                return Promise.resolve({ state: 'prompt', onchange: null });
+        Object.defineProperty(navigator, 'language', { get: () => 'vi-VN' });
+
+        // === 5. permissions ===
+        var origQuery = navigator.permissions.query;
+        navigator.permissions.query = function(p) {
+            if (p.name === 'notifications') return Promise.resolve({ state: 'prompt', onchange: null });
+            return origQuery.call(this, p);
+        };
+
+        // === 6. WebGL ===
+        var origGetParam = WebGLRenderingContext.prototype.getParameter;
+        WebGLRenderingContext.prototype.getParameter = function(p) {
+            if (p === 37445) return 'Intel Inc.';
+            if (p === 37446) return 'Intel Iris OpenGL Engine';
+            return origGetParam.call(this, p);
+        };
+        var origGetParam2 = WebGL2RenderingContext.prototype.getParameter;
+        WebGL2RenderingContext.prototype.getParameter = function(p) {
+            if (p === 37445) return 'Intel Inc.';
+            if (p === 37446) return 'Intel Iris OpenGL Engine';
+            return origGetParam2.call(this, p);
+        };
+
+        // === 7. hardwareConcurrency & deviceMemory ===
+        Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 });
+        Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });
+
+        // === 8. platform ===
+        Object.defineProperty(navigator, 'platform', { get: () => 'Win32' });
+
+        // === 9. connection ===
+        if (navigator.connection) {
+            Object.defineProperty(navigator.connection, 'rtt', { get: () => 50 });
+        }
+
+        // === 10. Remove automation markers ===
+        delete window.__playwright;
+        delete window.__pw_manual;
+        delete window.__PW_inspect;
+        delete window.cdc_adoQpoasnfa76pfcZLmcfl_Array;
+        delete window.cdc_adoQpoasnfa76pfcZLmcfl_Promise;
+        delete window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol;
+        delete window.cdc_adoQpoasnfa76pfcZLmcfl_JSON;
+        delete window.cdc_adoQpoasnfa76pfcZLmcfl_Proxy;
+        delete window.cdc_adoQpoasnfa76pfcZLmcfl_Object;
+
+        // === 11. Notification.permission ===
+        if (window.Notification) {
+            Object.defineProperty(Notification, 'permission', { get: () => 'default' });
+        }
+
+        // === 12. MediaDevices ===
+        if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+            var origEnum = navigator.mediaDevices.enumerateDevices;
+            navigator.mediaDevices.enumerateDevices = function() {
+                return Promise.resolve([
+                    { deviceId: '', groupId: '', kind: 'audioinput', label: '' },
+                    { deviceId: '', groupId: '', kind: 'audiooutput', label: '' },
+                    { deviceId: '', groupId: '', kind: 'videoinput', label: '' }
+                ]);
+            };
+        }
+
+        // === 13. screen properties ===
+        Object.defineProperty(screen, 'colorDepth', { get: () => 24 });
+        Object.defineProperty(screen, 'pixelDepth', { get: () => 24 });
+
+        // === 14. Max touch points ===
+        Object.defineProperty(navigator, 'maxTouchPoints', { get: () => 0 });
+
+        // === 15. vendor ===
+        Object.defineProperty(navigator, 'vendor', { get: () => 'Google Inc.' });
+
+        // === 16. Do Not Track ===
+        Object.defineProperty(navigator, 'doNotTrack', { get: () => null });
+
+        // === 17. cookieEnabled ===
+        Object.defineProperty(navigator, 'cookieEnabled', { get: () => true });
+
+        // === 18. Remove iframe detection ===
+        if (window.frameElement) {
+            Object.defineProperty(window, 'frameElement', { get: () => null });
+        }
+
+        // === 19. Instagram-specific: override toString để tránh bị check ===
+        var origToString = Function.prototype.toString;
+        Function.prototype.toString = function() {
+            if (this === navigator.permissions.query) return 'function query() { [native code] }';
+            if (this === navigator.mediaDevices.enumerateDevices) return 'function enumerateDevices() { [native code] }';
+            return origToString.call(this);
+        };
+
+        // === 20. Override getComputedStyle để không bị detect ===
+        var origGetComputedStyle = window.getComputedStyle;
+        window.getComputedStyle = function(el, pseudo) {
+            var style = origGetComputedStyle.call(this, el, pseudo);
+            // Thêm missing properties mà Instagram check
+            if (!style.fontDisplay) {
+                Object.defineProperty(style, 'fontDisplay', { get: () => 'auto' });
             }
-            return originalQuery(params);
+            return style;
         };
-        
-        const getParameter = WebGLRenderingContext.prototype.getParameter;
-        WebGLRenderingContext.prototype.getParameter = function(param) {
-            if (param === 37445) return 'Intel Inc.';
-            if (param === 37446) return 'Intel Iris OpenGL Engine';
-            return getParameter.call(this, param);
+
+        // === 21. Fix Date/timezone一致性 ===
+        var origDate = Date;
+        var dateOffset = 0;
+        Date = function() {
+            return new origDate(origDate.now() + dateOffset);
         };
-        
-        const originalToDataURL = HTMLCanvasElement.prototype.toDataURL;
-        HTMLCanvasElement.prototype.toDataURL = function(type) {
-            const canvas = this;
-            const context = canvas.getContext('2d');
-            if (context) {
-                const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-                const pixels = imageData.data;
-                for (let i = 0; i < pixels.length; i += 4) {
-                    pixels[i] = pixels[i] ^ (Math.random() > 0.99 ? 1 : 0);
-                }
-                context.putImageData(imageData, 0, 0);
-            }
-            return originalToDataURL.call(this, type);
-        };
-        
-        document.addEventListener('mousemove', (e) => {
-            window.mouseX = e.clientX;
-            window.mouseY = e.clientY;
-        });
-        
-        const hiddenDiv = document.createElement('div');
-        hiddenDiv.style.display = 'none';
-        hiddenDiv.id = 'fb-automation-marker';
-        hiddenDiv.setAttribute('data-automation', 'false');
-        document.documentElement.appendChild(hiddenDiv);
+        Date.now = function() { return origDate.now() + dateOffset; };
+        Date.prototype = origDate.prototype;
+        Date.parse = origDate.parse;
+        Date.UTC = origDate.UTC;
+        Date.prototype.constructor = Date;
+
+        // === 22. Override Error.prepareStackTrace để stack trace看起来正常 ===
+        if (Error.prepareStackTrace) {
+            var origPrepareStackTrace = Error.prepareStackTrace;
+            Error.prepareStackTrace = function(error, structuredStackTrace) {
+                var filtered = structuredStackTrace.filter(function(callSite) {
+                    var name = callSite.getFileName() || '';
+                    return !name.includes('playwright') && !name.includes('puppeteer');
+                });
+                return origPrepareStackTrace(error, filtered);
+            };
+        }
     `;
+}
+
+/**
+ * Warm-up Instagram login page - mô phỏng hành vi người thật trước khi đăng nhập
+ * Giúp tránh bị detect là bot ngay khi vừa mở trang
+ */
+async function warmUpInstagramPage(page) {
+    console.log(`[IG WarmUp] Bắt đầu mô phỏng hành vi người thật...`);
+
+    try {
+        // 1. Đợi trang tải hoàn toàn
+        await page.waitForLoadState('networkidle').catch(() => {});
+        await randomWait(2000, 4000);
+
+        // 2. Di chuyển chuột ngẫu nhiên khắp trang (giống người đang nhìn trang)
+        const vp = page.viewportSize() || { width: 1280, height: 800 };
+        for (let i = 0; i < 3 + Math.floor(Math.random() * 3); i++) {
+            const randX = Math.floor(Math.random() * vp.width * 0.7) + vp.width * 0.15;
+            const randY = Math.floor(Math.random() * vp.height * 0.7) + vp.height * 0.15;
+            await humanLikeMouseMove(page, randX, randY);
+            await randomWait(800, 2000);
+        }
+
+        // 3. Scroll nhẹ xuống (giống người đang đọc trang login)
+        await humanLikeScroll(page, 100 + Math.floor(Math.random() * 200));
+        await randomWait(1500, 3000);
+
+        // 4. Scroll lên lại
+        await humanLikeScroll(page, -(50 + Math.floor(Math.random() * 100)));
+        await randomWait(1000, 2500);
+
+        // 5. Di chuyển chuột về vùng login form (giữa trang)
+        const centerX = vp.width / 2 + (Math.random() - 0.5) * 200;
+        const centerY = vp.height / 2 + (Math.random() - 0.5) * 100;
+        await humanLikeMouseMove(page, centerX, centerY);
+        await randomWait(500, 1500);
+
+        // 6. Thỉnh thoảng giả vờ click vào vùng trống (không có gì)
+        if (Math.random() < 0.3) {
+            const emptyX = Math.floor(Math.random() * vp.width * 0.3) + vp.width * 0.05;
+            const emptyY = vp.height * 0.8 + Math.floor(Math.random() * 50);
+            await page.mouse.click(emptyX, emptyY, { delay: 50 + Math.floor(Math.random() * 100) });
+            await randomWait(500, 1000);
+        }
+
+        // 7. Đợi thêm một chút như người đang đọc
+        await randomWait(1000, 2000);
+
+        console.log(`[IG WarmUp] Hoàn thành warm-up`);
+    } catch (e) {
+        console.warn(`[IG WarmUp] Lỗi: ${e.message}`);
+    }
 }
 
 module.exports = {
@@ -443,5 +605,6 @@ module.exports = {
     performRandomReaction,
     warmUp,
     simulateHumanAfterPost,
-    getAntiDetectionScript
+    getAntiDetectionScript,
+    warmUpInstagramPage
 };

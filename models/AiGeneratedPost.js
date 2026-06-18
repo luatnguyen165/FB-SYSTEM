@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 
 const AiGeneratedPostSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    scheduleId: { type: mongoose.Schema.Types.ObjectId, ref: 'AiContentSchedule', required: true },
+    scheduleId: { type: mongoose.Schema.Types.ObjectId, ref: 'AiContentSchedule' },
 
     title: { type: String, default: '' },
     content: { type: String, required: true },
@@ -29,6 +29,17 @@ const AiGeneratedPostSchema = new mongoose.Schema({
     // Tham chiếu SchedulePost đã tạo
     schedulePostId: { type: mongoose.Schema.Types.ObjectId, ref: 'SchedulePost' },
 
+    // Liên kết sản phẩm (cho auto content pipeline)
+    productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+    direction: { type: String, enum: ['advertising', 'purchase', 'mixed', 'unset'] },
+
+    // Engagement tracking
+    engagement: {
+        likes: { type: Number, default: 0 },
+        comments: { type: Number, default: 0 },
+        shares: { type: Number, default: 0 },
+    },
+
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
 });
@@ -37,5 +48,6 @@ AiGeneratedPostSchema.index({ userId: 1 });
 AiGeneratedPostSchema.index({ userId: 1, scheduleId: 1 });
 AiGeneratedPostSchema.index({ userId: 1, status: 1 });
 AiGeneratedPostSchema.index({ userId: 1, scheduledAt: 1 });
+AiGeneratedPostSchema.index({ userId: 1, productId: 1 });
 
 module.exports = mongoose.model('AiGeneratedPost', AiGeneratedPostSchema);

@@ -4,91 +4,88 @@
 
 /* ===== Hero ===== */
 .feedback-hero {
-    background: var(--primary-gradient);
+    background: linear-gradient(135deg, var(--primary-light), var(--bg-hover));
+    border: 1px solid var(--border);
     border-radius: var(--radius-xl);
     padding: 36px 40px;
     margin-bottom: 28px;
-    color: white;
+    box-shadow: var(--shadow-sm);
     position: relative;
     overflow: hidden;
 }
 .feedback-hero::before {
     content: '';
     position: absolute;
-    top: -50%;
-    right: -20%;
-    width: 400px;
-    height: 400px;
-    background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%);
-    border-radius: 50%;
-}
-.feedback-hero::after {
-    content: '';
-    position: absolute;
-    bottom: -30%;
-    left: 10%;
-    width: 300px;
-    height: 300px;
-    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
-    border-radius: 50%;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--primary-gradient);
 }
 .feedback-hero-content {
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 24px;
-    position: relative;
-    z-index: 1;
+    flex-wrap: wrap;
 }
-.feedback-hero-left { flex: 1; }
+.feedback-hero-left { flex: 1; min-width: 0; }
 .feedback-hero-title {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 16px;
     margin-bottom: 10px;
 }
 .feedback-hero-icon {
     width: 52px;
     height: 52px;
-    background: rgba(255,255,255,0.2);
-    backdrop-filter: blur(10px);
+    background: var(--primary-gradient);
     border-radius: var(--radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
-    color: #fff;
+    font-size: 1.4rem;
+    color: white;
+    box-shadow: 0 8px 16px rgba(37, 99, 235, 0.25);
 }
 .feedback-hero-title h1 {
     margin: 0;
-    font-size: 30px;
-    font-weight: 700;
+    font-size: 1.5rem;
+    font-weight: 800;
     letter-spacing: -0.5px;
-    color: #fff;
+    color: var(--text-main);
 }
 .feedback-hero-subtitle {
-    margin: 0 0 12px;
-    opacity: 0.9;
-    font-size: 15px;
-    font-weight: 400;
-    color: rgba(255,255,255,0.9);
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    max-width: 520px;
+    line-height: 1.6;
 }
-.feedback-hero .btn-primary {
-    background: #fff;
-    color: var(--primary);
+.btn-feedback-hero {
+    background: var(--primary-gradient);
+    color: #fff;
     border: none;
-    padding: 12px 28px;
+    padding: 12px 22px;
     border-radius: var(--radius-md);
     font-weight: 600;
-    font-size: 15px;
+    font-size: 14px;
     cursor: pointer;
     transition: all var(--transition-normal);
     white-space: nowrap;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
 }
-.feedback-hero .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+.btn-feedback-hero:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+}
+.btn-feedback-hero:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
 }
 
 /* ===== Stats ===== */
@@ -571,7 +568,7 @@ textarea.form-input { resize: vertical; font-family: inherit; line-height: 1.6; 
     .feedback-hero-title h1 {
         font-size: 24px;
     }
-    .feedback-hero .btn-primary {
+    .feedback-hero .btn-feedback-hero {
         width: 100%;
         justify-content: center;
     }

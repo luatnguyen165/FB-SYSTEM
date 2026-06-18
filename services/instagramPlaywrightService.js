@@ -9,7 +9,7 @@ function resolveVideoPathToAbsolute(videoPath) {
     return path.join(global.USER_DATA_DIR || path.join(__dirname, '..'), cleaned);
 }
 
-async function uploadVideoToInstagram({ userId, accountName, accountType = 'Personal', videoPath, caption = '', headless = false }) {
+async function uploadVideoToInstagram({ userId, accountName, accountType = 'Personal', videoPath, caption = '', headless = false, existingSessionDir = '' }) {
     console.log(`[IG Upload] ===== BẮT ĐẦU =====`);
     console.log(`[IG Upload] STEP 0 - account=${accountName} video=${videoPath} headless=${headless}`);
     if (!userId || !accountName || !videoPath) throw new Error('Thiếu userId, accountName hoặc videoPath');
@@ -21,7 +21,7 @@ async function uploadVideoToInstagram({ userId, accountName, accountType = 'Pers
 
     try {
         console.log(`[IG Upload] STEP 2 - Mở context desktop...`);
-        const { context } = await getOrOpenSocialContext(userId, accountName, accountType, 'IG', { headless });
+        const { context } = await getOrOpenSocialContext(userId, accountName, accountType, 'IG', { headless, existingSessionDir });
         const pages = context.pages();
         const page = pages.length > 0 ? pages[0] : await context.newPage();
         await page.setViewportSize({ width: 1280, height: 800 });
@@ -191,7 +191,7 @@ async function uploadVideoToInstagram({ userId, accountName, accountType = 'Pers
 /**
  * Đăng ảnh lên Instagram (Post, không phải Reels)
  */
-async function uploadImagesToInstagram({ userId, accountName, accountType = 'Personal', images = [], caption = '', headless = false }) {
+async function uploadImagesToInstagram({ userId, accountName, accountType = 'Personal', images = [], caption = '', headless = false, existingSessionDir = '' }) {
     console.log(`[IG Post] ===== BẮT ĐẦU =====`);
     console.log(`[IG Post] STEP 0 - account=${accountName} images=${images.length} caption=${caption}`);
 
@@ -212,7 +212,7 @@ async function uploadImagesToInstagram({ userId, accountName, accountType = 'Per
 
     try {
         console.log(`[IG Post] STEP 2 - Mở context desktop...`);
-        const { context } = await getOrOpenSocialContext(userId, accountName, accountType, 'IG', { headless });
+        const { context } = await getOrOpenSocialContext(userId, accountName, accountType, 'IG', { headless, existingSessionDir });
         const pages = context.pages();
         const page = pages.length > 0 ? pages[0] : await context.newPage();
         await page.setViewportSize({ width: 1280, height: 800 });

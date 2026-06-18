@@ -25,10 +25,10 @@
             const isChannelsOpen = ['channels'].includes(currentPage);
 
             // Group channels by platform
-            const platformOrder = ['FB', 'TT', 'IG', 'YT'];
-            const platformLabels = { FB: 'Facebook', TT: 'TikTok', IG: 'Instagram', YT: 'Youtube' };
-            const platformIcons = { FB: 'fa-facebook', TT: 'fa-tiktok', IG: 'fa-instagram', YT: 'fa-youtube' };
-            const platformColors = { FB: 'var(--fb-color)', TT: 'var(--tt-color)', IG: 'var(--ig-color)', YT: 'var(--yt-color)' };
+            const platformOrder = ['FB', 'TT', 'IG', 'YT', 'PI', 'TH'];
+            const platformLabels = { FB: 'Facebook', TT: 'TikTok', IG: 'Instagram', YT: 'Youtube', PI: 'Pinterest', TH: 'Threads' };
+            const platformIcons = { FB: 'fa-facebook', TT: 'fa-tiktok', IG: 'fa-instagram', YT: 'fa-youtube', PI: 'fa-pinterest', TH: 'fa-threads' };
+            const platformColors = { FB: 'var(--fb-color)', TT: 'var(--tt-color)', IG: 'var(--ig-color)', YT: 'var(--yt-color)', PI: 'var(--pi-color)', TH: 'var(--th-color)' };
 
             const chsByPlatform = {};
             chs.forEach(function(ch) {
@@ -87,11 +87,6 @@
                 <i class="fa-solid fa-chevron-down sidebar-group-chevron"></i>
             </button>
             <ul class="sidebar-submenu">
-                <% if (feat.storeVideo !== false) { %>
-                <li class="menu-item <%= currentPage === 'storeVideo' ? 'active' : '' %>">
-                    <a href="/videos"><i class="fa-solid fa-clapperboard"></i>Kho Video</a>
-                </li>
-                <% } %>
                 <% if (feat.shopeeLink !== false) { %>
                 <li class="menu-item <%= currentPage === 'shopeeLink' ? 'active' : '' %>">
                     <a href="/shopee"><i class="fa-solid fa-bag-shopping"></i>Link Tiếp Thị</a>
@@ -192,17 +187,17 @@
         </li>
         <% } %>
 
-        <!-- 👁 THEO DÕI ĐỐI THỦ -->
-        <% if (feat['competitors'] !== false) { %>
-        <li class="menu-item <%= currentPage === 'competitors' ? 'active' : '' %>">
-            <a href="/competitors"><i class="fa-solid fa-users-viewfinder"></i>Theo Dõi Đối Thủ</a>
-        </li>
-        <% } %>
-
         <!-- 🎵 MUSIC TRENDING -->
         <% if (feat['trend-music'] !== false) { %>
         <li class="menu-item <%= currentPage === 'music-trending' ? 'active' : '' %>">
             <a href="/music-trending"><i class="fa-solid fa-music"></i>Music Trending</a>
+        </li>
+        <% } %>
+
+        <!-- 🎯 THEO DÕI -->
+        <% if (feat.tracking !== false) { %>
+        <li class="menu-item <%= currentPage === 'tracking' ? 'active' : '' %>">
+            <a href="/tracking"><i class="fa-solid fa-crosshairs"></i>Theo Dõi Đối Tượng</a>
         </li>
         <% } %>
 

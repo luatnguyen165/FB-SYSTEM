@@ -517,25 +517,33 @@ async function runBotPostGroupInstant(page, { groupUrl, content, images }) {
     }
     currentUrl = page.url();
 
-    console.log('[GroupPost] Simulating human behavior after posting...');
-    await simulateHumanAfterPost(page, { 
-        minWait: 5000, 
-        maxWait: 10000,
-        shouldLikeOwnPost: true
-    });
-    console.log('[GroupPost] Post-publish behavior complete');
+    // Kiểm tra xem dialog đã đóng chưa (dấu hiệu post thành công)
+    const dialogStillOpenAfterPost = await page.locator('xpath=//div[@role="dialog"]').first().isVisible().catch(() => false);
+    const postLikelySucceeded = !dialogStillOpenAfterPost || currentUrl !== page.url();
+
+    console.log(`[GroupPost] Post check: dialogStillOpen=${dialogStillOpenAfterPost}, urlChanged=${currentUrl !== page.url()}, likelySucceeded=${postLikelySucceeded}`);
+
+    if (postLikelySucceeded) {
+        console.log('[GroupPost] Simulating human behavior after posting...');
+        await simulateHumanAfterPost(page, {
+            minWait: 5000,
+            maxWait: 10000,
+            shouldLikeOwnPost: true
+        });
+        console.log('[GroupPost] Post-publish behavior complete');
+    }
 
     return {
-        success: true,
-        message: imagePaths.length
-            ? 'Đã đăng bài Post kèm ảnh thành công'
-            : 'Đã đăng bài Post thành công',
-        publishedUrl: currentUrl || ''
+        success: postLikelySucceeded,
+        message: postLikelySucceeded
+            ? (imagePaths.length ? 'Đã đăng bài Post kèm ảnh thành công' : 'Đã đăng bài Post thành công')
+            : 'Đăng bài thất bại - dialog vẫn mở',
+        publishedUrl: postLikelySucceeded ? (currentUrl || '') : ''
     };
 }
 
-async function runBotPostGroupInstantWithAccount({ userId, accountName, accountType = 'Cá nhân', post, headless = false }) {
-    const { context, sessionKey, isExternal } = await getOrOpenFacebookContext(userId, accountName, accountType, 'FB', { headless });
+async function runBotPostGroupInstantWithAccount({ userId, accountName, accountType = 'Cá nhân', post, headless = false, existingSessionDir = '' }) {
+    const { context, sessionKey, isExternal } = await getOrOpenFacebookContext(userId, accountName, accountType, 'FB', { headless, existingSessionDir });
 
     try {
         const page = context.pages()[0] || await context.newPage();

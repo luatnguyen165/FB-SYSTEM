@@ -2,13 +2,13 @@
    MUSIC-TRENDING.CSS - Table Layout
    =================================== */
 
-/* ===== HERO SECTION (matches ai-scan style) ===== */
+/* ===== HERO SECTION (consistent with tracking, feedback, ai-content) ===== */
 .music-hero {
     background: linear-gradient(135deg, var(--primary-light), var(--bg-hover));
     border: 1px solid var(--border);
     border-radius: var(--radius-xl);
-    padding: 28px 32px;
-    margin-bottom: 24px;
+    padding: 36px 40px;
+    margin-bottom: 28px;
     box-shadow: var(--shadow-sm);
     position: relative;
     overflow: hidden;
@@ -27,7 +27,7 @@
 .music-hero-content {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     gap: 24px;
     flex-wrap: wrap;
 }
@@ -59,7 +59,7 @@
     font-weight: 800;
     color: var(--text-main);
     margin: 0;
-    letter-spacing: -0.3px;
+    letter-spacing: -0.5px;
 }
 
 .music-hero-subtitle {
@@ -75,14 +75,14 @@
     color: white;
     border: none;
     padding: 12px 22px;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 14px;
     cursor: pointer;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 8px;
-    transition: all 0.2s;
+    transition: all var(--transition-normal);
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
     white-space: nowrap;
 }
@@ -162,6 +162,8 @@
 .badge-fb, .badge-FB { background: #1877f2; color: #fff; }
 .badge-ig, .badge-IG { background: linear-gradient(135deg, #833ab4, #fd1d1d); color: #fff; }
 .badge-zo, .badge-ZO { background: #0068ff; color: #fff; }
+.badge-pi, .badge-PI { background: #e60023; color: #fff; }
+.badge-th, .badge-TH { background: #000; color: #fff; }
 
 /* Icon buttons in table — use base .btn-icon--sm from base.css */
 

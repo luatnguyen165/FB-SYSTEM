@@ -35,6 +35,8 @@
 .platform-hero--ig .platform-hero__bg { background: linear-gradient(135deg, #e1306c, #f77737, #833ab4); opacity: 0.07; }
 .platform-hero--yt .platform-hero__bg { background: linear-gradient(135deg, #ff0000, #cc0000); opacity: 0.07; }
 .platform-hero--zo .platform-hero__bg { background: linear-gradient(135deg, #0068ff, #004acc); opacity: 0.07; }
+.platform-hero--pi .platform-hero__bg { background: linear-gradient(135deg, #e60023, #bd001c); opacity: 0.07; }
+.platform-hero--th .platform-hero__bg { background: linear-gradient(135deg, #000000, #333333); opacity: 0.05; }
 
 .platform-hero__icon {
     width: 56px;
@@ -55,6 +57,8 @@
 .platform-hero--ig .platform-hero__icon { background: linear-gradient(135deg, #833ab4, #e1306c, #f77737); }
 .platform-hero--yt .platform-hero__icon { background: linear-gradient(135deg, #ff0000, #cc0000); }
 .platform-hero--zo .platform-hero__icon { background: linear-gradient(135deg, #0068ff, #004acc); }
+.platform-hero--pi .platform-hero__icon { background: linear-gradient(135deg, #e60023, #bd001c); }
+.platform-hero--th .platform-hero__icon { background: linear-gradient(135deg, #000000, #333333); }
 
 @keyframes heroIconPop {
     0%   { transform: scale(0.7) rotate(-10deg); opacity: 0; }
@@ -107,6 +111,8 @@
 .platform-hero--ig .platform-hero__stat-num { color: #e1306c; }
 .platform-hero--yt .platform-hero__stat-num { color: #ff0000; }
 .platform-hero--zo .platform-hero__stat-num { color: #0068ff; }
+.platform-hero--pi .platform-hero__stat-num { color: #e60023; }
+.platform-hero--th .platform-hero__stat-num { color: #000; }
 
 .platform-hero__stat-label {
     font-size: 0.7rem;
@@ -155,6 +161,8 @@
 .btn-connect-hero.btn-ig { background: linear-gradient(135deg, #833ab4, #e1306c, #f77737); }
 .btn-connect-hero.btn-yt { background: linear-gradient(135deg, #ff0000, #cc0000); }
 .btn-connect-hero.btn-zo { background: linear-gradient(135deg, #0068ff, #004acc); }
+.btn-connect-hero.btn-pi { background: linear-gradient(135deg, #e60023, #bd001c); }
+.btn-connect-hero.btn-th { background: linear-gradient(135deg, #000000, #333333); }
 
 /* ===== ACCOUNTS SECTION ===== */
 .accounts-section {
@@ -359,6 +367,8 @@
 .badge-tt { background: #111; }
 .badge-yt { background: #ff0000; }
 .badge-zo { background: #0068ff; }
+.badge-pi { background: #e60023; }
+.badge-th { background: #000; }
 
 .account-name-info {
     flex: 1;
@@ -597,6 +607,8 @@
 .empty-state-icon--ig { background: linear-gradient(135deg, #833ab4, #e1306c, #f77737); }
 .empty-state-icon--yt { background: linear-gradient(135deg, #ff0000, #cc0000); }
 .empty-state-icon--zo { background: linear-gradient(135deg, #0068ff, #004acc); }
+.empty-state-icon--pi { background: linear-gradient(135deg, #e60023, #bd001c); }
+.empty-state-icon--th { background: linear-gradient(135deg, #000, #333); }
 
 .empty-state-card h3 {
     font-size: 1.1rem;
@@ -638,6 +650,8 @@
 .btn-empty-connect.btn-ig { background: linear-gradient(135deg, #833ab4, #e1306c, #f77737); }
 .btn-empty-connect.btn-yt { background: linear-gradient(135deg, #ff0000, #cc0000); }
 .btn-empty-connect.btn-zo { background: linear-gradient(135deg, #0068ff, #004acc); }
+.btn-empty-connect.btn-pi { background: linear-gradient(135deg, #e60023, #bd001c); }
+.btn-empty-connect.btn-th { background: linear-gradient(135deg, #000, #333); }
 
 /* ===== SHARED ANIMATIONS ===== */
 @keyframes fadeSlideUp {
@@ -712,7 +726,6 @@
     gap: 16px;
     margin-bottom: 24px;
     padding-bottom: 20px;
-    border-bottom: 1px solid var(--border);
 }
 
 .oauth-modal-header-left {
@@ -739,6 +752,8 @@
 .oauth-icon-box--tt { background: linear-gradient(135deg, #111, #333); }
 .oauth-icon-box--yt { background: linear-gradient(135deg, #ff0000, #cc0000); }
 .oauth-icon-box--zo { background: linear-gradient(135deg, #0068ff, #004acc); }
+.oauth-icon-box--pi { background: linear-gradient(135deg, #e60023, #bd001c); }
+.oauth-icon-box--th { background: linear-gradient(135deg, #000, #333); }
 
 .oauth-modal-title-group h3 {
     font-size: 1.1rem;
@@ -1002,10 +1017,9 @@
 .oauth-action-btns {
     display: flex;
     gap: 10px;
-    justify-content: flex-end;
+    justify-content: center;
     margin-top: 24px;
     padding-top: 20px;
-    border-top: 1px solid var(--border);
 }
 
 .btn-oauth-cancel {
@@ -1097,6 +1111,8 @@
 .btn-connect.btn-tt { background: #111; }
 .btn-connect.btn-yt { background: #ff0000; }
 .btn-connect.btn-zo { background: #0068ff; }
+.btn-connect.btn-pi { background: #e60023; }
+.btn-connect.btn-th { background: #000; }
 
 .btn-connect:hover {
     transform: translateY(-1px);

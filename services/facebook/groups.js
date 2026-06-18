@@ -241,8 +241,8 @@ async function persistFacebookGroupCache({ userId, channelId, accountName, accou
     return result;
 }
 
-async function getJoinedFacebookGroups(userId, accountName, accountType = 'Cá nhân', platform = 'FB') {
-    const { context, sessionKey, isExternal } = await getOrOpenFacebookContext(userId, accountName, accountType, platform, { headless: true });
+async function getJoinedFacebookGroups(userId, accountName, accountType = 'Cá nhân', platform = 'FB', existingSessionDir = '') {
+    const { context, sessionKey, isExternal } = await getOrOpenFacebookContext(userId, accountName, accountType, platform, { headless: true, existingSessionDir });
 
     try {
         const page = context.pages()[0] || await context.newPage();
@@ -267,8 +267,8 @@ async function getJoinedFacebookGroups(userId, accountName, accountType = 'Cá n
     }
 }
 
-async function getJoinedFacebookGroupsDeep({ userId, channelId, accountName, accountType = 'Cá nhân' }) {
-    const { context, sessionKey, isExternal } = await getOrOpenFacebookContext(userId, accountName, accountType, 'FB', { headless: true });
+async function getJoinedFacebookGroupsDeep({ userId, channelId, accountName, accountType = 'Cá nhân', existingSessionDir = '' }) {
+    const { context, sessionKey, isExternal } = await getOrOpenFacebookContext(userId, accountName, accountType, 'FB', { headless: true, existingSessionDir });
 
     try {
         const page = context.pages()[0] || await context.newPage();
@@ -328,8 +328,8 @@ async function getJoinedFacebookGroupsDeep({ userId, channelId, accountName, acc
     }
 }
 
-async function getJoinedFacebookGroupsQuick({ userId, channelId, accountName, accountType = 'Cá nhân' }) {
-    const { context, sessionKey, isExternal } = await getOrOpenFacebookContext(userId, accountName, accountType, 'FB', { headless: true });
+async function getJoinedFacebookGroupsQuick({ userId, channelId, accountName, accountType = 'Cá nhân', existingSessionDir = '' }) {
+    const { context, sessionKey, isExternal } = await getOrOpenFacebookContext(userId, accountName, accountType, 'FB', { headless: true, existingSessionDir });
 
     try {
         const page = context.pages()[0] || await context.newPage();
@@ -369,7 +369,7 @@ async function getJoinedFacebookGroupsQuick({ userId, channelId, accountName, ac
     }
 }
 
-async function getJoinedFacebookGroupsCached({ userId, channelId, accountName, accountType = 'Cá nhân', forceRefresh = false, scanMode = 'fast' }) {
+async function getJoinedFacebookGroupsCached({ userId, channelId, accountName, accountType = 'Cá nhân', forceRefresh = false, scanMode = 'fast', existingSessionDir = '' }) {
     if (!userId || !channelId) {
         throw new Error('Thieu thong tin tai khoan Facebook de lay group');
     }
@@ -385,9 +385,9 @@ async function getJoinedFacebookGroupsCached({ userId, channelId, accountName, a
 
     const groups = forceRefresh
         ? (scanMode === 'deep'
-            ? await getJoinedFacebookGroupsDeep({ userId, channelId, accountName, accountType })
-            : await getJoinedFacebookGroupsQuick({ userId, channelId, accountName, accountType }))
-        : await getJoinedFacebookGroups(userId, accountName, accountType);
+            ? await getJoinedFacebookGroupsDeep({ userId, channelId, accountName, accountType, existingSessionDir })
+            : await getJoinedFacebookGroupsQuick({ userId, channelId, accountName, accountType, existingSessionDir }))
+        : await getJoinedFacebookGroups(userId, accountName, accountType, 'FB', existingSessionDir);
 
     await persistFacebookGroupCache({
         userId,
@@ -416,6 +416,7 @@ module.exports = {
     scrapeGroupsFromUrl,
     scanFacebookGroups,
     persistFacebookGroupCache,
+    getOrOpenFacebookContext,
     getJoinedFacebookGroups,
     getJoinedFacebookGroupsDeep,
     getJoinedFacebookGroupsQuick,

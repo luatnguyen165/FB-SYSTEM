@@ -55,6 +55,10 @@ function buildAccountFolder(userId, accountName, platform = 'FB') {
     return path.join(SESSION_ROOT, String(userId), `${safeAccountName}-${platform}`);
 }
 
+function buildStorageStatePath(userId, accountName, platform = 'FB') {
+    return path.join(buildAccountFolder(userId, accountName, platform), 'storage-state.json');
+}
+
 /**
  * Verify cookies saved in session directory
  */
@@ -228,6 +232,7 @@ module.exports = {
     ensureDir,
     sanitizeFolderName,
     buildAccountFolder,
+    buildStorageStatePath,
     verifyCookiesSaved,
     getChromeArgs,
     getUserAgent,

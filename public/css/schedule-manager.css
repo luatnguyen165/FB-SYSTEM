@@ -314,6 +314,8 @@
 .platform-tt { background: rgba(0, 0, 0, 0.06); color: var(--tt-color); }
 .platform-yt { background: rgba(255, 0, 0, 0.1); color: var(--yt-color); }
 .platform-ta { background: rgba(100, 116, 139, 0.1); color: var(--text-muted); }
+.platform-pi { background: rgba(230, 0, 35, 0.1); color: #e60023; }
+.platform-th { background: rgba(0, 0, 0, 0.06); color: #000; }
 .platform-fr { background: rgba(24, 119, 242, 0.12); color: var(--fb-color); }
 
 /* Keep old selector format for compatibility */
@@ -323,6 +325,8 @@
 .platform-badge.yt { background: rgba(255, 0, 0, 0.1); color: var(--yt-color); }
 .platform-badge.ta { background: rgba(100, 116, 139, 0.1); color: var(--text-muted); }
 .platform-badge.fr { background: rgba(24, 119, 242, 0.12); color: var(--fb-color); }
+.platform-badge.pi { background: rgba(230, 0, 35, 0.1); color: #e60023; }
+.platform-badge.th { background: rgba(0, 0, 0, 0.06); color: #000; }
 
 /* ===== STATUS PILL ===== */
 .status-pill {

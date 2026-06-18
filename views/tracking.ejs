@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Theo Dõi - ReelsFlow AI</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/tracking.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <%- include('partials/sidebar', { currentPage: 'tracking' }) %>
+
+    <div class="main-content">
+        <%- include('partials/header') %>
+
+        <main class="content-body tracking-page">
+            <!-- Hero Section -->
+            <div class="tracking-hero">
+                <div class="tracking-hero-content">
+                    <div class="tracking-hero-left">
+                        <div class="tracking-hero-title">
+                            <div class="tracking-hero-icon"><i class="fa-solid fa-crosshairs"></i></div>
+                            <h1>Theo Dõi Đối Tượng</h1>
+                        </div>
+                        <p class="tracking-hero-subtitle">
+                            Theo dõi bài viết mới từ đối thủ, KOL, group trên <strong>Facebook</strong> và <strong>TikTok</strong>. Tự động phát hiện nội dung mới và đăng lại lên các nền tảng bạn chọn.
+                        </p>
+                    </div>
+                    <div class="tracking-hero-actions">
+                        <button class="btn-tracking-hero" id="btnAddTracking">
+                            <i class="fa-solid fa-plus"></i> Thêm Đối Tượng
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Overview -->
+            <div class="tracking-stats">
+                <div class="tracking-stat-card">
+                    <div class="stat-icon" style="background: rgba(37, 99, 235, 0.1); color: #2563eb;">
+                        <i class="fa-solid fa-crosshairs"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value"><%= stats.total %></span>
+                        <span class="stat-label">Tổng đối tượng</span>
+                    </div>
+                </div>
+                <div class="tracking-stat-card">
+                    <div class="stat-icon" style="background: rgba(24, 119, 242, 0.1); color: #1877f2;">
+                        <i class="fa-brands fa-facebook"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value"><%= stats.facebook %></span>
+                        <span class="stat-label">Facebook</span>
+                    </div>
+                </div>
+                <div class="tracking-stat-card">
+                    <div class="stat-icon" style="background: rgba(17, 17, 17, 0.1); color: #111;">
+                        <i class="fa-brands fa-tiktok"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value"><%= stats.tiktok %></span>
+                        <span class="stat-label">TikTok</span>
+                    </div>
+                </div>
+                <div class="tracking-stat-card">
+                    <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                        <i class="fa-solid fa-play"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value"><%= stats.active %></span>
+                        <span class="stat-label">Đang theo dõi</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Platform Tabs -->
+            <div class="tracking-tabs">
+                <button class="tracking-tab <%= activePlatform === 'all' ? 'active' : '' %>" data-platform="all">
+                    <i class="fa-solid fa-layer-group"></i> Tất Cả
+                </button>
+                <button class="tracking-tab <%= activePlatform === 'facebook' ? 'active' : '' %>" data-platform="facebook">
+                    <i class="fa-brands fa-facebook"></i> Facebook
+                </button>
+                <button class="tracking-tab <%= activePlatform === 'tiktok' ? 'active' : '' %>" data-platform="tiktok">
+                    <i class="fa-brands fa-tiktok"></i> TikTok
+                </button>
+            </div>
+
+            <!-- Tracking List -->
+            <div class="tracking-list" id="trackingList">
+                <% if (trackings.length === 0) { %>
+                <div class="tracking-empty">
+                    <div class="empty-icon"><i class="fa-solid fa-crosshairs"></i></div>
+                    <h3>Chưa có đối tượng theo dõi</h3>
+                    <p>Thêm đối tượng Facebook hoặc TikTok để bắt đầu theo dõi.</p>
+                    <button class="btn-tracking-hero" id="btnAddTrackingEmpty">
+                        <i class="fa-solid fa-plus"></i> Thêm Đối Tượng
+                    </button>
+                </div>
+                <% } else { %>
+                <% trackings.forEach(function(t) { %>
+                <div class="tracking-card" data-id="<%= t._id %>" data-platform="<%= t.sourcePlatform %>">
+                    <div class="tracking-card-main">
+                        <div class="tracking-card-icon 
+                            <%= t.sourcePlatform === 'facebook' ? 'icon-fb' : '' %>
+                            <%= t.sourcePlatform === 'tiktok' ? 'icon-tt' : '' %>
+                        ">
+                            <i class="fa-brands 
+                                <%= t.sourcePlatform === 'facebook' ? 'fa-facebook' : '' %>
+                                <%= t.sourcePlatform === 'tiktok' ? 'fa-tiktok' : '' %>
+                            "></i>
+                        </div>
+                        <div class="tracking-card-info">
+                            <h3 class="tracking-card-name"><%= t.name %></h3>
+                            <a href="<%= t.url %>" target="_blank" class="tracking-card-url"><%= t.url %></a>
+                            <div class="tracking-card-meta">
+                                <% if (t.sourceAccountId) { %>
+                                <span class="meta-badge">
+                                    <i class="fa-solid fa-user"></i> <%= t.sourceAccountId.accountName %>
+                                </span>
+                                <% } %>
+                                <% if (t.targetPlatforms && t.targetPlatforms.length > 0) { %>
+                                <span class="meta-badge">
+                                    <i class="fa-solid fa-share-nodes"></i> Đăng lên: 
+                                    <% t.targetPlatforms.forEach(function(tp, idx) { %>
+                                        <%= tp.platform %><%= idx < t.targetPlatforms.length - 1 ? ', ' : '' %>
+                                    <% }); %>
+                                </span>
+                                <% } %>
+                                <span class="meta-badge <%= t.isActive ? 'badge-active' : 'badge-paused' %>">
+                                    <i class="fa-solid <%= t.isActive ? 'fa-play' : 'fa-pause' %>"></i>
+                                    <%= t.isActive ? 'Đang theo dõi' : 'Tạm dừng' %>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="tracking-card-stats">
+                            <div class="stat-item">
+                                <span class="stat-num"><%= t.stats?.totalPosts || 0 %></span>
+                                <span class="stat-lbl">Bài viết</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-num"><%= t.stats?.totalReposted || 0 %></span>
+                                <span class="stat-lbl">Đã đăng lại</span>
+                            </div>
+                        </div>
+                        <div class="tracking-card-actions">
+                            <button class="btn-icon-card" title="Bật/Tắt" onclick="toggleTracking('<%= t._id %>')">
+                                <i class="fa-solid <%= t.isActive ? 'fa-pause' : 'fa-play' %>"></i>
+                            </button>
+                            <button class="btn-icon-card" title="Sửa" onclick="editTracking('<%= t._id %>')">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <button class="btn-icon-card btn-icon-danger" title="Xóa" onclick="deleteTracking('<%= t._id %>')">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <% }); %>
+                <% } %>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal: Thêm / Sửa đối tượng theo dõi -->
+    <div class="modal-overlay" id="trackingModal" style="display: none;">
+        <div class="modal-container modal-md">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Thêm Đối Tượng Theo Dõi</h3>
+                <button class="modal-close" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="trackingForm">
+                <input type="hidden" id="trackingId" value="">
+                <div class="modal-body">
+                    <!-- Tên đối tượng -->
+                    <div class="form-group">
+                        <label class="form-label">Tên đối tượng <span class="required">*</span></label>
+                        <input type="text" class="form-input" id="trackingName" placeholder="VD: KOL Nguyễn Văn A, Group B..." required>
+                    </div>
+
+                    <!-- URL đối tượng -->
+                    <div class="form-group">
+                        <label class="form-label">URL đối tượng <span class="required">*</span></label>
+                        <input type="url" class="form-input" id="trackingUrl" placeholder="https://facebook.com/... hoặc https://tiktok.com/@..." required>
+                    </div>
+
+                    <!-- Nền tảng gốc -->
+                    <div class="form-group">
+                        <label class="form-label">Nền tảng theo dõi <span class="required">*</span></label>
+                        <div class="platform-selector">
+                            <label class="platform-option" data-platform="facebook">
+                                <input type="radio" name="sourcePlatform" value="facebook" checked>
+                                <span class="platform-label"><i class="fa-brands fa-facebook"></i> Facebook</span>
+                            </label>
+                            <label class="platform-option" data-platform="tiktok">
+                                <input type="radio" name="sourcePlatform" value="tiktok">
+                                <span class="platform-label"><i class="fa-brands fa-tiktok"></i> TikTok</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Tài khoản lấy dữ liệu -->
+                    <div class="form-group">
+                        <label class="form-label">Tài khoản lấy dữ liệu</label>
+                        <select class="form-input" id="sourceAccountId">
+                            <option value="">-- Chọn tài khoản --</option>
+                            <% channels.forEach(function(ch) { %>
+                            <option value="<%= ch._id %>" data-platform="<%= ch.platform %>">
+                                <%= ch.accountName %> (<%= ch.platform %> - <%= ch.accountType || '' %>)
+                            </option>
+                            <% }); %>
+                        </select>
+                    </div>
+
+                    <!-- Nền tảng đăng -->
+                    <div class="form-group">
+                        <label class="form-label">Nền tảng đăng (chọn nhiều)</label>
+                        <div class="target-platforms-selector" id="targetPlatformsContainer">
+                            <div class="target-platform-row" data-platform="facebook">
+                                <input type="checkbox" value="facebook" class="target-cb">
+                                <span><i class="fa-brands fa-facebook"></i> Facebook</span>
+                                <select class="target-account-select" disabled>
+                                    <option value="">Chọn tài khoản FB</option>
+                                </select>
+                            </div>
+                            <div class="target-platform-row" data-platform="tiktok">
+                                <input type="checkbox" value="tiktok" class="target-cb">
+                                <span><i class="fa-brands fa-tiktok"></i> TikTok</span>
+                                <select class="target-account-select" disabled>
+                                    <option value="">Chọn tài khoản TT</option>
+                                </select>
+                            </div>
+                            <div class="target-platform-row" data-platform="instagram">
+                                <input type="checkbox" value="instagram" class="target-cb">
+                                <span><i class="fa-brands fa-instagram"></i> Instagram</span>
+                                <select class="target-account-select" disabled>
+                                    <option value="">Chọn tài khoản IG</option>
+                                </select>
+                            </div>
+                            <div class="target-platform-row" data-platform="youtube">
+                                <input type="checkbox" value="youtube" class="target-cb">
+                                <span><i class="fa-brands fa-youtube"></i> YouTube</span>
+                                <select class="target-account-select" disabled>
+                                    <option value="">Chọn tài khoản YT</option>
+                                </select>
+                            </div>
+                            <div class="target-platform-row" data-platform="pinterest">
+                                <input type="checkbox" value="pinterest" class="target-cb">
+                                <span><i class="fa-brands fa-pinterest"></i> Pinterest</span>
+                                <select class="target-account-select" disabled>
+                                    <option value="">Chọn tài khoản PI</option>
+                                </select>
+                            </div>
+                            <div class="target-platform-row" data-platform="threads">
+                                <input type="checkbox" value="threads" class="target-cb">
+                                <span><i class="fa-brands fa-threads"></i> Threads</span>
+                                <select class="target-account-select" disabled>
+                                    <option value="">Chọn tài khoản TH</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Upload cookies (chỉ cho TikTok) -->
+                    <div class="form-group" id="cookiesUploadGroup" style="display: none;">
+                        <label class="form-label">Upload cookies.txt (TikTok)</label>
+                        <div class="file-upload-wrapper">
+                            <input type="file" class="form-input" id="cookiesFile" accept=".txt">
+                            <input type="hidden" id="cookiesPath" value="">
+                            <small class="form-help">Upload file cookies.txt để tăng độ ổn định khi theo dõi TikTok</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-ghost" onclick="closeModal()">Hủy</button>
+                    <button type="submit" class="btn btn-primary" id="modalSubmitBtn">
+                        <i class="fa-solid fa-plus"></i> Thêm
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/tracking.js"></script>
+</body>
+</html>

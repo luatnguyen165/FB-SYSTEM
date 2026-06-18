@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/channels.css">
     <link rel="stylesheet" href="/css/toast.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -27,7 +27,7 @@
                 <div class="platform-hero__bg"></div>
                 <div class="platform-hero__content">
                     <div class="platform-hero__icon">
-                        <i class="<%= activePlatform === 'ZO' ? 'fa-solid fa-message' : 'fa-brands fa-' + (activePlatform === 'FB' ? 'facebook' : activePlatform === 'TT' ? 'tiktok' : activePlatform === 'IG' ? 'instagram' : 'youtube') %>"></i>
+                        <i class="<%= activePlatform === 'ZO' ? 'fa-solid fa-message' : activePlatform === 'PI' ? 'fa-brands fa-pinterest' : activePlatform === 'TH' ? 'fa-brands fa-threads' : 'fa-brands fa-' + (activePlatform === 'FB' ? 'facebook' : activePlatform === 'TT' ? 'tiktok' : activePlatform === 'IG' ? 'instagram' : 'youtube') %>"></i>
                     </div>
                     <div class="platform-hero__info">
                         <h1 class="platform-hero__title"><%= platformLabel %></h1>
@@ -40,7 +40,6 @@
                         </div>
                         <div class="platform-hero__stat-divider"></div>
                     <%
-                        // Compute active count once (reused below)
                         const channelList = channels || [];
                         const activeCount = channelList.reduce((n, c) => n + (c.apiStatus === 'active' ? 1 : 0), 0);
                     %>
@@ -65,7 +64,6 @@
                     { key: 'Fanpage',        icon: 'fa-solid fa-flag',       color: 'fanpage'  },
                 ];
                 const knownKeys = typeGroups.map(g => g.key);
-                // Single-pass bucket: group channels by accountType, unknown → __other__
                 const grouped = { 'Cá nhân': [], 'Nhà Sáng Tạo': [], 'Fanpage': [], '__other__': [] };
                 channelList.forEach(function(c) {
                     (grouped[c.accountType] || grouped['__other__']).push(c);
@@ -76,7 +74,7 @@
                 <div class="accounts-grid">
                     <div class="empty-state-card">
                         <div class="empty-state-icon empty-state-icon--<%= activePlatform.toLowerCase() %>">
-                            <i class="<%= activePlatform === 'ZO' ? 'fa-solid fa-message' : 'fa-brands fa-' + (activePlatform === 'FB' ? 'facebook' : activePlatform === 'TT' ? 'tiktok' : activePlatform === 'IG' ? 'instagram' : 'youtube') %>"></i>
+                            <i class="<%= activePlatform === 'ZO' ? 'fa-solid fa-message' : activePlatform === 'PI' ? 'fa-brands fa-pinterest' : activePlatform === 'TH' ? 'fa-brands fa-threads' : 'fa-brands fa-' + (activePlatform === 'FB' ? 'facebook' : activePlatform === 'TT' ? 'tiktok' : activePlatform === 'IG' ? 'instagram' : 'youtube') %>"></i>
                         </div>
                         <h3>Chưa có tài khoản <%= platformLabel %></h3>
                         <p>Kết nối tài khoản <%= platformLabel %> để hệ thống tự động hóa nội dung của bạn.</p>
@@ -87,16 +85,10 @@
                     </div>
                 </div>
             <% } else { %>
-                <%
-                    let cardIdx = 0;
-                %>
+                <% let cardIdx = 0; %>
                 <% typeGroups.forEach(function(group) { %>
-                    <%
-                        // Reuse the pre-built bucket — no re-filtering per group
-                        const groupChannels = grouped[group.key] || [];
-                        if (!groupChannels.length) return;
-                        const groupLabel = group.key === '__other__' ? 'Loại khác' : group.key;
-                    %>
+                    <% const groupChannels = grouped[group.key] || []; if (!groupChannels.length) return; %>
+                    <% const groupLabel = group.key === '__other__' ? 'Loại khác' : group.key; %>
                     <div class="account-type-section" style="animation-delay: <%= cardIdx * 20 %>ms">
                         <div class="account-type-header account-type-header--<%= group.color %>">
                             <div class="account-type-header__icon">
@@ -111,35 +103,33 @@
                         <div class="accounts-grid">
                             <% groupChannels.forEach(function(channel) { %>
                                 <div
-                                    class="account-card <%= channel.isEnabled ? '' : 'is-disabled' %> <%= ['FB','TT','IG','YT'].includes(channel.platform) ? 'is-openable' : '' %>"
+                                    class="account-card <%= channel.isEnabled ? '' : 'is-disabled' %> <%= ['FB','TT','IG','YT','PI','TH'].includes(channel.platform) ? 'is-openable' : '' %>"
                                     data-id="<%= channel._id %>"
                                     data-platform="<%= channel.platform %>"
                                     role="button"
                                     tabindex="0"
-                                    aria-label="Mở tài khoản <%= channel.accountName %>"
+                                    aria-label="Mở tài khoản"
                                     style="animation-delay: <%= cardIdx++ * 55 %>ms"
                                 >
                                     <div class="account-card__glow"></div>
 
                                     <div class="account-top">
                                         <div class="account-avatar-wrapper">
-                                            <% if (channel.avatarUrl) { %>
-                                                <img class="account-avatar" src="<%= channel.avatarUrl %>" alt="Avatar của <%= channel.accountName %>">
+                                            <% if (channel.avatarUrl && channel.avatarUrl !== 'Không tìm thấy') { %>
+                                            <img class="account-avatar" src="<%= channel.avatarUrl %>" alt="Avatar" loading="lazy" onerror="this.onerror=null;this.outerHTML='<div class=\'account-avatar account-avatar-placeholder\'><i class=\'fa-solid fa-user\'></i></div>'">
                                             <% } else { %>
-                                                <div class="account-avatar account-avatar-placeholder">
-                                                    <i class="fa-solid fa-user"></i>
-                                                </div>
+                                            <div class="account-avatar account-avatar-placeholder"><i class="fa-solid fa-user"></i></div>
                                             <% } %>
                                             <div class="platform-badge badge-<%= channel.platform.toLowerCase() %>">
-                                                <i class="<%= channel.platform === 'ZO' ? 'fa-solid fa-message' : 'fa-brands fa-' + (channel.platform === 'FB' ? 'facebook' : channel.platform === 'TT' ? 'tiktok' : channel.platform === 'IG' ? 'instagram' : 'youtube') %>"></i>
+                                                <i class="<%= channel.platform === 'ZO' ? 'fa-solid fa-message' : channel.platform === 'PI' ? 'fa-brands fa-pinterest' : channel.platform === 'TH' ? 'fa-brands fa-threads' : 'fa-brands fa-' + (channel.platform === 'FB' ? 'facebook' : channel.platform === 'TT' ? 'tiktok' : channel.platform === 'IG' ? 'instagram' : 'youtube') %>"></i>
                                             </div>
                                         </div>
                                         <div class="account-name-info">
                                             <h4><%= channel.accountName %></h4>
-                                            <% if (channel.profileUrl) { %>
-                                                <a href="<%= channel.profileUrl %>" target="_blank" rel="noopener" class="account-profile-link">
+                                            <% if (channel.profileUrl && channel.profileUrl !== 'Không tìm thấy') { %>
+                                                <a class="account-profile-link" href="<%= channel.profileUrl %>" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="<%= channel.profileUrl %>">
                                                     <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                                                    Xem profile
+                                                    <span>Trang cá nhân</span>
                                                 </a>
                                             <% } %>
                                         </div>
@@ -164,10 +154,6 @@
                                                 title="Chỉnh sửa"
                                                 data-id="<%= channel._id %>"
                                                 data-platform="<%= channel.platform %>"
-                                                data-account-name="<%= channel.accountName %>"
-                                                data-account-type="<%= channel.accountType %>"
-                                                data-profile-url="<%= channel.profileUrl || '' %>"
-                                                data-avatar-url="<%= channel.avatarUrl || '' %>"
                                             >
                                                 <i class="fa-regular fa-pen-to-square"></i>
                                             </button>
@@ -205,37 +191,41 @@
                 </button>
             </div>
 
-            <div class="oauth-form-group">
-                <label class="oauth-form-label" for="oauthAccountName">Tên tài khoản / Page</label>
-                <input type="text" class="oauth-input" id="oauthAccountName" placeholder="Ví dụ: Fanpage Công Nghệ 247" autocomplete="off">
-            </div>
-
-            <div class="oauth-form-group" id="profileUrlFieldWrapper" style="display: none;">
-                <label class="oauth-form-label" for="oauthProfileUrl">Link Profile <span class="fb-required-hint" style="color:var(--danger);font-weight:400;text-transform:none;letter-spacing:0">(bắt buộc)</span></label>
-                <input type="text" class="oauth-input" id="oauthProfileUrl" placeholder="https://facebook.com/username"
-                    data-placeholder-fb="https://facebook.com/username"
-                    data-placeholder-tt="https://www.tiktok.com/@username"
-                    data-placeholder-ig="https://www.instagram.com/username"
-                    data-placeholder-yt="https://www.youtube.com/@channel"
-                    autocomplete="off">
-            </div>
-
-            <div id="oauthEditAvatarPreviewWrap" style="display:none" class="oauth-form-group">
-                <label class="oauth-form-label">Avatar hiện tại</label>
-                <div class="oauth-current-avatar" id="oauthCurrentAvatarBox">
-                    <div class="oauth-current-avatar-text" id="oauthCurrentAvatarText">Chưa có avatar</div>
+            <div id="oauthFormFields">
+                <div class="oauth-form-group">
+                    <label class="oauth-form-label" for="oauthAccountName">Tên tài khoản / Page</label>
+                    <input type="text" class="oauth-input" id="oauthAccountName" placeholder="Ví dụ: Fanpage Công Nghệ 247" autocomplete="off">
                 </div>
-            </div>
 
-            <div class="oauth-form-group">
-                <label class="oauth-form-label" for="oauthAvatar">Ảnh đại diện</label>
-                <div class="oauth-upload-row">
-                    <input type="file" class="oauth-file-input" id="oauthAvatar" accept="image/*">
-                    <span class="oauth-upload-hint">Tải ảnh lên để quản lý tài khoản dễ nhận diện hơn.</span>
+                <div class="oauth-form-group">
+                    <label class="oauth-form-label" for="oauthProfileUrl">Link Profile</label>
+                    <input type="text" class="oauth-input" id="oauthProfileUrl" placeholder="https://facebook.com/username"
+                        data-placeholder-fb="https://facebook.com/username"
+                        data-placeholder-tt="https://www.tiktok.com/@username"
+                        data-placeholder-ig="https://www.instagram.com/username"
+                        data-placeholder-yt="https://www.youtube.com/@channel"
+                        data-placeholder-pi="https://www.pinterest.com/username"
+                        data-placeholder-th="https://www.threads.net/@username"
+                        autocomplete="off">
                 </div>
-            </div>
 
-            <div id="oauthSecondaryField"></div>
+                <div id="oauthEditAvatarPreviewWrap" style="display:none" class="oauth-form-group">
+                    <label class="oauth-form-label">Avatar hiện tại</label>
+                    <div class="oauth-current-avatar" id="oauthCurrentAvatarBox">
+                        <div class="oauth-current-avatar-text" id="oauthCurrentAvatarText">Chưa có avatar</div>
+                    </div>
+                </div>
+
+                <div class="oauth-form-group">
+                    <label class="oauth-form-label" for="oauthAvatar">Ảnh đại diện</label>
+                    <div class="oauth-upload-row">
+                        <input type="file" class="oauth-file-input" id="oauthAvatar" accept="image/*">
+                        <span class="oauth-upload-hint">Tải ảnh lên để quản lý tài khoản dễ nhận diện hơn.</span>
+                    </div>
+                </div>
+
+                <div id="oauthSecondaryField"></div>
+            </div>
 
             <div class="oauth-action-btns">
                 <button type="button" class="btn-oauth-cancel" id="btnOAuthCancel">

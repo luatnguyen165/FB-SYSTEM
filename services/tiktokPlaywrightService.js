@@ -36,7 +36,8 @@ async function uploadVideoToTikTok({
     videoPath,
     title = '',
     hashtags = [],
-    headless = true
+    headless = true,
+    existingSessionDir = ''
 }) {
     console.log(`[TikTok Upload] ===== BẮT ĐẦU UPLOAD =====`);
     console.log(`[TikTok Upload] STEP 0 - Input params: userId=${userId} account=${accountName} accountType=${accountType} headless=${headless}`);
@@ -80,7 +81,7 @@ async function uploadVideoToTikTok({
         // 1. Mở context TikTok (sử dụng persistent context từ socialPlaywrightService)
         console.log(`[TikTok Upload] STEP 2 - Mở context TikTok...`);
         console.log(`[TikTok Upload] STEP 2 - Gọi getOrOpenSocialContext(userId=${userId}, accountName=${accountName}, accountType=${accountType}, platform=TT, headless=${headless})`);
-        const result = await getOrOpenSocialContext(userId, accountName, accountType, 'TT', { headless });
+        const result = await getOrOpenSocialContext(userId, accountName, accountType, 'TT', { headless, existingSessionDir });
         context = result.context;
         sessionKey = result.sessionKey;
         console.log(`[TikTok Upload] STEP 2 - Context OK: sessionKey=${sessionKey} reused=${result.reused}`);
@@ -451,7 +452,8 @@ async function uploadVideoToTikTokNow({
     videoPath,
     title = '',
     hashtags = [],
-    headless = false
+    headless = false,
+    existingSessionDir = ''
 }) {
     return uploadVideoToTikTok({
         userId,
@@ -460,7 +462,8 @@ async function uploadVideoToTikTokNow({
         videoPath,
         title,
         hashtags,
-        headless: headless === false ? false : true // Default visible browser
+        headless: headless === false ? false : true, // Default visible browser
+        existingSessionDir
     });
 }
 

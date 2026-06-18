@@ -9,7 +9,7 @@ const channelController = require('../controllers/channelController');
 router.get('/', requireAuth, channelController.showChannels);
 
 // ─── Platform connect (single generic handler for all 5 platforms) ────────────
-// :platform accepts FB | TT | IG | YT | ZO
+// :platform accepts FB | TT | IG | YT | ZO | PI | TH
 router.post('/api/:platform/connect', requireAuth, uploadImage.single('avatar'), channelController.openPlatformConnect);
 
 // ─── Channel CRUD ─────────────────────────────────────────────────────────────

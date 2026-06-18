@@ -41,6 +41,7 @@ const uploadInstantReels = async (req, res) => {
             userId: req.user._id,
             accountName: facebookChannel.accountName,
             accountType: facebookChannel.accountType || 'Cá nhân',
+            existingSessionDir: facebookChannel.storageStatePath ? path.dirname(facebookChannel.storageStatePath) : '',
             post: {
                 videoPath: uploadedFilePath,
                 content,

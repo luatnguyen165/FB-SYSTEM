@@ -30,6 +30,8 @@
     --shopee-color: #ee4d2d;
     --shopee-light: rgba(238, 77, 45, 0.1);
     --zo-color: #0068ff;
+    --pi-color: #e60023;
+    --th-color: #000000;
     
     /* Neutrals */
     --bg-main: #f0f4f9;
@@ -335,6 +337,10 @@ img {
 .sidebar .menu-item a i.fa-brands.fa-tiktok { color: var(--tt-color); opacity: 1; }
 .sidebar .menu-item a i.fa-youtube,
 .sidebar .menu-item a i.fa-brands.fa-youtube { color: var(--yt-color); opacity: 1; }
+.sidebar .menu-item a i.fa-pinterest,
+.sidebar .menu-item a i.fa-brands.fa-pinterest { color: var(--pi-color); opacity: 1; }
+.sidebar .menu-item a i.fa-threads,
+.sidebar .menu-item a i.fa-brands.fa-threads { color: var(--th-color); opacity: 1; }
 .sidebar .menu-item a i.fa-google-drive,
 .sidebar .menu-item a i.fa-brands.fa-google-drive { color: #34a853; opacity: 1; }
 .sidebar .menu-item a i.fa-bag-shopping,
@@ -383,6 +389,8 @@ img {
 .sidebar-platform-badge--tt { background: var(--tt-color); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2); }
 .sidebar-platform-badge--ig { background: var(--ig-color); box-shadow: 0 2px 6px rgba(225, 48, 108, 0.3); }
 .sidebar-platform-badge--yt { background: var(--yt-color); box-shadow: 0 2px 6px rgba(255, 0, 0, 0.25); }
+.sidebar-platform-badge--pi { background: var(--pi-color); box-shadow: 0 2px 6px rgba(230, 0, 35, 0.3); }
+.sidebar-platform-badge--th { background: #000; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3); }
 
 /* When count is 0, show muted style */
 .sidebar-platform-badge--empty {
@@ -1405,6 +1413,8 @@ img {
 .badge-ig { background: rgba(225, 48, 108, 0.1); color: var(--ig-color); }
 .badge-tt { background: rgba(0, 0, 0, 0.06); color: var(--tt-color); }
 .badge-yt { background: rgba(255, 0, 0, 0.08); color: var(--yt-color); }
+.badge-pi { background: rgba(230, 0, 35, 0.08); color: var(--pi-color); }
+.badge-th { background: rgba(0, 0, 0, 0.06); color: var(--th-color); }
 
 /* ===== FORM ELEMENTS ===== */
 .input-text {
@@ -1705,6 +1715,8 @@ select.input-text {
 .channel-ig .channel-avatar { color: var(--ig-color, #E1306C); }
 .channel-yt .channel-avatar { color: var(--yt-color, #FF0000); }
 .channel-zo .channel-avatar { color: #25D366; }
+.channel-pi .channel-avatar { color: var(--pi-color, #e60023); }
+.channel-th .channel-avatar { color: var(--th-color, #000000); }
 
 .channel-name {
     flex: 1;
@@ -1731,6 +1743,8 @@ select.input-text {
 .channel-platform-badge.badge-ig { background: rgba(225, 48, 108, 0.1); color: #E1306C; }
 .channel-platform-badge.badge-yt { background: rgba(255, 0, 0, 0.08); color: #FF0000; }
 .channel-platform-badge.badge-zo { background: rgba(37, 211, 102, 0.1); color: #25D366; }
+.channel-platform-badge.badge-pi { background: rgba(230, 0, 35, 0.1); color: #e60023; }
+.channel-platform-badge.badge-th { background: rgba(0, 0, 0, 0.06); color: #000; }
 
 .channel-status {
     width: 6px;

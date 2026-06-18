@@ -1,5 +1,4 @@
 // controllers/dashboardController.js
-const Video = require('../models/Video');
 const Channel = require('../models/Channel');
 const SchedulePost = require('../models/SchedulePost');
 const ShopeeLink = require('../models/ShopeeLink');
@@ -8,14 +7,12 @@ const showDashboard = async (req, res) => {
     try {
         const userId = req.user._id;
         const [
-            totalVideos,
             totalChannels,
             totalScheduled,
             totalPosted,
             totalFailed,
             totalPendingSchedules,
             totalShopeeLinks,
-            recentVideos,
             recentSchedules,
             recentChannels,
             recentLinks,
@@ -24,18 +21,16 @@ const showDashboard = async (req, res) => {
             schedulesByType,
             latestPostedSchedules
         ] = await Promise.all([
-            Video.countDocuments({ userId }),
             Channel.countDocuments({ userId }),
             SchedulePost.countDocuments({ userId, status: 'pending' }),
             SchedulePost.countDocuments({ userId, status: 'posted' }),
             SchedulePost.countDocuments({ userId, status: 'failed' }),
             SchedulePost.countDocuments({ userId, status: 'pending' }),
             ShopeeLink.countDocuments({ userId }),
-            Video.find({ userId }).sort({ createdAt: -1 }).limit(8).lean(),
-            SchedulePost.find({ userId }).sort({ createdAt: -1 }).limit(8).populate('videoId', 'title filePath thumbnailUrl').populate('shopeeLinks', 'title imageUrl shopeeUrl').lean(),
+            SchedulePost.find({ userId }).sort({ createdAt: -1 }).limit(8).populate('shopeeLinks', 'title imageUrl shopeeUrl').lean(),
             Channel.find({ userId }).sort({ createdAt: -1 }).limit(8).lean(),
             ShopeeLink.find({ userId }).sort({ createdAt: -1 }).limit(8).lean(),
-            SchedulePost.find({ userId, scheduledAt: { $gte: new Date() } }).sort({ scheduledAt: 1 }).limit(8).populate('videoId', 'title filePath thumbnailUrl').lean(),
+            SchedulePost.find({ userId, scheduledAt: { $gte: new Date() } }).sort({ scheduledAt: 1 }).limit(8).lean(),
             SchedulePost.aggregate([
                 { $match: { userId } },
                 { $unwind: { path: '$platforms', preserveNullAndEmptyArrays: true } },
@@ -47,7 +42,7 @@ const showDashboard = async (req, res) => {
                 { $group: { _id: '$type', count: { $sum: 1 } } },
                 { $sort: { count: -1 } }
             ]),
-            SchedulePost.find({ userId, status: 'posted' }).sort({ scheduledAt: -1 }).limit(8).populate('videoId', 'title filePath thumbnailUrl').lean()
+            SchedulePost.find({ userId, status: 'posted' }).sort({ scheduledAt: -1 }).limit(8).lean()
         ]);
 
         const channelPlatforms = ['FB', 'IG', 'TT', 'YT'];
@@ -70,15 +65,6 @@ const showDashboard = async (req, res) => {
                 date: item.scheduledAt,
                 data: item
             })),
-            ...recentVideos.map(item => ({
-                type: 'video',
-                title: item.title,
-                subtitle: `Upload video • ${new Date(item.createdAt).toLocaleString('vi-VN')}`,
-                status: item.status,
-                createdAt: item.createdAt,
-                date: item.createdAt,
-                data: item
-            })),
             ...recentLinks.map(item => ({
                 type: 'link',
                 title: item.title,
@@ -95,7 +81,6 @@ const showDashboard = async (req, res) => {
         res.render('dashboard', {
             user: req.user,
             stats: {
-                totalVideos,
                 totalChannels,
                 totalScheduled,
                 totalPosted,
@@ -105,7 +90,6 @@ const showDashboard = async (req, res) => {
                 pendingToPostRatio
             },
             dashboards: {
-                recentVideos,
                 recentSchedules,
                 recentChannels,
                 recentLinks,
@@ -122,7 +106,6 @@ const showDashboard = async (req, res) => {
         res.render('dashboard', {
             user: req.user,
             stats: {
-                totalVideos: 0,
                 totalChannels: 0,
                 totalScheduled: 0,
                 totalPosted: 0,
@@ -132,7 +115,6 @@ const showDashboard = async (req, res) => {
                 pendingToPostRatio: 0
             },
             dashboards: {
-                recentVideos: [],
                 recentSchedules: [],
                 recentChannels: [],
                 recentLinks: [],

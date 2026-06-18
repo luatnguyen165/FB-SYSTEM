@@ -7,6 +7,8 @@ const ContentTrainingLog = require('../models/ContentTrainingLog');
 const SchedulePost = require('../models/SchedulePost');
 const Channel = require('../models/Channel');
 const Product = require('../models/Product');
+const { parseAIJsonResponse } = require('../utils/aiResponse');
+const { isValidApiKey } = require('../utils/aiConfig');
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 
@@ -102,11 +104,6 @@ function handleAIError(err) {
     throw err;
 }
 
-// Hàm kiểm tra API key hợp lệ
-function isValidApiKey(key) {
-    return key && key.trim() && key.trim().startsWith('sk-') && key.trim().length > 10;
-}
-
 /**
  * Phân tích văn phong từ bài viết mẫu
  */
@@ -140,8 +137,7 @@ Trả về JSON với cấu trúc:
 
     // Parse JSON
     try {
-        const cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-        const parsed = JSON.parse(cleaned);
+        const parsed = parseAIJsonResponse(raw) || {};
         return {
             tone: parsed.tone || '',
             vocabulary: parsed.vocabulary || '',
@@ -460,8 +456,7 @@ Trả về JSON:
     ], { apiKey, temperature: 0.8, maxTokens: 1000, provider: options.provider || 'openai', model: options.model || 'gpt-4o-mini', baseUrl: options.baseUrl });
 
     try {
-        const cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-        const parsed = JSON.parse(cleaned);
+        const parsed = parseAIJsonResponse(raw) || {};
         return Array.isArray(parsed.topics) ? parsed.topics : [];
     } catch (e) {
         const lines = raw.split('\n').filter(l => l.trim().match(/^\d+[\.\)\-]\s/));
@@ -558,11 +553,8 @@ Trả về JSON với cấu trúc:
     ], { apiKey, temperature: 0.3, provider: options.provider || 'openai', model: options.model || 'gpt-4o-mini', baseUrl: options.baseUrl });
 
     // Parse kết quả
-    let analysis = {};
-    try {
-        const cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-        analysis = JSON.parse(cleaned);
-    } catch (e) {
+    const analysis = parseAIJsonResponse(raw);
+    if (!analysis) {
         throw new Error('Không thể parse kết quả từ AI. Vui lòng thử lại.');
     }
 
@@ -736,8 +728,7 @@ Hãy phân tích sản phẩm trên và trả về JSON:
     ], { apiKey, temperature: 0.3, maxTokens: 2000, provider: options.provider || 'openai', model: options.model || 'gpt-4o-mini', baseUrl: options.baseUrl });
 
     try {
-        const cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-        const parsed = JSON.parse(cleaned);
+        const parsed = parseAIJsonResponse(raw) || {};
         return {
             suggestedDirection: parsed.suggestedDirection || 'unset',
             reasoning: parsed.reasoning || '',
@@ -894,5 +885,4 @@ module.exports = {
     retrainFromBestPosts,
     autoRetrainLoop,
     getTrainingStats,
-    isValidApiKey,
 };

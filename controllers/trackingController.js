@@ -106,7 +106,69 @@ exports.createTracking = async (req, res) => {
 
         await tracking.save();
 
-        res.status(201).json({ success: true, message: 'Đã thêm đối tượng theo dõi thành công!', data: tracking });
+        // Auto-scrape bài viết sau khi tạo
+        let scrapeResult = { scraped: 0 };
+        try {
+            const channel = await Channel.findById(tracking.sourceAccountId);
+            if (channel) {
+                const fs = require('fs');
+                let cookies = {};
+                let fbDtsg = '';
+                if (channel.storageStatePath && fs.existsSync(channel.storageStatePath)) {
+                    const state = JSON.parse(fs.readFileSync(channel.storageStatePath, 'utf8'));
+                    for (const c of (state.cookies || [])) {
+                        cookies[c.name] = c.value;
+                        if (c.name === 'fb_dtsg') fbDtsg = c.value;
+                    }
+                }
+
+                if (cookies.c_user) {
+                    // Parse profile ID
+                    let profileId = '';
+                    const idMatch = url.match(/profile\.php\?id=(\d+)/);
+                    if (idMatch) profileId = idMatch[1];
+                    else {
+                        const userMatch = url.match(/facebook\.com\/([a-zA-Z0-9.]+)\/?/);
+                        if (userMatch) profileId = userMatch[1];
+                    }
+
+                    if (profileId) {
+                        const saveDir = path.join(global.USER_DATA_DIR || __dirname, '..', 'uploads', 'tracking');
+                        const posts = await scrapeProfilePosts({ profileId, cookies, fbDtsg, limit: 10, saveDir });
+
+                        let saved = 0;
+                        for (const post of posts) {
+                            try {
+                                await TrackingPost.findOneAndUpdate(
+                                    { trackingId: tracking._id, postId: post.postId },
+                                    { userId, trackingId: tracking._id, postId: post.postId, text: post.text, permalink: post.permalink, commentCount: post.commentCount, authorName: post.authorName, images: post.images, scrapedAt: new Date() },
+                                    { upsert: true, new: true }
+                                );
+                                saved++;
+                            } catch (e) { if (e.code !== 11000) console.error('[Tracking] Save post error:', e.message); }
+                        }
+
+                        await Tracking.findByIdAndUpdate(tracking._id, {
+                            'stats.totalPosts': saved,
+                            'stats.lastChecked': new Date(),
+                        });
+
+                        scrapeResult = { scraped: saved };
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('[Tracking] Auto-scrape error:', e.message);
+        }
+
+        res.status(201).json({
+            success: true,
+            message: scrapeResult.scraped > 0
+                ? `Đã thêm và scrape ${scrapeResult.scraped} bài viết!`
+                : 'Đã thêm đối tượng. Nhấn nút 📥 để scrape bài viết.',
+            data: tracking,
+            scraped: scrapeResult.scraped
+        });
     } catch (err) {
         console.error('[Tracking] Create error:', err.message);
         res.status(500).json({ success: false, message: 'Lỗi tạo theo dõi: ' + err.message });

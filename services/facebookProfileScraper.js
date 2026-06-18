@@ -653,6 +653,18 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
                 }
             } catch {}
 
+            // Debug attachments cho reels
+            const att0 = node?.attachments?.[0]?.styles?.attachment;
+            if (att0) {
+                const mediaKeys = Object.keys(att0.media || {});
+                const mediaType = att0.media?.__typename || 'N/A';
+                console.log(`[Profile Scraper] Debug ${postId}: mediaType=${mediaType}, mediaKeys=${mediaKeys.join(',')}`);
+                if (mediaType === 'Video') {
+                    console.log(`[Profile Scraper] Debug ${postId}: playable_url=${att0.media?.playable_url?.substring(0, 80) || 'null'}`);
+                    console.log(`[Profile Scraper] Debug ${postId}: browser_native_hd=${att0.media?.browser_native_hd_url?.substring(0, 80) || 'null'}`);
+                }
+            }
+
             // Extract images + videos
             const { images: rawUrls, videos: rawVideos, lastMediaId } = extractMediaUrls(node, postId);
             let allImageUrls = [...rawUrls];

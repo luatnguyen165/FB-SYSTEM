@@ -50,6 +50,8 @@ if (isSilent) {
             msg.includes('[Profile Scraper]') ||
             msg.includes('[Scrape]') ||
             msg.includes('[Download] ') ||
+            msg.includes('[Reel Download]') ||
+            msg.includes('[Post 1] ') ||
             msg.includes('#####')) {
             originalLog(...args);
         }

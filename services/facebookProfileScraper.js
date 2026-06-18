@@ -211,37 +211,29 @@ function extractMediaUrls(node, postId) {
         return false;
     };
 
-    // Tìm reel URL từ timestamp.story.url hoặc attachment url
-    const reelUrl = node?.comet_sections?.timestamp?.story?.url || node?.attachments?.[0]?.styles?.attachment?.url || '';
+    // Tìm reel URL từ timestamp.story.url
+    const reelUrl = node?.comet_sections?.timestamp?.story?.url || '';
     const isReel = reelUrl.includes('/reel/');
-    console.log(`[Profile Scraper] Debug ${postId}: reelUrl=${reelUrl}, isReel=${isReel}`);
 
-    for (const att of (node?.attachments || [])) {
-        const attachment = att?.styles?.attachment || {};
-        if (attachment.media) {
-            if (isVideo(attachment.media)) addVideo(attachment.media, reelUrl);
-            else addPhoto(attachment.media);
-        }
-        for (const m of (attachment?.all_subattachments?.nodes || [])) {
-            if (m?.media) {
-                if (isVideo(m.media)) addVideo(m.media, reelUrl);
-                else addPhoto(m.media);
+    // Nếu là Reel → luôn thêm reelUrl cho yt-dlp download
+    if (isReel) {
+        console.log(`[Profile Scraper] ${postId}: Reel detected → ${reelUrl}`);
+        videos.push({ url: '', reelUrl, duration: 0 });
+    } else {
+        // Không phải Reel → extract ảnh + video bình thường
+        for (const att of (node?.attachments || [])) {
+            const attachment = att?.styles?.attachment || {};
+            if (attachment.media) {
+                if (isVideo(attachment.media)) addVideo(attachment.media, '');
+                else addPhoto(attachment.media);
+            }
+            for (const m of (attachment?.all_subattachments?.nodes || [])) {
+                if (m?.media) {
+                    if (isVideo(m.media)) addVideo(m.media, '');
+                    else addPhoto(m.media);
+                }
             }
         }
-    }
-
-    // Reels: video có thể nằm trực tiếp trong node.attachments[0].styles.attachment
-    if (videos.length === 0 && images.length === 0) {
-        const reelMedia = node?.attachments?.[0]?.styles?.attachment?.media;
-        if (reelMedia && isVideo(reelMedia)) {
-            addVideo(reelMedia, reelUrl);
-        }
-    }
-
-    // Fallback: nếu vẫn không có video nhưng là Reel, thêm reelUrl để download bằng yt-dlp
-    if (videos.length === 0 && isReel) {
-        console.log(`[Profile Scraper] ${postId}: Reel detected, adding reelUrl for yt-dlp download`);
-        videos.push({ url: '', reelUrl, duration: 0 });
     }
 
     return { images, videos, lastMediaId };

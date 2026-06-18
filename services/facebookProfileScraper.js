@@ -7,6 +7,52 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
+/**
+ * Download Facebook Reel video bằng yt-dlp
+ * @param {string} reelUrl - URL reel (https://www.facebook.com/reel/123456/)
+ * @param {string} saveDir - Thư mục lưu video
+ * @param {string} filename - Tên file (mặc định: reel_{id}.mp4)
+ * @returns {string|null} Đường dẫn file đã download hoặc null nếu lỗi
+ */
+function downloadFacebookReel(reelUrl, saveDir, filename = '') {
+    if (!reelUrl || !reelUrl.includes('facebook.com')) return null;
+
+    // Tạo tên file từ reel ID
+    if (!filename) {
+        const reelId = reelUrl.match(/reel\/(\d+)/)?.[1] || Date.now();
+        filename = `reel_${reelId}.mp4`;
+    }
+
+    const filepath = path.join(saveDir, filename);
+    fs.mkdirSync(saveDir, { recursive: true });
+
+    // Tìm cookies file
+    const defaultCookieFile = path.join(global.USER_DATA_DIR || path.join(__dirname, '..', '..'), 'www.facebook.com_cookies.txt');
+    const cookieFile = fs.existsSync(defaultCookieFile) ? defaultCookieFile : '';
+
+    if (!cookieFile) {
+        console.error(`[Reel Download] Không tìm thấy www.facebook.com_cookies.txt`);
+        return null;
+    }
+
+    console.log(`[Reel Download] ${reelUrl}`);
+    try {
+        execSync(`yt-dlp --cookies "${cookieFile}" -f "bestvideo+bestaudio/best" -o "${filepath}" "${reelUrl}"`, {
+            timeout: 120000,
+            stdio: 'pipe',
+        });
+
+        if (fs.existsSync(filepath)) {
+            const stats = fs.statSync(filepath);
+            console.log(`[Reel Download] ✓ ${filename} (${(stats.size / 1024 / 1024).toFixed(1)}MB)`);
+            return filepath;
+        }
+    } catch (e) {
+        console.error(`[Reel Download] ✗ ${e.message}`);
+    }
+    return null;
+}
+
 const GRAPHQL_URL = 'https://www.facebook.com/api/graphql/';
 const DOC_ID = '25430544756617998'; // ProfileCometTimelineFeedRefetchQuery
 const DOC_ID_PHOTO = '26168653472729001'; // CometPhotoRootContentQuery
@@ -716,61 +762,16 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
                 if (saved) savedImages.push(saved);
             }
 
-            // Download videos dùng yt-dlp (giống facebook-reels-downloader)
+            // Download videos
             const savedVideos = [];
             for (let i = 0; i < rawVideos.length; i++) {
                 const v = rawVideos[i];
+                const videoUrl = v.reelUrl || v.url;
+                if (!videoUrl || !videoUrl.includes('facebook.com')) continue;
 
-                // Ưu tiên reelUrl (Facebook page URL) cho yt-dlp
-                // CDN URL không download được trực tiếp
-                let videoUrl = '';
-                if (v.reelUrl && v.reelUrl.includes('facebook.com')) {
-                    videoUrl = v.reelUrl;
-                } else if (v.url && v.url.includes('facebook.com')) {
-                    videoUrl = v.url;
-                }
-                if (!videoUrl) continue;
-
-                try {
-                    const filename = `${postId}_video_${i + 1}.mp4`;
-                    const filepath = path.join(postSaveDir, filename);
-                    fs.mkdirSync(postSaveDir, { recursive: true });
-
-                    console.log(`[Download] Video via yt-dlp: ${videoUrl.substring(0, 80)}...`);
-
-                    // Dùng cookies.txt từ project root nếu có
-                    const defaultCookieFile = path.join(global.USER_DATA_DIR || path.join(__dirname, '..', '..'), 'www.facebook.com_cookies.txt');
-                    const cookieFile = fs.existsSync(defaultCookieFile) ? defaultCookieFile : path.join(postSaveDir, 'cookies.txt');
-
-                    // Nếu không có file cookies mặc định, tạo từ session cookies
-                    if (!fs.existsSync(defaultCookieFile)) {
-                        const cookieLines = ['# Netscape HTTP Cookie File'];
-                        for (const [name, value] of Object.entries(cookies)) {
-                            if (name && value) {
-                                cookieLines.push(`.facebook.com\tTRUE\t/\tTRUE\t0\t${name}\t${value}`);
-                            }
-                        }
-                        fs.writeFileSync(cookieFile, cookieLines.join('\n') + '\n');
-                    }
-
-                    try {
-                        execSync(`yt-dlp --cookies "${cookieFile}" -f "bestvideo+bestaudio/best" -o "${filepath}" "${videoUrl}"`, {
-                            timeout: 120000,
-                            stdio: 'pipe',
-                        });
-                        if (fs.existsSync(filepath)) {
-                            savedVideos.push(`/uploads/scraper/${postId}/${filename}`);
-                            const stats = fs.statSync(filepath);
-                            console.log(`[Download] Saved video: ${filename} (${(stats.size / 1024 / 1024).toFixed(1)}MB)`);
-                        }
-                    } catch (e) {
-                        console.log(`[Download] yt-dlp failed: ${e.message}`);
-                    } finally {
-                        // Xóa cookie file temp
-                        try { fs.unlinkSync(cookieFile); } catch {}
-                    }
-                } catch (e) {
-                    console.error(`[Download] Video failed: ${e.message}`);
+                const savedPath = downloadFacebookReel(videoUrl, postSaveDir, `${postId}_video_${i + 1}.mp4`);
+                if (savedPath) {
+                    savedVideos.push(`/uploads/scraper/${postId}/${postId}_video_${i + 1}.mp4`);
                 }
             }
 
@@ -802,4 +803,4 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
     return allPosts;
 }
 
-module.exports = { scrapeProfilePosts };
+module.exports = { scrapeProfilePosts, downloadFacebookReel };

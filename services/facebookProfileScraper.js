@@ -582,47 +582,36 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
             }
 
             try {
-                // Path 1: comet_sections.timestamp.story.created_time (Unix)
-                const tsData = node?.comet_sections?.timestamp;
-                const tsUnix = tsData?.story?.created_time?.timestamp || tsData?.timestamp;
-                if (tsUnix) {
-                    publishedAt = new Date(tsUnix * 1000);
+                // Path 1: comet_sections.timestamp.story.creation_time (Unix)
+                const creationTime = node?.comet_sections?.timestamp?.story?.creation_time;
+                if (creationTime) {
+                    publishedAt = new Date(creationTime * 1000);
                     publishedAtText = publishedAt.toLocaleString('vi-VN');
                 }
 
-                // Path 2: comet_sections.timestamp.story.created_time.text
+                // Path 2: comet_sections.content.story.created_time
                 if (!publishedAt) {
-                    const tsText = tsData?.story?.created_time?.text || tsData?.text || '';
-                    if (tsText) {
-                        publishedAtText = tsText;
-                        const parsed = parseVietnameseDate(tsText);
-                        if (parsed) publishedAt = parsed;
-                    }
-                }
-
-                // Path 3: comet_sections.content.story.created_time
-                if (!publishedAt) {
-                    const createdTime = node?.comet_sections?.content?.story?.created_time;
-                    if (createdTime) {
-                        publishedAt = new Date(createdTime * 1000);
+                    const ct = node?.comet_sections?.content?.story?.created_time;
+                    if (ct) {
+                        publishedAt = new Date(ct * 1000);
                         publishedAtText = publishedAt.toLocaleString('vi-VN');
                     }
                 }
 
-                // Path 4: feedback.story.creation_time
+                // Path 3: feedback.story.creation_time
                 if (!publishedAt) {
-                    const creationTime = node?.feedback?.story?.creation_time;
-                    if (creationTime) {
-                        publishedAt = new Date(creationTime * 1000);
+                    const ct = node?.feedback?.story?.creation_time;
+                    if (ct) {
+                        publishedAt = new Date(ct * 1000);
                         publishedAtText = publishedAt.toLocaleString('vi-VN');
                     }
                 }
 
-                // Path 5: attachment target.post_time
+                // Path 4: attachment target.post_time
                 if (!publishedAt) {
-                    const postTime = node?.attachments?.[0]?.styles?.attachment?.target?.post_time;
-                    if (postTime) {
-                        publishedAt = new Date(postTime * 1000);
+                    const pt = node?.attachments?.[0]?.styles?.attachment?.target?.post_time;
+                    if (pt) {
+                        publishedAt = new Date(pt * 1000);
                         publishedAtText = publishedAt.toLocaleString('vi-VN');
                     }
                 }

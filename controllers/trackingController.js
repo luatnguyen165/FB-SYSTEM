@@ -181,7 +181,7 @@ exports.createTracking = async (req, res) => {
                                 await TrackingPost.findOneAndUpdate(
                                     { trackingId: tracking._id, postId: post.postId },
                                     { userId, trackingId: tracking._id, postId: post.postId, text: post.text, permalink: post.permalink, commentCount: post.commentCount, authorName: post.authorName, images: downloadedImages, publishedAt: post.publishedAt, publishedAtText: post.publishedAtText || '', scrapedAt: new Date() },
-                                    { upsert: true, new: true }
+                                    { upsert: true, returnDocument: "after" }
                                 );
                                 saved++;
                             } catch (e) { if (e.code !== 11000) console.error('[Tracking] Save post error:', e.message); }
@@ -424,7 +424,7 @@ exports.scrapeTracking = async (req, res) => {
                 await TrackingPost.findOneAndUpdate(
                     { trackingId: tracking._id, postId: post.postId },
                     { userId, trackingId: tracking._id, postId: post.postId, text: post.text, permalink: post.permalink, commentCount: post.commentCount, authorName: post.authorName, images: downloadedImages, publishedAt: post.publishedAt, scrapedAt: new Date() },
-                    { upsert: true, new: true }
+                    { upsert: true, returnDocument: "after" }
                 );
                 saved++;
             } catch (e) {

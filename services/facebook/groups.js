@@ -235,7 +235,7 @@ async function persistFacebookGroupCache({ userId, channelId, accountName, accou
             groups,
             updatedAt: new Date()
         },
-        { upsert: true, new: true }
+        { upsert: true, returnDocument: "after" }
     );
     console.log(`[Group Cache] Saved ${groups.length} groups for user ${userId}, channel ${channelId}`);
     return result;

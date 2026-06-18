@@ -452,7 +452,7 @@ const saveOpenAiKey = async (req, res) => {
         await Settings.findOneAndUpdate(
             { userId: req.user._id },
             { $set: { openaiApiKey: String(openaiApiKey || '').trim(), updatedAt: new Date() } },
-            { upsert: true, new: true }
+            { upsert: true, returnDocument: "after" }
         );
 
         return res.json({ success: true, message: 'Đã lưu OpenAI API key' });

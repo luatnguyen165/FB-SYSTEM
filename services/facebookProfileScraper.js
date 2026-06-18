@@ -130,26 +130,43 @@ function extractMediaUrls(node, postId) {
         // Lấy video URL từ nhiều sources
         const url = mediaNode?.playable_url
             || mediaNode?.playable_url_quality_hd
+            || mediaNode?.playable_url_quality_sd
             || mediaNode?.browser_native_hd_url
             || mediaNode?.browser_native_sd_url
             || mediaNode?.video_url
+            || mediaNode?.src
             || '';
-        if (url) {
+        if (url && url.startsWith('http')) {
             videos.push({ url, duration: mediaNode?.video_duration || 0 });
         }
+    };
+
+    const isVideo = (media) => {
+        if (!media) return false;
+        if (media.__typename === 'Video') return true;
+        if (media.playable_url || media.playable_url_quality_hd || media.browser_native_hd_url) return true;
+        return false;
     };
 
     for (const att of (node?.attachments || [])) {
         const attachment = att?.styles?.attachment || {};
         if (attachment.media) {
-            if (attachment.media.__typename === 'Video') addVideo(attachment.media);
+            if (isVideo(attachment.media)) addVideo(attachment.media);
             else addPhoto(attachment.media);
         }
         for (const m of (attachment?.all_subattachments?.nodes || [])) {
             if (m?.media) {
-                if (m.media.__typename === 'Video') addVideo(m.media);
+                if (isVideo(m.media)) addVideo(m.media);
                 else addPhoto(m.media);
             }
+        }
+    }
+
+    // Reels: video có thể nằm trực tiếp trong node.attachments[0].styles.attachment
+    if (videos.length === 0 && images.length === 0) {
+        const reelMedia = node?.attachments?.[0]?.styles?.attachment?.media;
+        if (reelMedia && isVideo(reelMedia)) {
+            addVideo(reelMedia);
         }
     }
 
@@ -580,7 +597,6 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
 
         for (const node of storyNodes) {
             if (allPosts.length >= limit) break;
-            if (isReelOrVideoPost(node)) continue;
 
             const postId = node.post_id;
             if (!postId) continue;

@@ -791,3 +791,7 @@
 .edit-post-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
 .edit-post-images { display: flex; flex-wrap: wrap; gap: 8px; }
 .edit-post-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 24px; border-top: 1px solid var(--border); background: var(--bg-main); }
+
+/* ===== Publish Time Badge ===== */
+.post-card-time { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); background: var(--bg-hover); padding: 4px 10px; border-radius: var(--radius-full); }
+.post-card-time i { font-size: 11px; color: var(--primary); }

@@ -364,6 +364,7 @@
             const post = data.posts?.find(p => p._id === id);
             if (!post) { showToast('error', 'Không tìm thấy bài viết'); return; }
 
+            const publishTime = post.publishedAtText || (post.publishedAt ? new Date(post.publishedAt).toLocaleString('vi-VN') : '');
             const overlay = document.createElement('div');
             overlay.className = 'image-preview-overlay';
             overlay.innerHTML = `
@@ -373,6 +374,7 @@
                         <button class="image-preview-close" onclick="this.closest('.image-preview-overlay').remove()"><i class="fa-solid fa-xmark"></i></button>
                     </div>
                     <div class="edit-post-body">
+                        ${publishTime ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding:10px 14px;background:var(--bg-main);border-radius:var(--radius-md);font-size:13px;color:var(--text-muted);"><i class="fa-solid fa-calendar" style="color:var(--primary)"></i> <strong>Đăng lúc:</strong> ${publishTime}</div>` : ''}
                         <div class="form-group">
                             <label>Nội dung</label>
                             <textarea id="editPostText" class="form-input" rows="6">${post.text || ''}</textarea>

@@ -714,8 +714,16 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
             const savedVideos = [];
             for (let i = 0; i < rawVideos.length; i++) {
                 const v = rawVideos[i];
-                const videoUrl = v.reelUrl || v.url;
-                if (!videoUrl || !videoUrl.startsWith('http')) continue;
+
+                // Ưu tiên reelUrl (Facebook page URL) cho yt-dlp
+                // CDN URL không download được trực tiếp
+                let videoUrl = '';
+                if (v.reelUrl && v.reelUrl.includes('facebook.com')) {
+                    videoUrl = v.reelUrl;
+                } else if (v.url && v.url.includes('facebook.com')) {
+                    videoUrl = v.url;
+                }
+                if (!videoUrl) continue;
 
                 try {
                     const filename = `${postId}_video_${i + 1}.mp4`;

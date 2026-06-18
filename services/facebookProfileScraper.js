@@ -573,6 +573,18 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
             // Extract thời gian đăng bài
             let publishedAt = null;
             let publishedAtText = '';
+
+            // Debug: log available timestamp fields
+            const debugTime = {
+                created_time: node?.comet_sections?.content?.story?.created_time,
+                creation_time: node?.feedback?.story?.creation_time,
+                post_time: node?.attachments?.[0]?.styles?.attachment?.target?.post_time,
+                timestamp_text: node?.comet_sections?.content?.story?.comet_sections?.context_layout?.story?.comet_sections?.timestamp_renderer?.story?.created_time?.text,
+                metadata_time: node?.comet_sections?.content?.story?.comet_sections?.metadata?.[0]?.story?.comet_sections?.creation_time?.creation_time?.text,
+                actors_subtitle: node?.comet_sections?.content?.story?.actors?.[0]?.subtitle?.text,
+            };
+            console.log(`[Profile Scraper] Debug time for ${postId}:`, JSON.stringify(debugTime));
+
             try {
                 // Path 1: Unix timestamp từ created_time
                 const createdTime = node?.comet_sections?.content?.story?.created_time;

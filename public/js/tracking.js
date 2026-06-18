@@ -85,10 +85,10 @@ document.addEventListener('DOMContentLoaded', function () {
             name: nameInput.value.trim(),
             url: urlInput.value.trim(),
             type: document.getElementById('trackingType')?.value || 'profile',
-            sourcePlatform: document.querySelector('input[name="sourcePlatform"]:checked').value,
-            sourceAccountId: sourceAccountSelect.value,
+            sourcePlatform: document.querySelector('input[name="sourcePlatform"]:checked')?.value || 'facebook',
+            sourceAccountId: sourceAccountSelect?.value || '',
             targetPlatforms: JSON.stringify(targetPlatforms),
-            cookiesPath: cookiesPathInput.value
+            cookiesPath: cookiesPathInput?.value || ''
         };
 
         submitBtn.disabled = true;

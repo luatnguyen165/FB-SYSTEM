@@ -677,16 +677,18 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
             const att0 = node?.attachments?.[0]?.styles?.attachment;
             if (att0?.media?.__typename === 'Video') {
                 const m = att0.media;
-                console.log(`[Profile Scraper] Debug ${postId}: url=${m.url?.substring(0, 100) || 'null'}`);
                 console.log(`[Profile Scraper] Debug ${postId}: playable_url=${m.playable_url?.substring(0, 100) || 'null'}`);
                 console.log(`[Profile Scraper] Debug ${postId}: browser_native_hd=${m.browser_native_hd_url?.substring(0, 100) || 'null'}`);
-                console.log(`[Profile Scraper] Debug ${postId}: browser_native_sd=${m.browser_native_sd_url?.substring(0, 100) || 'null'}`);
-                // Video delivery (Reels thường dùng cái này)
-                const delivery = m.videoDeliveryResponseFragment || m.videoDeliveryLegacyFields;
+
+                // Tìm tất cả URLs trong video delivery
+                const delivery = m.videoDeliveryResponseFragment;
                 if (delivery) {
-                    console.log(`[Profile Scraper] Debug ${postId}: delivery keys=${Object.keys(delivery).join(',')}`);
-                    const allUrls = JSON.stringify(delivery).match(/https?:\/\/[^"'\s]+\.mp4[^"'\s]*/g);
-                    if (allUrls) console.log(`[Profile Scraper] Debug ${postId}: delivery mp4 urls=${allUrls.slice(0, 3).join(', ')}`);
+                    const deliveryStr = JSON.stringify(delivery);
+                    // Tìm tất cả URLs có thể là video
+                    const allVideoUrls = deliveryStr.match(/https?:\/\/[^"'\s]+(?:\.mp4|\.m3u8|video)[^"'\s]*/g);
+                    if (allVideoUrls) {
+                        console.log(`[Profile Scraper] Debug ${postId}: videoUrls=${allVideoUrls.slice(0, 5).join('\n')}`);
+                    }
                 }
             }
 

@@ -147,6 +147,12 @@
                             </div>
                         </div>
                         <div class="tracking-card-actions">
+                            <button class="btn-icon-card btn-icon-success" title="Scrape bài viết" onclick="scrapeTracking('<%= t._id %>')">
+                                <i class="fa-solid fa-download"></i>
+                            </button>
+                            <button class="btn-icon-card" title="Xem bài viết" onclick="viewPosts('<%= t._id %>')">
+                                <i class="fa-solid fa-list"></i>
+                            </button>
                             <button class="btn-icon-card" title="Bật/Tắt" onclick="toggleTracking('<%= t._id %>')">
                                 <i class="fa-solid <%= t.isActive ? 'fa-pause' : 'fa-play' %>"></i>
                             </button>
@@ -161,6 +167,19 @@
                 </div>
                 <% }); %>
                 <% } %>
+            </div>
+
+            <!-- Posts Table -->
+            <div id="postsSection" style="display:none; margin-top:24px;">
+                <div class="tracking-hero" style="padding:20px 24px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h2 style="margin:0; font-size:18px;"><i class="fa-solid fa-list"></i> Bài viết đã scrape</h2>
+                        <button class="btn btn-ghost" onclick="closePosts()"><i class="fa-solid fa-xmark"></i> Đóng</button>
+                    </div>
+                </div>
+                <div id="postsTableContainer" style="margin-top:16px;">
+                    <div style="text-align:center; padding:40px; color:var(--text-muted);">Đang tải...</div>
+                </div>
             </div>
         </main>
     </div>
@@ -234,5 +253,98 @@
     </div>
 
     <script src="/js/tracking.js"></script>
+    <script>
+    // Scrape bài viết
+    async function scrapeTracking(id) {
+        if (!confirm('Scrape bài viết mới từ đối tượng này?')) return;
+        try {
+            showToast('info', 'Đang scrape bài viết...');
+            const res = await fetch(`/tracking/api/scrape/${id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ limit: 10 })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast('success', data.message);
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('error', data.message);
+            }
+        } catch (e) { showToast('error', 'Lỗi: ' + e.message); }
+    }
+
+    // Xem bài viết
+    let currentTrackingId = null;
+    async function viewPosts(trackingId) {
+        currentTrackingId = trackingId;
+        document.getElementById('postsSection').style.display = 'block';
+        document.getElementById('postsSection').scrollIntoView({ behavior: 'smooth' });
+        await loadPosts(trackingId, 1);
+    }
+
+    function closePosts() {
+        document.getElementById('postsSection').style.display = 'none';
+    }
+
+    async function loadPosts(trackingId, page) {
+        const container = document.getElementById('postsTableContainer');
+        container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);">Đang tải...</div>';
+        try {
+            const res = await fetch(`/tracking/api/posts/${trackingId}?page=${page}&limit=20`);
+            const data = await res.json();
+            if (!data.success || !data.posts.length) {
+                container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);">Chưa có bài viết nào. Nhấn nút <i class="fa-solid fa-download"></i> để scrape.</div>';
+                return;
+            }
+            let html = `<table class="data-table" style="width:100%">
+                <thead><tr>
+                    <th style="width:60px">Ảnh</th>
+                    <th>Nội dung</th>
+                    <th style="width:80px">Bình luận</th>
+                    <th style="width:140px">Thời gian</th>
+                    <th style="width:60px">Thao tác</th>
+                </tr></thead><tbody>`;
+            for (const p of data.posts) {
+                const imgHtml = p.images && p.images.length > 0
+                    ? `<img src="${p.images[0]}" style="width:50px;height:50px;object-fit:cover;border-radius:6px;cursor:pointer" onclick="window.open('${p.images[0]}','_blank')">`
+                    : '<span style="color:var(--text-light)">—</span>';
+                const text = (p.text || '').substring(0, 120) + ((p.text || '').length > 120 ? '...' : '');
+                const link = p.permalink ? `<a href="${p.permalink}" target="_blank" style="color:var(--primary);font-size:11px"><i class="fa-solid fa-external-link"></i></a>` : '';
+                html += `<tr>
+                    <td>${imgHtml}</td>
+                    <td>${text} ${link}</td>
+                    <td>${p.commentCount || 0}</td>
+                    <td>${new Date(p.scrapedAt).toLocaleString('vi-VN')}</td>
+                    <td><button class="btn-sm btn-delete" onclick="deletePost('${p._id}')"><i class="fa-solid fa-trash"></i></button></td>
+                </tr>`;
+            }
+            html += '</tbody></table>';
+            // Pagination
+            if (data.totalPages > 1) {
+                html += '<div style="display:flex;gap:8px;justify-content:center;margin-top:16px">';
+                for (let i = 1; i <= data.totalPages; i++) {
+                    html += `<button class="btn-sm ${i === data.page ? 'btn-analyze' : 'btn-view'}" onclick="loadPosts('${trackingId}',${i})">${i}</button>`;
+                }
+                html += '</div>';
+            }
+            container.innerHTML = html;
+        } catch (e) {
+            container.innerHTML = `<div style="text-align:center;padding:40px;color:var(--danger);">Lỗi: ${e.message}</div>`;
+        }
+    }
+
+    async function deletePost(id) {
+        if (!confirm('Xóa bài viết này?')) return;
+        try {
+            const res = await fetch(`/tracking/api/posts/${id}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) {
+                showToast('success', 'Đã xóa');
+                loadPosts(currentTrackingId, 1);
+            }
+        } catch (e) { showToast('error', 'Lỗi: ' + e.message); }
+    }
+    </script>
 </body>
 </html>

@@ -18,4 +18,9 @@ router.post('/api/toggle/:id', trackingController.toggleTracking);
 router.get('/api/list', trackingController.listTrackingAPI);
 router.get('/api/channels', trackingController.getChannelsByPlatform);
 
+// Scrape & Posts
+router.post('/api/scrape/:id', trackingController.scrapeTracking);
+router.get('/api/posts/:trackingId', trackingController.getTrackingPosts);
+router.delete('/api/posts/:id', trackingController.deleteTrackingPost);
+
 module.exports = router;

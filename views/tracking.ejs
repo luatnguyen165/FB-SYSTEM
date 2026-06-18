@@ -300,11 +300,15 @@
             let html = '<div class="posts-grid">';
             for (const p of data.posts) {
                 const images = p.images || [];
+                const videos = p.videos || [];
                 const text = (p.text || '').substring(0, 200) + ((p.text || '').length > 200 ? '...' : '');
                 const imgGallery = images.length > 0
                     ? `<div class="post-images">${images.slice(0, 4).map((img, i) =>
                         `<img src="${img}" class="post-img-thumb" onclick="previewImage('${img}')" loading="lazy">`
                     ).join('')}${images.length > 4 ? `<div class="post-img-more">+${images.length - 4}</div>` : ''}</div>`
+                    : '';
+                const videoPlayer = videos.length > 0
+                    ? videos.map(v => `<video src="${v}" controls class="post-video-player" preload="metadata"></video>`).join('')
                     : '';
                 const publishTime = p.publishedAtText || (p.publishedAt ? new Date(p.publishedAt).toLocaleString('vi-VN') : '');
                 html += `
@@ -319,11 +323,13 @@
                         </div>
                     </div>
                     ${imgGallery}
+                    ${videoPlayer}
                     <div class="post-card-text">${text || '<em style="color:var(--text-light)">Không có nội dung</em>'}</div>
                     <div class="post-card-footer">
                         <span><i class="fa-solid fa-comment"></i> ${p.commentCount || 0} bình luận</span>
                         ${p.permalink ? `<a href="${p.permalink}" target="_blank" class="post-card-link"><i class="fa-solid fa-external-link"></i> Xem trên Facebook</a>` : ''}
                         ${images.length > 0 ? `<span><i class="fa-solid fa-image"></i> ${images.length} ảnh</span>` : ''}
+                        ${videos.length > 0 ? `<span><i class="fa-solid fa-video"></i> ${videos.length} video</span>` : ''}
                     </div>
                 </div>`;
             }

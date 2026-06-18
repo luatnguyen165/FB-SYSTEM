@@ -107,13 +107,14 @@ function isReelOrVideoPost(node) {
     return false;
 }
 
-// ==================== IMAGE HANDLING ====================
+// ==================== MEDIA HANDLING ====================
 
 const imageCounters = {};
 
 function extractMediaUrls(node, postId) {
     if (!imageCounters[postId]) imageCounters[postId] = 0;
     const images = [];
+    const videos = [];
     let lastMediaId = null;
 
     const addPhoto = (mediaNode) => {
@@ -125,15 +126,34 @@ function extractMediaUrls(node, postId) {
         }
     };
 
+    const addVideo = (mediaNode) => {
+        // Lấy video URL từ nhiều sources
+        const url = mediaNode?.playable_url
+            || mediaNode?.playable_url_quality_hd
+            || mediaNode?.browser_native_hd_url
+            || mediaNode?.browser_native_sd_url
+            || mediaNode?.video_url
+            || '';
+        if (url) {
+            videos.push({ url, duration: mediaNode?.video_duration || 0 });
+        }
+    };
+
     for (const att of (node?.attachments || [])) {
         const attachment = att?.styles?.attachment || {};
-        if (attachment.media) addPhoto(attachment.media);
+        if (attachment.media) {
+            if (attachment.media.__typename === 'Video') addVideo(attachment.media);
+            else addPhoto(attachment.media);
+        }
         for (const m of (attachment?.all_subattachments?.nodes || [])) {
-            if (m?.media) addPhoto(m.media);
+            if (m?.media) {
+                if (m.media.__typename === 'Video') addVideo(m.media);
+                else addPhoto(m.media);
+            }
         }
     }
 
-    return { images, lastMediaId };
+    return { images, videos, lastMediaId };
 }
 
 async function fetchRemainingImageUrls(lastMediaId, postId, cookies, fbDtsg, proxy) {
@@ -617,8 +637,8 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
                 }
             } catch {}
 
-            // Extract images
-            const { images: rawUrls, lastMediaId } = extractMediaUrls(node, postId);
+            // Extract images + videos
+            const { images: rawUrls, videos: rawVideos, lastMediaId } = extractMediaUrls(node, postId);
             let allImageUrls = [...rawUrls];
 
             // Fetch remaining if 5 images (may have more)
@@ -635,8 +655,27 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
                 if (saved) savedImages.push(saved);
             }
 
-            allPosts.push({ postId, text, permalink, commentCount, authorName, images: savedImages, publishedAt, publishedAtText });
-            console.log(`[Profile Scraper] ✓ ${postId}: "${text.substring(0, 50)}..." (${savedImages.length} ảnh) time="${publishedAtText || 'N/A'}"`);
+            // Download videos
+            const savedVideos = [];
+            for (let i = 0; i < rawVideos.length; i++) {
+                const v = rawVideos[i];
+                if (!v.url || !v.url.startsWith('http')) continue;
+                try {
+                    const filename = `${postId}_video_${i + 1}.mp4`;
+                    const filepath = path.join(postSaveDir, filename);
+                    console.log(`[Download] Video: ${v.url.substring(0, 60)}...`);
+                    const r = await axios.get(v.url, { responseType: 'arraybuffer', timeout: 120000 });
+                    fs.mkdirSync(postSaveDir, { recursive: true });
+                    fs.writeFileSync(filepath, r.data);
+                    savedVideos.push(`/uploads/scraper/${postId}/${filename}`);
+                    console.log(`[Download] Saved video: ${filename} (${(r.data.length / 1024 / 1024).toFixed(1)}MB)`);
+                } catch (e) {
+                    console.error(`[Download] Video failed: ${e.message}`);
+                }
+            }
+
+            allPosts.push({ postId, text, permalink, commentCount, authorName, images: savedImages, videos: savedVideos, publishedAt, publishedAtText });
+            console.log(`[Profile Scraper] ✓ ${postId}: "${text.substring(0, 50)}..." (${savedImages.length} ảnh, ${savedVideos.length} video) time="${publishedAtText || 'N/A'}"`);
         }
 
         // Pagination

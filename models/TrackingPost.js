@@ -13,6 +13,7 @@ const TrackingPostSchema = new mongoose.Schema({
 
     // Media
     images: [{ type: String }], // URLs ảnh đã download
+    videos: [{ type: String }], // URLs video đã download
 
     // Metadata
     authorName: { type: String, default: '' },

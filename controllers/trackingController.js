@@ -178,9 +178,12 @@ exports.createTracking = async (req, res) => {
                                     } catch (e) { console.error('[Download] Failed:', e.message); }
                                 }
 
+                                // Videos đã download sẵn từ scraper
+                                const downloadedVideos = (post.videos || []).filter(v => v && v.startsWith('/uploads/'));
+
                                 await TrackingPost.findOneAndUpdate(
                                     { trackingId: tracking._id, postId: post.postId },
-                                    { userId, trackingId: tracking._id, postId: post.postId, text: post.text, permalink: post.permalink, commentCount: post.commentCount, authorName: post.authorName, images: downloadedImages, publishedAt: post.publishedAt, publishedAtText: post.publishedAtText || '', scrapedAt: new Date() },
+                                    { userId, trackingId: tracking._id, postId: post.postId, text: post.text, permalink: post.permalink, commentCount: post.commentCount, authorName: post.authorName, images: downloadedImages, videos: downloadedVideos, publishedAt: post.publishedAt, publishedAtText: post.publishedAtText || '', scrapedAt: new Date() },
                                     { upsert: true, returnDocument: "after" }
                                 );
                                 saved++;
@@ -421,9 +424,12 @@ exports.scrapeTracking = async (req, res) => {
                     }
                 }
 
+                // Videos đã download sẵn từ scraper
+                const downloadedVideos = (post.videos || []).filter(v => v && v.startsWith('/uploads/'));
+
                 await TrackingPost.findOneAndUpdate(
                     { trackingId: tracking._id, postId: post.postId },
-                    { userId, trackingId: tracking._id, postId: post.postId, text: post.text, permalink: post.permalink, commentCount: post.commentCount, authorName: post.authorName, images: downloadedImages, publishedAt: post.publishedAt, scrapedAt: new Date() },
+                    { userId, trackingId: tracking._id, postId: post.postId, text: post.text, permalink: post.permalink, commentCount: post.commentCount, authorName: post.authorName, images: downloadedImages, videos: downloadedVideos, publishedAt: post.publishedAt, publishedAtText: post.publishedAtText || '', scrapedAt: new Date() },
                     { upsert: true, returnDocument: "after" }
                 );
                 saved++;

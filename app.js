@@ -2,6 +2,21 @@
 const path = require('path');
 const fs = require('fs');
 
+// Prevent server crash from unhandled promise rejections (e.g. Playwright CDP errors)
+process.on('unhandledRejection', (reason, promise) => {
+    const msg = reason?.message || reason?.toString() || '';
+    // Chỉ log, không crash server
+    if (msg.includes('Protocol error') || msg.includes('Target closed') ||
+        msg.includes('Connection closed') || msg.includes('Browser closed') ||
+        msg.includes('Session closed') || msg.includes('CDP') ||
+        msg.includes('Playwright') || msg.includes('ECONNRESET') ||
+        msg.includes('socket hang up') || msg.includes('ETIMEDOUT')) {
+        console.error(`[Server] Unhandled rejection (nuôi): ${msg.substring(0, 150)}`);
+    } else {
+        console.error(`[Server] Unhandled rejection:`, reason);
+    }
+});
+
 // Load .env từ thư mục app (quan trọng khi chạy qua Electron build)
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
@@ -40,7 +55,7 @@ if (isSilent) {
         if (msg.includes('[ERROR]') || msg.includes('[Error]') || msg.includes('Error:') || 
             msg.includes('❌') || msg.includes('✅') || msg.includes('🚀') ||
             msg.includes('[Socket.IO]') || msg.includes('[Schedule Runner]') ||
-            msg.includes('[IG Upload]') || msg.includes('[TikTok Upload]') ||
+            msg.includes('[IG Upload]') || msg.includes('[IG Post]') || msg.includes('[IG Avatar]') || msg.includes('[IG]') || msg.includes('[TikTok Upload]') || msg.includes('[TikTok Scrape]') || msg.includes('[YT Scrape]') || msg.includes('[PI Scrape]') || msg.includes('[TH Scrape]') ||
             msg.includes('[Reels Upload]') || msg.includes('[FB Connect]') ||
             msg.includes('[Post Upload]') || msg.includes('[Crawl]') ||
             msg.includes('[Full Scan]') || msg.includes('[AI]') ||
@@ -50,10 +65,13 @@ if (isSilent) {
             msg.includes('[Profile Scraper]') ||
             msg.includes('[Scrape]') ||
             msg.includes('[Download] ') ||
-            msg.includes('[Reel Download]') ||
+            msg.includes('[Reel Download]') || msg.includes('[TikTok Avatar]') || msg.includes('[YT Avatar]') ||
             msg.includes('[Group Scraper]') ||
             msg.includes('[Post 1] ') ||
             msg.includes('[Group Video]')||
+            msg.includes('[IG Profile]')||
+            msg.includes('[IG Profile XPath]')||
+            msg.includes('[TH Debug]')||
             msg.includes('#####')) {
             originalLog(...args);
         }

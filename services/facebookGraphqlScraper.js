@@ -156,7 +156,7 @@ async function extractMedia(node, postId, saveDir) {
     return media;
 }
 
-function extractPostData(node, groupName, saveDir) {
+async function extractPostData(node, groupName, saveDir) {
     if (!node || node.__typename !== 'Story') return null;
     const cs = ((node.comet_sections||{}).content||{}).story||{};
     const msg = (cs.message||{}).text || '';
@@ -164,7 +164,8 @@ function extractPostData(node, groupName, saveDir) {
     if (!pid) return null;
     if (!groupName) groupName = extractGroupName(node);
     const nf = groupName ? groupName.replace(/[^a-zA-Z0-9\s\-_]/g,'').trim()||'Unknown' : 'Unknown';
-    return { id: node.id, post_id: pid, message: msg, comment_count: extractCommentCount(node), group_name: groupName, permalink: node.permalink_url||'', postUrl: node.permalink_url||`https://www.facebook.com/groups/${pid}`, photos: [], videos: [] };
+    const media = await extractMedia(node, pid, saveDir);
+    return { id: node.id, post_id: pid, message: msg, comment_count: extractCommentCount(node), group_name: groupName, permalink: node.permalink_url||'', postUrl: node.permalink_url||`https://www.facebook.com/groups/${pid}`, photos: media.photos, videos: media.videos };
 }
 
 module.exports = { fetchGroupPosts, parseFbResponse, extractDataBlocks, extractGroupName, extractCommentCount, isReelOrVideoPost, extractPostData, extractMedia, downloadImage };
@@ -206,12 +207,11 @@ async function fetchGroupPosts({ groupId, cookies = {}, fbDtsg = '', limit = 10,
 
             for (const sn of storyNodes) {
                 if (allPosts.length >= limit) break;
-                if (isReelOrVideoPost(sn)) { console.log(`  ⏭️ Skip reel/video`); continue; }
                 const cc = extractCommentCount(sn);
                 if (minComments > 0 && cc < minComments) continue;
                 if (!GROUP_NAME) { GROUP_NAME = extractGroupName(sn); if (GROUP_NAME) console.log(`📂 Group: ${GROUP_NAME}`); }
-                const pd = extractPostData(sn, GROUP_NAME);
-                if (pd) { allPosts.push(pd); postsFound++; console.log(`  - Post: ${pd.post_id}`); }
+                const pd = await extractPostData(sn, GROUP_NAME);
+                if (pd) { allPosts.push(pd); postsFound++; console.log(`  - Post: ${pd.post_id} [${pd.photos.length} photos, ${pd.videos.length} videos]`); }
             }
             if (allPosts.length >= limit) break;
             if (item.page_info && item.page_info.has_next_page) nextCursor = item.page_info.end_cursor;

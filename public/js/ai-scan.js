@@ -185,8 +185,12 @@
     const $groupLoading = document.getElementById('groupLoading');
     const $groupEmpty = document.getElementById('groupEmpty');
     const $groupCheckboxList = document.getElementById('groupCheckboxList');
-    const $groupSelectedCount = document.getElementById('groupSelectedCount');
     const $groupCount = document.getElementById('groupCount');
+    const $groupTotal = document.getElementById('groupTotal');
+    const $groupSelectedBadges = document.getElementById('groupSelectedBadges');
+    const $aiScanGroupsContainer = document.getElementById('aiScanGroupsContainer');
+    const $groupSearchBar = document.getElementById('groupSearchBar');
+    const $groupSearchInput = document.getElementById('groupSearchInput');
 
     // Schedule fields
     const $scheduleEnabled = document.getElementById('configScheduleEnabled');
@@ -203,6 +207,206 @@
             $scheduleFields.style.display = this.checked ? 'block' : 'none';
         });
     }
+
+    // ============================================================
+    // COMMENT ITEMS MANAGEMENT
+    // ============================================================
+    var commentItems = [];
+    var commentFileUploading = false;
+
+    function renderCommentItems() {
+        var container = document.getElementById('commentItemsContainer');
+        if (!container) return;
+
+        if (commentItems.length === 0) {
+            container.innerHTML = '<div class="comment-items-empty"><i class="fa-solid fa-comment-dots"></i> Chưa có bình luận nào. Nhấn nút bên dưới để thêm.</div>';
+            return;
+        }
+
+        var html = '';
+        commentItems.forEach(function(item, idx) {
+            var typeIcon = item.type === 'video' ? 'fa-video' : item.type === 'image' ? 'fa-image' : 'fa-font';
+            var typeLabel = item.type === 'video' ? 'Video' : item.type === 'image' ? 'Hình' : 'Text';
+            var typeClass = item.type === 'video' ? 'ci-type-video' : item.type === 'image' ? 'ci-type-image' : 'ci-type-text';
+
+            html += '<div class="comment-item-card' + (item.selected ? ' ci-selected' : '') + '" data-idx="' + idx + '">';
+            html += '<div class="ci-header">';
+            html += '<label class="ci-checkbox"><input type="checkbox" ' + (item.selected ? 'checked' : '') + ' onchange="toggleCommentItem(' + idx + ')"><span class="ci-check"></span></label>';
+            html += '<span class="ci-type-badge ' + typeClass + '"><i class="fa-solid ' + typeIcon + '"></i> ' + typeLabel + '</span>';
+            if (item.name) html += '<span class="ci-name">' + escapeHtml(item.name) + '</span>';
+            html += '<div class="ci-actions">';
+            html += '<button type="button" class="ci-btn ci-btn-edit" onclick="editCommentItem(' + idx + ')" title="Sửa"><i class="fa-solid fa-pen"></i></button>';
+            html += '<button type="button" class="ci-btn ci-btn-delete" onclick="removeCommentItem(' + idx + ')" title="Xóa"><i class="fa-solid fa-trash"></i></button>';
+            html += '</div></div>';
+
+            if (item.type === 'text') {
+                html += '<div class="ci-preview ci-preview-text">' + escapeHtml((item.content || '').substring(0, 100)) + '</div>';
+            } else if (item.type === 'image' && item.content) {
+                html += '<div class="ci-preview ci-preview-media"><img src="' + escapeAttr(item.content) + '" onerror="this.style.display=\'none\'"></div>';
+                if (item.caption) html += '<div class="ci-caption"><i class="fa-solid fa-quote-left"></i> ' + escapeHtml(item.caption.substring(0, 60)) + '</div>';
+            } else if (item.type === 'video' && item.content) {
+                html += '<div class="ci-preview ci-preview-media"><video src="' + escapeAttr(item.content) + '" preload="metadata"></video></div>';
+                if (item.caption) html += '<div class="ci-caption"><i class="fa-solid fa-quote-left"></i> ' + escapeHtml(item.caption.substring(0, 60)) + '</div>';
+            }
+
+            html += '</div>';
+        });
+
+        container.innerHTML = html;
+    }
+
+    window.toggleCommentItem = function(idx) {
+        if (commentItems[idx]) {
+            commentItems[idx].selected = !commentItems[idx].selected;
+            renderCommentItems();
+        }
+    };
+
+    window.removeCommentItem = function(idx) {
+        commentItems.splice(idx, 1);
+        renderCommentItems();
+    };
+
+    window.editCommentItem = function(idx) {
+        var item = commentItems[idx];
+        if (!item) return;
+        showCommentItemModal(item, idx);
+    };
+
+    function addCommentItem(type) {
+        showCommentItemModal({ type: type, content: '', caption: '', name: '', selected: true }, -1);
+    }
+
+    function showCommentItemModal(item, idx) {
+        var isNew = idx < 0;
+        var title = isNew ? 'Thêm Comment' : 'Sửa Comment';
+        var isMedia = item.type === 'image' || item.type === 'video';
+
+        var html = '<div class="ci-modal-overlay" id="ciModalOverlay">';
+        html += '<div class="ci-modal">';
+        html += '<div class="ci-modal-header"><h4>' + title + '</h4><button type="button" class="ci-modal-close" onclick="closeCiModal()"><i class="fa-solid fa-xmark"></i></button></div>';
+        html += '<div class="ci-modal-body">';
+
+        html += '<div class="ci-form-group"><label>Tên gợi nhớ</label><input type="text" id="ciName" value="' + escapeAttr(item.name || '') + '" placeholder="VD: Comment BĐS"></div>';
+
+        if (item.type === 'text') {
+            html += '<div class="ci-form-group"><label>Nội dung <span class="required">*</span></label><textarea id="ciContent" rows="4" placeholder="Nhập nội dung comment...">' + escapeHtml(item.content || '') + '</textarea></div>';
+        } else {
+            html += '<div class="ci-form-group"><label>File ' + (item.type === 'video' ? 'video' : 'hình ảnh') + ' <span class="required">*</span></label>';
+            html += '<div class="ci-file-upload" id="ciFileUpload">';
+            if (item.content) {
+                if (item.type === 'image') html += '<img src="' + escapeAttr(item.content) + '" class="ci-file-preview">';
+                else html += '<video src="' + escapeAttr(item.content) + '" class="ci-file-preview" controls preload="metadata"></video>';
+            }
+            html += '<input type="file" id="ciFileInput" accept="' + (item.type === 'video' ? 'video/*' : 'image/*') + '" onchange="uploadCiFile(this,\'' + item.type + '\')">';
+            html += '<input type="hidden" id="ciContent" value="' + escapeAttr(item.content || '') + '">';
+            html += '<div class="ci-file-info" id="ciFileInfo">' + (item.content ? item.content.split('/').pop() : 'Chưa chọn file') + '</div>';
+            html += '</div></div>';
+
+            html += '<div class="ci-form-group"><label>Caption (text đi kèm)</label><textarea id="ciCaption" rows="2" placeholder="Nhập caption...">' + escapeHtml(item.caption || '') + '</textarea></div>';
+        }
+
+        html += '</div>';
+        html += '<div class="ci-modal-footer">';
+        html += '<button type="button" class="btn btn-outline" onclick="closeCiModal()">Hủy</button>';
+        html += '<button type="button" class="btn btn-primary" onclick="saveCiModal(' + idx + ')"><i class="fa-solid fa-check"></i> Lưu</button>';
+        html += '</div></div></div>';
+
+        document.body.insertAdjacentHTML('beforeend', html);
+    }
+
+    window.closeCiModal = function() {
+        var overlay = document.getElementById('ciModalOverlay');
+        if (overlay) overlay.remove();
+    };
+
+    window.uploadCiFile = function(input, type) {
+        var file = input.files[0];
+        if (!file) return;
+
+        var formData = new FormData();
+        formData.append('file', file);
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/schedule/ai-comment/api/upload-file', true);
+
+        document.getElementById('ciFileInfo').textContent = 'Đang upload...';
+
+        xhr.onload = function() {
+            try {
+                var res = JSON.parse(xhr.responseText);
+                if (res.success && res.data) {
+                    document.getElementById('ciContent').value = res.data.filePath;
+                    document.getElementById('ciFileInfo').textContent = res.data.fileName;
+
+                    var preview = document.getElementById('ciFileUpload');
+                    var existing = preview.querySelector('.ci-file-preview');
+                    if (existing) existing.remove();
+
+                    if (type === 'image') {
+                        preview.insertAdjacentHTML('afterbegin', '<img src="' + res.data.filePath + '" class="ci-file-preview">');
+                    } else {
+                        preview.insertAdjacentHTML('afterbegin', '<video src="' + res.data.filePath + '" class="ci-file-preview" controls preload="metadata"></video>');
+                    }
+                } else {
+                    document.getElementById('ciFileInfo').textContent = 'Lỗi: ' + (res.message || 'Upload thất bại');
+                }
+            } catch(e) {
+                document.getElementById('ciFileInfo').textContent = 'Lỗi xử lý';
+            }
+        };
+
+        xhr.onerror = function() {
+            document.getElementById('ciFileInfo').textContent = 'Lỗi kết nối';
+        };
+
+        xhr.send(formData);
+    };
+
+    window.saveCiModal = function(idx) {
+        var isNew = idx < 0;
+        var name = (document.getElementById('ciName').value || '').trim();
+        var content = (document.getElementById('ciContent').value || '').trim();
+        var caption = document.getElementById('ciCaption') ? (document.getElementById('ciCaption').value || '').trim() : '';
+
+        if (!content) {
+            showToast('Vui lòng nhập nội dung hoặc upload file', 'error');
+            return;
+        }
+
+        var item = {
+            name: name,
+            type: isNew ? (commentItems.length > 0 ? commentItems[0].type : 'text') : commentItems[idx].type,
+            content: content,
+            caption: caption,
+            selected: true
+        };
+
+        // Xác định type từ context
+        if (document.getElementById('ciFileInput')) {
+            var accept = document.getElementById('ciFileInput').accept;
+            item.type = accept.includes('video') ? 'video' : 'image';
+        }
+
+        if (isNew) {
+            // Lấy type từ nút đã click
+            var lastType = window._lastCommentType || 'text';
+            item.type = lastType;
+            commentItems.push(item);
+        } else {
+            item.type = commentItems[idx].type;
+            item.selected = commentItems[idx].selected;
+            commentItems[idx] = item;
+        }
+
+        closeCiModal();
+        renderCommentItems();
+    };
+
+    // Nút thêm comment
+    document.getElementById('btnAddCommentText')?.addEventListener('click', function() { window._lastCommentType = 'text'; addCommentItem('text'); });
+    document.getElementById('btnAddCommentImage')?.addEventListener('click', function() { window._lastCommentType = 'image'; addCommentItem('image'); });
+    document.getElementById('btnAddCommentVideo')?.addEventListener('click', function() { window._lastCommentType = 'video'; addCommentItem('video'); });
 
     // ============================================================
     // MODAL HELPERS
@@ -231,29 +435,35 @@
         $configId.value = '';
         $modalTitle.textContent = 'Tạo Cấu Hình Quét AI';
         $configMaxPosts.value = '10';
+        commentItems = [];
+        renderCommentItems();
         resetGroupSelector();
     }
 
     function resetGroupSelector() {
         $groupLoading.style.display = 'none';
         $groupEmpty.style.display = 'block';
-        $groupCheckboxList.style.display = 'none';
-        $groupSelectedCount.style.display = 'none';
-        $groupCheckboxList.innerHTML = '';
-        if ($groupSearchBox) { $groupSearchBox.style.display = 'none'; $groupSearchInput.value = ''; }
+        if ($aiScanGroupsContainer) $aiScanGroupsContainer.style.display = 'none';
+        if ($groupCheckboxList) { $groupCheckboxList.style.display = 'none'; $groupCheckboxList.innerHTML = ''; }
+        if ($groupSearchInput) $groupSearchInput.value = '';
+        if ($groupSelectedBadges) $groupSelectedBadges.innerHTML = '';
+        if ($groupCount) $groupCount.textContent = '0';
+        if ($groupTotal) $groupTotal.textContent = '0';
     }
 
     // ============================================================
-    // GROUP LOADING
+    // GROUP LOADING (same pattern as schedule-post/groups.js)
     // ============================================================
+    var aiScanFacebookGroups = [];
+    var aiScanSelectedGroupKeys = [];
+
     async function loadGroups(channelId, selectedKeys) {
         selectedKeys = selectedKeys || [];
         if (!channelId) { resetGroupSelector(); return; }
 
         $groupLoading.style.display = 'block';
         $groupEmpty.style.display = 'none';
-        $groupCheckboxList.style.display = 'none';
-        $groupSelectedCount.style.display = 'none';
+        if ($aiScanGroupsContainer) $aiScanGroupsContainer.style.display = 'none';
 
         try {
             const res = await fetch('/schedule/ai-scan/api/channel-groups?channelId=' + channelId);
@@ -266,24 +476,20 @@
                 return;
             }
 
+            aiScanFacebookGroups = Array.isArray(json.groups) ? json.groups : [];
             $groupEmpty.style.display = 'none';
-            $groupSearchBox.style.display = 'flex';
-            $groupSearchInput.value = '';
-            $groupCheckboxList.style.display = 'block';
-            $groupSelectedCount.style.display = 'block';
+            if ($aiScanGroupsContainer) $aiScanGroupsContainer.style.display = '';
 
-            var selectedSet = new Set(selectedKeys.map(String));
-            var html = '';
-            json.groups.forEach(function (group) {
-                var key = group.groupUrl || group.groupId;
-                var checked = selectedSet.has(String(key)) ? 'checked' : '';
-                html += '<label class="group-checkbox-item"><input type="checkbox" class="group-checkbox" value="' + escapeAttr(key) + '" ' + checked + '><span title="' + escapeAttr(group.groupName || key) + '">' + escapeHtml(group.groupName || 'Unknown Group') + '</span></label>';
-            });
-            $groupCheckboxList.innerHTML = html;
-            updateGroupCount();
-            $groupCheckboxList.querySelectorAll('.group-checkbox').forEach(function (cb) {
-                cb.addEventListener('change', updateGroupCount);
-            });
+            renderAiScanGroups($groupCheckboxList, aiScanFacebookGroups);
+
+            // Pre-select groups if selectedKeys provided
+            if (selectedKeys && selectedKeys.length > 0) {
+                selectedKeys.forEach(function(key) {
+                    var cb = $groupCheckboxList.querySelector('input[name="aiScanGroupSelect"][value="' + CSS.escape(key) + '"]');
+                    if (cb) cb.checked = true;
+                });
+                onAiScanGroupToggle();
+            }
         } catch (err) {
             $groupLoading.style.display = 'none';
             $groupEmpty.innerHTML = '<p><i class="fa-solid fa-triangle-exclamation"></i> Lỗi tải groups: ' + escapeHtml(err.message) + '</p>';
@@ -291,40 +497,124 @@
         }
     }
 
-    function updateGroupCount() {
-        var checked = $groupCheckboxList.querySelectorAll('.group-checkbox:checked');
-        $groupCount.textContent = checked.length;
+    function renderAiScanGroups(container, groups) {
+        if (!container) return;
+
+        var html = '';
+        groups.forEach(function(g) {
+            var key = g.groupUrl || g.groupId;
+            html += '<label class="group-select-item" data-group-key="' + escapeAttr(key) + '" data-group-name="' + escapeAttr((g.groupName || '').toLowerCase()) + '">' +
+                '<input type="checkbox" name="aiScanGroupSelect" value="' + escapeAttr(key) + '" onchange="onAiScanGroupToggle()">' +
+                '<span class="group-select-check"><i class="fa-solid fa-check"></i></span>' +
+                '<span class="group-select-icon"><i class="fa-brands fa-facebook"></i></span>' +
+                '<span class="group-select-info">' +
+                    '<span class="group-select-name">' + escapeHtml(g.groupName || 'Unknown') + '</span>' +
+                    '<span class="group-select-account">ID: ' + (g.groupId || '').substring(0, 12) + '...</span>' +
+                '</span>' +
+            '</label>';
+        });
+
+        container.innerHTML = html;
+        container.style.display = 'none';
+
+        if ($groupTotal) $groupTotal.textContent = groups.length;
+
+        // Groups list hidden by default, show on search focus/click
+        if ($groupSearchInput) {
+            $groupSearchInput.addEventListener('focus', function() {
+                container.style.display = '';
+            });
+            $groupSearchInput.addEventListener('blur', function() {
+                setTimeout(function() {
+                    if (container && !container.matches(':hover')) {
+                        container.style.display = 'none';
+                    }
+                }, 200);
+            });
+        }
+        if ($groupSearchBar) {
+            $groupSearchBar.addEventListener('click', function(e) {
+                if (e.target === $groupSearchBar || e.target.tagName === 'I') {
+                    container.style.display = '';
+                    if ($groupSearchInput) $groupSearchInput.focus();
+                }
+            });
+        }
+
+        onAiScanGroupToggle();
+    }
+
+    function filterAiScanGroups(keyword) {
+        var kw = keyword.toLowerCase().trim();
+        $groupCheckboxList.querySelectorAll('.group-select-item').forEach(function(item) {
+            var name = item.dataset.groupName || '';
+            item.style.display = (!kw || name.indexOf(kw) !== -1) ? '' : 'none';
+        });
+    }
+
+    function toggleAllAiScanGroups(select) {
+        $groupCheckboxList.querySelectorAll('.group-select-item').forEach(function(item) {
+            if (item.style.display !== 'none') {
+                item.querySelector('input[type="checkbox"]').checked = select;
+            }
+        });
+        onAiScanGroupToggle();
+    }
+
+    function onAiScanGroupToggle() {
+        var checked = $groupCheckboxList.querySelectorAll('input[name="aiScanGroupSelect"]:checked');
+        aiScanSelectedGroupKeys = Array.from(checked).map(function(cb) { return cb.value; });
+
+        if ($groupCount) $groupCount.textContent = aiScanSelectedGroupKeys.length;
+        renderAiScanGroupBadges();
+    }
+
+    // Make it global for onchange attribute
+    window.onAiScanGroupToggle = onAiScanGroupToggle;
+
+    function renderAiScanGroupBadges() {
+        if (!$groupSelectedBadges) return;
+
+        var html = '';
+        aiScanSelectedGroupKeys.forEach(function(key) {
+            var group = aiScanFacebookGroups.find(function(g) { return (g.groupUrl || g.groupId) === key; });
+            var name = group ? group.groupName : key;
+            html += '<span class="group-badge" onclick="removeAiScanGroupBadge(\'' + escapeAttr(key) + '\')"><i class="fa-brands fa-facebook"></i> ' + escapeHtml((name || '').substring(0, 25)) + ' <i class="fa-solid fa-xmark"></i></span>';
+        });
+
+        $groupSelectedBadges.innerHTML = html;
+    }
+
+    function removeAiScanGroupBadge(key) {
+        var cb = $groupCheckboxList.querySelector('input[name="aiScanGroupSelect"][value="' + CSS.escape(key) + '"]');
+        if (cb) {
+            cb.checked = false;
+            onAiScanGroupToggle();
+        }
     }
 
     function getSelectedGroupKeys() {
-        var checkboxes = $groupCheckboxList.querySelectorAll('.group-checkbox:checked');
-        return Array.from(checkboxes).map(function (cb) { return cb.value; });
+        return aiScanSelectedGroupKeys;
     }
 
     $configChannel.addEventListener('change', function () { loadGroups(this.value, []); });
 
     // ============================================================
-    // GROUP SEARCH
+    // GROUP SEARCH INPUT
     // ============================================================
-    var $groupSearchInput = document.getElementById('groupSearchInput');
-    var $groupSearchBox = document.getElementById('groupSearchBox');
-    var $groupSearchClear = document.getElementById('groupSearchClear');
-
     if ($groupSearchInput) {
         $groupSearchInput.addEventListener('input', function () {
-            var query = this.value.toLowerCase().trim();
-            var items = $groupCheckboxList.querySelectorAll('.group-checkbox-item');
-            items.forEach(function (item) {
-                var name = item.querySelector('span').textContent.toLowerCase();
-                item.style.display = (!query || name.indexOf(query) !== -1) ? '' : 'none';
-            });
-        });
-        $groupSearchClear.addEventListener('click', function () {
-            $groupSearchInput.value = '';
-            $groupSearchInput.dispatchEvent(new Event('input'));
-            $groupSearchInput.focus();
+            filterAiScanGroups(this.value);
         });
     }
+
+    // Select All / Deselect All buttons
+    document.getElementById('btnSelectAllGroups')?.addEventListener('click', function() {
+        toggleAllAiScanGroups(true);
+    });
+    document.getElementById('btnDeselectAllGroups')?.addEventListener('click', function() {
+        toggleAllAiScanGroups(false);
+    });
 
     // ============================================================
     // FORM SUBMIT
@@ -347,6 +637,7 @@
             maxPostsPerScan: parseInt($configMaxPosts.value, 10) || 10,
             openaiApiKey: $configOpenaiKey.value.trim(),
             scanScript: $configScanScript ? $configScanScript.value.trim() : '',
+            commentItems: JSON.stringify(commentItems),
             scheduleEnabled: $scheduleEnabled ? $scheduleEnabled.checked : false,
             scanIntervalMinutes: parseInt($scanInterval.value, 10) || 60,
             maxPostsPerScanSchedule: parseInt($scheduleMaxPosts.value, 10) || 10,
@@ -426,6 +717,12 @@
 
             // Load scanScript
             if ($configScanScript) $configScanScript.value = config.scanScript || '';
+
+            // Load commentItems
+            commentItems = Array.isArray(config.commentItems) ? config.commentItems.map(function(ci) {
+                return { name: ci.name || '', type: ci.type || 'text', content: ci.content || '', caption: ci.caption || '', selected: ci.selected !== false };
+            }) : [];
+            renderCommentItems();
 
             // Load schedule fields
             if ($scheduleEnabled) {
@@ -718,7 +1015,6 @@
 
         var html = '';
         results.forEach(function(result) {
-            var scoreClass = result.aiScore >= 70 ? 'score-high' : result.aiScore >= 40 ? 'score-mid' : 'score-low';
             var matchClass = result.isMatching ? 'match-yes' : 'match-no';
             var matchText = result.isMatching ? '✓ Match' : '✗ No';
 
@@ -748,6 +1044,15 @@
                 imagesHtml += '</div>';
             }
 
+            var videosHtml = '';
+            if (result.postVideos && result.postVideos.length > 0) {
+                videosHtml = '<div class="result-videos">';
+                result.postVideos.forEach(function(vid) {
+                    videosHtml += '<a href="' + escapeAttr(vid) + '" target="_blank" class="result-video-link"><i class="fa-solid fa-play"></i> Video</a>';
+                });
+                videosHtml += '</div>';
+            }
+
             var postContent = result.postContent ? result.postContent.substring(0, 80) + (result.postContent.length > 80 ? '...' : '') : '(Không có nội dung)';
             var scannedAt = result.scannedAt ? new Date(result.scannedAt).toLocaleDateString('en-GB') + ' ' + new Date(result.scannedAt).toLocaleTimeString('en-GB') : '—';
 
@@ -755,6 +1060,7 @@
                 '<td>' +
                     '<div class="result-post">' +
                         imagesHtml +
+                        videosHtml +
                         '<a href="' + escapeAttr(result.postUrl || '#') + '" target="_blank" class="post-link">' + escapeHtml(postContent) + '</a>' +
                         (result.postAuthor ? '<span class="post-author">- ' + escapeHtml(result.postAuthor) + '</span>' : '') +
                     '</div>' +
@@ -763,12 +1069,6 @@
                     '<a class="group-name-link" href="' + escapeAttr(result.groupUrl || '#') + '" target="_blank" title="' + escapeAttr(result.groupUrl || '') + '">' +
                         '<i class="fa-solid fa-users-group"></i> ' + escapeHtml(result.groupName || 'Unknown Group') +
                     '</a>' +
-                '</td>' +
-                '<td>' +
-                    '<div class="score-bar">' +
-                        '<div class="score-fill ' + scoreClass + '" style="width: ' + result.aiScore + '%"></div>' +
-                        '<span class="score-text">' + result.aiScore + '%</span>' +
-                    '</div>' +
                 '</td>' +
                 '<td><span class="match-badge ' + matchClass + '">' + matchText + '</span></td>' +
                 '<td>' + commentHtml + '</td>' +
@@ -851,7 +1151,6 @@
             if (emptyTr) emptyTr.remove();
         }
 
-        var scoreClass = result.aiScore >= 70 ? 'score-high' : result.aiScore >= 40 ? 'score-mid' : 'score-low';
         var matchClass = result.isMatching ? 'match-yes' : 'match-no';
         var matchText = result.isMatching ? '✓ Match' : '✗ No';
 
@@ -882,6 +1181,16 @@
             imagesHtml += '</div>';
         }
 
+        // Build videos HTML
+        var videosHtml = '';
+        if (result.postVideos && result.postVideos.length > 0) {
+            videosHtml = '<div class="result-videos">';
+            result.postVideos.forEach(function(vid) {
+                videosHtml += '<a href="' + escapeAttr(vid) + '" target="_blank" class="result-video-link"><i class="fa-solid fa-play"></i> Video</a>';
+            });
+            videosHtml += '</div>';
+        }
+
         var postContent = result.postContent ? result.postContent.substring(0, 80) + (result.postContent.length > 80 ? '...' : '') : '(Không có nội dung)';
         var scannedAt = result.scannedAt ? new Date(result.scannedAt).toLocaleDateString('en-GB') + ' ' + new Date(result.scannedAt).toLocaleTimeString('en-GB') : '—';
 
@@ -895,6 +1204,7 @@
             '<td>' +
                 '<div class="result-post">' +
                     imagesHtml +
+                    videosHtml +
                     '<a href="' + escapeAttr(result.postUrl || '#') + '" target="_blank" class="post-link">' + escapeHtml(postContent) + '</a>' +
                     (result.postAuthor ? '<span class="post-author">- ' + escapeHtml(result.postAuthor) + '</span>' : '') +
                 '</div>' +
@@ -903,12 +1213,6 @@
                 '<a class="group-name-link" href="' + escapeAttr(result.groupUrl || '#') + '" target="_blank" title="' + escapeAttr(result.groupUrl || '') + '">' +
                     '<i class="fa-solid fa-users-group"></i> ' + escapeHtml(result.groupName || 'Unknown Group') +
                 '</a>' +
-            '</td>' +
-            '<td>' +
-                '<div class="score-bar">' +
-                    '<div class="score-fill ' + scoreClass + '" style="width: ' + result.aiScore + '%"></div>' +
-                    '<span class="score-text">' + result.aiScore + '%</span>' +
-                '</div>' +
             '</td>' +
             '<td><span class="match-badge ' + matchClass + '">' + matchText + '</span></td>' +
             '<td>' + commentHtml + '</td>' +
@@ -943,16 +1247,6 @@
         // Update the row classes
         row.className = 'result-row ' + (result.isMatching ? 'row-match' : 'row-no-match');
 
-        // Update score
-        var scoreFill = row.querySelector('.score-fill');
-        var scoreText = row.querySelector('.score-text');
-        if (scoreFill && scoreText) {
-            var scoreClass = result.aiScore >= 70 ? 'score-high' : result.aiScore >= 40 ? 'score-mid' : 'score-low';
-            scoreFill.className = 'score-fill ' + scoreClass;
-            scoreFill.style.width = result.aiScore + '%';
-            scoreText.textContent = result.aiScore + '%';
-        }
-
         // Update match badge
         var matchBadge = row.querySelector('.match-badge');
         if (matchBadge) {
@@ -960,8 +1254,8 @@
             matchBadge.textContent = result.isMatching ? '✓ Match' : '✗ No';
         }
 
-        // Update comment
-        var commentTd = row.querySelector('td:nth-child(5)');
+        // Update comment (column index changed from 5 to 4 after removing score)
+        var commentTd = row.querySelector('td:nth-child(4)');
         if (commentTd) {
             var hasComments = result.comments && result.comments.length > 0;
             var anySent = hasComments ? result.comments.some(function(c) { return c.sent; }) : result.commentSent;

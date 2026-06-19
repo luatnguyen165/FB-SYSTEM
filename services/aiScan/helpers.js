@@ -19,7 +19,9 @@ function resolveFilePath(filePath = '') {
     const candidates = [
         path.join(projectRoot, normalized),
         path.join(projectRoot, 'uploads', 'images', path.basename(normalized)),
-        path.join(projectRoot, 'uploads', 'videos', path.basename(normalized))
+        path.join(projectRoot, 'uploads', 'videos', path.basename(normalized)),
+        path.join(projectRoot, 'uploads', 'comment-files', path.basename(normalized)),
+        path.join(projectRoot, 'uploads', 'ai-scan', path.basename(normalized))
     ];
     for (const candidate of candidates) {
         if (fs.existsSync(candidate)) return candidate;

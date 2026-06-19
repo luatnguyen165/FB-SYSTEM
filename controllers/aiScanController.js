@@ -130,12 +130,22 @@ const createConfig = async (req, res) => {
             groupKeys = Array.isArray(req.body.groupKeys) ? req.body.groupKeys : (req.body.groupKeys ? [req.body.groupKeys] : []);
         }
 
+        // Parse commentItems từ JSON string
+        let parsedCommentItems = [];
+        try {
+            parsedCommentItems = req.body.commentItems ? JSON.parse(req.body.commentItems) : [];
+            if (!Array.isArray(parsedCommentItems)) parsedCommentItems = [];
+        } catch (parseErr) {
+            parsedCommentItems = [];
+        }
+
         const config = await AiScanConfig.create({
             userId: req.user._id,
             name: String(name).trim(),
             channelId,
             groupKeys,
             scanScript: String(scanScript).trim(),
+            commentItems: parsedCommentItems,
             scheduleEnabled: scheduleEnabled === 'true' || scheduleEnabled === true,
             scheduleHour: parseInt(scheduleHour, 10) || 8,
             scheduleMinute: parseInt(scheduleMinute, 10) || 0,
@@ -214,6 +224,14 @@ const updateConfig = async (req, res) => {
         try {
             if (req.body.groupKeys) {
                 config.groupKeys = typeof req.body.groupKeys === 'string' ? JSON.parse(req.body.groupKeys) : req.body.groupKeys;
+            }
+        } catch (parseErr) { /* ignore */ }
+
+        // Parse commentItems
+        try {
+            if (req.body.commentItems !== undefined) {
+                const parsed = typeof req.body.commentItems === 'string' ? JSON.parse(req.body.commentItems) : req.body.commentItems;
+                if (Array.isArray(parsed)) config.commentItems = parsed;
             }
         } catch (parseErr) { /* ignore */ }
 

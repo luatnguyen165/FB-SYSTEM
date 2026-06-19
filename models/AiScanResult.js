@@ -21,6 +21,7 @@ const AiScanResultSchema = new mongoose.Schema({
     postUrl: { type: String, default: '' },
     postContent: { type: String, default: '' },
     postImages: [{ type: String }],
+    postVideos: [{ type: String }],
     postAuthor: { type: String, default: '' },
     postPublishedAt: { type: String, default: '' },
     // Flag: đã được AI phân tích hay chưa? Post mới crawl sẽ là false

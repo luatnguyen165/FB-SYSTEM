@@ -6,7 +6,7 @@
     <title>Quét Bài Viết AI - ReelsFlow AI</title>
     <link rel="stylesheet" href="/css/base.css">
     <link rel="stylesheet" href="/css/style.css">
-    <link rel="stylesheet" href="/css/ai-scan.css?v=2026060619">
+    <link rel="stylesheet" href="/css/ai-scan.css?v=2026061918">
     <link rel="stylesheet" href="/css/toast.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -172,7 +172,6 @@
                         <tr>
                             <th>Bài viết</th>
                             <th>Group</th>
-                            <th>AI Score</th>
                             <th>Match</th>
                             <th>Comment</th>
                             <th>Thời gian</th>
@@ -180,7 +179,7 @@
                     </thead>
                     <tbody>
                         <% if (recentResults.length === 0) { %>
-                        <tr><td colspan="6" class="empty-cell">Chưa có kết quả quét nào</td></tr>
+                        <tr><td colspan="5" class="empty-cell">Chưa có kết quả quét nào</td></tr>
                         <% } else { %>
                         <% recentResults.forEach(function(result) { %>
                         <tr class="result-row <%= result.isMatching ? 'row-match' : 'row-no-match' %>">
@@ -194,6 +193,13 @@
                                         <% if (result.postImages.length > 4) { %>
                                         <span class="result-images-more">+<%= result.postImages.length - 4 %></span>
                                         <% } %>
+                                    </div>
+                                    <% } %>
+                                    <% if (result.postVideos && result.postVideos.length > 0) { %>
+                                    <div class="result-videos">
+                                        <% result.postVideos.forEach(function(vid) { %>
+                                        <a href="<%= vid %>" target="_blank" class="result-video-link"><i class="fa-solid fa-play"></i> Video</a>
+                                        <% }); %>
                                     </div>
                                     <% } %>
                                     <a href="<%= result.postUrl || '#' %>" target="_blank" class="post-link">
@@ -210,12 +216,6 @@
                                      <%= result.groupName || 'Unknown Group' %>
                                  </a>
                              </td>
-                            <td>
-                                <div class="score-bar">
-                                    <div class="score-fill <%= result.aiScore >= 70 ? 'score-high' : result.aiScore >= 40 ? 'score-mid' : 'score-low' %>" style="width: <%= result.aiScore %>%"></div>
-                                    <span class="score-text"><%= result.aiScore %>%</span>
-                                </div>
-                            </td>
                             <td>
                                 <span class="match-badge <%= result.isMatching ? 'match-yes' : 'match-no' %>">
                                     <%= result.isMatching ? '✓ Match' : '✗ No' %>
@@ -297,14 +297,16 @@
                         <div class="group-selector-empty" id="groupEmpty">
                             <p>Chọn tài khoản Facebook trước để tải danh sách groups</p>
                         </div>
-                        <div class="group-search-box" id="groupSearchBox" style="display: none;">
-                            <i class="fa-solid fa-search"></i>
-                            <input type="text" id="groupSearchInput" placeholder="Tìm group...">
-                            <button type="button" class="group-search-clear" id="groupSearchClear" title="Xóa"><i class="fa-solid fa-xmark"></i></button>
-                        </div>
-                        <div class="group-checkbox-list" id="groupCheckboxList" style="display: none;"></div>
-                        <div class="group-selected-count" id="groupSelectedCount" style="display: none;">
-                            Đã chọn: <strong id="groupCount">0</strong> group
+                        <div id="aiScanGroupsContainer" style="display: none;">
+                            <div class="groups-search-bar" id="groupSearchBar">
+                                <i class="fa-solid fa-search"></i>
+                                <input type="text" class="groups-search-input" id="groupSearchInput" placeholder="Click để chọn nhóm...">
+                                <button type="button" class="groups-select-all-btn" id="btnSelectAllGroups" title="Chọn tất cả"><i class="fa-solid fa-check-double"></i></button>
+                                <button type="button" class="groups-select-all-btn" id="btnDeselectAllGroups" title="Bỏ chọn tất cả"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
+                            <div class="groups-items-wrapper" id="groupCheckboxList" style="display: none;"></div>
+                            <div class="groups-selected-badges" id="groupSelectedBadges"></div>
+                            <div class="groups-count-bar"><strong id="groupCount">0</strong> / <span id="groupTotal">0</span> nhóm đã chọn</div>
                         </div>
                     </div>
                 </div>
@@ -318,15 +320,7 @@
 
                 <!-- OpenAI API Key - tạm ẩn, ưu tiên crawler lưu bài viết + ảnh trước -->
                 <input type="hidden" id="configOpenaiKey" value="">
-
-                <!-- ============ KỊCH BẢN QUÉT ============ -->
-                <div class="form-section-divider"><i class="fa-solid fa-wand-magic-sparkles"></i> Kịch Bản Quét</div>
-
-                <div class="form-group">
-                    <label>Kịch bản AI Phân Tích <span class="required">*</span> <small class="form-hint-inline">— Prompt gửi cho AI</small></label>
-                    <textarea id="configScanScript" rows="6" placeholder="Nhập kịch bản/prompt cho AI phân tích bài viết. VD: Phân tích bài viết có nhu cầu mua BĐS không? Đánh giá điểm từ 0-100..."></textarea>
-                    <small class="form-hint">Kịch bản này sẽ được dùng làm prompt chính để AI phân tích mỗi bài viết. Bạn có thể viết tự do.</small>
-                </div>
+                <input type="hidden" id="configScanScript" value="">
 
                 <!-- Lịch chạy tự động -->
                 <div class="form-section-divider"><i class="fa-solid fa-clock"></i> Lịch Chạy Tự Động</div>
@@ -369,6 +363,26 @@
                             <span class="input-suffix">ngày gần đây</span>
                         </div>
                         <small class="form-hint">1 = chỉ hôm nay, 2 = hôm nay + hôm qua, 3 = 3 ngày...</small>
+                    </div>
+                </div>
+
+                <!-- ============ COMMENT SẢN PHẨM ============ -->
+                <div class="form-section-divider"><i class="fa-solid fa-comments"></i> Comment Sản Phẩm</div>
+
+                <div class="form-group">
+                    <label>Quản lý bình luận</label>
+                    <small class="form-hint">Tạo các bình luận mẫu (text, hình, video). Chọn bình luận nào thì auto comment bình luận đó. Chọn hết thì comment hết.</small>
+                    <div id="commentItemsContainer" class="comment-items-container"></div>
+                    <div class="comment-items-toolbar">
+                        <button type="button" class="btn btn-sm btn-outline" id="btnAddCommentText">
+                            <i class="fa-solid fa-font"></i> + Text
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline" id="btnAddCommentImage">
+                            <i class="fa-solid fa-image"></i> + Hình
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline" id="btnAddCommentVideo">
+                            <i class="fa-solid fa-video"></i> + Video
+                        </button>
                     </div>
                 </div>
 

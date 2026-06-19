@@ -92,17 +92,36 @@ router.post('/ai-comment/api/:commentId/toggle', requireAuth, aiCommentControlle
 router.get('/ai-comment/api/active', requireAuth, aiCommentController.getActiveComments);
 router.get('/ai-comment/api/all', requireAuth, aiCommentController.getAllCommentsForPicker);
 
-// Upload file for comment
+// Upload file for comment (image or video)
 router.post('/ai-comment/api/upload-file', requireAuth, (req, res, next) => {
-    const { uploadImage } = require('../middlewares/uploadMiddleware');
-    uploadImage.single('file')(req, res, (err) => {
-        if (err) {
-            const { uploadVideo } = require('../middlewares/uploadMiddleware');
-            uploadVideo.single('file')(req, res, next);
-        } else {
-            next();
+    const multer = require('multer');
+    const path = require('path');
+    const fs = require('fs');
+
+    const dataDir = global.USER_DATA_DIR || path.join(__dirname, '..');
+    const uploadDir = path.join(dataDir, 'uploads', 'comment-files');
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+    const storage = multer.diskStorage({
+        destination: (req, file, cb) => cb(null, uploadDir),
+        filename: (req, file, cb) => {
+            const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname);
+            cb(null, uniqueName);
         }
     });
+
+    const upload = multer({
+        storage,
+        limits: { fileSize: 500 * 1024 * 1024 }, // 500MB
+        fileFilter: (req, file, cb) => {
+            const isImage = file.mimetype.startsWith('image/');
+            const isVideo = file.mimetype.startsWith('video/');
+            if (isImage || isVideo) return cb(null, true);
+            cb(new Error('Chỉ chấp nhận file ảnh hoặc video'));
+        }
+    });
+
+    upload.single('file')(req, res, next);
 }, aiCommentController.uploadCommentFile);
 
 // ========================

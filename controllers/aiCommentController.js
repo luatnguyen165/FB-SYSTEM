@@ -178,8 +178,8 @@ const uploadCommentFile = async (req, res) => {
         }
 
         const filePath = req.file.path;
-        const relativePath = path.relative(global.USER_DATA_DIR || path.join(__dirname, '..'), filePath).replace(/\\/g, '/');
-        // Ensure leading slash for correct URL resolution from any route
+        const dataDir = global.USER_DATA_DIR || path.join(__dirname, '..');
+        const relativePath = path.relative(dataDir, filePath).replace(/\\/g, '/');
         const publicPath = '/' + relativePath;
         const fileType = req.file.mimetype.startsWith('video/') ? 'video' : 'image';
         const fileName = req.file.originalname;

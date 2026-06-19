@@ -15,7 +15,7 @@ social-sessions/
 crypto-keys/
 uploads/crypto-keys/
 
-
+*.jpg
 # ==================== BROWSER DATA ====================
 chrome-profiles/
 *.crx

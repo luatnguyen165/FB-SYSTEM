@@ -3,7 +3,6 @@ const AiScanConfig = require('../../models/AiScanConfig');
 const AiScanResult = require('../../models/AiScanResult');
 const Channel = require('../../models/Channel');
 const Settings = require('../../models/Settings');
-const AiComment = require('../../models/AiComment');
 const { getOrOpenFacebookContext } = require('../facebook/session');
 const { fetchGroupPosts } = require('../facebookGraphqlScraper');
 const socketService = require('../socketService');
@@ -372,26 +371,15 @@ async function playCommentForResult(resultId) {
     try {
         page = context.pages()[0] || await context.newPage();
 
-        const bankComments = await AiComment.find({ userId: config.userId, isActive: true })
-            .sort({ order: 1 }).lean();
+        // Lấy commentItems từ config (chỉ lấy những item được chọn)
+        const selectedComments = (config.commentItems || []).filter(ci => ci.selected !== false);
 
         let itemsToSend = [];
-        if (bankComments && bankComments.length > 0) {
-            itemsToSend = bankComments.map(bc => ({ type: bc.type, content: bc.content, caption: bc.caption || '' }));
-        } else if (config.commentItems && config.commentItems.length > 0) {
-            itemsToSend = config.commentItems.map(ci => ({ type: ci.type, content: ci.content, caption: ci.caption || '' }));
-        } else if (config.commentScripts && config.commentScripts.length > 0) {
-            const script = config.commentScripts[randomInt(0, config.commentScripts.length - 1)];
-            const img = (config.commentImages && config.commentImages.length > 0)
-                ? config.commentImages[randomInt(0, config.commentImages.length - 1)] : '';
-            const text = script
-                .replace(/\{ten_sp\}/g, config.niche || 'sản phẩm')
-                .replace(/\{gia\}/g, 'Liên hệ')
-                .replace(/\{nganh\}/g, config.niche || '');
-            itemsToSend = [];
-            if (text && img) itemsToSend.push({ type: 'image', content: img, caption: text });
-            else if (img) itemsToSend.push({ type: 'image', content: img, caption: '' });
-            else if (text) itemsToSend.push({ type: 'text', content: text, caption: '' });
+        if (selectedComments.length > 0) {
+            // Chọn ngẫu nhiên 1 comment từ danh sách đã chọn
+            const picked = selectedComments[randomInt(0, selectedComments.length - 1)];
+            itemsToSend = [{ type: picked.type, content: picked.content, caption: picked.caption || '' }];
+            console.log(`[Play] Picked comment: type=${picked.type}, name="${picked.name || ''}"`);
         }
 
         if (itemsToSend.length === 0) {

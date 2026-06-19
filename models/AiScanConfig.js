@@ -24,6 +24,13 @@ const AiScanConfigSchema = new mongoose.Schema({
     openaiCompatibleModel: { type: String, default: 'gpt-3.5-turbo' },
     anthropicApiKey: { type: String, default: '' },
     anthropicModel: { type: String, default: 'claude-3-haiku-20240307' },
+    commentItems: [{
+        name: { type: String, default: '' },
+        type: { type: String, enum: ['text', 'image', 'video'], default: 'text' },
+        content: { type: String, default: '' },
+        caption: { type: String, default: '' },
+        selected: { type: Boolean, default: true }
+    }],
     isActive: { type: Boolean, default: true },
     lastScanAt: { type: Date, default: null },
     createdAt: { type: Date, default: Date.now },

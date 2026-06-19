@@ -4,6 +4,7 @@ const fs = require('fs');
 const axios = require('axios');
 const AiScanResult = require('../../models/AiScanResult');
 const { extractGroupIdFromUrl, normalizeFacebookPostUrl, isTodayTimeString, randomInt } = require('./helpers');
+const { downloadGroupVideo, videoDownloadQueue } = require('../facebookGroupScraper');
 
 async function crawlGroupPosts(page, groupUrl, maxPosts = 10, maxDaysOld = 1) {
     console.log(`[Crawl] Scanning: ${groupUrl}, max: ${maxPosts}, maxDaysOld: ${maxDaysOld}`);
@@ -143,6 +144,58 @@ async function savePostsToDb(posts, config, groupUrl) {
                 else localImages.push(url);
             }
 
+            // Download videos (same pattern as tracking controller)
+            const localVideos = [];
+            const videoList = p.videos || [];
+            if (videoList.length > 0) {
+                const projectRoot = global.USER_DATA_DIR || path.join(__dirname, '..', '..');
+                const postDir = path.join(projectRoot, 'uploads', 'ai-scan', groupFolder, String(postId));
+                fs.mkdirSync(postDir, { recursive: true });
+
+                // Get cookies from channel for video download
+                const Channel = require('../../models/Channel');
+                const channelDoc = config.channelId ? await Channel.findById(config.channelId).lean() : null;
+                let cookies = {};
+                if (channelDoc?.storageStatePath && fs.existsSync(channelDoc.storageStatePath)) {
+                    try {
+                        const state = JSON.parse(fs.readFileSync(channelDoc.storageStatePath, 'utf8'));
+                        for (const c of (state.cookies || [])) { cookies[c.name] = c.value; }
+                    } catch (e) {}
+                }
+
+                for (let v = 0; v < videoList.length; v++) {
+                    const videoData = videoList[v];
+                    let videoUrl = videoData?.reelUrl || videoData?.url || '';
+                    if (!videoUrl || typeof videoUrl !== 'string') continue;
+
+                    const videoName = `${postId}_video_${v + 1}.mp4`;
+                    const videoPath = `/uploads/ai-scan/${groupFolder}/${postId}/${videoName}`;
+
+                    try {
+                        console.log(`[Crawl] Downloading video ${v + 1}: ${videoUrl.substring(0, 80)}...`);
+                        const savedPath = await videoDownloadQueue.add(
+                            () => downloadGroupVideo(videoUrl, postDir, videoName, cookies),
+                            `${postId}_video_${v + 1}`
+                        );
+
+                        if (savedPath) {
+                            let finalVideoPath = videoPath;
+                            if (!savedPath.startsWith('/uploads/')) {
+                                const normalized = savedPath.replace(/\\/g, '/');
+                                const uploadsIdx = normalized.indexOf('/uploads/');
+                                if (uploadsIdx >= 0) finalVideoPath = normalized.substring(uploadsIdx);
+                            }
+                            localVideos.push(finalVideoPath);
+                            console.log(`[Crawl] ✓ Video ${v + 1}: ${finalVideoPath}`);
+                        } else {
+                            console.log(`[Crawl] ✗ Video ${v + 1} failed`);
+                        }
+                    } catch (e) {
+                        console.error(`[Crawl] ✗ Video ${v + 1} error:`, e.message);
+                    }
+                }
+            }
+
             const groupName = p.group_name || p.groupName || '';
 
             const existing = await AiScanResult.findOne({ configId: config._id, postId }).lean();
@@ -162,6 +215,7 @@ async function savePostsToDb(posts, config, groupUrl) {
                 postUrl,
                 postContent: content,
                 postImages: localImages,
+                postVideos: localVideos,
                 postAuthor: author,
                 postPublishedAt: publishedAt,
                 aiAnalyzed: false,
@@ -169,7 +223,7 @@ async function savePostsToDb(posts, config, groupUrl) {
                 scannedAt: new Date()
             });
             saved++;
-            console.log(`[Crawl] ✓ Saved: ${postId} (${(content || '').substring(0, 50)}...) [${localImages.length} images]`);
+            console.log(`[Crawl] ✓ Saved: ${postId} (${(content || '').substring(0, 50)}...) [${localImages.length} images, ${localVideos.length} videos]`);
         } catch (e) {
             errors++;
             console.error(`[Crawl] ✗ Error saving post:`, e.message);

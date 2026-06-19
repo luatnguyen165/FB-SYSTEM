@@ -51,7 +51,9 @@ if (isSilent) {
             msg.includes('[Scrape]') ||
             msg.includes('[Download] ') ||
             msg.includes('[Reel Download]') ||
+            msg.includes('[Group Scraper]') ||
             msg.includes('[Post 1] ') ||
+            msg.includes('[Group Video]')||
             msg.includes('#####')) {
             originalLog(...args);
         }

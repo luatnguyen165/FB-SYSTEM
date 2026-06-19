@@ -4,6 +4,7 @@
   "main": "electron/main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "telegram": "node telegram-claude.js",
     "dev": "nodemon app.js",
     "electron-dev": "cross-env NODE_ENV=development electron electron/main.js",
     "electron-start": "electron electron/main.js",
@@ -51,6 +52,7 @@
     "sharp": "^0.34.5",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
+    "telegraf": "^4.16.3",
     "uuid": "^14.0.0",
     "yt-dlp-exec": "^1.0.2"
   },

@@ -24,4 +24,11 @@ router.get('/api/posts/:trackingId', trackingController.getTrackingPosts);
 router.put('/api/posts/:id', trackingController.updateTrackingPost);
 router.delete('/api/posts/:id', trackingController.deleteTrackingPost);
 
+// Schedule
+router.put('/api/schedule/:id', trackingController.updateSchedule);
+router.get('/api/schedule/:id', trackingController.getSchedule);
+
+// Migration: fix absolute video paths
+router.post('/api/fix-paths', trackingController.fixVideoPaths);
+
 module.exports = router;

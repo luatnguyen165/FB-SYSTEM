@@ -296,6 +296,10 @@
     font-weight: 700;
     color: var(--text-main);
     margin: 0 0 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 350px;
 }
 
 .tracking-card-url {
@@ -324,12 +328,13 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 600;
-    padding: 3px 10px;
-    border-radius: 6px;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
     background: var(--bg-hover);
     color: var(--text-muted);
+    white-space: nowrap;
 }
 
 .meta-badge.badge-active {
@@ -340,6 +345,72 @@
 .meta-badge.badge-paused {
     background: rgba(245, 158, 11, 0.12);
     color: #d97706;
+}
+
+.meta-badge.badge-schedule {
+    background: rgba(139, 92, 246, 0.12);
+    color: #8b5cf6;
+}
+
+.meta-badge.badge-limit {
+    background: rgba(59, 130, 246, 0.12);
+    color: #3b82f6;
+}
+
+/* ===== Scrape Progress ===== */
+.scrape-progress {
+    display: none;
+    margin-top: 12px;
+    padding: 12px 16px;
+    background: var(--bg-main);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    animation: fadeIn 0.2s;
+}
+
+.scrape-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.scrape-progress-text {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--primary);
+}
+
+.scrape-progress-count {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.scrape-progress-bar {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.scrape-progress-fill {
+    height: 100%;
+    background: var(--primary-gradient);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+    width: 0%;
+}
+
+/* New row animation */
+.post-new-row {
+    animation: fadeIn 0.3s ease;
+    background: rgba(16, 185, 129, 0.05);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 /* Card Stats */
@@ -745,12 +816,38 @@
         width: 95%;
         margin: 10px;
     }
+    .posts-table {
+        font-size: 11px;
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .posts-table th,
+    .posts-table td {
+        padding: 8px 10px;
+    }
+    .posts-table .col-media { width:60px; max-width:60px }
+    .posts-table .col-time { width:80px; max-width:80px }
+    .posts-table .col-actions { width:70px; max-width:70px }
+    .table-thumb,
+    .table-thumb-video {
+        width:40px;
+        height:40px;
+    }
+    .table-post-text {
+        max-height:32px;
+        -webkit-line-clamp:2;
+        font-size:11px;
+    }
+    .table-post-meta a { max-width:80px }
+    .tracking-card-name { max-width:100% }
+    .tracking-card-url { max-width:100% }
 }
 /* ===== Data Table ===== */
-.data-table { width:100%; border-collapse:collapse; background:var(--bg-card); border-radius:var(--radius-lg); overflow:hidden; border:1px solid var(--border) }
-.data-table th, .data-table td { padding:12px 16px; text-align:left; border-bottom:1px solid var(--border); font-size:13px }
-.data-table th { font-weight:600; color:var(--text-muted); background:var(--bg-main); font-size:12px; text-transform:uppercase; letter-spacing:.5px }
-.data-table td { color:var(--text-main) }
+.data-table { width:100%; border-collapse:collapse; background:var(--bg-card); border-radius:var(--radius-lg); overflow:hidden; border:1px solid var(--border); table-layout:fixed }
+.data-table th, .data-table td { padding:10px 12px; text-align:left; border-bottom:1px solid var(--border); font-size:13px; overflow:hidden; text-overflow:ellipsis; max-width:0 }
+.data-table th { font-weight:600; color:var(--text-muted); background:var(--bg-main); font-size:12px; text-transform:uppercase; letter-spacing:.5px; white-space:nowrap }
+.data-table td { color:var(--text-main); word-break:break-word }
 .data-table tr:hover { background:var(--bg-hover) }
 .data-table tr:last-child td { border-bottom:none }
 
@@ -773,7 +870,7 @@
 .post-card-footer { display: flex; flex-wrap: wrap; gap: 12px; padding: 10px 16px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-muted); }
 .post-card-link { color: var(--primary); text-decoration: none; font-weight: 500; }
 .post-card-link:hover { text-decoration: underline; }
-.posts-pagination { display: flex; gap: 8px; justify-content: center; margin-top: 20px; }
+/* Pagination uses base.css .pagination-bar + .page-nav-btn + .page-info */
 
 /* ===== Image Preview ===== */
 .image-preview-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.8); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 99999; animation: fadeIn .2s; }
@@ -784,13 +881,337 @@
 .image-preview-download { position: absolute; top: -40px; right: 44px; background: rgba(255,255,255,.2); border: none; color: white; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; text-decoration: none; }
 .image-preview-download:hover { background: rgba(255,255,255,.4); }
 
-/* ===== Edit Post Modal ===== */
-.edit-post-modal { background: var(--bg-card); border-radius: var(--radius-xl); width: 90%; max-width: 600px; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; animation: modalSlideIn .2s; }
-.edit-post-header { display: flex; justify-content: space-between; align-items: center; padding: 18px 24px; border-bottom: 1px solid var(--border); background: var(--bg-main); }
-.edit-post-header h3 { margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px; }
-.edit-post-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
-.edit-post-images { display: flex; flex-wrap: wrap; gap: 8px; }
-.edit-post-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 24px; border-top: 1px solid var(--border); background: var(--bg-main); }
+/* ===== Edit Post Modal (schedule-post style) ===== */
+.edit-post-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: fadeIn 0.2s;
+}
+
+/* ===== Video Player in Edit Modal ===== */
+.edit-post-videos {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.edit-post-video-item {
+    position: relative;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: #000;
+    border: 1px solid var(--border);
+}
+
+.edit-post-video-item video {
+    width: 100%;
+    max-height: 360px;
+    object-fit: contain;
+    background: #000;
+    display: block;
+    border-radius: var(--radius-md);
+}
+
+/* Video overlay play button */
+.video-play-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+    transition: background 0.2s;
+    z-index: 2;
+}
+
+.video-play-overlay:hover {
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.video-play-overlay .play-btn-circle {
+    width: 56px;
+    height: 56px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.video-play-overlay:hover .play-btn-circle {
+    transform: scale(1.1);
+    box-shadow: 0 6px 28px rgba(0, 0, 0, 0.4);
+}
+
+.video-play-overlay .play-btn-circle i {
+    font-size: 20px;
+    color: var(--primary);
+    margin-left: 3px;
+}
+
+/* Video controls bar */
+.video-controls-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 3;
+    opacity: 0;
+    transition: opacity 0.25s;
+}
+
+.edit-post-video-item:hover .video-controls-bar {
+    opacity: 1;
+}
+
+.video-controls-bar .btn-video-ctrl {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    transition: background 0.15s;
+    flex-shrink: 0;
+}
+
+.video-controls-bar .btn-video-ctrl:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.video-controls-bar .video-progress-bar {
+    flex: 1;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 2px;
+    cursor: pointer;
+    position: relative;
+}
+
+.video-controls-bar .video-progress-fill {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.1s linear;
+}
+
+.video-controls-bar .video-time-label {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 500;
+    white-space: nowrap;
+    min-width: 40px;
+    text-align: center;
+}
+
+.video-controls-bar .btn-video-volume {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    transition: background 0.15s;
+    flex-shrink: 0;
+}
+
+.video-controls-bar .btn-video-volume:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Video link (external) */
+.edit-post-video-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--primary-light);
+    color: var(--primary);
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s;
+    border: 1px solid rgba(37, 99, 235, 0.15);
+}
+
+.edit-post-video-link:hover {
+    background: var(--primary);
+    color: #fff;
+}
+
+/* Facebook video embed container */
+.fb-video-embed-wrapper {
+    position: relative;
+    width: 100%;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: #000;
+    border: 1px solid var(--border);
+}
+
+.fb-video-embed-wrapper iframe {
+    width: 100%;
+    min-height: 320px;
+    border: none;
+    display: block;
+}
+
+.fb-video-embed-wrapper .video-embed-fallback {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.fb-video-embed-wrapper .video-embed-fallback i {
+    font-size: 32px;
+    color: var(--text-light);
+}
+
+.fb-video-embed-wrapper .video-embed-fallback a {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.fb-video-embed-wrapper .video-embed-fallback a:hover {
+    text-decoration: underline;
+}
+
+/* Fullscreen video modal */
+.video-fullscreen-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.92);
+    z-index: 999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s;
+}
+
+.video-fullscreen-overlay video {
+    max-width: 95vw;
+    max-height: 90vh;
+    border-radius: var(--radius-md);
+}
+
+.video-fullscreen-overlay .btn-close-fullscreen {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    color: #fff;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+    z-index: 10;
+}
+
+.video-fullscreen-overlay .btn-close-fullscreen:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* ===== Schedule Toggle ===== */
+.schedule-toggle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    padding: 14px 16px;
+    background: var(--bg-hover);
+    border-radius: var(--radius-md);
+    border: 1.5px solid var(--border);
+    transition: all var(--transition-fast);
+}
+
+.schedule-toggle:hover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.schedule-toggle input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.schedule-toggle span {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-main);
+}
+
+/* ===== Hint with icon ===== */
+.form-section__hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    color: var(--text-light);
+    margin-top: 8px;
+    padding: 6px 10px;
+    background: var(--bg-main);
+    border-radius: var(--radius-sm);
+}
+
+.form-section__hint i {
+    font-size: 0.75rem;
+    color: var(--primary);
+}
+
+.form-section__hint.schedule-hint {
+    background: rgba(139, 92, 246, 0.08);
+    color: #8b5cf6;
+}
+
+.form-section__hint.schedule-hint i {
+    color: #8b5cf6;
+}
 
 /* ===== Publish Time Badge ===== */
 .post-card-time { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); background: var(--bg-hover); padding: 4px 10px; border-radius: var(--radius-full); }
@@ -798,3 +1219,32 @@
 
 /* ===== Video Player ===== */
 .post-video-player { width: 100%; max-height: 300px; border-radius: var(--radius-sm); margin: 8px; object-fit: contain; background: #000; }
+
+/* ===== Posts Table ===== */
+.posts-table { width:100%; border-collapse:collapse; background:var(--bg-card); border-radius:var(--radius-lg); overflow:hidden; border:1px solid var(--border); table-layout:fixed }
+.posts-table th, .posts-table td { padding:10px 12px; text-align:left; border-bottom:1px solid var(--border); font-size:13px; vertical-align:middle; overflow:hidden }
+.posts-table th { font-weight:600; color:var(--text-muted); background:var(--bg-main); font-size:12px; text-transform:uppercase; letter-spacing:.5px; white-space:nowrap }
+.posts-table td { color:var(--text-main) }
+.posts-table tr:hover { background:var(--bg-hover) }
+.posts-table tr:last-child td { border-bottom:none }
+.posts-table .col-media { width:80px; max-width:80px }
+.posts-table .col-content { width:auto; min-width:0; position:relative }
+.posts-table .col-time { width:100px; max-width:100px; white-space:nowrap }
+.posts-table .col-actions { width:110px; max-width:110px; min-width:110px; white-space:nowrap }
+
+.table-media-cell { display:flex; gap:4px; align-items:center; flex-wrap:nowrap }
+.table-thumb { width:48px; height:48px; object-fit:cover; border-radius:var(--radius-sm); cursor:pointer; transition:transform .2s; border:1px solid var(--border); flex-shrink:0 }
+.table-thumb:hover { transform:scale(1.05); box-shadow:var(--shadow-sm) }
+.table-thumb-video { width:48px; height:48px; object-fit:cover; border-radius:var(--radius-sm); background:#000; border:1px solid var(--border); cursor:pointer; transition:transform .2s,box-shadow .2s; flex-shrink:0 }
+.table-thumb-video:hover { transform:scale(1.05); box-shadow:var(--shadow-sm) }
+.table-more-badge { background:var(--bg-hover); color:var(--text-muted); font-size:10px; font-weight:600; padding:2px 6px; border-radius:var(--radius-sm); flex-shrink:0 }
+.table-no-media { color:var(--text-light); font-style:italic; font-size:11px }
+.table-post-text { font-size:12px; line-height:1.4; color:var(--text-main); max-height:40px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; word-break:break-word }
+.table-post-meta { display:flex; gap:8px; margin-top:4px; font-size:10px; color:var(--text-muted); flex-wrap:nowrap; overflow:hidden; max-width:100% }
+.table-post-meta a { color:var(--primary); text-decoration:none; font-weight:500; max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block; flex-shrink:1 }
+.table-post-meta a:hover { text-decoration:underline }
+.table-post-meta span { white-space:nowrap; flex-shrink:0 }
+.table-time { font-size:10px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; max-width:100% }
+.table-actions { display:flex; gap:3px; flex-wrap:nowrap; align-items:center; flex-shrink:0 }
+
+/* Action buttons use base.css .btn-icon + .btn-icon--sm + .btn-icon--danger */

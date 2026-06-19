@@ -8,16 +8,15 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 /**
- * Download Facebook Reel video bằng yt-dlp
- * @param {string} reelUrl - URL reel (https://www.facebook.com/reel/123456/)
+ * Download Facebook video bằng python facebook-video-download-api.py
+ * @param {string} reelUrl - URL reel/video
  * @param {string} saveDir - Thư mục lưu video
- * @param {string} filename - Tên file (mặc định: reel_{id}.mp4)
+ * @param {string} filename - Tên file
  * @returns {string|null} Đường dẫn file đã download hoặc null nếu lỗi
  */
-function downloadFacebookReel(reelUrl, saveDir, filename = '') {
+async function downloadFacebookReel(reelUrl, saveDir, filename = '', retries = 2) {
     if (!reelUrl || !reelUrl.includes('facebook.com')) return null;
 
-    // Tạo tên file từ reel ID
     if (!filename) {
         const reelId = reelUrl.match(/reel\/(\d+)/)?.[1] || Date.now();
         filename = `reel_${reelId}.mp4`;
@@ -26,30 +25,49 @@ function downloadFacebookReel(reelUrl, saveDir, filename = '') {
     const filepath = path.join(saveDir, filename);
     fs.mkdirSync(saveDir, { recursive: true });
 
-    // Tìm cookies file
-    const defaultCookieFile = path.join(global.USER_DATA_DIR || path.join(__dirname, '..', '..'), 'www.facebook.com_cookies.txt');
-    const cookieFile = fs.existsSync(defaultCookieFile) ? defaultCookieFile : '';
+    const pythonScript = path.join(__dirname, '..', 'utils', 'facebook-video-download-api.py');
 
-    if (!cookieFile) {
-        console.error(`[Reel Download] Không tìm thấy www.facebook.com_cookies.txt`);
-        return null;
-    }
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
 
-    console.log(`[Reel Download] ${reelUrl}`);
-    try {
-        execSync(`yt-dlp --cookies "${cookieFile}" -f "bestvideo+bestaudio/best" -o "${filepath}" "${reelUrl}"`, {
-            timeout: 120000,
-            stdio: 'pipe',
-        });
+            console.log(`[Reel Download] Attempt ${attempt}: ${reelUrl.substring(0, 80)}...`);
+            const result = execSync(`python "${pythonScript}" "${reelUrl}"`, {
+                timeout: 60000,
+                stdio: 'pipe'
+            }).toString();
 
-        if (fs.existsSync(filepath)) {
-            const stats = fs.statSync(filepath);
-            console.log(`[Reel Download] ✓ ${filename} (${(stats.size / 1024 / 1024).toFixed(1)}MB)`);
-            return filepath;
+            let videoDownloadUrl = '';
+            const hdMatch = result.match(/HD Link:\s*(https?:\/\/\S+)/);
+            const sdMatch = result.match(/SD Link:\s*(https?:\/\/\S+)/);
+            if (hdMatch) videoDownloadUrl = hdMatch[1].trim();
+            else if (sdMatch) videoDownloadUrl = sdMatch[1].trim();
+
+            if (!videoDownloadUrl) {
+                console.log(`[Reel Download] No video URL found`);
+                continue;
+            }
+
+            console.log(`[Reel Download] Downloading: ${videoDownloadUrl.substring(0, 80)}...`);
+            const res = await axios.get(videoDownloadUrl, {
+                responseType: 'arraybuffer',
+                timeout: 300000,
+                headers: { 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+                maxRedirects: 5,
+            });
+
+            if (res.data && res.data.length > 10000) {
+                fs.writeFileSync(filepath, Buffer.from(res.data));
+                console.log(`[Reel Download] ✓ ${filename} (${(res.data.length / 1024 / 1024).toFixed(1)}MB)`);
+                return filepath;
+            }
+        } catch (e) {
+            console.log(`[Reel Download] Attempt ${attempt} failed: ${e.message?.substring(0, 100)}`);
+            if (attempt < retries) await new Promise(r => setTimeout(r, 2000));
         }
-    } catch (e) {
-        console.error(`[Reel Download] ✗ ${e.message}`);
     }
+
+    console.error(`[Reel Download] ✗ All ${retries} attempts failed for ${reelUrl}`);
     return null;
 }
 
@@ -215,7 +233,7 @@ function extractMediaUrls(node, postId) {
     const reelUrl = node?.comet_sections?.timestamp?.story?.url || '';
     const isReel = reelUrl.includes('/reel/');
 
-    // Nếu là Reel → luôn thêm reelUrl cho yt-dlp download
+    // Nếu là Reel → luôn thêm reelUrl cho download
     if (isReel) {
         console.log(`[Profile Scraper] ${postId}: Reel detected → ${reelUrl}`);
         videos.push({ url: '', reelUrl, duration: 0 });
@@ -297,6 +315,58 @@ async function downloadImage(url, saveDir, filename) {
         return null;
     }
 }
+
+// ==================== DOWNLOAD QUEUE ====================
+class DownloadQueue {
+    constructor(concurrency = 2, delayMs = 500, retries = 3) {
+        this.queue = [];
+        this.running = 0;
+        this.concurrency = concurrency;
+        this.delayMs = delayMs;
+        this.retries = retries;
+    }
+
+    async add(task, taskName = 'task') {
+        return new Promise((resolve, reject) => {
+            this.queue.push({ task, taskName, resolve, reject, attempt: 1 });
+            this.process();
+        });
+    }
+
+    async process() {
+        if (this.running >= this.concurrency || this.queue.length === 0) return;
+
+        this.running++;
+        const item = this.queue.shift();
+
+        try {
+            const result = await item.task();
+            item.resolve(result);
+        } catch (e) {
+            if (item.attempt < this.retries) {
+                item.attempt++;
+                console.log(`[Queue] Retry ${item.attempt}/${this.retries} for ${item.taskName}`);
+                await sleep(this.delayMs * 2); // Delay hơn khi retry
+                this.queue.unshift(item); // Đưa lại đầu queue
+                this.running--;
+                this.process();
+                return;
+            } else {
+                console.log(`[Queue] Failed after ${this.retries} attempts: ${item.taskName}`);
+                item.resolve(null); // Resolve null thay vì reject để không break flow
+            }
+        } finally {
+            this.running--;
+            if (this.delayMs > 0) {
+                await sleep(this.delayMs);
+            }
+            this.process();
+        }
+    }
+}
+
+// Singleton queue cho download ảnh
+const imageDownloadQueue = new DownloadQueue(2, 300, 3); // 2 concurrent, 300ms delay, 3 retries
 
 // ==================== EXTRACT TIMESTAMP ====================
 
@@ -753,30 +823,50 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
                 allImageUrls.push(...extra);
             }
 
-            // Download images (tuần tự)
+            // Download images (dùng queue)
             const postSaveDir = path.join(saveDir, String(postId));
             const savedImages = [];
+
+            // Download tuần tự với queue
             for (let i = 0; i < allImageUrls.length; i++) {
+                const imgName = `${postId}_img_${i + 1}`;
                 console.log(`[Post ${postIndex}] Download ảnh ${i + 1}/${allImageUrls.length}...`);
-                const saved = await downloadImage(allImageUrls[i], postSaveDir, `${postId}_${i + 1}`);
+                const saved = await imageDownloadQueue.add(
+                    () => downloadImage(allImageUrls[i], postSaveDir, `${postId}_${i + 1}`),
+                    imgName
+                );
                 if (saved) savedImages.push(saved);
             }
             console.log(`[Post ${postIndex}] ✓ ${savedImages.length}/${allImageUrls.length} ảnh`);
 
-            // Download videos (tuần tự, chờ xong mới qua post tiếp)
+            // Download videos (dùng queue)
             const savedVideos = [];
+            const videoTasks = [];
+
             for (let i = 0; i < rawVideos.length; i++) {
                 const v = rawVideos[i];
                 const videoUrl = v.reelUrl || v.url;
                 if (!videoUrl || !videoUrl.includes('facebook.com')) continue;
 
-                console.log(`[Post ${postIndex}] Download video ${i + 1}/${rawVideos.length}...`);
-                const savedPath = downloadFacebookReel(videoUrl, postSaveDir, `${postId}_video_${i + 1}.mp4`);
+                videoTasks.push({
+                    url: videoUrl,
+                    index: videoTasks.length + 1
+                });
+            }
+
+            // Download tuần tự với queue
+            for (const vt of videoTasks) {
+                const videoName = `${postId}_video_${vt.index}`;
+                console.log(`[Post ${postIndex}] Download video ${vt.index}/${videoTasks.length}...`);
+                const savedPath = await imageDownloadQueue.add(
+                    () => downloadFacebookReel(vt.url, postSaveDir, `${postId}_video_${vt.index}.mp4`),
+                    videoName
+                );
                 if (savedPath) {
-                    savedVideos.push(`/uploads/scraper/${postId}/${postId}_video_${i + 1}.mp4`);
-                    console.log(`[Post ${postIndex}] ✓ Video ${i + 1} xong`);
+                    savedVideos.push(`/uploads/scraper/${postId}/${postId}_video_${vt.index}.mp4`);
+                    console.log(`[Post ${postIndex}] ✓ Video ${vt.index} xong`);
                 } else {
-                    console.log(`[Post ${postIndex}] ✗ Video ${i + 1} thất bại`);
+                    console.log(`[Post ${postIndex}] ✗ Video ${vt.index} thất bại`);
                 }
             }
 
@@ -808,4 +898,4 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
     return allPosts;
 }
 
-module.exports = { scrapeProfilePosts, downloadFacebookReel };
+module.exports = { scrapeProfilePosts, downloadFacebookReel, DownloadQueue, imageDownloadQueue };

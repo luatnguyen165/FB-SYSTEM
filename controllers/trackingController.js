@@ -2,14 +2,15 @@
 const Tracking = require('../models/Tracking');
 const TrackingPost = require('../models/TrackingPost');
 const Channel = require('../models/Channel');
-const { scrapeProfilePosts } = require('../services/facebookProfileScraper');
+const { scrapeProfilePosts, imageDownloadQueue } = require('../services/facebookProfileScraper');
+const { scrapeGroupPosts, downloadGroupVideo, videoDownloadQueue } = require('../services/facebookGroupScraper');
 const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
 
 /**
  * Parse Facebook ID từ URL (profile, page, group)
- * Hỗ trợ: profile.php?id=, /username/, /pages/Page-Name/123456
+ * Hỗ trợ: profile.php?id=, /username/, /pages/Page-Name/123456, /groups/123456/
  */
 function parseFacebookId(url) {
     if (!url) return '';
@@ -19,6 +20,12 @@ function parseFacebookId(url) {
     // /pages/Page-Name/123456
     const pageMatch = url.match(/\/pages\/[^/]+\/(\d+)/);
     if (pageMatch) return pageMatch[1];
+    // /groups/123456/ hoặc /groups/123456
+    const groupMatch = url.match(/\/groups\/(\d+)/);
+    if (groupMatch) return groupMatch[1];
+    // /groups/groupname/ (group name-based URL)
+    const groupNameMatch = url.match(/\/groups\/([a-zA-Z0-9._-]+)\/?$/);
+    if (groupNameMatch && !groupNameMatch[1].match(/^\d+$/)) return groupNameMatch[1];
     // /username/ hoặc /pagename/
     const userMatch = url.match(/facebook\.com\/([a-zA-Z0-9.]+)\/?/);
     if (userMatch) return userMatch[1];
@@ -179,7 +186,14 @@ exports.createTracking = async (req, res) => {
                                 }
 
                                 // Videos đã download sẵn từ scraper
-                                const downloadedVideos = (post.videos || []).filter(v => v && v.startsWith('/uploads/'));
+                                const downloadedVideos = (post.videos || []).map(v => {
+                                    if (!v) return null;
+                                    if (v.startsWith('/uploads/')) return v;
+                                    // Convert absolute path → relative URL
+                                    const normalized = v.replace(/\\/g, '/');
+                                    const idx = normalized.indexOf('/uploads/');
+                                    return idx >= 0 ? normalized.substring(idx) : null;
+                                }).filter(Boolean);
 
                                 await TrackingPost.findOneAndUpdate(
                                     { trackingId: tracking._id, postId: post.postId },
@@ -357,11 +371,12 @@ exports.scrapeTracking = async (req, res) => {
         }
         console.log(`[Scrape] Channel: ${channel.accountName}, storageStatePath=${channel.storageStatePath || 'null'}`);
 
-        // Parse ID từ URL (profile hoặc page)
+        // Parse ID từ URL (profile, page, hoặc group)
         const url = tracking.url;
-        const profileId = parseFacebookId(url);
-        console.log(`[Scrape] Parsed profileId="${profileId}" from url="${url}"`);
-        if (!profileId) return res.status(400).json({ success: false, message: 'Không parse được ID từ URL' });
+        const trackingType = tracking.type || 'profile';
+        const targetId = parseFacebookId(url);
+        console.log(`[Scrape] Parsed targetId="${targetId}" from url="${url}", type="${trackingType}"`);
+        if (!targetId) return res.status(400).json({ success: false, message: 'Không parse được ID từ URL' });
 
         // Lấy cookies từ storage state
         let cookies = {};
@@ -387,25 +402,92 @@ exports.scrapeTracking = async (req, res) => {
         const saveDir = path.join(global.USER_DATA_DIR || path.join(__dirname, '..'), 'uploads', 'scraper');
         console.log(`[Scrape] Bắt đầu scrape, saveDir=${saveDir}`);
 
-        // Scrape
-        const posts = await scrapeProfilePosts({
-            profileId, cookies, fbDtsg,
-            limit: parseInt(req.body.limit) || 10,
-            saveDir,
-        });
+        // Lấy số lượng bài viết cần scrape (ưu tiên body, sau đó settings)
+        const scrapeLimit = parseInt(req.body.limit) || tracking.scrapeSettings?.limit || 10;
+
+        // Lấy danh sách postId đã scrape rồi để skip
+        const existingPosts = await TrackingPost.find({ trackingId: tracking._id }).select('postId').lean();
+        const existingPostIds = new Set(existingPosts.map(p => p.postId));
+        console.log(`[Scrape] Đã có ${existingPostIds.size} bài viết cũ, sẽ skip`);
+
+        // Scrape theo type
+        let posts = [];
+        if (trackingType === 'group') {
+            posts = await scrapeGroupPosts({
+                groupId: targetId, cookies, fbDtsg,
+                limit: scrapeLimit + existingPostIds.size,
+                saveDir,
+            });
+        } else {
+            posts = await scrapeProfilePosts({
+                profileId: targetId, cookies, fbDtsg,
+                limit: scrapeLimit + existingPostIds.size,
+                saveDir,
+            });
+        }
         console.log(`[Scrape] Scrape xong: ${posts.length} posts`);
+
+        // Filter bỏ bài đã scrape rồi VÀ bỏ bài không có ảnh/video/nội dung
+        const newPosts = posts.filter(p => {
+            if (existingPostIds.has(p.postId)) return false;
+            const hasImages = p.images && p.images.length > 0;
+            const hasVideos = p.videos && p.videos.length > 0;
+            const hasText = p.text && p.text.trim().length > 0;
+            return hasImages || hasVideos || hasText;
+        }).sort((a, b) => {
+            // Group: bài mới scrape lên đầu (theo scrapedAt), Profile/Page: mới nhất lên đầu
+            if (trackingType === 'group') {
+                const scrapedA = a.scrapedAt ? new Date(a.scrapedAt).getTime() : 0;
+                const scrapedB = b.scrapedAt ? new Date(b.scrapedAt).getTime() : 0;
+                return scrapedB - scrapedA;
+            }
+            const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+            const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+            return dateB - dateA;
+        });
+        console.log(`[Scrape] Còn ${newPosts.length} bài mới (đã filter bỏ bài trống, sort mới nhất)`);
+
+        // Lấy Socket.IO instance
+        const io = req.app.get('io');
+        const trackingId = tracking._id;
+
+        // Emit开始 scrape
+        if (io) {
+            io.to(`tracking:${trackingId}`).emit('scrape:start', {
+                trackingId,
+                total: newPosts.length,
+                message: `Bắt đầu scrape ${newPosts.length} bài viết...`
+            });
+        }
 
         // Download images trước khi lưu DB
         let saved = 0;
-        for (const post of posts) {
+        let skipped = 0;
+        let filtered = posts.length - newPosts.length - existingPostIds.size;
+
+        for (let i = 0; i < newPosts.length; i++) {
+            const post = newPosts[i];
+
+            // Emit progress
+            if (io) {
+                io.to(`tracking:${trackingId}`).emit('scrape:progress', {
+                    trackingId,
+                    current: i + 1,
+                    total: newPosts.length,
+                    postId: post.postId,
+                    text: (post.text || '').substring(0, 50)
+                });
+            }
+
             try {
                 const downloadedImages = [];
+                const downloadedVideos = [];
                 const postDir = path.join(saveDir, String(post.postId));
                 fs.mkdirSync(postDir, { recursive: true });
 
-                for (let i = 0; i < (post.images || []).length; i++) {
-                    const imgUrl = post.images[i];
-                    // Nếu đã là đường dẫn local (bắt đầu bằng /uploads/) thì giữ nguyên
+                // Download images
+                for (let j = 0; j < (post.images || []).length; j++) {
+                    const imgUrl = post.images[j];
                     if (imgUrl && imgUrl.startsWith('/uploads/')) {
                         downloadedImages.push(imgUrl);
                         continue;
@@ -413,7 +495,7 @@ exports.scrapeTracking = async (req, res) => {
                     if (!imgUrl || !imgUrl.startsWith('http')) continue;
                     try {
                         const ext = imgUrl.toLowerCase().includes('.png') ? '.png' : imgUrl.toLowerCase().includes('.webp') ? '.webp' : '.jpg';
-                        const filename = `${post.postId}_${i + 1}${ext}`;
+                        const filename = `${post.postId}_${j + 1}${ext}`;
                         const filepath = path.join(postDir, filename);
                         const r = await axios.get(imgUrl, { responseType: 'arraybuffer', timeout: 30000 });
                         fs.writeFileSync(filepath, r.data);
@@ -424,27 +506,131 @@ exports.scrapeTracking = async (req, res) => {
                     }
                 }
 
-                // Videos đã download sẵn từ scraper
-                const downloadedVideos = (post.videos || []).filter(v => v && v.startsWith('/uploads/'));
+                // Download videos (dùng queue để đảm bảo hoàn thành trước khi lưu DB)
+                if (trackingType === 'group') {
+                    const groupId = tracking.url?.match(/groups\/(\d+)/)?.[1] || '';
+                    const postPermalink = post.permalink || `https://www.facebook.com/groups/${groupId}/posts/${post.postId}/`;
 
-                await TrackingPost.findOneAndUpdate(
+                    for (let v = 0; v < (post.videos || []).length; v++) {
+                        const videoData = post.videos[v];
+                        let videoUrl = videoData?.reelUrl || videoData?.url || postPermalink;
+                        if (!videoUrl || typeof videoUrl !== 'string') continue;
+
+                        const videoName = `${post.postId}_video_${v + 1}.mp4`;
+                        const videoPath = `/uploads/scraper/${post.postId}/${videoName}`;
+                        const videoIndex = v + 1;
+
+                        console.log(`[Download] Video ${videoIndex}: ${videoUrl.substring(0, 80)}...`);
+                        const savedPath = await videoDownloadQueue.add(
+                            () => downloadGroupVideo(videoUrl, postDir, videoName, cookies),
+                            `${post.postId}_video_${videoIndex}`
+                        );
+
+                        if (savedPath) {
+                            let finalVideoPath = videoPath;
+                            if (!savedPath.startsWith('/uploads/')) {
+                                const normalized = savedPath.replace(/\\/g, '/');
+                                const uploadsIdx = normalized.indexOf('/uploads/');
+                                if (uploadsIdx >= 0) finalVideoPath = normalized.substring(uploadsIdx);
+                            }
+                            downloadedVideos.push(finalVideoPath);
+                            console.log(`[Download] ✓ Video ${videoIndex}: ${finalVideoPath}`);
+                        } else {
+                            console.log(`[Download] ✗ Video ${videoIndex} thất bại`);
+                        }
+                    }
+                } else {
+                    // Profile/Page: video đã download sẵn từ scraper
+                    for (let v = 0; v < (post.videos || []).length; v++) {
+                        const videoUrl = post.videos[v];
+                        if (!videoUrl) continue;
+
+                        // Đã download rồi → dùng luôn
+                        if (videoUrl.startsWith('/uploads/')) {
+                            downloadedVideos.push(videoUrl);
+                            continue;
+                        }
+
+                        // Chưa download → dùng facebook.py fallback
+                        if (videoUrl.startsWith('http')) {
+                            const videoName = `${post.postId}_video_${v + 1}.mp4`;
+                            console.log(`[Download] Fallback video ${v + 1}: ${videoUrl.substring(0, 80)}...`);
+                            const savedPath = await videoDownloadQueue.add(
+                                () => downloadGroupVideo(videoUrl, postDir, videoName),
+                                `${post.postId}_video_${v + 1}`
+                            );
+                            if (savedPath) {
+                                let finalPath = `/uploads/scraper/${post.postId}/${videoName}`;
+                                if (!savedPath.startsWith('/uploads/')) {
+                                    const normalized = savedPath.replace(/\\/g, '/');
+                                    const idx = normalized.indexOf('/uploads/');
+                                    if (idx >= 0) finalPath = normalized.substring(idx);
+                                }
+                                downloadedVideos.push(finalPath);
+                                console.log(`[Download] ✓ Fallback video ${v + 1}: ${finalPath}`);
+                            }
+                        }
+                    }
+                }
+
+                const newPost = await TrackingPost.findOneAndUpdate(
                     { trackingId: tracking._id, postId: post.postId },
                     { userId, trackingId: tracking._id, postId: post.postId, text: post.text, permalink: post.permalink, commentCount: post.commentCount, authorName: post.authorName, images: downloadedImages, videos: downloadedVideos, publishedAt: post.publishedAt, publishedAtText: post.publishedAtText || '', scrapedAt: new Date() },
                     { upsert: true, returnDocument: "after" }
                 );
                 saved++;
+
+                // Emit新 post saved
+                if (io) {
+                    io.to(`tracking:${trackingId}`).emit('scrape:newpost', {
+                        trackingId,
+                        post: {
+                            _id: newPost._id,
+                            postId: newPost.postId,
+                            text: newPost.text,
+                            images: newPost.images,
+                            videos: newPost.videos,
+                            permalink: newPost.permalink,
+                            publishedAtText: newPost.publishedAtText,
+                            scrapedAt: newPost.scrapedAt
+                        },
+                        saved,
+                        total: newPosts.length
+                    });
+                }
             } catch (e) {
                 if (e.code !== 11000) console.error('[Tracking] Lỗi lưu post:', e.message);
             }
         }
 
+        skipped = existingPostIds.size;
+
         // Cập nhật stats
+        const totalPosts = await TrackingPost.countDocuments({ trackingId: tracking._id });
         await Tracking.findByIdAndUpdate(tracking._id, {
-            'stats.totalPosts': await TrackingPost.countDocuments({ trackingId: tracking._id }),
+            'stats.totalPosts': totalPosts,
             'stats.lastChecked': new Date(),
         });
 
-        res.json({ success: true, message: `Đã scrape ${saved} bài viết`, data: { scraped: posts.length, saved } });
+        // Emit完 thàng
+        if (io) {
+            io.to(`tracking:${trackingId}`).emit('scrape:done', {
+                trackingId,
+                saved,
+                skipped,
+                filtered,
+                totalPosts,
+                message: saved > 0
+                    ? `Đã scrape ${saved} bài viết mới`
+                    : `Không có bài viết mới`
+            });
+        }
+
+        const message = saved > 0
+            ? `Đã scrape ${saved} bài viết mới${skipped > 0 ? ` (bỏ qua ${skipped} bài cũ)` : ''}${filtered > 0 ? ` (loại bỏ ${filtered} bài trống)` : ''}`
+            : `Không có bài viết mới${skipped > 0 ? ` (đã có ${skipped} bài)` : ''}`;
+
+        res.json({ success: true, message, data: { scraped: posts.length, saved, skipped, filtered, newPosts: newPosts.length, totalPosts } });
     } catch (err) {
         console.error('[Tracking] Scrape error:', err.message);
         res.status(500).json({ success: false, message: 'Lỗi scrape: ' + err.message });
@@ -495,6 +681,103 @@ exports.updateTrackingPost = async (req, res) => {
         );
         if (!post) return res.status(404).json({ success: false, message: 'Không tìm thấy bài viết' });
         res.json({ success: true, data: post });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+// PUT /tracking/api/schedule/:id - Cài đặt lịch trình scrape
+exports.updateSchedule = async (req, res) => {
+    try {
+        const userId = req.session.userId || req.user?.id;
+        const { scheduleEnabled, intervalMinutes, scrapeLimit } = req.body;
+
+        const tracking = await Tracking.findOne({ _id: req.params.id, userId });
+        if (!tracking) return res.status(404).json({ success: false, message: 'Không tìm thấy đối tượng' });
+
+        // Cập nhật cài đặt
+        if (scrapeLimit !== undefined) {
+            tracking.scrapeSettings.limit = parseInt(scrapeLimit) || 10;
+        }
+
+        if (scheduleEnabled !== undefined) {
+            tracking.schedule.enabled = scheduleEnabled;
+        }
+
+        if (intervalMinutes !== undefined) {
+            tracking.schedule.intervalMinutes = parseInt(intervalMinutes) || 60;
+        }
+
+        // Tính nextRun nếu bật lịch trình
+        if (tracking.schedule.enabled) {
+            tracking.schedule.nextRun = new Date(Date.now() + tracking.schedule.intervalMinutes * 60 * 1000);
+        } else {
+            tracking.schedule.nextRun = null;
+        }
+
+        await tracking.save();
+
+        res.json({
+            success: true,
+            message: tracking.schedule.enabled
+                ? `Đã bật lịch trình: mỗi ${tracking.schedule.intervalMinutes} phút`
+                : 'Đã tắt lịch trình',
+            data: {
+                scrapeLimit: tracking.scrapeSettings.limit,
+                schedule: tracking.schedule
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+// GET /tracking/api/schedule/:id - Lấy cài đặt lịch trình
+exports.getSchedule = async (req, res) => {
+    try {
+        const userId = req.session.userId || req.user?.id;
+        const tracking = await Tracking.findOne({ _id: req.params.id, userId }).select('scrapeSettings schedule').lean();
+        if (!tracking) return res.status(404).json({ success: false, message: 'Không tìm thấy đối tượng' });
+
+        res.json({
+            success: true,
+            data: {
+                scrapeLimit: tracking.scrapeSettings?.limit || 10,
+                schedule: tracking.schedule || { enabled: false, intervalMinutes: 60 }
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+// POST /tracking/api/fix-paths - Migration: fix absolute paths → relative URLs
+exports.fixVideoPaths = async (req, res) => {
+    try {
+        const userId = req.session.userId || req.user?.id;
+        const posts = await TrackingPost.find({ userId, videos: { $exists: true, $ne: [] } }).lean();
+        let fixed = 0;
+
+        for (const post of posts) {
+            const newVideos = post.videos.map(v => {
+                if (!v) return v;
+                // Convert absolute Windows path → relative URL
+                if (v.includes('\\') || (v.includes(':') && v.includes('uploads'))) {
+                    const normalized = v.replace(/\\/g, '/');
+                    const idx = normalized.indexOf('/uploads/');
+                    if (idx >= 0) return normalized.substring(idx);
+                }
+                return v;
+            });
+
+            const changed = newVideos.some((v, i) => v !== post.videos[i]);
+            if (changed) {
+                await TrackingPost.updateOne({ _id: post._id }, { $set: { videos: newVideos } });
+                fixed++;
+            }
+        }
+
+        res.json({ success: true, message: `Đã fix ${fixed}/${posts.length} bài viết`, fixed, total: posts.length });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }

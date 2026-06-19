@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/css/base.css">
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/tracking.css">
+    <link rel="stylesheet" href="/css/schedule-post-modal.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -84,13 +85,16 @@
                 </div>
             </div>
 
-            <!-- Platform Tabs -->
+            <!-- Type Tabs -->
             <div class="tracking-tabs">
-                <button class="tracking-tab <%= activePlatform === 'all' ? 'active' : '' %>" data-platform="all">
-                    <i class="fa-solid fa-layer-group"></i> Tất Cả
+                <button class="tracking-tab <%= trackingType === 'profile' ? 'active' : '' %>" onclick="location.href='/tracking?type=profile'">
+                    <i class="fa-solid fa-user"></i> Profile
                 </button>
-                <button class="tracking-tab <%= activePlatform === 'facebook' ? 'active' : '' %>" data-platform="facebook">
-                    <i class="fa-brands fa-facebook"></i> Facebook
+                <button class="tracking-tab <%= trackingType === 'page' ? 'active' : '' %>" onclick="location.href='/tracking?type=page'">
+                    <i class="fa-solid fa-flag"></i> Page
+                </button>
+                <button class="tracking-tab <%= trackingType === 'group' ? 'active' : '' %>" onclick="location.href='/tracking?type=group'">
+                    <i class="fa-solid fa-users"></i> Group
                 </button>
             </div>
 
@@ -110,7 +114,13 @@
                 <div class="tracking-card" data-id="<%= t._id %>" data-platform="<%= t.sourcePlatform %>">
                     <div class="tracking-card-main">
                         <div class="tracking-card-icon icon-fb">
-                            <i class="fa-brands fa-facebook"></i>
+                            <% if (t.type === 'group') { %>
+                                <i class="fa-solid fa-users"></i>
+                            <% } else if (t.type === 'page') { %>
+                                <i class="fa-solid fa-flag"></i>
+                            <% } else { %>
+                                <i class="fa-solid fa-user"></i>
+                            <% } %>
                         </div>
                         <div class="tracking-card-info">
                             <h3 class="tracking-card-name"><%= t.name %></h3>
@@ -134,6 +144,14 @@
                                     <i class="fa-solid <%= t.isActive ? 'fa-play' : 'fa-pause' %>"></i>
                                     <%= t.isActive ? 'Đang theo dõi' : 'Tạm dừng' %>
                                 </span>
+                                <% if (t.schedule?.enabled) { %>
+                                <span class="meta-badge badge-schedule">
+                                    <i class="fa-solid fa-clock"></i> Mỗi <%= t.schedule.intervalMinutes %>p
+                                </span>
+                                <% } %>
+                                <span class="meta-badge badge-limit">
+                                    <i class="fa-solid fa-list-ol"></i> <%= t.scrapeSettings?.limit || 10 %> bài
+                                </span>
                             </div>
                         </div>
                         <div class="tracking-card-stats">
@@ -155,6 +173,9 @@
                             </button>
                             <button class="btn-icon-card" title="Bật/Tắt" onclick="toggleTracking('<%= t._id %>')">
                                 <i class="fa-solid <%= t.isActive ? 'fa-pause' : 'fa-play' %>"></i>
+                            </button>
+                            <button class="btn-icon-card" title="Cài đặt" onclick="openScheduleModal('<%= t._id %>')">
+                                <i class="fa-solid fa-gear"></i>
                             </button>
                             <button class="btn-icon-card" title="Sửa" onclick="editTracking('<%= t._id %>')">
                                 <i class="fa-solid fa-pen"></i>
@@ -195,6 +216,25 @@
                 <input type="hidden" id="trackingId" value="">
                 <input type="hidden" id="trackingType" value="<%= typeof tType !== 'undefined' ? tType : 'profile' %>">
                 <div class="modal-body">
+                    <!-- Loại đối tượng -->
+                    <div class="form-group">
+                        <label class="form-label">Loại đối tượng <span class="required">*</span></label>
+                        <div class="platform-selector">
+                            <label class="platform-option" data-platform="profile">
+                                <input type="radio" name="trackingTypeRadio" value="profile" <%= tType === 'profile' ? 'checked' : '' %>>
+                                <span class="platform-label"><i class="fa-solid fa-user"></i> Profile</span>
+                            </label>
+                            <label class="platform-option" data-platform="page">
+                                <input type="radio" name="trackingTypeRadio" value="page" <%= tType === 'page' ? 'checked' : '' %>>
+                                <span class="platform-label"><i class="fa-solid fa-flag"></i> Page</span>
+                            </label>
+                            <label class="platform-option" data-platform="group">
+                                <input type="radio" name="trackingTypeRadio" value="group" <%= tType === 'group' ? 'checked' : '' %>>
+                                <span class="platform-label"><i class="fa-solid fa-users"></i> Group</span>
+                            </label>
+                        </div>
+                    </div>
+
                     <!-- Tên đối tượng -->
                     <div class="form-group">
                         <label class="form-label">Tên đối tượng <span class="required">*</span></label>
@@ -252,17 +292,168 @@
         </div>
     </div>
 
+    <script src="/socket.io/socket.io.js"></script>
     <script src="/js/tracking.js"></script>
     <script>
+    // Socket.IO (safe init)
+    let socket = null;
+    try {
+        socket = io({ transports: ['websocket', 'polling'] });
+        socket.on('connect', () => console.log('[Socket] Connected'));
+        socket.on('disconnect', () => console.log('[Socket] Disconnected'));
+    } catch (e) {
+        console.warn('[Socket] Init failed:', e.message);
+    }
+
+    const trackingSettings = {};
+    let currentTrackingId = null;
+
+    // Convert absolute Windows path → relative URL
+    function toRelativeUrl(p) {
+        if (!p) return p;
+        if (p.includes('\\') || (p.includes(':') && p.includes('uploads'))) {
+            const n = p.replace(/\\/g, '/');
+            const i = n.indexOf('/uploads/');
+            if (i >= 0) return n.substring(i);
+        }
+        return p;
+    }
+    function fixVideoPaths(arr) { return (arr || []).map(toRelativeUrl); }
+
+    // Join tracking room khi xem bài viết
+    function joinTrackingRoom(trackingId) {
+        if (!socket) return;
+        if (currentTrackingId) {
+            socket.emit('tracking:leave', currentTrackingId);
+        }
+        currentTrackingId = trackingId;
+        socket.emit('tracking:join', trackingId);
+    }
+
+    // Listen scrape events
+    if (socket) {
+        socket.on('scrape:start', (data) => {
+            const { trackingId, total, message } = data;
+            showScrapeProgress(trackingId, message, 0, total);
+        });
+
+        socket.on('scrape:progress', (data) => {
+            const { trackingId, current, total, postId, text } = data;
+            showScrapeProgress(trackingId, `Đang scrape ${current}/${total}...`, current, total);
+        });
+
+        socket.on('scrape:newpost', (data) => {
+            const { trackingId, post, saved, total } = data;
+            showScrapeProgress(trackingId, `Đã lưu ${saved}/${total} bài viết`, saved, total);
+            if (currentTrackingId === trackingId) {
+                addPostToTable(post);
+            }
+        });
+
+        socket.on('scrape:done', (data) => {
+            const { trackingId, saved, skipped, filtered, totalPosts, message } = data;
+            hideScrapeProgress(trackingId);
+            const card = document.querySelector(`.tracking-card[data-id="${trackingId}"]`);
+            if (card) {
+                const statNum = card.querySelector('.stat-num');
+                if (statNum) statNum.textContent = totalPosts;
+            }
+            showToast('success', message + (filtered > 0 ? ` (loại bỏ ${filtered} bài trống)` : ''));
+        });
+    }
+
+    // Hiển thị progress bar
+    function showScrapeProgress(trackingId, message, current, total) {
+        let progressEl = document.getElementById(`scrape-progress-${trackingId}`);
+        if (!progressEl) {
+            const card = document.querySelector(`.tracking-card[data-id="${trackingId}"]`);
+            if (!card) return;
+            progressEl = document.createElement('div');
+            progressEl.id = `scrape-progress-${trackingId}`;
+            progressEl.className = 'scrape-progress';
+            progressEl.innerHTML = `
+                <div class="scrape-progress-header">
+                    <span class="scrape-progress-text"></span>
+                    <span class="scrape-progress-count"></span>
+                </div>
+                <div class="scrape-progress-bar">
+                    <div class="scrape-progress-fill"></div>
+                </div>
+            `;
+            card.querySelector('.tracking-card-main').appendChild(progressEl);
+        }
+
+        const percent = total > 0 ? Math.round((current / total) * 100) : 0;
+        progressEl.querySelector('.scrape-progress-text').textContent = message;
+        progressEl.querySelector('.scrape-progress-count').textContent = `${current}/${total}`;
+        progressEl.querySelector('.scrape-progress-fill').style.width = `${percent}%`;
+        progressEl.style.display = 'block';
+    }
+
+    function hideScrapeProgress(trackingId) {
+        setTimeout(() => {
+            const progressEl = document.getElementById(`scrape-progress-${trackingId}`);
+            if (progressEl) progressEl.style.display = 'none';
+        }, 2000);
+    }
+
+    // Thêm post mới vào table
+    function addPostToTable(post) {
+        const container = document.getElementById('postsTableContainer');
+        if (!container) return;
+        const tbody = container.querySelector('tbody');
+        if (!tbody) return;
+
+        const images = post.images || [];
+        const videos = fixVideoPaths(post.videos);
+        const text = (post.text || '').substring(0, 100) + ((post.text || '').length > 100 ? '...' : '');
+
+        let mediaHtml = '';
+        if (images.length > 0) {
+            mediaHtml = `<div class="table-media-cell">${images.slice(0, 2).map(img =>
+                `<img src="${img}" class="table-thumb" onclick="previewImage('${img}')" loading="lazy">`
+            ).join('')}${images.length > 2 ? `<span class="table-more-badge">+${images.length - 2}</span>` : ''}</div>`;
+        } else if (videos.length > 0) {
+            mediaHtml = `<div class="table-media-cell"><video src="${videos[0]}" class="table-thumb-video" preload="metadata" muted onclick="previewVideo('${videos[0]}')"></video></div>`;
+        } else {
+            mediaHtml = '<span class="table-no-media">Không có</span>';
+        }
+
+        const tr = document.createElement('tr');
+        const currentType = document.getElementById('trackingType')?.value || 'profile';
+        const showTime = currentType !== 'group';
+        const publishTime = post.publishedAtText || (post.publishedAt ? new Date(post.publishedAt).toLocaleString('vi-VN') : '');
+        tr.className = 'post-new-row';
+        tr.innerHTML = `
+            <td>${mediaHtml}</td>
+            <td>
+                <div class="table-post-text">${text || '<em style="color:var(--text-light)">Không có nội dung</em>'}</div>
+                <div class="table-post-meta">
+                    ${post.permalink ? `<a href="${post.permalink}" target="_blank"><i class="fa-solid fa-external-link"></i> Facebook</a>` : ''}
+                </div>
+            </td>
+            ${showTime ? `<td><span class="table-time">${publishTime || new Date(post.scrapedAt).toLocaleString('vi-VN')}</span></td>` : ''}
+            <td>
+                <div class="table-actions">
+                    <button class="btn-icon btn-icon--sm" title="Chỉnh sửa" onclick="editPost('${post._id}')"><i class="fa-solid fa-pen"></i></button>
+                    <button class="btn-icon btn-icon--sm btn-icon--danger" title="Xóa" onclick="deletePost('${post._id}')"><i class="fa-solid fa-trash-can"></i></button>
+                </div>
+            </td>
+        `;
+        tbody.insertBefore(tr, tbody.firstChild);
+    }
+
     // Scrape bài viết
     async function scrapeTracking(id) {
-        if (!confirm('Scrape bài viết mới từ đối tượng này?')) return;
+        const limit = trackingSettings[id]?.scrapeLimit || 10;
+        if (!confirm(`Scrape ${limit} bài viết mới từ đối tượng này?`)) return;
         try {
-            showToast('info', 'Đang scrape bài viết...');
+            showToast('info', `Đang scrape ${limit} bài viết...`);
+            joinTrackingRoom(id);
             const res = await fetch(`/tracking/api/scrape/${id}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ limit: 10 })
+                body: JSON.stringify({ limit })
             });
             const data = await res.json();
             if (data.success) {
@@ -274,8 +465,140 @@
         } catch (e) { showToast('error', 'Lỗi: ' + e.message); }
     }
 
+    // Mở modal cài đặt
+    async function openScheduleModal(id) {
+        // Load settings hiện tại
+        let settings = { scrapeLimit: 10, schedule: { enabled: false, intervalMinutes: 60 } };
+        try {
+            const res = await fetch(`/tracking/api/schedule/${id}`);
+            const data = await res.json();
+            if (data.success) settings = data.data;
+        } catch (e) {}
+
+        trackingSettings[id] = settings;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'edit-post-modal';
+        overlay.innerHTML = `
+            <div class="post-modal-container" style="max-width:480px;grid-template-columns:1fr;">
+                <div class="modal-form-side">
+                    <div class="form-header">
+                        <div class="form-header__left">
+                            <div class="form-header__icon"><i class="fa-solid fa-gear"></i></div>
+                            <div class="form-header__text">
+                                <h2>Cài đặt theo dõi</h2>
+                                <p>Số lượng & lịch trình scrape</p>
+                            </div>
+                        </div>
+                        <button class="form-header__close" onclick="this.closest('.edit-post-modal').remove()"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div class="form-fields-scrollable">
+                        <div class="form-section">
+                            <div class="form-section__header">
+                                <i class="fa-solid fa-list-ol"></i> Số lượng bài viết
+                            </div>
+                            <input type="number" id="scrapeLimitInput" class="input-text" value="${settings.scrapeLimit || 10}" min="1" max="50" placeholder="Số bài viết mỗi lần scrape">
+                            <div class="form-section__hint"><i class="fa-solid fa-circle-info"></i> Số bài viết muốn scrape mỗi lần (1-50)</div>
+                        </div>
+
+                        <div class="form-section">
+                            <div class="form-section__header">
+                                <i class="fa-solid fa-clock"></i> Lịch trình tự động
+                            </div>
+                            <label class="schedule-toggle">
+                                <input type="checkbox" id="scheduleEnabled" ${settings.schedule?.enabled ? 'checked' : ''}>
+                                <span>Bật lịch trình scrape tự động</span>
+                            </label>
+                        </div>
+
+                        <div class="form-section" id="scheduleIntervalSection" style="display:${settings.schedule?.enabled ? 'block' : 'none'}">
+                            <div class="form-section__header">
+                                <i class="fa-solid fa-stopwatch"></i> Thời gian lặp
+                            </div>
+                            <select id="intervalMinutes" class="input-text">
+                                <option value="15" ${settings.schedule?.intervalMinutes === 15 ? 'selected' : ''}>15 phút</option>
+                                <option value="30" ${settings.schedule?.intervalMinutes === 30 ? 'selected' : ''}>30 phút</option>
+                                <option value="60" ${settings.schedule?.intervalMinutes === 60 ? 'selected' : ''}>1 tiếng</option>
+                                <option value="120" ${settings.schedule?.intervalMinutes === 120 ? 'selected' : ''}>2 tiếng</option>
+                                <option value="180" ${settings.schedule?.intervalMinutes === 180 ? 'selected' : ''}>3 tiếng</option>
+                                <option value="240" ${settings.schedule?.intervalMinutes === 240 ? 'selected' : ''}>4 tiếng</option>
+                                <option value="300" ${settings.schedule?.intervalMinutes === 300 ? 'selected' : ''}>5 tiếng</option>
+                                <option value="360" ${settings.schedule?.intervalMinutes === 360 ? 'selected' : ''}>6 tiếng</option>
+                                <option value="420" ${settings.schedule?.intervalMinutes === 420 ? 'selected' : ''}>7 tiếng</option>
+                                <option value="480" ${settings.schedule?.intervalMinutes === 480 ? 'selected' : ''}>8 tiếng</option>
+                                <option value="540" ${settings.schedule?.intervalMinutes === 540 ? 'selected' : ''}>9 tiếng</option>
+                                <option value="600" ${settings.schedule?.intervalMinutes === 600 ? 'selected' : ''}>10 tiếng</option>
+                                <option value="660" ${settings.schedule?.intervalMinutes === 660 ? 'selected' : ''}>11 tiếng</option>
+                                <option value="720" ${settings.schedule?.intervalMinutes === 720 ? 'selected' : ''}>12 tiếng</option>
+                                <option value="780" ${settings.schedule?.intervalMinutes === 780 ? 'selected' : ''}>13 tiếng</option>
+                                <option value="840" ${settings.schedule?.intervalMinutes === 840 ? 'selected' : ''}>14 tiếng</option>
+                                <option value="900" ${settings.schedule?.intervalMinutes === 900 ? 'selected' : ''}>15 tiếng</option>
+                                <option value="960" ${settings.schedule?.intervalMinutes === 960 ? 'selected' : ''}>16 tiếng</option>
+                                <option value="1020" ${settings.schedule?.intervalMinutes === 1020 ? 'selected' : ''}>17 tiếng</option>
+                                <option value="1080" ${settings.schedule?.intervalMinutes === 1080 ? 'selected' : ''}>18 tiếng</option>
+                                <option value="1140" ${settings.schedule?.intervalMinutes === 1140 ? 'selected' : ''}>19 tiếng</option>
+                                <option value="1200" ${settings.schedule?.intervalMinutes === 1200 ? 'selected' : ''}>20 tiếng</option>
+                                <option value="1260" ${settings.schedule?.intervalMinutes === 1260 ? 'selected' : ''}>21 tiếng</option>
+                                <option value="1320" ${settings.schedule?.intervalMinutes === 1320 ? 'selected' : ''}>22 tiếng</option>
+                                <option value="1380" ${settings.schedule?.intervalMinutes === 1380 ? 'selected' : ''}>23 tiếng</option>
+                                <option value="1440" ${settings.schedule?.intervalMinutes === 1440 ? 'selected' : ''}>24 tiếng (1 ngày)</option>
+                            </select>
+                            ${settings.schedule?.lastRun ? `<div class="form-section__hint"><i class="fa-solid fa-clock"></i> Lần chạy cuối: ${new Date(settings.schedule.lastRun).toLocaleString('vi-VN')}</div>` : ''}
+                            ${settings.schedule?.nextRun ? `<div class="form-section__hint schedule-hint"><i class="fa-solid fa-arrow-right"></i> Lần chạy tiếp: ${new Date(settings.schedule.nextRun).toLocaleString('vi-VN')}</div>` : ''}
+                        </div>
+                    </div>
+                    <div class="action-btns-group">
+                        <button class="btn-action-secondary" onclick="this.closest('.edit-post-modal').remove()">Hủy</button>
+                        <button class="btn-action-primary" onclick="saveSchedule('${id}')"><i class="fa-solid fa-check"></i> Lưu cài đặt</button>
+                    </div>
+                </div>
+            </div>`;
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+        document.body.appendChild(overlay);
+
+        // Toggle schedule interval section
+        document.getElementById('scheduleEnabled').addEventListener('change', (e) => {
+            document.getElementById('scheduleIntervalSection').style.display = e.target.checked ? 'block' : 'none';
+        });
+    }
+
+    // Lưu schedule
+    async function saveSchedule(id) {
+        const scrapeLimit = parseInt(document.getElementById('scrapeLimitInput')?.value) || 10;
+        const scheduleEnabled = document.getElementById('scheduleEnabled')?.checked || false;
+        const intervalMinutes = parseInt(document.getElementById('intervalMinutes')?.value) || 60;
+
+        try {
+            const res = await fetch(`/tracking/api/schedule/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ scrapeLimit, scheduleEnabled, intervalMinutes })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast('success', data.message);
+                document.querySelector('.edit-post-modal')?.remove();
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast('error', data.message);
+            }
+        } catch (e) { showToast('error', 'Lỗi: ' + e.message); }
+    }
+
+    // Load settings khi load trang
+    async function loadTrackingSettings() {
+        document.querySelectorAll('.tracking-card').forEach(async (card) => {
+            const id = card.dataset.id;
+            try {
+                const res = await fetch(`/tracking/api/schedule/${id}`);
+                const data = await res.json();
+                if (data.success) trackingSettings[id] = data.data;
+            } catch (e) {}
+        });
+    }
+    loadTrackingSettings();
+
     // Xem bài viết
-    let currentTrackingId = null;
     async function viewPosts(trackingId) {
         currentTrackingId = trackingId;
         document.getElementById('postsSection').style.display = 'block';
@@ -297,49 +620,63 @@
                 container.innerHTML = '<div style="text-align:center;padding:60px;color:var(--text-muted);"><i class="fa-solid fa-inbox" style="font-size:48px;opacity:.3;display:block;margin-bottom:16px"></i>Chưa có bài viết nào<br><br>Nhấn nút <i class="fa-solid fa-download"></i> <strong>Scrape</strong> để lấy bài viết</div>';
                 return;
             }
-            let html = '<div class="posts-grid">';
+            const currentType = document.getElementById('trackingType')?.value || 'profile';
+            const showTime = currentType !== 'group';
+            let html = `
+            <table class="posts-table">
+                <thead>
+                    <tr>
+                        <th class="col-media">Ảnh/Video</th>
+                        <th class="col-content">Nội dung</th>
+                        ${showTime ? '<th class="col-time">Thời gian</th>' : ''}
+                        <th class="col-actions">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>`;
             for (const p of data.posts) {
                 const images = p.images || [];
-                const videos = p.videos || [];
-                const text = (p.text || '').substring(0, 200) + ((p.text || '').length > 200 ? '...' : '');
-                const imgGallery = images.length > 0
-                    ? `<div class="post-images">${images.slice(0, 4).map((img, i) =>
-                        `<img src="${img}" class="post-img-thumb" onclick="previewImage('${img}')" loading="lazy">`
-                    ).join('')}${images.length > 4 ? `<div class="post-img-more">+${images.length - 4}</div>` : ''}</div>`
-                    : '';
-                const videoPlayer = videos.length > 0
-                    ? videos.map(v => `<video src="${v}" controls class="post-video-player" preload="metadata"></video>`).join('')
-                    : '';
+                const videos = fixVideoPaths(p.videos);
+                const text = (p.text || '').substring(0, 100) + ((p.text || '').length > 100 ? '...' : '');
                 const publishTime = p.publishedAtText || (p.publishedAt ? new Date(p.publishedAt).toLocaleString('vi-VN') : '');
+
+                // Hiển thị ảnh nhỏ trong table
+                let mediaHtml = '';
+                if (images.length > 0) {
+                    mediaHtml = `<div class="table-media-cell">${images.slice(0, 2).map(img =>
+                        `<img src="${img}" class="table-thumb" onclick="previewImage('${img}')" loading="lazy">`
+                    ).join('')}${images.length > 2 ? `<span class="table-more-badge">+${images.length - 2}</span>` : ''}</div>`;
+                } else if (videos.length > 0) {
+                    mediaHtml = `<div class="table-media-cell"><video src="${videos[0]}" class="table-thumb-video" preload="metadata" muted onclick="previewVideo('${videos[0]}')"></video>${videos.length > 1 ? `<span class="table-more-badge">+${videos.length - 1}</span>` : ''}</div>`;
+                } else {
+                    mediaHtml = '<span class="table-no-media">Không có</span>';
+                }
+
                 html += `
-                <div class="post-card-item">
-                    <div class="post-card-header">
-                        <span class="post-card-time">
-                            ${publishTime ? `<i class="fa-solid fa-calendar"></i> ${publishTime}` : `<i class="fa-regular fa-clock"></i> ${new Date(p.scrapedAt).toLocaleString('vi-VN')}`}
-                        </span>
-                        <div class="post-card-actions">
-                            <button class="btn-sm btn-view" onclick="editPost('${p._id}')" title="Chỉnh sửa"><i class="fa-solid fa-pen"></i></button>
-                            <button class="btn-sm btn-delete" onclick="deletePost('${p._id}')" title="Xóa"><i class="fa-solid fa-trash"></i></button>
-                        </div>
-                    </div>
-                    ${imgGallery}
-                    ${videoPlayer}
-                    <div class="post-card-text">${text || '<em style="color:var(--text-light)">Không có nội dung</em>'}</div>
-                    <div class="post-card-footer">
-                        <span><i class="fa-solid fa-comment"></i> ${p.commentCount || 0} bình luận</span>
-                        ${p.permalink ? `<a href="${p.permalink}" target="_blank" class="post-card-link"><i class="fa-solid fa-external-link"></i> Xem trên Facebook</a>` : ''}
-                        ${images.length > 0 ? `<span><i class="fa-solid fa-image"></i> ${images.length} ảnh</span>` : ''}
-                        ${videos.length > 0 ? `<span><i class="fa-solid fa-video"></i> ${videos.length} video</span>` : ''}
-                    </div>
-                </div>`;
+                    <tr>
+                        <td>${mediaHtml}</td>
+                        <td>
+                            <div class="table-post-text">${text || '<em style="color:var(--text-light)">Không có nội dung</em>'}</div>
+                            <div class="table-post-meta">
+                                ${p.permalink ? `<a href="${p.permalink}" target="_blank"><i class="fa-solid fa-external-link"></i> Facebook</a>` : ''}
+                                <span><i class="fa-solid fa-comment"></i> ${p.commentCount || 0}</span>
+                            </div>
+                        </td>
+                        ${showTime ? `<td><span class="table-time">${publishTime || new Date(p.scrapedAt).toLocaleString('vi-VN')}</span></td>` : ''}
+                        <td>
+                            <div class="table-actions">
+                                <button class="btn-icon btn-icon--sm" title="Chỉnh sửa" onclick="editPost('${p._id}')"><i class="fa-solid fa-pen"></i></button>
+                                <button class="btn-icon btn-icon--sm btn-icon--danger" title="Xóa" onclick="deletePost('${p._id}')"><i class="fa-solid fa-trash-can"></i></button>
+                            </div>
+                        </td>
+                    </tr>`;
             }
-            html += '</div>';
+            html += '</tbody></table>';
             // Pagination
             if (data.totalPages > 1) {
-                html += '<div class="posts-pagination">';
-                for (let i = 1; i <= data.totalPages; i++) {
-                    html += `<button class="btn-sm ${i === data.page ? 'btn-analyze' : 'btn-view'}" onclick="loadPosts('${trackingId}',${i})">${i}</button>`;
-                }
+                html += '<div class="pagination-bar">';
+                html += `<button class="page-nav-btn" onclick="loadPosts('${trackingId}',${data.page - 1})" ${data.page <= 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i></button>`;
+                html += `<span class="page-info">Trang ${data.page} / ${data.totalPages}</span>`;
+                html += `<button class="page-nav-btn" onclick="loadPosts('${trackingId}',${data.page + 1})" ${data.page >= data.totalPages ? 'disabled' : ''}><i class="fa-solid fa-chevron-right"></i></button>`;
                 html += '</div>';
             }
             container.innerHTML = html;
@@ -371,36 +708,137 @@
             if (!post) { showToast('error', 'Không tìm thấy bài viết'); return; }
 
             const publishTime = post.publishedAtText || (post.publishedAt ? new Date(post.publishedAt).toLocaleString('vi-VN') : '');
+            const authorName = post.authorName || '';
+            const images = post.images || [];
+            const videos = fixVideoPaths(post.videos);
+
             const overlay = document.createElement('div');
-            overlay.className = 'image-preview-overlay';
+            overlay.className = 'edit-post-modal';
             overlay.innerHTML = `
-                <div class="edit-post-modal">
-                    <div class="edit-post-header">
-                        <h3><i class="fa-solid fa-pen"></i> Chỉnh sửa bài viết</h3>
-                        <button class="image-preview-close" onclick="this.closest('.image-preview-overlay').remove()"><i class="fa-solid fa-xmark"></i></button>
-                    </div>
-                    <div class="edit-post-body">
-                        ${publishTime ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding:10px 14px;background:var(--bg-main);border-radius:var(--radius-md);font-size:13px;color:var(--text-muted);"><i class="fa-solid fa-calendar" style="color:var(--primary)"></i> <strong>Đăng lúc:</strong> ${publishTime}</div>` : ''}
-                        <div class="form-group">
-                            <label>Nội dung</label>
-                            <textarea id="editPostText" class="form-input" rows="6">${post.text || ''}</textarea>
-                        </div>
-                        ${post.images && post.images.length > 0 ? `
-                        <div class="form-group">
-                            <label>Ảnh (${post.images.length})</label>
-                            <div class="edit-post-images">
-                                ${post.images.map(img => `<img src="${img}" class="post-img-thumb" onclick="previewImage('${img}')">`).join('')}
+                <div class="post-modal-container" style="max-width:640px;grid-template-columns:1fr;">
+                    <div class="modal-form-side">
+                        <div class="form-header">
+                            <div class="form-header__left">
+                                <div class="form-header__icon"><i class="fa-solid fa-pen-to-square"></i></div>
+                                <div class="form-header__text">
+                                    <h2>Chỉnh sửa bài viết</h2>
+                                    <p>${authorName ? authorName + ' · ' : ''}${publishTime || 'Chỉnh sửa nội dung'}</p>
+                                </div>
                             </div>
-                        </div>` : ''}
-                    </div>
-                    <div class="edit-post-footer">
-                        <button class="btn btn-ghost" onclick="this.closest('.image-preview-overlay').remove()">Đóng</button>
-                        <button class="btn btn-primary" onclick="savePost('${id}')"><i class="fa-solid fa-save"></i> Lưu</button>
+                            <button class="form-header__close" onclick="closeEditModal()"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                        <div class="form-fields-scrollable">
+                            ${authorName ? `
+                            <div class="form-section">
+                                <div class="form-section__header">
+                                    <i class="fa-solid fa-user"></i> Tác giả
+                                </div>
+                                <div style="padding:10px 14px;background:var(--bg-main);border-radius:var(--radius-md);font-size:13px;color:var(--text-main);font-weight:500;">
+                                    <i class="fa-solid fa-circle-user" style="color:var(--primary);margin-right:6px;"></i> ${authorName}
+                                </div>
+                            </div>` : ''}
+
+                            ${publishTime ? `
+                            <div class="form-section">
+                                <div class="form-section__header">
+                                    <i class="fa-solid fa-calendar-days"></i> Thời gian đăng
+                                </div>
+                                <div style="padding:10px 14px;background:var(--bg-main);border-radius:var(--radius-md);font-size:13px;color:var(--text-muted);">
+                                    <i class="fa-solid fa-clock" style="color:var(--primary);margin-right:6px;"></i> ${publishTime}
+                                </div>
+                            </div>` : ''}
+
+                            <div class="form-section">
+                                <div class="form-section__header">
+                                    <i class="fa-solid fa-align-left"></i> Nội dung bài viết
+                                </div>
+                                <textarea id="editPostText" class="input-text" rows="8" placeholder="Nhập nội dung bài viết...">${post.text || ''}</textarea>
+                            </div>
+
+                            ${images.length > 0 ? `
+                            <div class="form-section">
+                                <div class="form-section__header">
+                                    <i class="fa-solid fa-images"></i> Ảnh (${images.length})
+                                    <span class="form-section__badge">${images.length}</span>
+                                </div>
+                                <div class="image-preview-list-wrapper active">
+                                    ${images.map((img, i) => `
+                                        <div class="thumb-preview-item" onclick="previewImage('${img}')">
+                                            <img src="${img}" alt="Ảnh ${i + 1}">
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>` : ''}
+
+                            ${videos.length > 0 ? `
+                            <div class="form-section">
+                                <div class="form-section__header">
+                                    <i class="fa-solid fa-video"></i> Video (${videos.length})
+                                    <span class="form-section__badge">${videos.length}</span>
+                                </div>
+                                <div class="edit-post-videos">
+                                    ${videos.map((v, i) => {
+                                        const isFile = v.startsWith('/uploads/');
+                                        const isFacebookVideo = v.includes('facebook.com') || v.includes('fb.watch');
+                                        const vidId = 'edit-video-' + i;
+                                        if (isFile) {
+                                            return `<div class="edit-post-video-item" data-vid="${vidId}">
+                                                <video id="${vidId}" src="${v}" preload="metadata" playsinline></video>
+                                                <div class="video-play-overlay" onclick="toggleVideoPlay('${vidId}', this)">
+                                                    <div class="play-btn-circle"><i class="fa-solid fa-play"></i></div>
+                                                </div>
+                                                <div class="video-controls-bar">
+                                                    <button class="btn-video-ctrl" onclick="toggleVideoPlay('${vidId}')"><i class="fa-solid fa-play" id="${vidId}-icon"></i></button>
+                                                    <div class="video-progress-bar" onclick="seekVideo(event, '${vidId}')">
+                                                        <div class="video-progress-fill" id="${vidId}-progress"></div>
+                                                    </div>
+                                                    <span class="video-time-label" id="${vidId}-time">0:00</span>
+                                                    <button class="btn-video-volume" onclick="toggleMuteVideo('${vidId}')"><i class="fa-solid fa-volume-high" id="${vidId}-vol"></i></button>
+                                                    <button class="btn-video-ctrl" onclick="openVideoFullscreen('${vidId}')"><i class="fa-solid fa-expand"></i></button>
+                                                </div>
+                                            </div>`;
+                                        } else if (isFacebookVideo) {
+                                            return `<div class="fb-video-embed-wrapper">
+                                                <div class="video-embed-fallback">
+                                                    <i class="fa-brands fa-facebook"></i>
+                                                    <span>Video Facebook</span>
+                                                    <a href="${v}" target="_blank"><i class="fa-solid fa-external-link"></i> Mở trên Facebook</a>
+                                                </div>
+                                            </div>`;
+                                        } else {
+                                            return `<div class="edit-post-video-item" data-vid="${vidId}">
+                                                <video id="${vidId}" src="${v}" preload="metadata" playsinline crossorigin="anonymous"></video>
+                                                <div class="video-play-overlay" onclick="toggleVideoPlay('${vidId}', this)">
+                                                    <div class="play-btn-circle"><i class="fa-solid fa-play"></i></div>
+                                                </div>
+                                                <div class="video-controls-bar">
+                                                    <button class="btn-video-ctrl" onclick="toggleVideoPlay('${vidId}')"><i class="fa-solid fa-play" id="${vidId}-icon"></i></button>
+                                                    <div class="video-progress-bar" onclick="seekVideo(event, '${vidId}')">
+                                                        <div class="video-progress-fill" id="${vidId}-progress"></div>
+                                                    </div>
+                                                    <span class="video-time-label" id="${vidId}-time">0:00</span>
+                                                    <button class="btn-video-volume" onclick="toggleMuteVideo('${vidId}')"><i class="fa-solid fa-volume-high" id="${vidId}-vol"></i></button>
+                                                    <button class="btn-video-ctrl" onclick="openVideoFullscreen('${vidId}')"><i class="fa-solid fa-expand"></i></button>
+                                                </div>
+                                            </div>`;
+                                        }
+                                    }).join('')}
+                                </div>
+                            </div>` : ''}
+                        </div>
+                        <div class="action-btns-group">
+                            <button class="btn-action-secondary" onclick="closeEditModal()">Hủy</button>
+                            <button class="btn-action-primary" onclick="savePost('${id}')"><i class="fa-solid fa-check"></i> Lưu thay đổi</button>
+                        </div>
                     </div>
                 </div>`;
-            overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeEditModal(); });
             document.body.appendChild(overlay);
         } catch (e) { showToast('error', 'Lỗi: ' + e.message); }
+    }
+
+    function closeEditModal() {
+        document.querySelector('.edit-post-modal')?.remove();
     }
 
     async function savePost(id) {
@@ -414,8 +852,8 @@
             });
             const data = await res.json();
             if (data.success) {
-                showToast('success', 'Đã lưu');
-                document.querySelector('.image-preview-overlay')?.remove();
+                showToast('success', 'Đã lưu thay đổi');
+                closeEditModal();
                 loadPosts(currentTrackingId, 1);
             }
         } catch (e) { showToast('error', 'Lỗi: ' + e.message); }
@@ -432,6 +870,186 @@
             }
         } catch (e) { showToast('error', 'Lỗi: ' + e.message); }
     }
+
+    // ===== Video Preview (from table thumbnail) =====
+    function previewVideo(url) {
+        const overlay = document.createElement('div');
+        overlay.className = 'video-fullscreen-overlay';
+        overlay.innerHTML = `
+            <button class="btn-close-fullscreen" onclick="closeVideoFullscreen(this)"><i class="fa-solid fa-xmark"></i></button>
+            <video src="${url}" controls autoplay playsinline style="max-width:95vw;max-height:90vh;border-radius:var(--radius-md);background:#000;"></video>
+        `;
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closeVideoFullscreen(overlay.querySelector('.btn-close-fullscreen'));
+        });
+        document.body.appendChild(overlay);
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                closeVideoFullscreen(overlay.querySelector('.btn-close-fullscreen'));
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+    }
+
+    // ===== Video Player Controls =====
+    function toggleVideoPlay(vidId, overlayEl) {
+        const video = document.getElementById(vidId);
+        if (!video) return;
+
+        const icon = document.getElementById(vidId + '-icon');
+        const overlay = overlayEl || video.parentElement.querySelector('.video-play-overlay');
+
+        if (video.paused) {
+            // Pause all other videos first
+            document.querySelectorAll('.edit-post-video-item video').forEach(v => {
+                if (v.id !== vidId && !v.paused) {
+                    v.pause();
+                    const vIcon = document.getElementById(v.id + '-icon');
+                    if (vIcon) { vIcon.classList.remove('fa-pause'); vIcon.classList.add('fa-play'); }
+                    const vOverlay = v.parentElement.querySelector('.video-play-overlay');
+                    if (vOverlay) vOverlay.style.display = 'flex';
+                }
+            });
+
+            video.play();
+            if (icon) { icon.classList.remove('fa-play'); icon.classList.add('fa-pause'); }
+            if (overlay) overlay.style.display = 'none';
+
+            // Start progress tracking
+            trackVideoProgress(vidId);
+        } else {
+            video.pause();
+            if (icon) { icon.classList.remove('fa-pause'); icon.classList.add('fa-play'); }
+            if (overlay) overlay.style.display = 'flex';
+        }
+    }
+
+    function trackVideoProgress(vidId) {
+        const video = document.getElementById(vidId);
+        const progressFill = document.getElementById(vidId + '-progress');
+        const timeLabel = document.getElementById(vidId + '-time');
+        if (!video) return;
+
+        const update = () => {
+            if (video.duration) {
+                const pct = (video.currentTime / video.duration) * 100;
+                if (progressFill) progressFill.style.width = pct + '%';
+                if (timeLabel) timeLabel.textContent = formatVideoTime(video.currentTime);
+            }
+            if (!video.paused && !video.ended) {
+                requestAnimationFrame(update);
+            }
+        };
+        requestAnimationFrame(update);
+
+        // When video ends, reset
+        video.onended = () => {
+            const icon = document.getElementById(vidId + '-icon');
+            if (icon) { icon.classList.remove('fa-pause'); icon.classList.add('fa-play'); }
+            const overlay = video.parentElement.querySelector('.video-play-overlay');
+            if (overlay) overlay.style.display = 'flex';
+            if (progressFill) progressFill.style.width = '0%';
+        };
+    }
+
+    function seekVideo(event, vidId) {
+        const video = document.getElementById(vidId);
+        if (!video || !video.duration) return;
+        const bar = event.currentTarget;
+        const rect = bar.getBoundingClientRect();
+        const pct = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+        video.currentTime = pct * video.duration;
+
+        const progressFill = document.getElementById(vidId + '-progress');
+        if (progressFill) progressFill.style.width = (pct * 100) + '%';
+    }
+
+    function toggleMuteVideo(vidId) {
+        const video = document.getElementById(vidId);
+        if (!video) return;
+        video.muted = !video.muted;
+        const volIcon = document.getElementById(vidId + '-vol');
+        if (volIcon) {
+            volIcon.classList.toggle('fa-volume-high', !video.muted);
+            volIcon.classList.toggle('fa-volume-xmark', video.muted);
+        }
+    }
+
+    function openVideoFullscreen(vidId) {
+        const video = document.getElementById(vidId);
+        if (!video) return;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'video-fullscreen-overlay';
+        overlay.innerHTML = `
+            <button class="btn-close-fullscreen" onclick="closeVideoFullscreen(this)"><i class="fa-solid fa-xmark"></i></button>
+        `;
+
+        // Clone video into fullscreen
+        const clonedVideo = video.cloneNode(true);
+        clonedVideo.id = vidId + '-fullscreen';
+        clonedVideo.controls = true;
+        clonedVideo.style.cssText = 'max-width:95vw;max-height:90vh;border-radius:var(--radius-md);';
+        clonedVideo.currentTime = video.currentTime;
+        overlay.appendChild(clonedVideo);
+
+        // Pause original, play cloned
+        video.pause();
+        const icon = document.getElementById(vidId + '-icon');
+        if (icon) { icon.classList.remove('fa-pause'); icon.classList.add('fa-play'); }
+        const playOverlay = video.parentElement.querySelector('.video-play-overlay');
+        if (playOverlay) playOverlay.style.display = 'flex';
+
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closeVideoFullscreen(overlay.querySelector('.btn-close-fullscreen'));
+        });
+
+        document.body.appendChild(overlay);
+        clonedVideo.play();
+
+        // ESC to close
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                closeVideoFullscreen(overlay.querySelector('.btn-close-fullscreen'));
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+    }
+
+    function closeVideoFullscreen(btn) {
+        const overlay = btn.closest('.video-fullscreen-overlay');
+        if (overlay) {
+            const vid = overlay.querySelector('video');
+            if (vid) vid.pause();
+            overlay.remove();
+        }
+    }
+
+    function formatVideoTime(seconds) {
+        const m = Math.floor(seconds / 60);
+        const s = Math.floor(seconds % 60);
+        return m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
+    // Auto-init videos when edit modal opens (set duration on metadata load)
+    function initVideoPlayers() {
+        document.querySelectorAll('.edit-post-video-item video').forEach(video => {
+            video.addEventListener('loadedmetadata', () => {
+                const timeLabel = document.getElementById(video.id + '-time');
+                if (timeLabel) timeLabel.textContent = formatVideoTime(video.duration);
+            });
+            // Click on video itself to toggle play
+            video.addEventListener('click', () => toggleVideoPlay(video.id));
+        });
+    }
+
+    // Observer to auto-init when edit modal content changes
+    const videoObserver = new MutationObserver(() => {
+        initVideoPlayers();
+    });
+    videoObserver.observe(document.body, { childList: true, subtree: true });
     </script>
 </body>
 </html>

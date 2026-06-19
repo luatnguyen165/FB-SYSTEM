@@ -93,6 +93,26 @@ function initializeSocketIO(socketIoInstance) {
         socket.on('disconnect', () => {
             console.log(`[Socket.IO] Client disconnected: ${socket.id}`);
         });
+
+        // ============================================================
+        // TRACKING - Real-time scrape updates
+        // ============================================================
+
+        // Join tracking room
+        socket.on('tracking:join', (trackingId) => {
+            if (trackingId) {
+                socket.join(`tracking:${trackingId}`);
+                console.log(`[Socket.IO] Client ${socket.id} joined tracking:${trackingId}`);
+            }
+        });
+
+        // Leave tracking room
+        socket.on('tracking:leave', (trackingId) => {
+            if (trackingId) {
+                socket.leave(`tracking:${trackingId}`);
+                console.log(`[Socket.IO] Client ${socket.id} left tracking:${trackingId}`);
+            }
+        });
     });
     
     return io;

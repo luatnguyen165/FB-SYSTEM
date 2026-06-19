@@ -30,7 +30,20 @@ const TrackingSchema = new mongoose.Schema({
     
     // Trạng thái
     isActive: { type: Boolean, default: true },
-    
+
+    // Cài đặt scrape
+    scrapeSettings: {
+        limit: { type: Number, default: 10 },  // Số bài viết mỗi lần scrape
+    },
+
+    // Lịch trình scrape tự động
+    schedule: {
+        enabled: { type: Boolean, default: false },
+        intervalMinutes: { type: Number, default: 60 },  // Số phút giữa các lần scrape
+        lastRun: { type: Date },
+        nextRun: { type: Date },
+    },
+
     // Thống kê theo dõi
     stats: {
         totalPosts: { type: Number, default: 0 },

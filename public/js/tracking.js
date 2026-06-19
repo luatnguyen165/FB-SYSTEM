@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const body = {
             name: nameInput.value.trim(),
             url: urlInput.value.trim(),
-            type: document.getElementById('trackingType')?.value || 'profile',
+            type: document.querySelector('input[name="trackingTypeRadio"]:checked')?.value || document.getElementById('trackingType')?.value || 'profile',
             sourcePlatform: document.querySelector('input[name="sourcePlatform"]:checked')?.value || 'facebook',
             sourceAccountId: sourceAccountSelect?.value || '',
             targetPlatforms: JSON.stringify(targetPlatforms),

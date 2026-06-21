@@ -4,7 +4,7 @@
 %>
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
-        <i class="fa-solid fa-wand-magic-sparkles"></i>
+        <i class="fa-solid fa-bolt"></i>
         <span>ReelsFlow AI</span>
         <button class="sidebar-close-btn" id="sidebarCloseBtn">
             <i class="fa-solid fa-xmark"></i>
@@ -12,21 +12,21 @@
     </div>
 
     <ul class="sidebar-menu">
-        <!-- 🏠 TRANG CHỦ -->
+        <!-- 🏠 TỔNG QUAN -->
         <% if (feat.dashboard !== false) { %>
         <li class="menu-item <%= currentPage === 'dashboard' ? 'active' : '' %>">
-            <a href="/dashboard"><i class="fa-solid fa-chart-pie"></i>Dashboard</a>
+            <a href="/dashboard"><i class="fa-solid fa-gauge-high"></i>Tổng Quan</a>
         </li>
         <% } %>
 
+        <!-- 🔗 KẾT NỐI TÀI KHOẢN -->
         <% if (feat.channels !== false) { %>
         <%
             const chs = typeof channels !== 'undefined' ? channels : [];
-            const isChannelsOpen = ['channels'].includes(currentPage);
 
             // Group channels by platform
             const platformOrder = ['FB', 'TT', 'IG', 'YT', 'PI', 'TH'];
-            const platformLabels = { FB: 'Facebook', TT: 'TikTok', IG: 'Instagram', YT: 'Youtube', PI: 'Pinterest', TH: 'Threads' };
+            const platformLabels = { FB: 'Facebook', TT: 'TikTok', IG: 'Instagram', YT: 'YouTube', PI: 'Pinterest', TH: 'Threads' };
             const platformIcons = { FB: 'fa-facebook', TT: 'fa-tiktok', IG: 'fa-instagram', YT: 'fa-youtube', PI: 'fa-pinterest', TH: 'fa-threads' };
             const platformColors = { FB: 'var(--fb-color)', TT: 'var(--tt-color)', IG: 'var(--ig-color)', YT: 'var(--yt-color)', PI: 'var(--pi-color)', TH: 'var(--th-color)' };
 
@@ -35,12 +35,8 @@
                 if (!chsByPlatform[ch.platform]) chsByPlatform[ch.platform] = [];
                 chsByPlatform[ch.platform].push(ch);
             });
-
-            // For FB, further group by accountType
-            const accountTypeOrder = { 'Cá nhân': 1, 'Nhà Sáng Tạo': 2, 'Fanpage': 3 };
-            const accountTypeIcons = { 'Cá nhân': 'fa-user', 'Nhà Sáng Tạo': 'fa-star', 'Fanpage': 'fa-flag' };
         %>
-        <li class="sidebar-group accounts-group">
+        <li class="sidebar-group accounts-group" data-sidebar-group-id="accounts">
             <button
                 type="button"
                 class="sidebar-group-toggle account-group-toggle"
@@ -48,8 +44,8 @@
                 aria-expanded="false"
             >
                 <span class="sidebar-group-toggle__label">
-                    <i class="fa-solid fa-link"></i>
-                    Tài Khoản MXH
+                    <i class="fa-solid fa-plug"></i>
+                    Kết Nối Tài Khoản
                 </span>
                 <i class="fa-solid fa-chevron-down sidebar-group-chevron"></i>
             </button>
@@ -62,6 +58,9 @@
                             <i class="fa-brands <%= platformIcons[pl] %>"></i>
                         </span>
                         <span class="channel-name"><%= platformLabels[pl] %></span>
+                        <% if (plChs.length > 0) { %>
+                            <span class="channel-count"><%= plChs.length %></span>
+                        <% } %>
                     </a>
                 </li>
                 <% }); %>
@@ -69,178 +68,174 @@
         </li>
         <% } %>
 
-        <!-- 🎬 QUẢN LÝ NỘI DUNG -->
-        <li class="menu-section-title">Quản Lý Nội Dung</li>
-
-        <% if (feat.storeVideo !== false || feat.shopeeLink !== false) { %>
-        <li class="sidebar-group">
-            <button
-                type="button"
-                class="sidebar-group-toggle"
-                data-sidebar-group-toggle
-                aria-expanded="false"
-            >
-                <span class="sidebar-group-toggle__label">
-                    <i class="fa-solid fa-folder-open"></i>
-                    Nội Dung
-                </span>
-                <i class="fa-solid fa-chevron-down sidebar-group-chevron"></i>
-            </button>
-            <ul class="sidebar-submenu">
-                <% if (feat.shopeeLink !== false) { %>
-                <li class="menu-item <%= currentPage === 'shopeeLink' ? 'active' : '' %>">
-                    <a href="/shopee"><i class="fa-solid fa-bag-shopping"></i>Link Tiếp Thị</a>
-                </li>
-                <% } %>
-            </ul>
+        <!-- 📦 SẢN PHẨM -->
+        <% if (feat.shopeeLink !== false) { %>
+        <li class="menu-item <%= currentPage === 'shopeeLink' ? 'active' : '' %>">
+            <a href="/shopee"><i class="fa-solid fa-bag-shopping"></i>Sản Phẩm & Link Aff</a>
         </li>
         <% } %>
 
-        <!-- 📅 LỊCH ĐĂNG BÀI -->
-        <li class="menu-section-title">Lịch Đăng Bài</li>
+        <!-- ✍️ AI VIẾT BÀI -->
+        <% if (feat['ai-content'] !== false) { %>
+        <li class="menu-item <%= currentPage === 'ai-content' ? 'active' : '' %>">
+            <a href="/ai-content"><i class="fa-solid fa-wand-magic-sparkles"></i>AI Viết Bài Tự Động</a>
+        </li>
+        <% } %>
 
-        <% if (feat['schedule-manager'] !== false || feat['schedule-post'] !== false || feat['schedule-reels'] !== false || feat['schedule-archive'] !== false || feat['schedule-groups'] !== false) { %>
-        <li class="sidebar-group">
+        <!-- 📅 LÊN LỊCH ĐĂNG BÀI -->
+        <li class="menu-section-title"><i class="fa-solid fa-calendar-check"></i>Lên Lịch & Đăng Bài</li>
+
+        <% if (feat['schedule-manager'] !== false || feat['schedule-post'] !== false || feat['schedule-reels'] !== false || feat['schedule-archive'] !== false) { %>
+        <li class="sidebar-group" data-sidebar-group-id="schedule">
             <button
                 type="button"
                 class="sidebar-group-toggle"
-                data-sidebar-group-toggle
+                data-sidebar-group-toggle="schedule"
                 aria-expanded="false"
             >
                 <span class="sidebar-group-toggle__label">
                     <i class="fa-solid fa-calendar-days"></i>
-                    Lên Lịch
+                    Quản Lý Lịch Đăng
                 </span>
                 <i class="fa-solid fa-chevron-down sidebar-group-chevron"></i>
             </button>
             <ul class="sidebar-submenu">
                 <% if (feat['schedule-manager'] !== false) { %>
                 <li class="menu-item <%= currentPage === 'schedule-manager' ? 'active' : '' %>">
-                    <a href="/schedule/manager"><i class="fa-solid fa-table-list"></i>Xem lịch tổng hợp</a>
+                    <a href="/schedule/manager"><i class="fa-solid fa-list-check"></i>Tổng Quan Lịch</a>
                 </li>
                 <% } %>
                 <% if (feat['schedule-post'] !== false) { %>
                 <li class="menu-item <%= currentPage === 'schedule-post' ? 'active' : '' %>">
-                    <a href="/schedule/post"><i class="fa-solid fa-images"></i>Đăng bài hình ảnh</a>
+                    <a href="/schedule/post"><i class="fa-solid fa-image"></i>Đăng Bài Hình Ảnh</a>
                 </li>
                 <% } %>
                 <% if (feat['schedule-reels'] !== false) { %>
                 <li class="menu-item <%= currentPage === 'schedule-reels' ? 'active' : '' %>">
-                    <a href="/schedule/reels"><i class="fa-solid fa-film"></i>Đăng Reels / Video</a>
+                    <a href="/schedule/reels"><i class="fa-solid fa-clapperboard"></i>Đăng Reels / Video</a>
                 </li>
                 <% } %>
                 <% if (feat['schedule-archive'] !== false) { %>
                 <li class="menu-item <%= currentPage === 'schedule-archive' ? 'active' : '' %>">
-                    <a href="/schedule/archive"><i class="fa-solid fa-clock-rotate-left"></i>Lịch sử đăng bài</a>
-                </li>
-                <% } %>
-                <% if (feat['schedule-groups'] !== false) { %>
-                <li class="menu-item <%= currentPage === 'schedule-groups' ? 'active' : '' %>">
-                    <a href="/schedule/groups"><i class="fa-solid fa-magnifying-glass"></i>Quét nhóm Facebook</a>
+                    <a href="/schedule/archive"><i class="fa-solid fa-clock-rotate-left"></i>Lịch Sử Đăng</a>
                 </li>
                 <% } %>
             </ul>
         </li>
         <% } %>
 
-        <!-- 🤖 AI TỰ ĐỘNG -->
-        <li class="menu-section-title">AI Tự Động</li>
+        <!-- 🤖 AI MARKETING -->
+        <li class="menu-section-title"><i class="fa-solid fa-robot"></i>AI Marketing Tự Động</li>
 
-        <% if (feat['ai-scan'] !== false || feat['ai-comments'] !== false || feat['comment-play'] !== false || feat['ai-content'] !== false) { %>
-        <li class="sidebar-group">
+        <% if (feat['ai-scan'] !== false || feat['ai-comments'] !== false || feat['comment-play'] !== false || feat['schedule-groups'] !== false) { %>
+        <li class="sidebar-group" data-sidebar-group-id="ai-marketing">
             <button
                 type="button"
                 class="sidebar-group-toggle"
-                data-sidebar-group-toggle
+                data-sidebar-group-toggle="ai-marketing"
                 aria-expanded="false"
             >
                 <span class="sidebar-group-toggle__label">
-                    <i class="fa-solid fa-robot"></i>
-                    AI Nâng Cao
+                    <i class="fa-solid fa-bullseye"></i>
+                    AI Tìm Khách & Tương Tác
                 </span>
                 <i class="fa-solid fa-chevron-down sidebar-group-chevron"></i>
             </button>
             <ul class="sidebar-submenu">
                 <% if (feat['ai-scan'] !== false) { %>
                 <li class="menu-item <%= currentPage === 'ai-scan' ? 'active' : '' %>">
-                    <a href="/schedule/ai-scan"><i class="fa-solid fa-magnifying-glass-chart"></i>AI Quét Nhu Cầu</a>
+                    <a href="/schedule/ai-scan"><i class="fa-solid fa-magnifying-glass-plus"></i>Quét Khách Có Nhu Cầu</a>
                 </li>
                 <% } %>
                 <% if (feat['ai-comments'] !== false) { %>
                 <li class="menu-item <%= currentPage === 'ai-comments' ? 'active' : '' %>">
-                    <a href="/schedule/ai-comments"><i class="fa-solid fa-comment-dots"></i>Comment Sản Phẩm</a>
+                    <a href="/schedule/ai-comments"><i class="fa-solid fa-comments"></i>AI Comment Sản Phẩm</a>
                 </li>
                 <% } %>
                 <% if (feat['comment-play'] !== false) { %>
                 <li class="menu-item <%= currentPage === 'comment-play' ? 'active' : '' %>">
-                    <a href="/schedule/ai-comment/play"><i class="fa-solid fa-play"></i>▶ Kịch Bản Comment</a>
+                    <a href="/schedule/ai-comment/play"><i class="fa-solid fa-bolt"></i>Kịch Bản Comment Tự Động</a>
+                </li>
+                <% } %>
+                <% if (feat['schedule-groups'] !== false) { %>
+                <li class="menu-item <%= currentPage === 'schedule-groups' ? 'active' : '' %>">
+                    <a href="/schedule/groups"><i class="fa-solid fa-users-rectangle"></i>Tìm Nhóm FB Tiềm Năng</a>
                 </li>
                 <% } %>
             </ul>
         </li>
         <% } %>
 
-        <!-- 🤖 AI CONTENT -->
-        <% if (feat['ai-content'] !== false) { %>
-        <li class="menu-item <%= currentPage === 'ai-content' ? 'active' : '' %>">
-            <a href="/ai-content"><i class="fa-solid fa-pen-nib"></i>AI Content Creator</a>
-        </li>
-        <% } %>
-
-        <!-- 🎵 MUSIC TRENDING -->
-        <% if (feat['trend-music'] !== false) { %>
-        <li class="menu-item <%= currentPage === 'music-trending' ? 'active' : '' %>">
-            <a href="/music-trending"><i class="fa-solid fa-music"></i>Music Trending</a>
-        </li>
-        <% } %>
-
-        <!-- 🎯 THEO DÕI -->
+        <!-- 🎯 NGHIÊN CỨU ĐỐI THỦ -->
         <% if (feat.tracking !== false) { %>
-        <li class="sidebar-group">
+        <li class="sidebar-group" data-sidebar-group-id="tracking">
             <button
                 type="button"
                 class="sidebar-group-toggle"
-                data-sidebar-group-toggle
-                aria-expanded="<%= ['tracking-profile','tracking-page','tracking-group'].includes(currentPage) ? 'true' : 'false' %>"
+                data-sidebar-group-toggle="tracking"
+                aria-expanded="false"
             >
                 <span class="sidebar-group-toggle__label">
-                    <i class="fa-solid fa-crosshairs"></i>
-                    Theo Dõi
+                    <i class="fa-solid fa-binoculars"></i>
+                    Theo Dõi Đối Thủ
                 </span>
                 <i class="fa-solid fa-chevron-down sidebar-group-chevron"></i>
             </button>
-            <ul class="sidebar-submenu" style="<%= ['tracking-profile','tracking-page','tracking-group'].includes(currentPage) ? 'display:block' : '' %>">
+            <ul class="sidebar-submenu">
                 <li class="menu-item <%= currentPage === 'tracking-profile' ? 'active' : '' %>">
-                    <a href="/tracking?type=profile"><i class="fa-solid fa-user"></i>Theo Dõi Profile</a>
+                    <a href="/tracking?type=profile"><i class="fa-solid fa-user"></i>Theo Dõi Cá Nhân</a>
                 </li>
                 <li class="menu-item <%= currentPage === 'tracking-page' ? 'active' : '' %>">
-                    <a href="/tracking?type=page"><i class="fa-solid fa-flag"></i>Theo Dõi Page</a>
+                    <a href="/tracking?type=page"><i class="fa-solid fa-flag"></i>Theo Dõi Fanpage</a>
                 </li>
                 <li class="menu-item <%= currentPage === 'tracking-group' ? 'active' : '' %>">
-                    <a href="/tracking?type=group"><i class="fa-solid fa-users"></i>Theo Dõi Group</a>
+                    <a href="/tracking?type=group"><i class="fa-solid fa-users"></i>Theo Dõi Nhóm</a>
                 </li>
             </ul>
         </li>
         <% } %>
 
-        <!-- 💬 PHẢN HỒI & GÓP Ý -->
+        <!-- 📊 THU THẬP DỮ LIỆU -->
+        <% if (feat['comment-crawler'] !== false || feat.tracking !== false) { %>
+        <li class="sidebar-group" data-sidebar-group-id="data-collection">
+            <button
+                type="button"
+                class="sidebar-group-toggle"
+                data-sidebar-group-toggle="data-collection"
+                aria-expanded="false"
+            >
+                <span class="sidebar-group-toggle__label">
+                    <i class="fa-solid fa-database"></i>
+                    Thu Thập Dữ Liệu
+                </span>
+                <i class="fa-solid fa-chevron-down sidebar-group-chevron"></i>
+            </button>
+            <ul class="sidebar-submenu">
+                <li class="menu-item <%= currentPage === 'comment-crawler' ? 'active' : '' %>">
+                    <a href="/tracking/comments"><i class="fa-brands fa-facebook-messenger"></i>FB Comment Crawler</a>
+                </li>
+            </ul>
+        </li>
+        <% } %>
+
+        <!-- 💬 HỖ TRỢ -->
         <% if (feat.feedback !== false) { %>
         <li class="menu-item <%= currentPage === 'feedback' ? 'active' : '' %>">
-            <a href="/feedback"><i class="fa-solid fa-message"></i>Góp Ý & Yêu Cầu</a>
+            <a href="/feedback"><i class="fa-solid fa-comments"></i>Góp Ý & Yêu Cầu</a>
         </li>
         <% } %>
 
         <!-- ⚙️ HỆ THỐNG -->
-        <li class="menu-section-title">Hệ Thống</li>
+        <li class="menu-section-title"><i class="fa-solid fa-gear"></i>Hệ Thống</li>
         <% if (feat.settings !== false) { %>
         <li class="menu-item <%= currentPage === 'settings' ? 'active' : '' %>">
-            <a href="/settings"><i class="fa-solid fa-sliders"></i>Cài Đặt</a>
+            <a href="/settings"><i class="fa-solid fa-sliders"></i>Cài Đặt Chung</a>
         </li>
         <% } %>
 
         <% if (isAdmin) { %>
         <li class="menu-item <%= currentPage === 'feature-visibility' ? 'active' : '' %>">
-            <a href="/features"><i class="fa-solid fa-gears"></i>Quản Lý Tính Năng</a>
+            <a href="/features"><i class="fa-solid fa-toggle-on"></i>Quản Lý Tính Năng</a>
         </li>
         <% } %>
     </ul>

@@ -79,8 +79,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Sidebar tree dropdowns — chỉ mở group cha của tính năng hiện tại/click
-    const sidebarGroups = Array.from(document.querySelectorAll('.sidebar-group'));
+    // Sidebar tree dropdowns — exclusive mode: chỉ mở 1 group tại 1 thời điểm
+    function getSidebarGroups() {
+        return Array.from(document.querySelectorAll('.sidebar-group'));
+    }
 
     function setSidebarGroupOpen(group, isOpen) {
         if (!group) return;
@@ -90,34 +92,88 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function openOnlySidebarGroup(targetGroup) {
-        sidebarGroups.forEach((group) => {
+        // Query lại DOM mỗi lần để chắc chắn bắt đúng tất cả group hiện có
+        getSidebarGroups().forEach((group) => {
             setSidebarGroupOpen(group, group === targetGroup);
         });
     }
 
-    // Only open parent sidebar-group if active item is inside one
-    // (Standalone items like "AI Content Creator" have no sidebar-group parent)
+    // Lưu group đang mở trong sessionStorage để giữ trạng thái khi navigate
+    const STORAGE_KEY = 'sidebar:openGroupId';
+
+    function getStoredOpenGroupId() {
+        try {
+            return sessionStorage.getItem(STORAGE_KEY) || '';
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function setStoredOpenGroupId(groupId) {
+        try {
+            if (groupId) sessionStorage.setItem(STORAGE_KEY, groupId);
+            else sessionStorage.removeItem(STORAGE_KEY);
+        } catch (e) {
+            /* ignore */
+        }
+    }
+
+    // Click toggle: toggle group hiện tại, đóng các group khác (dùng event delegation trên sidebar)
+    const sidebarEl = document.getElementById('sidebar');
+    if (sidebarEl) {
+        sidebarEl.addEventListener('click', (e) => {
+            const toggleBtn = e.target.closest('[data-sidebar-group-toggle]');
+            if (toggleBtn && sidebarEl.contains(toggleBtn)) {
+                e.stopPropagation();
+                e.preventDefault();
+                const group = toggleBtn.closest('.sidebar-group');
+                if (!group) return;
+                const groupId = group.dataset.sidebarGroupId || toggleBtn.dataset.sidebarGroupToggle || '';
+                const willOpen = !group.classList.contains('is-open');
+                if (willOpen) {
+                    openOnlySidebarGroup(group);
+                    setStoredOpenGroupId(groupId);
+                } else {
+                    // Click vào group đang mở → đóng tất cả
+                    openOnlySidebarGroup(null);
+                    setStoredOpenGroupId('');
+                }
+                return;
+            }
+
+            // Click vào link submenu: đảm bảo group cha được mở và lưu vào storage
+            const subLink = e.target.closest('.sidebar-submenu .menu-item a');
+            if (subLink && sidebarEl.contains(subLink)) {
+                const group = subLink.closest('.sidebar-group');
+                const groupId = group?.dataset?.sidebarGroupId || '';
+                openOnlySidebarGroup(group);
+                setStoredOpenGroupId(groupId);
+            }
+        });
+    }
+
+    // Khi load trang: ưu tiên mở group chứa currentPage active
     const activeSidebarItem = document.querySelector('.sidebar .menu-item.active');
     const activeSidebarGroup = activeSidebarItem?.closest('.sidebar-group');
     if (activeSidebarGroup) {
+        // Có item active → mở group đó
         openOnlySidebarGroup(activeSidebarGroup);
+        const groupId = activeSidebarGroup.dataset.sidebarGroupId || '';
+        setStoredOpenGroupId(groupId);
+    } else {
+        // Không có item active → thử restore từ storage
+        const storedId = getStoredOpenGroupId();
+        if (storedId) {
+            const group = document.querySelector(`.sidebar-group[data-sidebar-group-id="${storedId}"]`);
+            if (group) {
+                openOnlySidebarGroup(group);
+            } else {
+                openOnlySidebarGroup(null);
+            }
+        } else {
+            openOnlySidebarGroup(null);
+        }
     }
-
-    document.querySelectorAll('[data-sidebar-group-toggle]').forEach((button) => {
-        button.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const group = button.closest('.sidebar-group');
-            if (!group) return;
-            const willOpen = !group.classList.contains('is-open');
-            openOnlySidebarGroup(willOpen ? group : null);
-        });
-    });
-
-    document.querySelectorAll('.sidebar-submenu .menu-item a').forEach((link) => {
-        link.addEventListener('click', () => {
-            openOnlySidebarGroup(link.closest('.sidebar-group'));
-        });
-    });
 
     updateMenuToggleVisibility();
     window.addEventListener('resize', updateMenuToggleVisibility);

@@ -20,27 +20,13 @@
     <%- include('partials/header') %>
 
     <div class="content-body">
-        <!-- Hero -->
-        <div class="aic-hero">
-            <div class="aic-hero-content">
-                <div class="aic-hero-left">
-                    <div class="aic-hero-title">
-                        <div class="aic-hero-icon"><i class="fa-solid fa-comment-dots"></i></div>
-                        <h1>Comment Sản Phẩm</h1>
-                    </div>
-                    <p class="aic-hero-subtitle">
-                        Tạo sẵn các comment (text, hình ảnh sản phẩm, video). 
-                        Bật/Tắt để chọn comment sẽ được dùng khi quét AI tự động post.
-                        Tắt (bỏ qua) comment nào không muốn dùng.
-                    </p>
-                </div>
-                <div class="aic-hero-actions">
-                    <button class="btn-aic-hero" id="btnNewComment">
-                        <i class="fa-solid fa-plus"></i> Tạo Sản Phẩm
-                    </button>
-                </div>
-            </div>
-        </div>
+        <!-- Welcome Section -->
+        <%- include('partials/welcome-section', {
+            eyebrow: 'AI Tự Động',
+            title: 'Comment Sản Phẩm',
+            description: 'Tạo sẵn các comment (text, hình ảnh sản phẩm, video). Bật/Tắt để chọn comment sẽ được dùng khi quét AI tự động post. Tắt (bỏ qua) comment nào không muốn dùng.',
+            actionHtml: '<button class="btn-aic-hero" id="btnNewComment"><i class="fa-solid fa-plus"></i> Tạo Sản Phẩm</button>'
+        }) %>
 
         <!-- Stats -->
         <div class="aic-stats">
@@ -144,10 +130,10 @@
                             <i class="fa-solid <%= c.isActive ? 'fa-toggle-on' : 'fa-toggle-off' %>" style="color:<%= c.isActive ? '#10b981' : '#9ca3af' %>;font-size:1.3rem;"></i>
                         </button>
                         <button class="btn-icon aic-btn-edit" data-comment-id="<%= c._id %>" title="Sửa">
-                            <i class="fa-solid fa-pen-to-square"></i>
+                            <i class="fa-solid fa-pen"></i>
                         </button>
                         <button class="btn-icon aic-btn-delete" data-comment-id="<%= c._id %>" title="Xóa">
-                            <i class="fa-solid fa-trash-can"></i>
+                            <i class="fa-solid fa-trash"></i>
                         </button>
                     </div>
                 </div>

@@ -35,18 +35,30 @@
                     </div>
 
                     <div class="toolbar-filters">
+                        <select id="archiveStatusFilter" class="input-text filter-select">
+                            <option value="all" <%= filters.status === 'all' ? 'selected' : '' %>>Tất cả trạng thái</option>
+                            <option value="posted" <%= filters.status === 'posted' ? 'selected' : '' %>>Đã đăng (tất cả pass)</option>
+                            <option value="partial" <%= filters.status === 'partial' ? 'selected' : '' %>>Một phần</option>
+                            <option value="failed" <%= filters.status === 'failed' ? 'selected' : '' %>>Thất bại</option>
+                        </select>
+
                         <select id="archiveTypeFilter" class="input-text filter-select">
                             <option value="all">Tất cả loại bài</option>
                             <option value="post">Post</option>
                             <option value="reels">Reels</option>
+                            <option value="tiktok">TikTok</option>
                         </select>
 
                         <select id="archivePlatformFilter" class="input-text filter-select">
                             <option value="all">Tất cả nền tảng</option>
-                            <option value="FB">Facebook</option>
+                            <option value="FR">Facebook Reels</option>
+                            <option value="FB">Facebook Post</option>
                             <option value="IG">Instagram</option>
-                            <option value="TT">TikTok</option>
+                            <option value="TT">TikTok Video</option>
+                            <option value="YS">YouTube Short</option>
                             <option value="YT">YouTube</option>
+                            <option value="TH">Threads</option>
+                            <option value="PI">Pinterest</option>
                         </select>
 
                         <input type="date" id="archiveDayFilter" class="input-text filter-select" title="Lọc theo ngày đăng">
@@ -68,9 +80,9 @@
                     <div class="stat-card-mini"><span>Tổng đã đăng</span><strong><%= stats.total %></strong></div>
                     <div class="stat-card-mini stat-posted"><span>Post</span><strong><%= stats.posts %></strong></div>
                     <div class="stat-card-mini stat-reels"><span>Reels</span><strong><%= stats.reels %></strong></div>
-                    <div class="stat-card-mini stat-pending"><span>Facebook</span><strong><%= stats.fb %></strong></div>
+                    <div class="stat-card-mini stat-pending"><span>Một phần</span><strong><%= stats.partial || 0 %></strong></div>
+                    <div class="stat-card-mini stat-failed"><span>Thất bại</span><strong><%= stats.failed || 0 %></strong></div>
                     <div class="stat-card-mini"><span>Hôm nay</span><strong><%= stats.today %></strong></div>
-                    <div class="stat-card-mini"><span>Tháng này</span><strong><%= stats.month %></strong></div>
                 </div>
 
                 <div class="archive-table-wrap">
@@ -99,7 +111,7 @@
                                         type: schedule.type,
                                         typeLabel: schedule.archiveTypeLabel,
                                         statusLabel: schedule.archiveStatusLabel,
-                                        statusClassName: schedule.statusClassName,
+                                        statusClassName: schedule.archiveStatusClassName,
                                         caption: schedule.caption || '',
                                         platformLabel: schedule.platformLabel,
                                         accountsLabel: schedule.accountsLabel,
@@ -123,14 +135,17 @@
                                     >
                                         <td>
                                             <div class="cell-primary"><%= schedule.publishedAtLabel %></div>
-                                            <div class="cell-secondary">Đã đăng</div>
+                                            <div class="cell-secondary"><%= schedule.isFailed ? 'Không đăng được' : (schedule.isPartial ? 'Một số nền tảng lỗi' : 'Đã đăng') %></div>
                                         </td>
                                         <td><span class="type-badge type-<%= schedule.type %>"><%= schedule.archiveTypeLabel %></span></td>
                                         <td>
                                             <div class="platform-badges">
                                                 <% if (schedule.platformDetails && schedule.platformDetails.length > 0) { %>
                                                     <% schedule.platformDetails.forEach(platform => { %>
-                                                        <span class="platform-badge <%= platform.className %>"><%= platform.label %></span>
+                                                        <span class="platform-badge <%= platform.className %> <%= platform.success ? '' : 'platform-badge--failed' %>" title="<%= platform.success ? 'Đã đăng' : ('Lỗi: ' + (platform.error || 'Không rõ')) %>">
+                                                            <%= platform.label %>
+                                                            <% if (!platform.success) { %><i class="fa-solid fa-circle-exclamation"></i><% } %>
+                                                        </span>
                                                     <% }) %>
                                                 <% } else { %>
                                                     <span class="muted-text">—</span>
@@ -154,7 +169,7 @@
                                             <div class="cell-primary"><%= schedule.videoTitle %></div>
                                             <div class="cell-secondary"><%= schedule.shopeeLinksCount %> link affiliate</div>
                                         </td>
-                                        <td><span class="status-pill status-posted"><%= schedule.archiveStatusLabel %></span></td>
+                                        <td><span class="status-pill <%= schedule.archiveStatusClassName %>"><%= schedule.archiveStatusLabel %></span></td>
                                         <td>
                                             <button class="btn-row-action btn-archive-view" type="button" data-schedule-id="<%= schedule._id %>">
                                                 <i class="fa-regular fa-eye"></i>
@@ -178,10 +193,7 @@
                 </div>
 
                 <!-- Archive Pagination -->
-                <div class="archive-pagination" id="archivePagination" style="<%= (schedules && schedules.length > 0) ? '' : 'display:none;' %>">
-                    <div class="archive-pagination__info" id="archivePaginationInfo"></div>
-                    <div class="archive-pagination__controls" id="archivePaginationControls"></div>
-                </div>
+                <div class="schedule-pagination" id="archivePagination" aria-label="Phân trang lịch sử"></div>
             </section>
 
             <div class="archive-modal" id="archiveDetailModal" aria-hidden="true">
@@ -244,6 +256,7 @@
 
     <script src="/js/toast.js"></script>
     <script src="/js/base.js"></script>
+    <script src="/js/schedule-archive/pagination.js"></script>
     <script src="/js/schedule-archive.js"></script>
 </body>
 </html>    <link rel="stylesheet" href="/css/toast.css">

@@ -1,10 +1,16 @@
+/* ===================================
+   SCHEDULE ARCHIVE — Main JS
+   - Filter + pagination (delegated to pagination.js)
+   - Modal xem nhanh + Export
+   =================================== */
+
 document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('archiveSearchInput');
     const platformFilter = document.getElementById('archivePlatformFilter');
     const typeFilter = document.getElementById('archiveTypeFilter');
     const dayFilter = document.getElementById('archiveDayFilter');
     const monthFilter = document.getElementById('archiveMonthFilter');
-    const rows = Array.from(document.querySelectorAll('.archive-row'));
+    const btnClear = document.getElementById('btnClearCalendarFilters');
     const viewButtons = Array.from(document.querySelectorAll('.btn-archive-view'));
     const modal = document.getElementById('archiveDetailModal');
     const modalFields = {
@@ -21,37 +27,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportExcelBtn = document.getElementById('btnExportExcel');
     const exportPdfBtn = document.getElementById('btnExportPdf');
 
-    const PAGE_SIZE = 10;
-    let currentPage = 1;
-    let filteredRows = [...rows];
-
-    function applyFilters() {
-        const keyword = String(searchInput?.value || '').trim().toLowerCase();
-        const selectedPlatform = platformFilter?.value || 'all';
-        const selectedType = typeFilter?.value || 'all';
-        const selectedDay = dayFilter?.value || '';
-        const selectedMonth = monthFilter?.value || '';
-
-        filteredRows = rows.filter((row) => {
-            const rowText = String(row.dataset.searchText || '').toLowerCase();
-            const rowPlatforms = String(row.dataset.platform || '').split(',').filter(Boolean);
-            const rowType = String(row.dataset.type || '');
-            const rowDay = String(row.dataset.day || '');
-            const rowMonth = String(row.dataset.month || '');
-
-            const matchesKeyword = !keyword || rowText.includes(keyword);
-            const matchesPlatform = selectedPlatform === 'all' || rowPlatforms.includes(selectedPlatform);
-            const matchesType = selectedType === 'all' || rowType === selectedType;
-            const matchesDay = !selectedDay || rowDay === selectedDay;
-            const matchesMonth = !selectedMonth || rowMonth === selectedMonth;
-
-            return matchesKeyword && matchesPlatform && matchesType && matchesDay && matchesMonth;
-        });
-
-        currentPage = 1;
-        renderPagination();
-    }
-
     function getCurrentFilterParams() {
         const params = new URLSearchParams();
         const q = String(searchInput?.value || '').trim();
@@ -67,60 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (month) params.set('month', month);
 
         return params.toString();
-    }
-
-    function renderPagination() {
-        const totalItems = filteredRows.length;
-        const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
-        currentPage = Math.min(currentPage, totalPages);
-
-        // Show/hide rows
-        rows.forEach((row) => row.style.display = 'none');
-        filteredRows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).forEach((row) => {
-            row.style.display = '';
-        });
-
-        // Update pagination UI
-        const infoEl = document.getElementById('archivePaginationInfo');
-        const controlsEl = document.getElementById('archivePaginationControls');
-
-        if (infoEl) {
-            if (totalItems === 0) {
-                infoEl.textContent = 'Không có lịch trình nào';
-            } else {
-                const start = (currentPage - 1) * PAGE_SIZE + 1;
-                const end = Math.min(currentPage * PAGE_SIZE, totalItems);
-                infoEl.textContent = `Hiển thị ${start}-${end} / ${totalItems} lịch`;
-            }
-        }
-
-        if (controlsEl) {
-            let btns = '';
-            btns += `<button class="archive-pagination__btn" data-page="prev" ${currentPage === 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i></button>`;
-
-            const maxBtns = 5;
-            const half = Math.floor(maxBtns / 2);
-            let startPage = Math.max(1, currentPage - half);
-            let endPage = Math.min(totalPages, startPage + maxBtns - 1);
-            startPage = Math.max(1, endPage - maxBtns + 1);
-
-            for (let p = startPage; p <= endPage; p++) {
-                btns += `<button class="archive-pagination__btn ${p === currentPage ? 'is-active' : ''}" data-page="${p}">${p}</button>`;
-            }
-
-            btns += `<button class="archive-pagination__btn" data-page="next" ${currentPage === totalPages ? 'disabled' : ''}><i class="fa-solid fa-chevron-right"></i></button>`;
-            controlsEl.innerHTML = btns;
-
-            controlsEl.querySelectorAll('.archive-pagination__btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const target = btn.dataset.page;
-                    if (target === 'prev') { currentPage = Math.max(1, currentPage - 1); }
-                    else if (target === 'next') { currentPage = Math.min(totalPages, currentPage + 1); }
-                    else { currentPage = parseInt(target); }
-                    renderPagination();
-                });
-            });
-        }
     }
 
     function openModalFromRow(row) {
@@ -154,12 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.setAttribute('aria-hidden', 'true');
     }
 
-    searchInput?.addEventListener('input', applyFilters);
-    platformFilter?.addEventListener('change', applyFilters);
-    typeFilter?.addEventListener('change', applyFilters);
-    dayFilter?.addEventListener('change', applyFilters);
-    monthFilter?.addEventListener('change', applyFilters);
-
+    // Export buttons
     exportExcelBtn?.addEventListener('click', (event) => {
         event.preventDefault();
         const query = getCurrentFilterParams();
@@ -172,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = `/schedule/archive/export?format=pdf${query ? `&${query}` : ''}`;
     });
 
+    // Modal close handlers
     modal?.querySelectorAll('[data-archive-modal-close]').forEach((el) => {
         el.addEventListener('click', closeModal);
     });
@@ -180,16 +97,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (event.key === 'Escape') closeModal();
     });
 
-    viewButtons.forEach((btn) => {
-        btn.addEventListener('click', async () => {
-            const row = btn.closest('.archive-row');
-            openModalFromRow(row);
-        });
+    // View detail buttons (delegated)
+    document.addEventListener('click', (event) => {
+        const viewBtn = event.target.closest('.btn-archive-view');
+        if (viewBtn) {
+            const row = viewBtn.closest('.archive-row');
+            if (row) openModalFromRow(row);
+        }
     });
 
-    // cập nhật link export khi tải trang để đảm bảo URL chuẩn
+    // Export links default
     if (exportExcelBtn) exportExcelBtn.href = `/schedule/archive/export?format=xls`;
     if (exportPdfBtn) exportPdfBtn.href = `/schedule/archive/export?format=pdf`;
-
-    applyFilters();
 });

@@ -174,6 +174,90 @@ function startFacebookProfileUrlWatcher({ sessionKey, userId, channelId, account
     PROFILE_URL_WATCHERS.set(sessionKey, watcher);
 }
 
+/**
+ * Dọn các Facebook sessions KHÔNG còn được sử dụng.
+ *
+ * Mỗi session giữ 1 Playwright context (200-400MB RAM).
+ * Khi user đóng browser nhưng không logout, session vẫn nằm trong ACTIVE_FB_SESSIONS.
+ * Cron này chạy mỗi 30 phút, xóa session idle > `maxIdleMs` (mặc định 30 phút).
+ *
+ * @param {number} maxIdleMs - Sessions idle quá thời gian này sẽ bị xóa (mặc định 30 phút)
+ * @returns {{checked: number, cleaned: number, active: number}}
+ */
+function cleanupStaleFbSessions(maxIdleMs = 30 * 60 * 1000) {
+    const { ACTIVE_FB_SESSIONS } = require('./session');
+    const now = Date.now();
+    let cleaned = 0;
+    let active = 0;
+    const checked = ACTIVE_FB_SESSIONS.size;
+
+    for (const [key, session] of ACTIVE_FB_SESSIONS) {
+        const lastUsed = session.lastUsedAt || session.createdAt || 0;
+        const idleMs = now - lastUsed;
+
+        if (idleMs > maxIdleMs) {
+            // Đóng context an toàn
+            try {
+                if (session.context?.close) {
+                    session.context.close().catch(() => {});
+                }
+            } catch (e) { /* ignore */ }
+            ACTIVE_FB_SESSIONS.delete(key);
+            cleaned++;
+            console.log(`[FB Cleanup] Removed stale session "${key}" (idle ${Math.round(idleMs / 60000)}min)`);
+        } else {
+            active++;
+        }
+    }
+
+    if (cleaned > 0) {
+        console.log(`[FB Cleanup] Done. Checked=${checked}, Cleaned=${cleaned}, Active=${active}`);
+    }
+
+    return { checked, cleaned, active };
+}
+
+/**
+ * Đánh dấu session vừa được dùng — dùng cho cleanup.
+ * Gọi ở các điểm user tương tác (open, scan, post...).
+ */
+function touchFbSession(sessionKey) {
+    if (!sessionKey) return;
+    const { ACTIVE_FB_SESSIONS } = require('./session');
+    const session = ACTIVE_FB_SESSIONS.get(sessionKey);
+    if (session) {
+        session.lastUsedAt = Date.now();
+    }
+}
+
+/**
+ * Cron job: dọn sessions idle > 30 phút, chạy mỗi 30 phút.
+ * Idempotent: gọi nhiều lần chỉ tạo 1 interval.
+ */
+let cleanupCronStarted = false;
+let cleanupCronTimer = null;
+function startFbSessionCleanupCron(intervalMs = 30 * 60 * 1000) {
+    if (cleanupCronStarted) return;
+    cleanupCronStarted = true;
+    cleanupCronTimer = setInterval(() => {
+        try {
+            cleanupStaleFbSessions();
+        } catch (e) {
+            console.error('[FB Cleanup] Cron error:', e.message);
+        }
+    }, intervalMs);
+    console.log(`[FB Cleanup] Cron started (interval=${intervalMs / 60000}min)`);
+}
+
+function stopFbSessionCleanupCron() {
+    if (cleanupCronTimer) {
+        clearInterval(cleanupCronTimer);
+        cleanupCronTimer = null;
+    }
+    cleanupCronStarted = false;
+    console.log('[FB Cleanup] Cron stopped');
+}
+
 async function findFirstVisibleLocator(page, selectors = [], label = 'field') {
     for (const selector of selectors) {
         const locator = page.locator(selector).first();
@@ -300,5 +384,6 @@ module.exports = {
     findFirstVisibleLocator,
     writeTextIntoLocator,
     writeTextToActiveElement,
-    waitForCaptionEditor
+    waitForCaptionEditor,
+    startFbSessionCleanupCron
 };

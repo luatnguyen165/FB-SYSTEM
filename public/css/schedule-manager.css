@@ -36,9 +36,7 @@
 }
 
 /* ===== PAGE LAYOUT ===== */
-.schedule-manager-page {
-    padding: 0 24px 40px;
-}
+/* Uses .content-body padding from base.css (28px 32px) for consistency */
 
 /* ===== MANAGER PANEL ===== */
 .schedule-manager-panel {

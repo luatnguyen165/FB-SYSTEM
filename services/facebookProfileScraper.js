@@ -318,19 +318,40 @@ async function downloadImage(url, saveDir, filename) {
 
 // ==================== DOWNLOAD QUEUE ====================
 class DownloadQueue {
-    constructor(concurrency = 2, delayMs = 500, retries = 3) {
+    constructor(concurrency = 2, delayMs = 500, retries = 3, maxQueueSize = 500) {
         this.queue = [];
         this.running = 0;
         this.concurrency = concurrency;
         this.delayMs = delayMs;
         this.retries = retries;
+        this.maxQueueSize = maxQueueSize;
+        this.droppedCount = 0;
     }
 
+    /**
+     * Thêm task vào queue. Trả về null nếu queue đầy (backpressure).
+     * Caller nên kiểm tra null và bỏ qua (post đó sẽ thiếu ảnh nhưng app không crash).
+     */
     async add(task, taskName = 'task') {
+        if (this.queue.length >= this.maxQueueSize) {
+            this.droppedCount++;
+            console.warn(`[Queue] DROPPED (backpressure): ${taskName} | queue=${this.queue.length}/${this.maxQueueSize} | dropped total=${this.droppedCount}`);
+            return null;
+        }
         return new Promise((resolve, reject) => {
             this.queue.push({ task, taskName, resolve, reject, attempt: 1 });
             this.process();
         });
+    }
+
+    getStats() {
+        return {
+            queueLength: this.queue.length,
+            running: this.running,
+            dropped: this.droppedCount,
+            maxQueueSize: this.maxQueueSize,
+            concurrency: this.concurrency
+        };
     }
 
     async process() {
@@ -365,8 +386,8 @@ class DownloadQueue {
     }
 }
 
-// Singleton queue cho download ảnh
-const imageDownloadQueue = new DownloadQueue(2, 300, 3); // 2 concurrent, 300ms delay, 3 retries
+// Singleton queue cho download ảnh — bounded để chống tràn RAM
+const imageDownloadQueue = new DownloadQueue(2, 300, 3, 500); // 2 concurrent, 300ms delay, 3 retries, max 500 queued
 
 // ==================== EXTRACT TIMESTAMP ====================
 

@@ -16,18 +16,17 @@ const PLATFORM_LABELS = {
 const buildSchedulePopulateOptions = (userId) => [
     {
         path: 'videoId',
-        select: 'title filePath thumbnailUrl',
-        match: { userId }
+        select: 'title filePath thumbnailUrl'
+        // Bỏ match userId để populate luôn trả về video (kể cả userId khác)
+        // vì video có thể được share giữa các schedule của cùng user
     },
     {
         path: 'shopeeLinks',
-        select: 'title imageUrl shopeeUrl',
-        match: { userId }
+        select: 'title imageUrl shopeeUrl'
     },
     {
         path: 'targetGroupSourceChannelId',
-        select: 'accountName accountType platform avatarUrl followers',
-        match: { userId }
+        select: 'accountName accountType platform avatarUrl followers'
     }
 ];
 
@@ -37,7 +36,7 @@ const normalizeIdArray = (value) => {
     return [];
 };
 
-const validateScheduledAt = (scheduledAt) => {
+const validateScheduledAt = (scheduledAt, { allowPastForFailed = false } = {}) => {
     if (!scheduledAt) {
         return 'Vui lòng chọn thời gian đăng';
     }
@@ -51,14 +50,18 @@ const validateScheduledAt = (scheduledAt) => {
     // mà không bị chặn do seconds đã trôi qua trong lúc submit.
     const SCHEDULE_GRACE_WINDOW_MS = 60 * 1000;
     if (date.getTime() < Date.now() - SCHEDULE_GRACE_WINDOW_MS) {
-        return 'Không thể lên lịch vào thời gian trong quá khứ';
+        // Vẫn chặn nếu lịch failed → user phải chọn lại thời gian hiện tại/tương lai
+        // để scheduler chạy lại lịch này. Không cho phép giữ thời gian quá khứ.
+        return 'Không thể lên lịch vào thời gian trong quá khứ. Vui lòng chọn thời gian hiện tại hoặc tương lai';
     }
 
     return null;
 };
 
 function normalizeScheduleAccounts(accounts = []) {
-    if (!Array.isArray(accounts)) return [];
+    // Chấp nhận cả string đơn, array các string, hoặc mảng ObjectId
+    if (accounts == null) return [];
+    if (!Array.isArray(accounts)) accounts = [accounts];
     return accounts.map(value => String(value || '').trim()).filter(Boolean);
 }
 
@@ -90,6 +93,140 @@ function normalizeScheduleVideoPath(videoPath = '') {
     if (raw.startsWith('/uploads/videos/')) return raw;
     if (raw.startsWith('uploads/videos/')) return `/${raw}`;
     return raw;
+}
+
+/**
+ * Resolve absolute filesystem path từ URL/path tương đối
+ * - Nếu là absolute path tồn tại -> giữ nguyên
+ * - Nếu là relative path -> join với USER_DATA_DIR
+ * @returns {string} absolute path, hoặc '' nếu input rỗng
+ */
+function resolveLocalVideoPath(videoPath = '') {
+    const raw = String(videoPath || '').trim();
+    if (!raw) return '';
+    const path = require('path');
+    const fs = require('fs');
+
+    if (path.isAbsolute(raw) && fs.existsSync(raw)) return raw;
+    const cleaned = raw.replace(/^\/+/, '');
+    const resolved = path.join(global.USER_DATA_DIR || path.join(__dirname, '..', '..'), cleaned);
+    return resolved;
+}
+
+/**
+ * Lấy duration (giây) của video bằng ffprobe (nếu có) hoặc fallback dùng fluent-ffmpeg.
+ * @returns {Promise<number>} duration in seconds, hoặc 0 nếu không đọc được
+ */
+async function getVideoDurationSeconds(videoPath = '') {
+    const ffmpeg = require('fluent-ffmpeg');
+    const absolutePath = resolveLocalVideoPath(videoPath);
+    if (!absolutePath) return 0;
+    const fs = require('fs');
+    if (!fs.existsSync(absolutePath)) return 0;
+
+    return new Promise((resolve) => {
+        try {
+            ffmpeg.ffprobe(absolutePath, (err, data) => {
+                if (err || !data?.format?.duration) {
+                    console.log(`[video-validator] ffprobe lỗi cho ${absolutePath}: ${err?.message || 'no duration'}`);
+                    return resolve(0);
+                }
+                const duration = Number(data.format.duration);
+                resolve(Number.isFinite(duration) ? duration : 0);
+            });
+        } catch (e) {
+            console.log(`[video-validator] exception: ${e.message}`);
+            resolve(0);
+        }
+    });
+}
+
+/**
+ * Validate video theo giới hạn từng nền tảng.
+ * - Threads (TH): tối đa 5 phút (300s)
+ * - Pinterest Idea Pin (PI): 3-60 giây
+ *
+ * @param {string[]} platforms - mảng platform codes (VD: ['TH', 'PI'])
+ * @param {string} videoPath - URL/path tương đối của video
+ * @returns {Promise<{valid: boolean, message?: string, platform?: string, duration?: number}>}
+ */
+async function validateVideoForPlatforms(platforms = [], videoPath = '') {
+    const hasTH = platforms.includes('TH');
+    const hasPI = platforms.includes('PI');
+
+    // Chỉ check nếu user chọn TH hoặc PI
+    if (!hasTH && !hasPI) return { valid: true };
+
+    if (!videoPath) {
+        return { valid: false, message: 'Vui lòng chọn video cho lịch Reels' };
+    }
+
+    const duration = await getVideoDurationSeconds(videoPath);
+    if (duration === 0) {
+        // Không đọc được duration -> bỏ qua check, để scheduler tự phát hiện lỗi khi upload
+        return { valid: true };
+    }
+
+    if (hasTH && duration > 300) {
+        return {
+            valid: false,
+            platform: 'TH',
+            duration,
+            message: `Threads chỉ hỗ trợ video tối đa 5 phút (300 giây). Video hiện tại dài ${Math.round(duration)} giây.`
+        };
+    }
+
+    if (hasPI) {
+        if (duration < 3) {
+            return {
+                valid: false,
+                platform: 'PI',
+                duration,
+                message: `Pinterest Idea Pin yêu cầu video tối thiểu 3 giây. Video hiện tại dài ${Math.round(duration)} giây.`
+            };
+        }
+        if (duration > 60) {
+            return {
+                valid: false,
+                platform: 'PI',
+                duration,
+                message: `Pinterest Idea Pin chỉ hỗ trợ video tối đa 60 giây. Video hiện tại dài ${Math.round(duration)} giây.`
+            };
+        }
+    }
+
+    return { valid: true, duration };
+}
+
+/**
+ * Kiểm tra user có tài khoản Pinterest Business (cần thiết cho Idea Pin).
+ * @returns {Promise<{valid: boolean, message?: string}>}
+ */
+async function validatePinterestBusinessAccount(userId, normalizedAccountIds = []) {
+    if (!normalizedAccountIds.length) return { valid: true };
+    const accounts = await Channel.find({
+        _id: { $in: normalizedAccountIds },
+        userId,
+        platform: 'PI'
+    })
+        .select('_id accountType accountName')
+        .lean();
+
+    if (!accounts.length) return { valid: true };
+
+    const nonBusiness = accounts.filter(ch => {
+        const type = String(ch.accountType || '').trim();
+        return type && type.toLowerCase() !== 'business';
+    });
+
+    if (nonBusiness.length > 0) {
+        const names = nonBusiness.map(ch => ch.accountName).join(', ');
+        return {
+            valid: false,
+            message: `Pinterest Idea Pin chỉ hỗ trợ tài khoản Business. Tài khoản "${names}" không phải Business.`
+        };
+    }
+    return { valid: true };
 }
 
 function isMongoObjectId(value) {
@@ -217,14 +354,49 @@ function buildPublishedArchiveRow(schedule) {
     const publishedAtIso = publishedAt && !Number.isNaN(publishedAt.getTime()) ? publishedAt.toISOString() : '';
     const publishedAtDayKey = publishedAt ? `${publishedAt.getFullYear()}-${String(publishedAt.getMonth() + 1).padStart(2, '0')}-${String(publishedAt.getDate()).padStart(2, '0')}` : '';
     const publishedAtMonthKey = publishedAt ? `${publishedAt.getFullYear()}-${String(publishedAt.getMonth() + 1).padStart(2, '0')}` : '';
+
+    // Build per-platform status từ platformResults (lưu trong DB khi chạy schedule)
+    const platformResults = Array.isArray(schedule.platformResults) ? schedule.platformResults : [];
+    const platformStatusMap = {};
+    platformResults.forEach(r => {
+        if (r && r.platform) platformStatusMap[r.platform] = r;
+    });
+    const platforms = Array.isArray(schedule.platforms) ? schedule.platforms : [];
+    const platformDetailsWithStatus = platforms.map((code) => ({
+        code,
+        label: PLATFORM_LABELS[code] || code,
+        className: `platform-${String(code || '').toLowerCase()}`,
+        success: platformStatusMap[code] ? platformStatusMap[code].success !== false : true,
+        error: platformStatusMap[code]?.error || '',
+        publishedUrl: platformStatusMap[code]?.publishedUrl || ''
+    }));
+
+    // Tính overall status cho row
+    const isFailed = schedule.status === 'failed';
+    const isPartial = schedule.status === 'posted' && platformDetailsWithStatus.some(p => !p.success);
+    let archiveStatusLabel = 'Đã đăng';
+    let archiveStatusClassName = 'status-posted';
+    if (isFailed) {
+        archiveStatusLabel = 'Thất bại';
+        archiveStatusClassName = 'status-failed';
+    } else if (isPartial) {
+        archiveStatusLabel = 'Một phần';
+        archiveStatusClassName = 'status-partial';
+    }
+
     return {
         ...row,
+        platformDetails: platformDetailsWithStatus,
         publishedAtIso,
         publishedAtDayKey,
         publishedAtMonthKey,
         publishedAtLabel: row.scheduledAtLabel,
         archiveTypeLabel: row.typeLabel,
-        archiveStatusLabel: 'Đã đăng'
+        archiveStatusLabel,
+        archiveStatusClassName,
+        isPartial,
+        isFailed,
+        platformResults
     };
 }
 
@@ -246,10 +418,15 @@ function buildPublishedArchiveStats(rows = []) {
         total: rows.length,
         posts: rows.filter(item => item.type === 'post').length,
         reels: rows.filter(item => item.type === 'reels').length,
-        fb: rows.filter(item => item.platforms?.includes('FB')).length,
+        tiktoks: rows.filter(item => item.type === 'tiktok').length,
+        fb: rows.filter(item => item.platforms?.includes('FB') || item.platforms?.includes('FR')).length,
         ig: rows.filter(item => item.platforms?.includes('IG')).length,
         tt: rows.filter(item => item.platforms?.includes('TT')).length,
-        yt: rows.filter(item => item.platforms?.includes('YT')).length,
+        yt: rows.filter(item => item.platforms?.includes('YT') || item.platforms?.includes('YS')).length,
+        th: rows.filter(item => item.platforms?.includes('TH')).length,
+        pi: rows.filter(item => item.platforms?.includes('PI')).length,
+        partial: rows.filter(item => item.status === 'posted' && Array.isArray(item.platformResults) && item.platformResults.some(r => !r.success)).length,
+        failed: rows.filter(item => item.status === 'failed').length,
         today: rows.filter(item => item.publishedAtDayKey === todayKey).length,
         month: rows.filter(item => item.publishedAtMonthKey === monthKey).length
     };
@@ -275,8 +452,11 @@ function filterPublishedArchiveRows(rows = [], filters = {}) {
 }
 
 async function getPublishedArchiveRows(userId) {
-    const schedules = await SchedulePost.find({ userId, status: 'posted' })
-        .populate(buildSchedulePopulateOptions(userId))
+    const mongoose = require('mongoose');
+    const userIdObj = userId instanceof mongoose.Types.ObjectId ? userId : new mongoose.Types.ObjectId(String(userId));
+    // CHỈ lấy lịch đã đăng thành công (status='posted')
+    const schedules = await SchedulePost.find({ userId: userIdObj, status: 'posted' })
+        .populate(buildSchedulePopulateOptions(userIdObj))
         .sort({ scheduledAt: -1 })
         .lean();
 
@@ -299,6 +479,10 @@ module.exports = {
     isFacebookPersonalChannel,
     getOwnedChannelsByIds,
     normalizeScheduleVideoPath,
+    resolveLocalVideoPath,
+    getVideoDurationSeconds,
+    validateVideoForPlatforms,
+    validatePinterestBusinessAccount,
     isMongoObjectId,
     getActiveFacebookChannelForUser,
     resolveShopeeLinksForUpload,

@@ -6,6 +6,9 @@ let currentEditingSchedule = null;
 
 function fillScheduleForm(schedule) {
     if (!schedule) return;
+    console.log('[schedule-post] fillScheduleForm - FULL schedule object:', JSON.stringify(schedule, null, 2));
+    console.log('[schedule-post] fillScheduleForm - schedule.accounts:', schedule.accounts);
+    console.log('[schedule-post] fillScheduleForm - schedule.platforms:', schedule.platforms);
     currentEditingSchedule = schedule;
 
     const modalFormTitle = document.getElementById('modalFormTitle');
@@ -22,15 +25,28 @@ function fillScheduleForm(schedule) {
 
     const captionInput = document.getElementById('modalCaptionInput');
     if (captionInput) captionInput.value = schedule.caption || '';
+    const titleInput = document.getElementById('modalPostTitleInput');
+    if (titleInput) titleInput.value = schedule.postTitle || schedule.title || '';
     setScheduleTimeInputValue(schedule.scheduledAt);
 
     const existingImages = Array.isArray(schedule.images) ? schedule.images : [];
     uploadedImagesBlobUrls = existingImages.filter(url => String(url).startsWith('blob:'));
     renderSchedulePostImagePreview(existingImages);
 
-    document.querySelectorAll('.platform-check').forEach(cb => cb.checked = (schedule.platforms || []).includes(cb.value));
+    document.querySelectorAll('.platform-check').forEach(cb => {
+        cb.checked = (schedule.platforms || []).includes(cb.value);
+        const card = cb.closest('.platform-picker-card');
+        if (card) card.classList.toggle('is-selected', cb.checked && !cb.disabled);
+    });
+    console.log('[schedule-post] fillScheduleForm - schedule.accounts:', schedule.accounts);
+    console.log('[schedule-post] fillScheduleForm - schedule.platforms:', schedule.platforms);
     renderAccountList(schedule.accounts || []);
-    toggleFacebookGroupSelectionForSchedulePost();
+    onPlatformChipsChange();
+
+    // Edit mode: chắc chắn section "Tài khoản đăng" + "Nơi đăng" hiện ra
+    if (typeof toggleAccountAndTargetSections === 'function') {
+        toggleAccountAndTargetSections();
+    }
 
     const sourceChannelId = schedule.targetGroupSourceChannelId?._id || schedule.targetGroupSourceChannelId || '';
     let preferredGroupKeys = [];
@@ -41,16 +57,21 @@ function fillScheduleForm(schedule) {
     }
 
     if (sourceChannelId) {
-        currentGroupSourceChannelId = sourceChannelId;
+        // Set sourceId cho cả 2 biến để platform-target.js và groups.js đồng bộ
+        currentGroupSourceChannelId = String(sourceChannelId);
+        if (typeof currentFBTargetSource !== 'undefined') {
+            currentFBTargetSource = String(sourceChannelId);
+        }
         void loadSchedulePostFacebookGroups(String(sourceChannelId), preferredGroupKeys);
     } else {
-        const firstFBAccount = document.querySelector('.acc-pick-item input');
-        if (firstFBAccount) {
-            const icon = firstFBAccount.closest('.acc-pick-item')?.querySelector('i.fa-facebook');
-            if (icon) {
-                currentGroupSourceChannelId = firstFBAccount.value;
-                void loadSchedulePostFacebookGroups(firstFBAccount.value, preferredGroupKeys);
+        // Lấy FB account đang tick (KHÔNG dùng firstFBAccount trong DOM vì có thể sai thứ tự)
+        const checkedFB = document.querySelector('.acc-pick-item.acc-platform-FB input[name="modalAccSelect"]:checked');
+        if (checkedFB) {
+            currentGroupSourceChannelId = checkedFB.value;
+            if (typeof currentFBTargetSource !== 'undefined') {
+                currentFBTargetSource = checkedFB.value;
             }
+            void loadSchedulePostFacebookGroups(checkedFB.value, preferredGroupKeys);
         }
     }
 
@@ -91,13 +112,20 @@ function resetScheduleForm() {
     const imageInput = document.getElementById('actualImageInput');
 
     if (captionInput) captionInput.value = '';
+    const titleInput = document.getElementById('modalPostTitleInput');
+    if (titleInput) titleInput.value = '';
     if (imageInput) imageInput.value = '';
     setScheduleTimeInputValue('');
     clearSchedulePostImagePreview();
 
     void loadSchedulePostFacebookGroups('');
 
-    document.querySelectorAll('.platform-check').forEach(cb => cb.checked = (cb.value === 'FB'));
+    // Mở modal mới: KHÔNG tự tick platform nào, để user chủ động chọn
+    document.querySelectorAll('.platform-check').forEach(cb => {
+        cb.checked = false;
+        const card = cb.closest('.platform-picker-card');
+        if (card) card.classList.remove('is-selected');
+    });
     toggleFacebookGroupSelectionForSchedulePost();
 
     const selectedTagsContainer = document.getElementById('selectedGroupTags');
@@ -109,6 +137,21 @@ function resetScheduleForm() {
 
     if (swiperInstance) { swiperInstance.destroy(true, true); swiperInstance = null; }
     renderAccountList();
+
+    // Khi mới mở modal (chưa tick platform) → ẩn "Tài khoản đăng" + "Nơi đăng"
+    // Sau khi tick platform mới hiện ra
+    toggleAccountAndTargetSections();
+}
+
+function toggleAccountAndTargetSections() {
+    const accountSection = document.getElementById('accountPickerSection');
+    const targetSection = document.getElementById('targetTabsSection');
+    const activePlatforms = Array.from(document.querySelectorAll('.platform-check:checked'))
+        .map(cb => cb.value)
+        .filter(Boolean);
+    const hasPlatform = activePlatforms.length > 0;
+    if (accountSection) accountSection.style.display = hasPlatform ? '' : 'none';
+    if (targetSection) targetSection.style.display = hasPlatform ? '' : 'none';
 }
 
 function openCreatePostModal(dayNumber) {
@@ -148,10 +191,22 @@ async function deleteCurrentSchedulePost() {
 
 async function submitPostSchedule() {
     const caption = document.getElementById('modalCaptionInput')?.value || '';
+    const postTitle = document.getElementById('modalPostTitleInput')?.value?.trim() || '';
     syncSchedulePostTimeInput();
     const scheduledAt = document.getElementById('modalTimeInput')?.value;
     const platforms = Array.from(document.querySelectorAll('.platform-check:checked')).map(cb => cb.value);
     const accounts = Array.from(document.querySelectorAll('input[name="modalAccSelect"]:checked')).map(cb => cb.value);
+
+    console.log('[schedule-submit] platforms:', platforms);
+    console.log('[schedule-submit] postTitle:', postTitle);
+
+    // Pinterest yêu cầu bắt buộc có tiêu đề
+    const hasPI = platforms.includes('PI');
+    if (hasPI && !postTitle) {
+        showToast('Pinterest yêu cầu phải có tiêu đề bài viết!', 'warning');
+        document.getElementById('modalPostTitleInput')?.focus();
+        return;
+    }
 
     const selectedGroups = getSelectedGroups();
     const targetGroupIds = selectedGroups.map(g => g.groupUrl || g.groupId);
@@ -164,11 +219,22 @@ async function submitPostSchedule() {
 
     if (isPastDateTime(dateInput, timeValue)) { showToast('Không thể lên lịch vào thời gian trong quá khứ!', 'warning'); return; }
 
-    // Nếu chọn Instagram, bắt buộc phải có ảnh
-    if (platforms.includes('IG')) {
-        const hasImages = uploadedImagesBlobUrls.length > 0 || selectedSchedulePostImages.length > 0 || (document.getElementById('actualImageInput')?.files?.length || 0) > 0;
+    // Nếu chọn Instagram/Threads/Pinterest, bắt buộc phải có ảnh (bao gồm cả ảnh đã lưu trong lịch đang edit)
+    if (platforms.includes('IG') || platforms.includes('TH') || platforms.includes('PI')) {
+        const existingImagesCount = currentEditingSchedule && Array.isArray(currentEditingSchedule.images)
+            ? currentEditingSchedule.images.filter(Boolean).length
+            : 0;
+        const newFilesCount = (document.getElementById('actualImageInput')?.files?.length || 0);
+        const hasImages = uploadedImagesBlobUrls.length > 0
+            || selectedSchedulePostImages.length > 0
+            || newFilesCount > 0
+            || existingImagesCount > 0;
         if (!hasImages) {
-            showToast('Instagram yêu cầu phải có ít nhất 1 hình ảnh!', 'warning');
+            const names = [];
+            if (platforms.includes('IG')) names.push('Instagram');
+            if (platforms.includes('TH')) names.push('Threads');
+            if (platforms.includes('PI')) names.push('Pinterest');
+            showToast(`${names.join('/')} yêu cầu phải có ít nhất 1 hình ảnh!`, 'warning');
             return;
         }
     }
@@ -176,6 +242,7 @@ async function submitPostSchedule() {
     const formData = new FormData();
     formData.append('type', 'post');
     formData.append('caption', caption);
+    if (postTitle) formData.append('postTitle', postTitle);
     formData.append('scheduledAt', parseDateInputToIso(dateInput, timeValue) || scheduledAt);
 
     if (platforms.includes('FB')) {

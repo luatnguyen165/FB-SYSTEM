@@ -20,26 +20,13 @@
     <%- include('partials/header') %>
 
     <div class="content-body">
-        <!-- Hero -->
-        <div class="cp-hero">
-            <div class="cp-hero-content">
-                <div class="cp-hero-left">
-                    <div class="cp-hero-title">
-                        <div class="cp-hero-icon"><i class="fa-solid fa-play"></i></div>
-                        <h1>Kịch Bản Comment <span class="cp-hero-badge">▶ Play</span></h1>
-                    </div>
-                    <p class="cp-hero-subtitle">
-                        Tạo kịch bản tự động đăng comment từ kho lên Facebook Groups.
-                        <strong>▶</strong> Theo dõi thời gian chạy, lịch trình và hiệu suất.
-                    </p>
-                </div>
-                <div class="cp-hero-actions">
-                    <button class="btn-cp-hero" id="btnNewPlay">
-                        <i class="fa-solid fa-plus"></i> ▶ Tạo Kịch Bản
-                    </button>
-                </div>
-            </div>
-        </div>
+        <!-- Welcome Section -->
+        <%- include('partials/welcome-section', {
+            eyebrow: 'Tự động hóa',
+            title: 'Kịch Bản Comment Tự Động',
+            description: 'Tạo kịch bản tự động đăng comment từ kho lên Facebook Groups. Theo dõi thời gian chạy, lịch trình và hiệu suất.',
+            actionHtml: '<button class="btn-cp-hero" id="btnNewPlay"><i class="fa-solid fa-plus"></i> Tạo Kịch Bản</button>'
+        }) %>
 
         <!-- Stats with Play icons -->
         <div class="cp-stats">
@@ -153,10 +140,10 @@
                             <i class="fa-solid <%= p.status === 'active' ? 'fa-pause' : 'fa-play' %>"></i>
                         </button>
                         <button class="cp-btn-icon cp-btn-edit" data-play-id="<%= p._id %>" title="Sửa">
-                            <i class="fa-solid fa-pen-to-square"></i>
+                            <i class="fa-solid fa-pen"></i>
                         </button>
                         <button class="cp-btn-icon cp-btn-delete" data-play-id="<%= p._id %>" title="Xóa">
-                            <i class="fa-solid fa-trash-can"></i>
+                            <i class="fa-solid fa-trash"></i>
                         </button>
                         <button class="cp-btn-icon cp-btn-logs" data-play-id="<%= p._id %>" title="Lịch sử">
                             <i class="fa-solid fa-clock-rotate-left"></i>

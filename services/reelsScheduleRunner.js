@@ -6,6 +6,9 @@ const { runBotUploadInstantWithAccount } = require('./facebook/reels');
 const { runBotPostGroupInstantWithAccount } = require('./facebookPostGroupService');
 const { uploadVideoToTikTok } = require('./tiktokPlaywrightService');
 const { uploadVideoToInstagram, uploadImagesToInstagram } = require('./instagramPlaywrightService');
+const { postImagesToThreads, uploadVideoToThreads } = require('./threadsPlaywrightService');
+const { pinImageToPinterest, uploadVideoToPinterest } = require('./pinterestPlaywrightService');
+const { uploadVideoToYouTubeShort } = require('./youtubePlaywrightService');
 const { emitScheduleUpdate } = require('./socketService');
 const { sendTelegramNotification, NOTIFICATION_TYPES } = require('./telegramService');
 const { normalizeEncryptedValue } = require('../utils/cryptoVault');
@@ -216,13 +219,14 @@ async function buildReelsUploadPayload(schedule) {
     };
 }
 
-async function buildPostUploadPayload(schedule) {
+async function buildPostUploadPayload(schedule, platform = 'FB') {
     const caption = String(schedule.caption || '').trim();
+    const postTitle = String(schedule.postTitle || '').trim();
     const images = Array.isArray(schedule.images) ? schedule.images.filter(Boolean) : [];
-    
+
     let groupUrls = [];
     let groupIds = [];
-    
+
     if (schedule.targetGroupIds && Array.isArray(schedule.targetGroupIds) && schedule.targetGroupIds.length > 0) {
         schedule.targetGroupIds.forEach(g => {
             if (typeof g === 'object' && g.groupUrl) {
@@ -242,8 +246,15 @@ async function buildPostUploadPayload(schedule) {
         if (groupId) groupIds = [groupId];
     }
 
-    if (groupUrls.length === 0 && groupIds.length === 0) {
+    // Chỉ Facebook Post mới bắt buộc có group đích.
+    // Threads/Pinterest/Instagram Post đăng lên feed/board của tài khoản, không cần group.
+    if (platform === 'FB' && groupUrls.length === 0 && groupIds.length === 0) {
         throw new Error('Thiếu group đích cho lịch Post');
+    }
+
+    // Pinterest Post bắt buộc phải có tiêu đề (postTitle từ frontend)
+    if (platform === 'PI' && !postTitle) {
+        throw new Error('Pinterest yêu cầu phải có tiêu đề bài viết (postTitle)');
     }
 
     if (!caption && !images.length) {
@@ -255,10 +266,11 @@ async function buildPostUploadPayload(schedule) {
         groupId: groupIds[i] || ''
     }));
 
-    console.log(`[Schedule Runner] buildPostUploadPayload schedule=${schedule._id} groupsCount=${groups.length} captionLength=${caption.length} images=${images.length}`);
+    console.log(`[Schedule Runner] buildPostUploadPayload schedule=${schedule._id} platform=${platform} groupsCount=${groups.length} captionLength=${caption.length} postTitleLength=${postTitle.length} images=${images.length}`);
 
     return {
         groups,
+        title: postTitle,
         content: caption,
         images
     };
@@ -306,10 +318,102 @@ async function resolveInstagramAccountForSchedule(schedule) {
 }
 
 /**
+ * Resolve Threads account tương tự Instagram nhưng platform='TH'
+ */
+async function resolveThreadsAccountForSchedule(schedule) {
+    const accountIds = Array.isArray(schedule.accounts) ? schedule.accounts.filter(Boolean) : [];
+    console.log(`[Threads Scheduler] resolveThreadsAccountForSchedule schedule=${schedule._id} accounts=${accountIds.length}`);
+
+    if (accountIds.length) {
+        const matchedChannel = await Channel.findOne({
+            _id: { $in: accountIds },
+            userId: schedule.userId,
+            platform: 'TH',
+            isEnabled: true
+        })
+            .select('_id accountName accountType platform profileUrl storageStatePath')
+            .sort({ createdAt: -1 })
+            .lean();
+        if (matchedChannel) return matchedChannel;
+    }
+
+    return Channel.findOne({
+        userId: schedule.userId,
+        platform: 'TH',
+        isEnabled: true
+    })
+        .select('_id accountName accountType platform profileUrl storageStatePath')
+        .sort({ createdAt: -1 })
+        .lean();
+}
+
+/**
+ * Resolve Pinterest account tương tự nhưng platform='PI'
+ */
+async function resolvePinterestAccountForSchedule(schedule) {
+    const accountIds = Array.isArray(schedule.accounts) ? schedule.accounts.filter(Boolean) : [];
+    console.log(`[Pinterest Scheduler] resolvePinterestAccountForSchedule schedule=${schedule._id} accounts=${accountIds.length}`);
+
+    if (accountIds.length) {
+        const matchedChannel = await Channel.findOne({
+            _id: { $in: accountIds },
+            userId: schedule.userId,
+            platform: 'PI',
+            isEnabled: true
+        })
+            .select('_id accountName accountType platform profileUrl storageStatePath')
+            .sort({ createdAt: -1 })
+            .lean();
+        if (matchedChannel) return matchedChannel;
+    }
+
+    return Channel.findOne({
+        userId: schedule.userId,
+        platform: 'PI',
+        isEnabled: true
+    })
+        .select('_id accountName accountType platform profileUrl storageStatePath')
+        .sort({ createdAt: -1 })
+        .lean();
+}
+
+/**
+ * Resolve YouTube account cho schedule (platform='YT')
+ * Được tách riêng khỏi resolveFacebookAccountForSchedule để tránh nhầm platform
+ */
+async function resolveYoutubeAccountForSchedule(schedule) {
+    const accountIds = Array.isArray(schedule.accounts) ? schedule.accounts.filter(Boolean) : [];
+    console.log(`[YouTube Scheduler] resolveYoutubeAccountForSchedule schedule=${schedule._id} accounts=${accountIds.length}`);
+
+    if (accountIds.length) {
+        const matchedChannel = await Channel.findOne({
+            _id: { $in: accountIds },
+            userId: schedule.userId,
+            platform: 'YT',
+            isEnabled: true
+        })
+            .select('_id accountName accountType platform profileUrl storageStatePath')
+            .sort({ createdAt: -1 })
+            .lean();
+        if (matchedChannel) return matchedChannel;
+    }
+
+    console.log('[YouTube Scheduler] Fallback: latest active YT account');
+    return Channel.findOne({
+        userId: schedule.userId,
+        platform: 'YT',
+        isEnabled: true
+    })
+        .select('_id accountName accountType platform profileUrl storageStatePath')
+        .sort({ createdAt: -1 })
+        .lean();
+}
+
+/**
  * Thực thi một schedule với timeout bảo vệ
  * Nếu schedule chạy quá lâu, nó sẽ bị hủy và đánh dấu failed
  */
-const ALL_PLATFORMS = ['TT', 'IG', 'FR', 'YS', 'FB'];
+const ALL_PLATFORMS = ['TT', 'IG', 'FR', 'YS', 'FB', 'TH', 'PI'];
 
 async function executeSinglePlatform(schedule, platform, { persistStatus } = {}) {
     switch (platform) {
@@ -386,21 +490,97 @@ async function executeSinglePlatform(schedule, platform, { persistStatus } = {})
 
             return result;
         }
-        case 'FR':
-        case 'YS': {
-            const account = await resolveFacebookAccountForSchedule(schedule);
+        case 'TH': {
+            const account = await resolveThreadsAccountForSchedule(schedule);
             if (!account?.accountName) {
-                throw new Error('Không tìm thấy tài khoản Facebook để chạy Reels');
+                throw new Error('Không tìm thấy tài khoản Threads để chạy Reels');
             }
             const payload = await buildReelsUploadPayload(schedule);
-            const platformLabel = platform === 'FR' ? 'Facebook Reels' : 'YouTube Short';
-            console.log(`[Schedule Runner] Processing ${platformLabel} schedule ${schedule._id} using ${account.accountName} (${account.accountType || 'Cá nhân'})`);
+            console.log(`[Schedule Runner] Processing THREADS REELS schedule ${schedule._id} using ${account.accountName} (${account.accountType || 'Personal'})`);
 
             emitScheduleUpdate(schedule.userId, {
                 _id: schedule._id,
                 type: 'reels',
                 status: 'processing',
-                progress: { phase: 'reels_start', message: `Đang đăng ${platformLabel} với tài khoản ${account.accountName}...`, current: 0, total: 1 }
+                progress: { phase: 'reels_th_start', message: `Đang đăng Threads Reels với tài khoản ${account.accountName}...`, current: 0, total: 1 }
+            });
+
+            const result = await uploadVideoToThreads({
+                userId: schedule.userId,
+                accountName: account.accountName,
+                accountType: account.accountType || 'Personal',
+                existingSessionDir: account.storageStatePath ? path.dirname(normalizeEncryptedValue(account.storageStatePath)) : '',
+                videoPath: payload.videoPath,
+                title: payload.title,
+                caption: payload.content,
+                headless: false
+            });
+
+            emitScheduleUpdate(schedule.userId, {
+                _id: schedule._id,
+                type: 'reels',
+                platform,
+                status: result?.success ? 'posted' : 'failed',
+                publishedUrl: result?.publishedUrl || '',
+                progress: { phase: 'reels_th_complete', message: result?.success ? `Đã đăng Threads Reels thành công` : 'Đăng Threads Reels thất bại', current: 1, total: 1 }
+            });
+
+            return result;
+        }
+        case 'PI': {
+            const account = await resolvePinterestAccountForSchedule(schedule);
+            if (!account?.accountName) {
+                throw new Error('Không tìm thấy tài khoản Pinterest để chạy Reels');
+            }
+            // Pinterest Idea Pin cho phép cả Personal + Business. Không check accountType.
+            const payload = await buildReelsUploadPayload(schedule);
+            console.log(`[Schedule Runner] Processing PINTEREST IDEA PIN schedule ${schedule._id} using ${account.accountName} (${account.accountType || 'Personal'})`);
+
+            // Pinterest board name lưu trong targetGroupName
+            const boardName = String(schedule.targetGroupName || '').trim();
+
+            emitScheduleUpdate(schedule.userId, {
+                _id: schedule._id,
+                type: 'reels',
+                status: 'processing',
+                progress: { phase: 'reels_pi_start', message: `Đang đăng Pinterest Idea Pin với tài khoản ${account.accountName}...`, current: 0, total: 1 }
+            });
+
+            const result = await uploadVideoToPinterest({
+                userId: schedule.userId,
+                accountName: account.accountName,
+                accountType: account.accountType || 'Personal',
+                existingSessionDir: account.storageStatePath ? path.dirname(normalizeEncryptedValue(account.storageStatePath)) : '',
+                videoPath: payload.videoPath,
+                caption: payload.content,
+                boardName,
+                headless: false
+            });
+
+            emitScheduleUpdate(schedule.userId, {
+                _id: schedule._id,
+                type: 'reels',
+                platform,
+                status: result?.success ? 'posted' : 'failed',
+                publishedUrl: result?.publishedUrl || '',
+                progress: { phase: 'reels_pi_complete', message: result?.success ? `Đã đăng Pinterest Idea Pin thành công` : 'Đăng Pinterest Idea Pin thất bại', current: 1, total: 1 }
+            });
+
+            return result;
+        }
+        case 'FR': {
+            const account = await resolveFacebookAccountForSchedule(schedule);
+            if (!account?.accountName) {
+                throw new Error('Không tìm thấy tài khoản Facebook để chạy Reels');
+            }
+            const payload = await buildReelsUploadPayload(schedule);
+            console.log(`[Schedule Runner] Processing Facebook Reels schedule ${schedule._id} using ${account.accountName} (${account.accountType || 'Cá nhân'})`);
+
+            emitScheduleUpdate(schedule.userId, {
+                _id: schedule._id,
+                type: 'reels',
+                status: 'processing',
+                progress: { phase: 'reels_start', message: `Đang đăng Facebook Reels với tài khoản ${account.accountName}...`, current: 0, total: 1 }
             });
 
             const result = await runBotUploadInstantWithAccount({
@@ -421,7 +601,52 @@ async function executeSinglePlatform(schedule, platform, { persistStatus } = {})
                 platform,
                 status: result?.success ? 'posted' : 'failed',
                 publishedUrl: result?.publishedUrl || '',
-                progress: { phase: 'reels_complete', message: result?.success ? `Đã đăng ${platformLabel} thành công` : `Đăng ${platformLabel} thất bại`, current: 1, total: 1 }
+                progress: { phase: 'reels_complete', message: result?.success ? 'Đã đăng Facebook Reels thành công' : 'Đăng Facebook Reels thất bại', current: 1, total: 1 }
+            });
+
+            return result;
+        }
+        case 'YS': {
+            const account = await resolveYoutubeAccountForSchedule(schedule);
+            if (!account?.accountName) {
+                throw new Error('Không tìm thấy tài khoản YouTube để chạy Shorts');
+            }
+            if (account.platform !== 'YT') {
+                // Phòng trường hợp user chọn nhầm account Facebook làm Shorts → fail rõ ràng
+                throw new Error(`Tài khoản ${account.accountName} không thuộc nền tảng YouTube (platform=${account.platform || 'unknown'}). Vui lòng chọn đúng tài khoản YouTube.`);
+            }
+            const payload = await buildReelsUploadPayload(schedule);
+            const titleInput = String(schedule.videoTitle || '').trim();
+            if (!titleInput) {
+                throw new Error('YouTube Shorts yêu cầu phải có tiêu đề video. Vui lòng cập nhật lịch và nhập tiêu đề.');
+            }
+            console.log(`[Schedule Runner] Processing YouTube Short schedule ${schedule._id} using ${account.accountName} (${account.accountType || 'Personal'})`);
+
+            emitScheduleUpdate(schedule.userId, {
+                _id: schedule._id,
+                type: 'reels',
+                status: 'processing',
+                progress: { phase: 'reels_ys_start', message: `Đang đăng YouTube Short với tài khoản ${account.accountName}...`, current: 0, total: 1 }
+            });
+
+            const result = await uploadVideoToYouTubeShort({
+                userId: schedule.userId,
+                accountName: account.accountName,
+                accountType: account.accountType || 'Personal',
+                existingSessionDir: account.storageStatePath ? path.dirname(normalizeEncryptedValue(account.storageStatePath)) : '',
+                videoPath: payload.videoPath,
+                title: titleInput,
+                caption: payload.content,
+                headless: false
+            });
+
+            emitScheduleUpdate(schedule.userId, {
+                _id: schedule._id,
+                type: 'reels',
+                platform,
+                status: result?.success ? 'posted' : 'failed',
+                publishedUrl: result?.publishedUrl || '',
+                progress: { phase: 'reels_ys_complete', message: result?.success ? 'Đã đăng YouTube Short thành công' : 'Đăng YouTube Short thất bại', current: 1, total: 1 }
             });
 
             return result;
@@ -432,7 +657,7 @@ async function executeSinglePlatform(schedule, platform, { persistStatus } = {})
 }
 
 async function executeSinglePostPlatform(schedule, platform) {
-    const post = await buildPostUploadPayload(schedule);
+    const post = await buildPostUploadPayload(schedule, platform);
 
     switch (platform) {
         case 'FB': {
@@ -534,6 +759,83 @@ async function executeSinglePostPlatform(schedule, platform) {
 
             return result;
         }
+        case 'TH': {
+            const account = await resolveThreadsAccountForSchedule(schedule);
+            if (!account?.accountName) {
+                throw new Error('Không tìm thấy tài khoản Threads để đăng Post');
+            }
+            if (!post.images?.length) {
+                throw new Error('Threads yêu cầu phải có ít nhất 1 hình ảnh');
+            }
+            console.log(`[Schedule Runner] Processing POST-TH schedule ${schedule._id} using ${account.accountName}, ${post.images.length} images`);
+
+            emitScheduleUpdate(schedule.userId, {
+                _id: schedule._id,
+                status: 'processing',
+                progress: { phase: 'post_th_start', message: `Đang đăng Threads với tài khoản ${account.accountName}...`, current: 0, total: 1 }
+            });
+
+            const result = await postImagesToThreads({
+                userId: schedule.userId,
+                accountName: account.accountName,
+                accountType: account.accountType || 'Personal',
+                existingSessionDir: account.storageStatePath ? path.dirname(normalizeEncryptedValue(account.storageStatePath)) : '',
+                images: post.images,
+                caption: post.content,
+                headless: false
+            });
+
+            emitScheduleUpdate(schedule.userId, {
+                _id: schedule._id,
+                platform: 'TH',
+                status: result?.success ? 'posted' : 'failed',
+                publishedUrl: result?.publishedUrl || '',
+                progress: { phase: 'post_th_complete', message: result?.success ? 'Đã đăng Threads thành công' : 'Đăng Threads thất bại', current: 1, total: 1 }
+            });
+
+            return result;
+        }
+        case 'PI': {
+            const account = await resolvePinterestAccountForSchedule(schedule);
+            if (!account?.accountName) {
+                throw new Error('Không tìm thấy tài khoản Pinterest để đăng Post');
+            }
+            if (!post.images?.length) {
+                throw new Error('Pinterest yêu cầu phải có ít nhất 1 hình ảnh');
+            }
+            console.log(`[Schedule Runner] Processing POST-PI schedule ${schedule._id} using ${account.accountName}, ${post.images.length} images`);
+
+            emitScheduleUpdate(schedule.userId, {
+                _id: schedule._id,
+                status: 'processing',
+                progress: { phase: 'post_pi_start', message: `Đang đăng Pinterest với tài khoản ${account.accountName}...`, current: 0, total: 1 }
+            });
+
+            // Pinterest options: boardName lưu trong schedule.targetGroupName hoặc caption
+            const boardName = String(schedule.targetGroupName || '').trim();
+
+            const result = await pinImageToPinterest({
+                userId: schedule.userId,
+                accountName: account.accountName,
+                accountType: account.accountType || 'Personal',
+                existingSessionDir: account.storageStatePath ? path.dirname(normalizeEncryptedValue(account.storageStatePath)) : '',
+                images: post.images,
+                caption: post.content,   // caption = mô tả chi tiết (description)
+                title: post.title,        // postTitle = tiêu đề Pin (title)
+                boardName,
+                headless: false
+            });
+
+            emitScheduleUpdate(schedule.userId, {
+                _id: schedule._id,
+                platform: 'PI',
+                status: result?.success ? 'posted' : 'failed',
+                publishedUrl: result?.publishedUrl || '',
+                progress: { phase: 'post_pi_complete', message: result?.success ? 'Đã đăng Pinterest thành công' : 'Đăng Pinterest thất bại', current: 1, total: 1 }
+            });
+
+            return result;
+        }
         default:
             throw new Error(`Nền tảng không hỗ trợ đăng bài ảnh: ${platform}`);
     }
@@ -573,7 +875,12 @@ async function executeSchedule(schedule, { persistStatus = true, markAsPosted = 
                 } else {
                     platformResult = await executeSinglePlatform(schedule, platform, { persistStatus });
                 }
-                console.log(`[Schedule Runner] ${typeLabel} platform ${platform} completed: success=${Boolean(platformResult?.success)}`);
+                // success CHỈ true khi platformResult thực sự success
+                const ok = Boolean(platformResult?.success);
+                console.log(`[Schedule Runner] ${typeLabel} platform ${platform} completed: success=${ok}`);
+                if (!ok) {
+                    return { platform, success: false, result: platformResult, error: platformResult?.message || 'Service returned success=false' };
+                }
                 return { platform, success: true, result: platformResult };
             } catch (err) {
                 console.error(`[Schedule Runner] ${typeLabel} platform ${platform} failed:`, err.message);
@@ -626,38 +933,56 @@ async function executeSchedule(schedule, { persistStatus = true, markAsPosted = 
         console.log(`[Schedule Runner] executeSchedule done schedule=${schedule._id} success=${Boolean(result?.success)} publishedUrl=${result?.publishedUrl || ''}`);
 
         if (persistStatus) {
-            if (result?.success) {
-                // Upload thành công - luôn set status = 'posted'
-                console.log(`[Schedule Runner] Updating status to 'posted' for schedule ${schedule._id}`);
-                const updateResult = await SchedulePost.updateOne(
-                    { _id: schedule._id },
-                    { $set: {
-                        status: 'posted',
-                        publishedUrl: result?.publishedUrl || ''
-                    } }
-                );
-                console.log(`[Schedule Runner] Status update result: matched=${updateResult.matchedCount} modified=${updateResult.modifiedCount}`);
+            // Normalize platformResults để lưu vào DB
+            const platformResultsToSave = (result?.platformResults || []).map(r => ({
+                platform: r.platform,
+                success: Boolean(r.success),
+                publishedUrl: r.result?.publishedUrl || '',
+                error: r.error || r.result?.message || '',
+                completedAt: new Date()
+            }));
+
+            // Xác định overall status:
+            // - Tất cả platforms success → 'posted'
+            // - Tất cả platforms fail → 'failed'
+            // - Một số pass một số fail → 'posted' (để hiển thị trong archive) nhưng có platformResults để biết chi tiết
+            const allPlatformResults = platformResultsToSave.length ? platformResultsToSave : [];
+            const allSuccess = allPlatformResults.length > 0 && allPlatformResults.every(r => r.success);
+            const anySuccess = allPlatformResults.some(r => r.success);
+            let finalStatus;
+            if (allPlatformResults.length === 0) {
+                finalStatus = result?.success ? 'posted' : 'failed';
+            } else if (allSuccess) {
+                finalStatus = 'posted';
+            } else if (anySuccess) {
+                finalStatus = 'posted'; // partial — nhưng có platformResults để biết
             } else {
-                // Upload thất bại
-                console.log(`[Schedule Runner] Updating status to 'failed' for schedule ${schedule._id}`);
-                await SchedulePost.updateOne(
-                    { _id: schedule._id },
-                    { $set: { status: 'failed' } }
-                );
+                finalStatus = 'failed';
             }
+
+            console.log(`[Schedule Runner] Updating status to '${finalStatus}' for schedule ${schedule._id} (${allPlatformResults.filter(r => r.success).length}/${allPlatformResults.length} success)`);
+            const updateResult = await SchedulePost.updateOne(
+                { _id: schedule._id },
+                { $set: {
+                    status: finalStatus,
+                    publishedUrl: result?.publishedUrl || '',
+                    platformResults: platformResultsToSave
+                } }
+            );
+            console.log(`[Schedule Runner] Status update result: matched=${updateResult.matchedCount} modified=${updateResult.modifiedCount}`);
         }
 
         return { result, account };
     } catch (error) {
         console.error(`[Schedule Runner] executeSchedule timeout/error schedule=${schedule._id}:`, error.message);
-        
+
         if (persistStatus) {
             await SchedulePost.updateOne(
-                { _id: schedule._id },
+                { _id: schedule._id, status: 'pending' },
                 { $set: { status: 'failed' } }
             );
         }
-        
+
         throw error;
     }
 }

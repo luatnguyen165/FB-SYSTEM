@@ -211,8 +211,9 @@ const scrapeGroupMembersAPI = async (req, res) => {
             try {
                 const mergedGroupsMap = new Map(existingGroupsMap);
                 allGroups.forEach(g => mergedGroupsMap.set(g.groupId, g));
-                
+
                 const mergedGroups = Array.from(mergedGroupsMap.values())
+                    .filter((group, idx, arr) => arr.findIndex(g => g.groupId === group.groupId) === idx)
                     .sort((a, b) => a.groupName.localeCompare(b.groupName, 'vi'));
                 
                 await persistFacebookGroupCache({
@@ -262,6 +263,7 @@ const scrapeGroupMembersAPI = async (req, res) => {
         newGroups.forEach(g => mergedGroupsMap.set(g.groupId, g));
 
         const finalGroups = Array.from(mergedGroupsMap.values())
+            .filter((group, idx, arr) => arr.findIndex(g => g.groupId === group.groupId) === idx)
             .sort((a, b) => a.groupName.localeCompare(b.groupName, 'vi'));
 
         // Lưu final data
@@ -390,8 +392,9 @@ const scrapeGroupsFromJoinsAPI = async (req, res) => {
                 // Merge với dữ liệu cũ
                 const mergedGroupsMap = new Map(existingGroupsMap);
                 allGroups.forEach(g => mergedGroupsMap.set(g.groupId, g));
-                
+
                 const mergedGroups = Array.from(mergedGroupsMap.values())
+                    .filter((group, idx, arr) => arr.findIndex(g => g.groupId === group.groupId) === idx)
                     .sort((a, b) => a.groupName.localeCompare(b.groupName, 'vi'));
                 
                 // Lưu vào DB ngay
@@ -434,6 +437,7 @@ const scrapeGroupsFromJoinsAPI = async (req, res) => {
         newGroups.forEach(g => mergedGroupsMap.set(g.groupId, g));
 
         const finalGroups = Array.from(mergedGroupsMap.values())
+            .filter((group, idx, arr) => arr.findIndex(g => g.groupId === group.groupId) === idx)
             .sort((a, b) => a.groupName.localeCompare(b.groupName, 'vi'));
 
         // Lưu final data

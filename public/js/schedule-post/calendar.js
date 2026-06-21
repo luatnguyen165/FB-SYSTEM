@@ -325,17 +325,17 @@ async function openScheduleById(scheduleId) {
         const res = await fetch(`/schedule/api/${encodeURIComponent(scheduleId)}`);
         const data = await res.json();
         if (!data.success || !data.schedule) { resetScheduleForm(); return; }
-        const isFailedToday = data.schedule.status === 'failed' && (() => {
-            const now = new Date();
-            const schedDate = new Date(data.schedule.scheduledAt);
-            return schedDate.getFullYear() === now.getFullYear() &&
-                   schedDate.getMonth() === now.getMonth() &&
-                   schedDate.getDate() === now.getDate();
-        })();
-        if (String(data.schedule.status || 'pending') !== 'pending' && !isFailedToday) {
-            showToast('Lịch đã chạy rồi, không thể sửa nữa', 'warning');
+
+        const status = String(data.schedule.status || 'pending');
+
+        // Chỉ chặn edit khi lịch đã đăng thành công (posted).
+        // Pending + failed (kể cả scheduledAt đã qua) đều cho phép edit
+        // để user chỉnh sửa và set lại status = pending.
+        if (status === 'posted') {
+            showToast('Lịch đã đăng thành công, không thể sửa nữa', 'warning');
             return;
         }
+
         openCreatePostModal(null);
         fillScheduleForm(data.schedule);
     } catch (err) {

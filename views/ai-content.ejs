@@ -21,24 +21,20 @@
     <%- include('partials/header') %>
     <div class="content-body">
 
-        <!-- Hero -->
-        <div class="ai-content-hero">
-            <div class="ai-content-hero-content">
-                <div class="ai-content-hero-left">
-                    <div class="ai-content-hero-title">
-                        <div class="ai-content-hero-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
-                        <h1>AI Content Creator</h1>
-                    </div>
-                    <p class="ai-content-hero-subtitle">Tạo nội dung theo văn phong mẫu • Lên lịch tự động • Đăng đa nền tảng</p>
-                    <div class="ai-api-key-bar">
-                        <i class="fa-solid fa-key"></i>
-                        <span class="ai-api-key-status" id="apiKeyStatus"><%= openaiApiKey ? '✅ Đã cấu hình' : '⚠️ Chưa có OpenAI API Key.' %></span>
-                        <% if (!openaiApiKey) { %>
-                        <a href="/settings" class="btn-save-apikey"><i class="fa-solid fa-gear"></i> Cấu hình ngay</a>
-                        <% } %>
-                    </div>
-                </div>
-            </div>
+        <!-- Welcome Section -->
+        <%- include('partials/welcome-section', {
+            eyebrow: 'AI Content Creator',
+            title: 'AI Viết Bài Tự Động',
+            description: 'Tạo nội dung theo văn phong mẫu • Lên lịch tự động • Đăng đa nền tảng'
+        }) %>
+
+        <!-- API Key Status Bar -->
+        <div class="ai-api-key-bar">
+            <i class="fa-solid fa-key"></i>
+            <span class="ai-api-key-status" id="apiKeyStatus"><%= openaiApiKey ? '✅ Đã cấu hình' : '⚠️ Chưa có OpenAI API Key.' %></span>
+            <% if (!openaiApiKey) { %>
+            <a href="/settings" class="btn-save-apikey"><i class="fa-solid fa-gear"></i> Cấu hình ngay</a>
+            <% } %>
         </div>
 
         <!-- Stats -->
@@ -175,8 +171,8 @@
                             <% if (style.trainingVersion > 0) { %>
                             <button class="btn-sm btn-retrain" onclick="retrainStyle('<%= style._id %>')" title="Train lại từ bài tốt nhất"><i class="fa-solid fa-brain"></i></button>
                             <% } %>
-                            <button class="btn-sm btn-edit" onclick="editStyle('<%= style._id %>')" title="Sửa"><i class="fa-solid fa-pen"></i></button>
-                            <button class="btn-sm btn-delete" onclick="deleteStyle('<%= style._id %>')" title="Xóa"><i class="fa-solid fa-trash"></i></button>
+                            <button class="btn-sm btn-edit" onclick="editStyle('<%= style._id %>')" title="Sửa"><i class="fa-solid fa-pen"></i> Sửa</button>
+                            <button class="btn-sm btn-delete" onclick="deleteStyle('<%= style._id %>')" title="Xóa"><i class="fa-solid fa-trash"></i> Xóa</button>
                         </div>
                     </div>
                     <% if (style.styleAnalysis && style.styleAnalysis.tone) { %>
@@ -235,8 +231,8 @@
                             <% if (sch.status === 'active' || sch.status === 'draft') { %>
                             <button class="btn-sm btn-generate" onclick="generateNow(this)" data-id="<%= sch._id %>" title="Tạo bài ngay"><i class="fa-solid fa-wand-magic-sparkles"></i> Tạo bài</button>
                             <% } %>
-                            <button class="btn-sm btn-edit" onclick="editSchedule('<%= sch._id %>')" title="Sửa"><i class="fa-solid fa-pen"></i></button>
-                            <button class="btn-sm btn-delete" onclick="deleteSchedule('<%= sch._id %>')" title="Xóa"><i class="fa-solid fa-trash"></i></button>
+                            <button class="btn-sm btn-edit" onclick="editSchedule('<%= sch._id %>')" title="Sửa"><i class="fa-solid fa-pen"></i> Sửa</button>
+                            <button class="btn-sm btn-delete" onclick="deleteSchedule('<%= sch._id %>')" title="Xóa"><i class="fa-solid fa-trash"></i> Xóa</button>
                         </div>
                     </div>
                     <div class="ai-schedule-details">
@@ -281,8 +277,8 @@
                         </div>
                         <div class="ai-style-actions">
                             <button class="btn-sm btn-analyze" onclick="analyzeProductAI('<%= p._id %>')" title="Phân tích AI"><i class="fa-solid fa-magnifying-glass-chart"></i></button>
-                            <button class="btn-sm btn-edit" onclick="editProduct('<%= p._id %>')" title="Sửa"><i class="fa-solid fa-pen"></i></button>
-                            <button class="btn-sm btn-delete" onclick="deleteProduct('<%= p._id %>')" title="Xóa"><i class="fa-solid fa-trash"></i></button>
+                            <button class="btn-sm btn-edit" onclick="editProduct('<%= p._id %>')" title="Sửa"><i class="fa-solid fa-pen"></i> Sửa</button>
+                            <button class="btn-sm btn-delete" onclick="deleteProduct('<%= p._id %>')" title="Xóa"><i class="fa-solid fa-trash"></i> Xóa</button>
                         </div>
                     </div>
                     <% if (p.description) { %>

@@ -266,6 +266,23 @@
 
 .status-posted { background: var(--success-light); color: var(--success); }
 .status-failed { background: var(--danger-light); color: var(--danger); }
+.status-partial {
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fcd34d;
+}
+
+.stat-card-mini.stat-failed { border-left: 3px solid var(--danger); }
+
+.platform-badge--failed {
+    opacity: 0.7;
+    text-decoration: line-through;
+    background: #fee2e2 !important;
+    color: #991b1b !important;
+    border: 1px solid #fca5a5;
+}
+
+.platform-badge--failed i { margin-left: 4px; font-size: 10px; }
 
 /* Row Action */
 .btn-row-action {
@@ -538,4 +555,84 @@
     .archive-table td:nth-child(5) {
         display: none;
     }
+}
+
+/* ===== PAGINATION (đồng bộ với schedule-manager) ===== */
+.schedule-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+
+.schedule-pagination__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 10px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    color: var(--text-main);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-family: inherit;
+}
+
+.schedule-pagination__btn:hover:not(:disabled) {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: var(--primary-light);
+}
+
+.schedule-pagination__btn.is-active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+    font-weight: 600;
+}
+
+.schedule-pagination__btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.schedule-pagination__info {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-right: 12px;
+    font-weight: 500;
+}
+
+.schedule-pagination__controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 540px) {
+    .schedule-pagination {
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+    }
+    .schedule-pagination__controls {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}
+
+/* ===== EMPTY STATE ROW (dùng chung) ===== */
+.archive-empty td {
+    text-align: center;
+    padding: 40px 20px !important;
+    color: var(--text-muted);
 }

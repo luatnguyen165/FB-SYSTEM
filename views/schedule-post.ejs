@@ -187,6 +187,20 @@
                 </div>
 
                 <div class="form-fields-scrollable" id="formFieldsScrollable">
+                    <!-- Section: Tiêu đề (chỉ hiện khi chọn Pinterest) -->
+                    <div class="form-section" id="postTitleSection" style="display:none;">
+                        <div class="form-section__header">
+                            <i class="fa-solid fa-heading"></i>
+                            <span>Tiêu đề bài viết</span>
+                            <span class="form-section__required">*</span>
+                        </div>
+                        <input type="text" class="input-text" id="modalPostTitleInput" maxlength="100" placeholder="VD: BST áo thu đông 2024 - Ưu đãi 30%">
+                        <div class="form-section__hint" id="postTitleHint">
+                            <i class="fa-solid fa-info-circle"></i>
+                            <span id="postTitleHintText">Bắt buộc cho Pinterest - sẽ làm tiêu đề Pin. Bỏ trống sẽ tự lấy tên file ảnh.</span>
+                        </div>
+                    </div>
+
                     <!-- Section: Album Ảnh -->
                     <div class="form-section">
                         <div class="form-section__header">
@@ -209,13 +223,13 @@
                     <div class="form-section">
                         <div class="form-section__header">
                             <i class="fa-solid fa-pencil"></i>
-                            <span>Nội dung bài đăng</span>
+                            <span>Mô tả bài đăng</span>
                         </div>
-                        <textarea class="input-text" id="modalCaptionInput" rows="4" 
-                            placeholder="Viết nội dung bài đăng, hashtag..."></textarea>
+                        <textarea class="input-text" id="modalCaptionInput" rows="4"
+                            placeholder="Viết mô tả chi tiết cho bài viết..."></textarea>
                         <div class="form-section__hint">
                             <i class="fa-solid fa-info-circle"></i>
-                            Caption sẽ hiển thị kèm theo ảnh trên Facebook
+                            Mô tả sẽ hiển thị kèm ảnh. Có thể thêm hashtag để tăng tương tác.
                         </div>
                     </div>
 
@@ -239,51 +253,77 @@
                         <input type="hidden" id="modalTimeInput">
                     </div>
 
-                    <!-- Section: Nền tảng -->
+                    <!-- Section: Nền tảng (Redesign 2026-06-21: card grid) -->
                     <div class="form-section">
                         <div class="form-section__header">
                             <i class="fa-solid fa-share-nodes"></i>
                             <span>Nền tảng đăng tải</span>
+                            <span class="platform-picker-counter" id="platformPickerCounter" style="display:none;">0/0 đã chọn</span>
                         </div>
-                        <div class="platform-checkbox-group">
+                        <div class="platform-picker-grid" id="platformPickerGrid">
                             <% const availablePlatforms = new Set((channels || []).map(ch => ch.platform)); %>
-                            <% const hasFB = availablePlatforms.has('FB'); %>
-                            <% const hasIG = availablePlatforms.has('IG'); %>
-
-                            <% if (hasFB) { %>
-                            <label class="platform-chip" data-platform="FB">
-                                <input type="checkbox" class="platform-check" value="FB" checked>
-                                <i class="fa-brands fa-facebook"></i>
-                                <span>Facebook</span>
-                                <div class="platform-chip__check"><i class="fa-solid fa-check"></i></div>
+                            <%
+                                // Ẩn YouTube (YT) và TikTok (TT) ở form đăng bài viết (hình ảnh)
+                                // 2 nền tảng này chỉ dùng cho Reels/Video
+                                const PLATFORM_CARDS = [
+                                    { code: 'FB', name: 'Facebook', desc: 'Đăng lên nhóm & trang cá nhân', icon: 'fa-brands fa-facebook', color: '#1877F2' },
+                                    { code: 'IG', name: 'Instagram', desc: 'Đăng lên Feed & Story', icon: 'fa-brands fa-instagram', color: '#E4405F' },
+                                    { code: 'TH', name: 'Threads', desc: 'Đăng text + ảnh lên feed', icon: 'fa-brands fa-threads', color: '#000000' },
+                                    { code: 'PI', name: 'Pinterest', desc: 'Đăng ảnh lên Board', icon: 'fa-brands fa-pinterest', color: '#E60023' }
+                                ];
+                            %>
+                            <% PLATFORM_CARDS.forEach(function(p) { %>
+                            <label class="platform-picker-card"
+                                   data-platform="<%= p.code %>"
+                                   style="--p-color: <%= p.color %>">
+                                <input type="checkbox" class="platform-check" value="<%= p.code %>">
+                                <div class="platform-picker-card__icon"><i class="<%= p.icon %>"></i></div>
+                                <div class="platform-picker-card__body">
+                                    <div class="platform-picker-card__name"><%= p.name %></div>
+                                    <div class="platform-picker-card__desc"><%= p.desc %></div>
+                                </div>
+                                <div class="platform-picker-card__check"><i class="fa-solid fa-check"></i></div>
                             </label>
-                            <% } %>
-
-                            <% if (hasIG) { %>
-                            <label class="platform-chip" data-platform="IG">
-                                <input type="checkbox" class="platform-check" value="IG">
-                                <i class="fa-brands fa-instagram"></i>
-                                <span>Instagram</span>
-                                <div class="platform-chip__check"><i class="fa-solid fa-check"></i></div>
-                            </label>
-                            <% } %>
-
-                            <% if (!hasFB && !hasIG) { %>
-                            <div class="empty-state">
-                                <i class="fa-solid fa-circle-info"></i>
-                                <span>Chưa có tài khoản nào được liên kết</span>
-                            </div>
-                            <% } %>
+                            <% }); %>
                         </div>
                     </div>
 
-                    <!-- Section: Tài khoản -->
-                    <div class="form-section">
-                        <div class="form-section__header">
-                            <i class="fa-solid fa-user-circle"></i>
-                            <span>Tài khoản đăng bài</span>
+                    <!-- Section: Tài khoản đăng (Redesign 2026-06-21) -->
+                    <div class="form-section" id="accountPickerSection" style="display: none;">
+                        <div class="form-section__header account-picker-header">
+                            <i class="fa-solid fa-users"></i>
+                            <span>Tài khoản đăng</span>
+                            <span class="account-picker-counter" id="accountPickerCounter" style="display:none;">0/0 đã chọn</span>
                         </div>
-                        <div class="account-scroll-box" id="dynamicAccountBox">
+
+                        <!-- Toolbar: search + select all (select all ẩn - chỉ chọn 1 account/platform) -->
+                        <div class="account-picker-toolbar" id="accountPickerToolbar" style="display:none;">
+                            <div class="account-picker-search">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="accountPickerSearch" placeholder="Tìm tên tài khoản..." />
+                                <button type="button" class="account-picker-search-clear" id="accountPickerSearchClear" style="display:none;">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                            <!-- Nút "Chọn tất cả" đã ẩn: mỗi platform chỉ chọn 1 account để load groups
+                            <button type="button" class="account-picker-action-btn" id="accountPickerSelectAll">
+                                <i class="fa-solid fa-check-double"></i>
+                                <span>Chọn tất cả</span>
+                            </button>
+                            -->
+                        </div>
+
+                        <!-- Empty state khi chưa có account -->
+                        <div class="account-picker-empty" id="accountPickerEmpty" style="display:none;">
+                            <i class="fa-solid fa-plug"></i>
+                            <p>Chưa có tài khoản nào được kết nối</p>
+                            <a href="/channels" class="account-picker-empty-cta">
+                                <i class="fa-solid fa-plus"></i> Thêm tài khoản ngay
+                            </a>
+                        </div>
+
+                        <!-- Container chính để JS render card list -->
+                        <div class="account-picker" id="dynamicAccountBox">
                             <div class="empty-state">
                                 <i class="fa-solid fa-spinner fa-spin"></i>
                                 <span>Đang tải tài khoản...</span>
@@ -291,16 +331,20 @@
                         </div>
                     </div>
 
-                    <!-- Section: Groups (Facebook) -->
-                    <div class="form-section" id="facebookGroupSelectWrapper">
+                    <!-- Section: Nơi đăng (tabs ngang) -->
+                    <div class="form-section" id="targetTabsSection" style="display: none;">
                         <div class="form-section__header">
-                            <i class="fa-solid fa-users"></i>
-                            <span>Group Facebook đích</span>
+                            <i class="fa-solid fa-location-dot"></i>
+                            <span>Nơi đăng</span>
                         </div>
-                        <div id="schedulePostGroupsList" class="schedule-groups-list">
-                            <div class="schedule-accounts-empty">
-                                <i class="fa-solid fa-lightbulb"></i> Chọn tài khoản Facebook để hiển thị danh sách nhóm
+
+                        <div class="target-tabs-wrapper" id="targetTabsWrapper" style="display:none;">
+                            <div class="target-tabs-hint">
+                                <i class="fa-solid fa-lightbulb"></i>
+                                Chọn nơi đăng cho từng nền tảng đã tick ở trên
                             </div>
+                            <div class="target-tabs-nav" id="targetTabsNav"></div>
+                            <div class="target-tabs-content" id="targetTabsContent"></div>
                         </div>
                     </div>
 
@@ -326,56 +370,72 @@
                     <i class="fa-solid fa-mobile-screen-button"></i>
                     Xem trước trên điện thoại
                 </div>
-                <div class="phone-mockup">
-                    <div class="phone-notch"></div>
-                    
-                    <div class="feed-header">
-                        <div class="feed-avatar">
-                            <i class="fa-solid fa-user"></i>
-                        </div>
-                        <div class="feed-user-info">
-                            <h5 id="previewUsername">Tài khoản của bạn</h5>
-                            <span><i class="fa-solid fa-earth-americas"></i> Vừa xong</span>
-                        </div>
-                    </div>
 
-                    <div class="feed-caption" id="liveFeedTextPreview">
-                        Nội dung bài viết sẽ hiển thị tại đây. Bạn có thể viết caption dài để mô tả sản phẩm...
-                    </div>
-
-                    <div class="feed-image-container">
-                        <div class="feed-carousel-counter" id="phoneCarouselCounterBadge">
-                            <i class="fa-solid fa-images"></i> 1/1
+                <div class="phone-stage">
+                    <div class="phone-stage__glow"></div>
+                    <div class="phone-mockup phone-mockup--feed">
+                        <div class="phone-frame">
+                            <div class="phone-island">
+                                <span class="phone-island__dot"></span>
+                            </div>
+                            <div class="phone-statusbar">
+                                <span class="phone-statusbar__time">9:41</span>
+                                <span class="phone-statusbar__icons">
+                                    <i class="fa-solid fa-signal"></i>
+                                    <i class="fa-solid fa-wifi"></i>
+                                    <i class="fa-solid fa-battery-three-quarters"></i>
+                                </span>
+                            </div>
                         </div>
 
-                        <div class="feed-image-placeholder" id="feedImagePlaceholder">
-                            <i class="fa-regular fa-images"></i>
-                            <span>Chưa có ảnh</span>
+                        <div class="feed-header">
+                            <div class="feed-avatar">
+                                <i class="fa-solid fa-user"></i>
+                            </div>
+                            <div class="feed-user-info">
+                                <h5 id="previewUsername">Tài khoản của bạn</h5>
+                                <span><i class="fa-solid fa-earth-americas"></i> Vừa xong • <i class="fa-solid fa-user-group"></i> Công khai</span>
+                            </div>
+                            <span class="feed-header__more"><i class="fa-solid fa-ellipsis"></i></span>
                         </div>
 
-                        <div class="swiper mySwiper">
-                            <div class="swiper-wrapper" id="swiperWrapperTarget"></div>
+                        <div class="feed-caption" id="liveFeedTextPreview">
+                            Nội dung bài viết sẽ hiển thị tại đây. Bạn có thể viết caption dài để mô tả sản phẩm...
                         </div>
-                    </div>
 
-                    <div class="feed-carousel-dots swiper-pagination" id="phoneCarouselDotsContainer"></div>
+                        <div class="feed-image-container">
+                            <div class="feed-carousel-counter" id="phoneCarouselCounterBadge">
+                                <i class="fa-solid fa-images"></i> 1/1
+                            </div>
 
-                    <div class="feed-actions-bar">
-                        <div class="feed-action-btn-mock">
-                            <i class="fa-regular fa-thumbs-up"></i>
-                            <span>Thích</span>
+                            <div class="feed-image-placeholder" id="feedImagePlaceholder">
+                                <i class="fa-regular fa-images"></i>
+                                <span>Chưa có ảnh</span>
+                            </div>
+
+                            <div class="swiper mySwiper">
+                                <div class="swiper-wrapper" id="swiperWrapperTarget"></div>
+                            </div>
                         </div>
-                        <div class="feed-action-btn-mock">
-                            <i class="fa-regular fa-comment"></i>
-                            <span>Bình luận</span>
+
+                        <div class="feed-carousel-dots swiper-pagination" id="phoneCarouselDotsContainer"></div>
+
+                        <div class="feed-react-bar">
+                            <div class="feed-react-summary">
+                                <span class="feed-react-bubble"><i class="fa-solid fa-thumbs-up"></i><i class="fa-solid fa-heart"></i></span>
+                                <strong>2.4K</strong>
+                            </div>
+                            <div class="feed-react-counts">
+                                <span><strong>186</strong> bình luận</span>
+                                <span><strong>54</strong> chia sẻ</span>
+                            </div>
                         </div>
-                        <div class="feed-action-btn-mock">
-                            <i class="fa-regular fa-share-from-square"></i>
-                            <span>Chia sẻ</span>
-                        </div>
-                        <div class="feed-action-btn-mock">
-                            <i class="fa-regular fa-bookmark"></i>
-                            <span>Lưu</span>
+
+                        <div class="feed-actions-bar">
+                            <div class="feed-action-btn-mock"><i class="fa-regular fa-thumbs-up"></i><span>Thích</span></div>
+                            <div class="feed-action-btn-mock"><i class="fa-regular fa-comment"></i><span>Bình luận</span></div>
+                            <div class="feed-action-btn-mock"><i class="fa-regular fa-share-from-square"></i><span>Chia sẻ</span></div>
+                            <div class="feed-action-btn-mock"><i class="fa-regular fa-bookmark"></i><span>Lưu</span></div>
                         </div>
                     </div>
                 </div>
@@ -393,6 +453,11 @@
     <script src="/js/schedule-post/image.js"></script>
     <script src="/js/schedule-post/calendar.js"></script>
     <script src="/js/schedule-post/groups.js"></script>
+    <script src="/js/schedule-post/instagram.js"></script>
+    <script src="/js/schedule-post/tiktok.js"></script>
+    <script src="/js/schedule-post/threads.js"></script>
+    <script src="/js/schedule-post/pinterest.js"></script>
+    <script src="/js/schedule-post/platform-target.js"></script>
     <script src="/js/schedule-post/modal.js"></script>
     <script src="/js/schedule-post/realtime.js"></script>
     <script src="/js/schedule-post.js"></script>

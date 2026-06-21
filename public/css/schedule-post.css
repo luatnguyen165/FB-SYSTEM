@@ -12,4 +12,7 @@
 @import url('./schedule-post-popover.css');
 @import url('./schedule-post-modal.css');
 @import url('./schedule-post-preview.css');
+@import url('./schedule-post-target-tabs.css');
+@import url('./schedule-post-account-picker.css');
+@import url('./schedule-post-platform-picker.css');
 @import url('./schedule-post-responsive.css');

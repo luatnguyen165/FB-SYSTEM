@@ -59,7 +59,7 @@ if (isSilent) {
             msg.includes('[Reels Upload]') || msg.includes('[FB Connect]') ||
             msg.includes('[Post Upload]') || msg.includes('[Crawl]') ||
             msg.includes('[Full Scan]') || msg.includes('[AI]') ||
-            msg.includes('[Scheduler]') || msg.includes('[Comment]') ||
+            msg.includes('[Scheduler]') || msg.includes('[Comment]') || msg.includes('[Comment Crawler]') || msg.includes('[Comment Crawler DEBUG]') || msg.includes('[Comment Crawler PRE-CHECK]') || msg.includes('[Comment Crawler SCRAPE-DEBUG]') ||
             msg.includes('[CommentPlay]') || msg.includes('[Competitor Service]') || msg.includes('[AI Image]') || msg.includes('[Download API]') || msg.includes('BAT DAU CHAY PLAY') ||
             msg.includes('KET QUA:') || msg.includes('step=') ||
             msg.includes('[Profile Scraper]') ||
@@ -72,6 +72,12 @@ if (isSilent) {
             msg.includes('[IG Profile]')||
             msg.includes('[IG Profile XPath]')||
             msg.includes('[TH Debug]')||
+            msg.includes('[schedule-create]')||
+            msg.includes('[schedule-submit]')||
+            msg.includes('[Pinterest Pin]') ||
+            msg.includes('[YouTube Short]') ||
+            msg.includes('[Archive DEBUG]')||
+            msg.includes('[Archive]') ||
             msg.includes('#####')) {
             originalLog(...args);
         }
@@ -101,12 +107,15 @@ const licenseRoutes = require('./routes/licenses');
 const musicTrendingRoutes = require('./routes/musicTrending');
 const aiContentRoutes = require('./routes/aiContent');
 const feedbackRoutes = require('./routes/feedback');
+const schedulerRoutes = require('./routes/scheduler');
 const { rateLimiter } = require('./middlewares/rateLimiter');
 const { loadFeatureVisibility } = require('./middlewares/authMiddleware');
 const { loadUserChannels } = require('./middlewares/channelMiddleware');
 const { startReelsScheduleRunner } = require('./services/reelsScheduleRunner');
 const { startAutoContentRunner } = require('./services/autoContentRunner');
 const { runScheduledScans } = require('./services/aiScanService');
+const { startGroupBackfillWorker } = require('./services/facebook/groups');
+const { startFbSessionCleanupCron } = require('./services/facebook/utils');
 const i18nMiddleware = require('./middlewares/i18nMiddleware');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -205,7 +214,9 @@ app.use('/music-trending', musicTrendingRoutes);  // Music Trending
 app.use('/download', require('./routes/download')); // Download YouTube video/audio
 app.use('/ai-content', aiContentRoutes);           // AI Content Creator + Auto Pipeline
 app.use('/feedback', feedbackRoutes);              // Feedback & Feature Requests
+app.use('/admin/scheduler', schedulerRoutes);       // Scheduler health & control (admin only)
 app.use('/tracking', require('./routes/tracking')); // Theo dõi đối tượng
+app.use('/tracking/comments', require('./routes/commentCrawler')); // FB Comment Crawler (tính năng riêng)
 
 // Route mặc định - Chuyển hướng đến trang đăng nhập
 app.get('/', (req, res) => {
@@ -271,6 +282,8 @@ function startSchedulers() {
     // === KHỞI ĐỘNG SCHEDULER SAU KHI CÓ DB ===
     try { startReelsScheduleRunner(); } catch(e) { console.error('[Startup] Reels schedule runner error:', e.message); }
     try { startAutoContentRunner(); } catch(e) { console.error('[Startup] Auto content runner error:', e.message); }
+    try { startGroupBackfillWorker(); } catch(e) { console.error('[Startup] Group backfill worker error:', e.message); }
+    try { startFbSessionCleanupCron(); } catch(e) { console.error('[Startup] FB session cleanup cron error:', e.message); }
 
     // AI Scan scheduler
     schedulerIntervals.push(setInterval(() => {
@@ -286,59 +299,74 @@ function startSchedulers() {
     console.log('[AI Scan Scheduler] Đã khởi động scheduler (kiểm tra mỗi 30 giây)');
 
     // Comment Play scheduler
+    let isCommentPlayProcessing = false;
     schedulerIntervals.push(setInterval(() => {
-        if (!global.mongoConnected) return;
+        if (!global.mongoConnected || isCommentPlayProcessing) return;
         try {
             const commentPlayService = require('./services/commentPlayService');
+            isCommentPlayProcessing = true;
             commentPlayService.processScheduledPlays().then(results => {
                 if (results.length > 0) {
                     console.log(`[CommentPlay Scheduler] Đã xử lý ${results.length} kịch bản`);
                 }
             }).catch(err => {
                 console.error('[CommentPlay Scheduler] Error:', err.message);
+            }).finally(() => {
+                isCommentPlayProcessing = false;
             });
         } catch(e) {
             console.error('[CommentPlay Scheduler] Error:', e.message);
+            isCommentPlayProcessing = false;
         }
     }, 30 * 1000));
     console.log('[CommentPlay Scheduler] Đã khởi động scheduler (kiểm tra mỗi 30 giây)');
 
     // AI Content Creator scheduler - tạo bài viết theo lịch
+    let isAiContentProcessing = false;
     schedulerIntervals.push(setInterval(() => {
-        if (!global.mongoConnected) return;
+        if (!global.mongoConnected || isAiContentProcessing) return;
         try {
             const aiContentService = require('./services/aiContentService');
             const apiKey = process.env.OPENAI_API_KEY;
             if (!apiKey) return;
+            isAiContentProcessing = true;
             aiContentService.processActiveSchedules(apiKey).then(count => {
                 if (count > 0) {
                     console.log(`✅ [AI Content Scheduler] Đã tạo ${count} bài viết mới`);
                 }
             }).catch(err => {
                 console.error('[AI Content Scheduler] Error:', err.message);
+            }).finally(() => {
+                isAiContentProcessing = false;
             });
         } catch(e) {
             console.error('[AI Content Scheduler] Error:', e.message);
+            isAiContentProcessing = false;
         }
     }, 60 * 1000));
     console.log('[AI Content Scheduler] Đã khởi động scheduler (kiểm tra mỗi 60 giây)');
 
     // AI Content Auto-Retrain - train lại văn phong từ bài viết tốt nhất
+    let isRetrainProcessing = false;
     schedulerIntervals.push(setInterval(() => {
-        if (!global.mongoConnected) return;
+        if (!global.mongoConnected || isRetrainProcessing) return;
         try {
             const aiContentService = require('./services/aiContentService');
             const apiKey = process.env.OPENAI_API_KEY;
             if (!apiKey) return;
+            isRetrainProcessing = true;
             aiContentService.autoRetrainLoop(apiKey).then(count => {
                 if (count > 0) {
                     console.log(`🧠 [AI Auto-Retrain] Đã train lại ${count} văn phong`);
                 }
             }).catch(err => {
                 console.error('[AI Auto-Retrain] Error:', err.message);
+            }).finally(() => {
+                isRetrainProcessing = false;
             });
         } catch(e) {
             console.error('[AI Auto-Retrain] Error:', e.message);
+            isRetrainProcessing = false;
         }
     }, 30 * 60 * 1000)); // Kiểm tra mỗi 30 phút
     console.log('[AI Auto-Retrain] Đã khởi động scheduler (kiểm tra mỗi 30 phút)');

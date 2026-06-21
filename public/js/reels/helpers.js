@@ -189,7 +189,7 @@ function normalizeReelsAccountType(value) {
 }
 
 function reelsPlatformToChannel(platformCode) {
-    const map = { FR: 'FB', YS: 'YT', IG: 'IG', TT: 'TT' };
+    const map = { FR: 'FB', YS: 'YT', IG: 'IG', TT: 'TT', TH: 'TH', PI: 'PI' };
     return map[platformCode] || platformCode;
 }
 

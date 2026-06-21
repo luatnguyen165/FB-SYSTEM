@@ -14,6 +14,8 @@ const {
     isFacebookPersonalChannel,
     getOwnedChannelsByIds,
     normalizeScheduleVideoPath,
+    validateVideoForPlatforms,
+    validatePinterestBusinessAccount,
     formatDateTimeVi,
     buildScheduleManagerRow
 } = require('./helpers');
@@ -91,6 +93,10 @@ const showScheduleReels = async (req, res) => {
 
 const createSchedule = async (req, res) => {
     try {
+        console.log('[schedule-create] req.body keys:', Object.keys(req.body || {}));
+        console.log('[schedule-create] accounts raw:', req.body?.accounts);
+        console.log('[schedule-create] platforms:', req.body?.platforms);
+
         let platforms = req.body.platforms;
         if (typeof platforms === 'string') {
             platforms = platforms ? [platforms] : [];
@@ -98,7 +104,7 @@ const createSchedule = async (req, res) => {
             platforms = [];
         }
 
-        const { type, caption, scheduledAt, accounts, videoId, videoPath, videoTitle, videoSize, shopeeLinks, targetGroupId, targetGroupIds, targetGroupSourceChannelId } = req.body;
+        const { type, caption, postTitle, scheduledAt, accounts, videoId, videoPath, videoTitle, videoSize, shopeeLinks, targetGroupId, targetGroupIds, targetGroupSourceChannelId } = req.body;
         if (!scheduledAt) {
             return res.status(400).json({ success: false, message: 'Vui lòng chọn thời gian đăng' });
         }
@@ -112,13 +118,20 @@ const createSchedule = async (req, res) => {
         const requestedVideoId = videoId || undefined;
         const requestedShopeeLinkIds = normalizeIdArray(shopeeLinks);
         const normalizedAccounts = normalizeScheduleAccounts(accounts);
+        console.log('[schedule-create] normalizedAccounts:', normalizedAccounts);
 
-        // Nếu chọn IG (Instagram) cho post, bắt buộc phải có ảnh
+        // Nếu chọn IG/TH/PI (Instagram/Threads/Pinterest) cho post, bắt buộc phải có ảnh
         const hasIg = platforms.includes('IG');
-        if (nextType === 'post' && hasIg) {
+        const hasTh = platforms.includes('TH');
+        const hasPi = platforms.includes('PI');
+        if (nextType === 'post' && (hasIg || hasTh || hasPi)) {
             const hasNewImages = req.files && req.files.length > 0;
             if (!hasNewImages) {
-                return res.status(400).json({ success: false, message: 'Instagram yêu cầu phải có ít nhất 1 hình ảnh!' });
+                const names = [];
+                if (hasIg) names.push('Instagram');
+                if (hasTh) names.push('Threads');
+                if (hasPi) names.push('Pinterest');
+                return res.status(400).json({ success: false, message: `${names.join('/')} yêu cầu phải có ít nhất 1 hình ảnh!` });
             }
         }
 
@@ -141,6 +154,28 @@ const createSchedule = async (req, res) => {
             const normalizedVideoPath = normalizeScheduleVideoPath(videoPath || '');
             if (!requestedVideoId && !normalizedVideoPath) {
                 return res.status(400).json({ success: false, message: 'Vui lòng chọn video cho lịch Reels!' });
+            }
+
+            // Validate duration theo platform TH/PI nếu user chọn
+            const hasTH = platforms.includes('TH');
+            const hasPI = platforms.includes('PI');
+            if (hasTH || hasPI) {
+                let videoPathToCheck = normalizedVideoPath;
+                if (requestedVideoId && !videoPathToCheck) {
+                    const ownedVideo = await Video.findOne({ _id: requestedVideoId, userId: req.user._id }).select('filePath').lean();
+                    if (ownedVideo?.filePath) videoPathToCheck = ownedVideo.filePath;
+                }
+                const videoValidation = await validateVideoForPlatforms(platforms, videoPathToCheck);
+                if (!videoValidation.valid) {
+                    return res.status(400).json({ success: false, message: videoValidation.message });
+                }
+            }
+            // Note: Pinterest Idea Pin cho phép cả tài khoản Personal + Business.
+            // Không check accountType ở đây — scheduler sẽ tự xử lý nếu Pinterest reject.
+
+            // Pinterest Idea Pin (Reels) bắt buộc phải có tiêu đề video
+            if (hasPi && !String(videoTitle || '').trim()) {
+                return res.status(400).json({ success: false, message: 'Pinterest Idea Pin yêu cầu phải có tiêu đề video!' });
             }
         }
 
@@ -245,8 +280,10 @@ const createSchedule = async (req, res) => {
             targetGroupUrl: selectedTargetGroups[0]?.groupUrl || '',
             scheduledAt: new Date(scheduledAt),
             platforms: platforms || [],
-            accounts: normalizedAccounts
+            accounts: normalizedAccounts,
+            postTitle: nextType === 'post' ? String(postTitle || '').trim() : ''
         });
+        console.log('[schedule-create] saved schedule.accounts:', schedule.accounts);
 
         if (nextType === 'reels' && schedule.shopeeLinks?.length) {
             await ShopeeLink.updateMany(
@@ -309,20 +346,34 @@ const updateSchedule = async (req, res) => {
         }
 
         // Nếu lịch đang failed → tự động reset về pending để scheduler chạy lại
+        // User vẫn phải chọn thời gian hiện tại/tương lai, không được giữ thời gian quá khứ.
         const wasFailed = schedule.status === 'failed';
 
         const nextType = type || schedule.type;
         const nextShopeeLinkIds = normalizeIdArray(shopeeLinks);
         const normalizedAccounts = normalizeScheduleAccounts(accounts);
 
-        // Nếu chọn IG (Instagram) cho post, bắt buộc phải có ảnh
+        // Validate lại scheduledAt lần 2 (sau khi đã có schedule + wasFailed) để
+        // cho phép chỉnh sửa thời gian trong quá khứ khi update lịch failed.
+        const scheduledAtErrorRetry = validateScheduledAt(scheduledAt, { allowPastForFailed: wasFailed });
+        if (scheduledAtErrorRetry) {
+            return res.status(400).json({ success: false, message: scheduledAtErrorRetry });
+        }
+
+        // Nếu chọn IG/TH/PI (Instagram/Threads/Pinterest) cho post, bắt buộc phải có ảnh
         const hasIg = platforms.includes('IG');
-        if (nextType === 'post' && hasIg) {
+        const hasTh = platforms.includes('TH');
+        const hasPi = platforms.includes('PI');
+        if (nextType === 'post' && (hasIg || hasTh || hasPi)) {
             const hasExistingImagesObj = Array.isArray(schedule.images) && schedule.images.length > 0;
             const hasExistingImagesBody = req.body.existingImages ? (Array.isArray(req.body.existingImages) ? req.body.existingImages.length > 0 : true) : false;
             const hasNewImages = req.files && req.files.length > 0;
             if (!hasExistingImagesObj && !hasExistingImagesBody && !hasNewImages) {
-                return res.status(400).json({ success: false, message: 'Instagram yêu cầu phải có ít nhất 1 hình ảnh!' });
+                const names = [];
+                if (hasIg) names.push('Instagram');
+                if (hasTh) names.push('Threads');
+                if (hasPi) names.push('Pinterest');
+                return res.status(400).json({ success: false, message: `${names.join('/')} yêu cầu phải có ít nhất 1 hình ảnh!` });
             }
         }
 
@@ -360,6 +411,27 @@ const updateSchedule = async (req, res) => {
                 nextVideoTitle = '';
                 nextVideoSize = '';
             }
+
+            // Validate duration theo platform TH/PI
+            const hasTH = platforms.includes('TH');
+            const hasPI = platforms.includes('PI');
+            if (hasTH || hasPI) {
+                let videoPathToCheck = nextVideoPath;
+                if (ownedVideoId && !videoPathToCheck) {
+                    const ownedVideo = await Video.findOne({ _id: ownedVideoId, userId: req.user._id }).select('filePath').lean();
+                    if (ownedVideo?.filePath) videoPathToCheck = ownedVideo.filePath;
+                }
+                const videoValidation = await validateVideoForPlatforms(platforms, videoPathToCheck);
+                if (!videoValidation.valid) {
+                    return res.status(400).json({ success: false, message: videoValidation.message });
+                }
+            }
+
+            // Pinterest Idea Pin (Reels) bắt buộc phải có tiêu đề video
+            if (hasPI && !nextVideoTitle) {
+                return res.status(400).json({ success: false, message: 'Pinterest Idea Pin yêu cầu phải có tiêu đề video!' });
+            }
+            // Note: Pinterest Idea Pin cho phép cả tài khoản Personal + Business.
         }
 
         let ownedShopeeLinkIds = [];
@@ -372,8 +444,9 @@ const updateSchedule = async (req, res) => {
 
         let selectedTargetGroups = [];
         let selectedSourceChannel = null;
-        const hasTargetGroupSelection = nextType === 'post';   
-  
+        // Chỉ yêu cầu group FB khi post có chọn platform FB
+        const hasTargetGroupSelection = nextType === 'post' && platforms.includes('FB');
+
         if (hasTargetGroupSelection) {
             if (!targetGroupSourceChannelId || !targetGroupIds) {
                 return res.status(400).json({ success: false, message: 'Vui lòng chọn tài khoản Facebook và group đích' });
@@ -425,6 +498,9 @@ const updateSchedule = async (req, res) => {
         schedule.targetGroupName = selectedTargetGroups[0]?.groupName || '';
         schedule.targetGroupUrl = selectedTargetGroups[0]?.groupUrl || '';
         schedule.publishedUrl = '';
+        if (nextType === 'post') {
+            schedule.postTitle = String(postTitle || '').trim();
+        }
         if (nextType === 'reels') {
             schedule.videoId = ownedVideoId;
             schedule.videoPath = nextVideoPath;
@@ -433,9 +509,18 @@ const updateSchedule = async (req, res) => {
             schedule.images = [];
             schedule.shopeeLinks = ownedShopeeLinkIds;
         } else {
-            const existingImages = req.body.existingImages ? (Array.isArray(req.body.existingImages) ? req.body.existingImages : [req.body.existingImages]) : [];
+            // existingImages: danh sách URL ảnh cũ client muốn GIỮ LẠI.
+            // Nếu client không gửi existingImages (undefined) → giữ nguyên ảnh cũ trong DB (backward-compat cho modal edit không gửi field này).
+            // Nếu client gửi mảng rỗng → user đã xoá hết ảnh, set rỗng.
+            let mergedImages;
+            if (req.body.existingImages === undefined || req.body.existingImages === null || req.body.existingImages === '') {
+                mergedImages = Array.isArray(schedule.images) ? [...schedule.images] : [];
+            } else {
+                const existingImages = Array.isArray(req.body.existingImages) ? req.body.existingImages : [req.body.existingImages];
+                mergedImages = existingImages.filter(Boolean);
+            }
             const newImagePaths = req.files && req.files.length > 0 ? req.files.map(f => '/uploads/images/' + f.filename) : [];
-            schedule.images = [...existingImages, ...newImagePaths];
+            schedule.images = [...mergedImages, ...newImagePaths];
             schedule.videoId = undefined;
             schedule.videoPath = '';
             schedule.videoTitle = '';
@@ -445,6 +530,14 @@ const updateSchedule = async (req, res) => {
 
         if (nextType === 'reels' && req.file) {
             schedule.videoPath = '/uploads/reels/' + req.file.filename;
+        }
+
+        // Nếu trước đó là failed và user đã edit xong → reset về pending
+        // để scheduler chạy lại lịch này.
+        if (wasFailed) {
+            schedule.status = 'pending';
+            // Xóa log lỗi cũ nếu có
+            schedule.lastError = '';
         }
 
         await schedule.save();

@@ -20,39 +20,25 @@
         <%- include('partials/header') %>
 
         <main class="content-body tracking-page">
-            <!-- Hero Section -->
+            <!-- Welcome Section -->
             <%
                 const tType = typeof trackingType !== 'undefined' ? trackingType : 'profile';
                 const typeLabels = { profile: 'Profile', page: 'Page', group: 'Group' };
                 const typeIcons = { profile: 'fa-user', page: 'fa-flag', group: 'fa-users' };
                 const typeLabel = typeLabels[tType] || 'Profile';
                 const typeIcon = typeIcons[tType] || 'fa-user';
+                const trackingDescriptions = {
+                    profile: 'Theo dõi bài viết mới từ Profile đối thủ, KOL trên Facebook. Tự động phát hiện nội dung mới.',
+                    page: 'Theo dõi bài viết mới từ Facebook Page. Tự động phát hiện nội dung mới.',
+                    group: 'Theo dõi bài viết mới từ Facebook Group. Tự động phát hiện nội dung mới.'
+                };
             %>
-            <div class="tracking-hero">
-                <div class="tracking-hero-content">
-                    <div class="tracking-hero-left">
-                        <div class="tracking-hero-title">
-                            <div class="tracking-hero-icon"><i class="fa-solid <%= typeIcon %>"></i></div>
-                            <h1>Theo Dõi <%= typeLabel %></h1>
-                        </div>
-                        <p class="tracking-hero-subtitle">
-                            <% if (tType === 'profile') { %>
-                                Theo dõi bài viết mới từ Profile đối thủ, KOL trên <strong>Facebook</strong>.
-                            <% } else if (tType === 'page') { %>
-                                Theo dõi bài viết mới từ <strong>Facebook Page</strong>.
-                            <% } else { %>
-                                Theo dõi bài viết mới từ <strong>Facebook Group</strong>.
-                            <% } %>
-                            Tự động phát hiện nội dung mới.
-                        </p>
-                    </div>
-                    <div class="tracking-hero-actions">
-                        <button class="btn-tracking-hero" id="btnAddTracking" data-type="<%= tType %>">
-                            <i class="fa-solid fa-plus"></i> Thêm <%= typeLabel %>
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <%- include('partials/welcome-section', {
+                eyebrow: 'Theo dõi đối thủ',
+                title: 'Theo Dõi ' + typeLabel,
+                description: trackingDescriptions[tType] || trackingDescriptions.profile,
+                actionHtml: '<button class="btn-tracking-hero" id="btnAddTracking" data-type="' + tType + '"><i class="fa-solid fa-plus"></i> Thêm ' + typeLabel + '</button>'
+            }) %>
 
             <!-- Stats Overview -->
             <div class="tracking-stats">
@@ -293,6 +279,7 @@
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/base.js"></script>
     <script src="/js/tracking.js"></script>
     <script>
     // Socket.IO (safe init)
@@ -436,7 +423,7 @@
             <td>
                 <div class="table-actions">
                     <button class="btn-icon btn-icon--sm" title="Chỉnh sửa" onclick="editPost('${post._id}')"><i class="fa-solid fa-pen"></i></button>
-                    <button class="btn-icon btn-icon--sm btn-icon--danger" title="Xóa" onclick="deletePost('${post._id}')"><i class="fa-solid fa-trash-can"></i></button>
+                    <button class="btn-icon btn-icon--sm btn-icon--danger" title="Xóa" onclick="deletePost('${post._id}')"><i class="fa-solid fa-trash"></i></button>
                 </div>
             </td>
         `;
@@ -671,13 +658,29 @@
                     </tr>`;
             }
             html += '</tbody></table>';
-            // Pagination
+            // Pagination (chuẩn hóa dùng partials/pagination.ejs)
             if (data.totalPages > 1) {
-                html += '<div class="pagination-bar">';
-                html += `<button class="page-nav-btn" onclick="loadPosts('${trackingId}',${data.page - 1})" ${data.page <= 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i></button>`;
-                html += `<span class="page-info">Trang ${data.page} / ${data.totalPages}</span>`;
-                html += `<button class="page-nav-btn" onclick="loadPosts('${trackingId}',${data.page + 1})" ${data.page >= data.totalPages ? 'disabled' : ''}><i class="fa-solid fa-chevron-right"></i></button>`;
-                html += '</div>';
+                html += '<div class="pagination-wrapper" data-pagination>';
+                html += '<div class="pagination-controls">';
+                html += `<button class="pagination-btn pagination-btn--nav" onclick="loadPosts('${trackingId}',${data.page - 1})" ${data.page <= 1 ? 'disabled' : ''} title="Trang trước"><i class="fa-solid fa-chevron-left"></i></button>`;
+                const maxBtn = 7;
+                const half = Math.floor(maxBtn / 2);
+                let start = Math.max(1, data.page - half);
+                let end = Math.min(data.totalPages, start + maxBtn - 1);
+                if (end - start + 1 < maxBtn) start = Math.max(1, end - maxBtn + 1);
+                if (start > 1) {
+                    html += `<button class="pagination-btn pagination-btn--page" onclick="loadPosts('${trackingId}',1)">1</button>`;
+                    if (start > 2) html += '<span class="pagination-ellipsis">…</span>';
+                }
+                for (let i = start; i <= end; i++) {
+                    html += `<button class="pagination-btn pagination-btn--page ${i === data.page ? 'is-active' : ''}" onclick="loadPosts('${trackingId}',${i})">${i}</button>`;
+                }
+                if (end < data.totalPages) {
+                    if (end < data.totalPages - 1) html += '<span class="pagination-ellipsis">…</span>';
+                    html += `<button class="pagination-btn pagination-btn--page" onclick="loadPosts('${trackingId}',${data.totalPages})">${data.totalPages}</button>`;
+                }
+                html += `<button class="pagination-btn pagination-btn--nav" onclick="loadPosts('${trackingId}',${data.page + 1})" ${data.page >= data.totalPages ? 'disabled' : ''} title="Trang sau"><i class="fa-solid fa-chevron-right"></i></button>`;
+                html += '</div></div>';
             }
             container.innerHTML = html;
         } catch (e) {

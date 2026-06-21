@@ -12,6 +12,11 @@ const { analyzeDbResult } = require('./aiAnalysis');
 const { savePostsToDb, crawlGroupPosts } = require('./crawler');
 const { commentOnMatchingResults, sendMultipleComments, commentOnPostLegacy } = require('./comments');
 
+// ===== RE-ENTRANT GUARD =====
+let isProcessing = false;
+
+function isScanSchedulerProcessing() { return isProcessing; }
+
 async function emitRealtimeResults(userId, configId) {
     try {
         const [totalScanned, totalMatched, totalCommented] = await Promise.all([
@@ -303,11 +308,20 @@ function isInTimeRange(config) {
 }
 
 async function runScheduledScans() {
-    const now = new Date();
-    const configs = await AiScanConfig.find({ 
-        isActive: true, 
-        scheduleEnabled: true 
-    }).lean();
+    // Re-entrant guard: skip nếu tick trước còn đang chạy
+    if (isProcessing) {
+        console.log('[AI Scan Scheduler] Skipped - previous tick still running');
+        return [];
+    }
+    isProcessing = true;
+    const startedAt = Date.now();
+
+    try {
+        const now = new Date();
+        const configs = await AiScanConfig.find({
+            isActive: true,
+            scheduleEnabled: true
+        }).lean();
     
     const toRun = configs.filter(c => {
         if (!isInTimeRange(c)) return false;
@@ -340,6 +354,13 @@ async function runScheduledScans() {
         await wait(randomInt(3000, 8000));
     }
     return results;
+    } finally {
+        isProcessing = false;
+        const elapsed = Math.round((Date.now() - startedAt) / 1000);
+        if (elapsed > 5) {
+            console.log(`[AI Scan Scheduler] Tick xong trong ${elapsed}s`);
+        }
+    }
 }
 
 async function playCommentForResult(resultId) {
@@ -426,6 +447,7 @@ module.exports = {
     extractFbSessionFromPlaywright,
     crawlPhase,
     aiAnalyzePhase,
+    isScanSchedulerProcessing,
     runAiScan,
     isInTimeRange,
     runScheduledScans,

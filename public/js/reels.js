@@ -231,9 +231,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Platform selection
     document.querySelectorAll('.platform-check').forEach(cb => {
         cb.addEventListener('change', () => {
+            const card = cb.closest('.platform-picker-card');
+            if (card) card.classList.toggle('is-selected', cb.checked);
             renderAccountList();
             syncSelectedPlatformPreview();
             toggleShopeeLinkSectionForReels();
+            if (typeof toggleReelsAccountSection === 'function') toggleReelsAccountSection();
+            if (typeof toggleReelsTitleSection === 'function') toggleReelsTitleSection();
         });
     });
 

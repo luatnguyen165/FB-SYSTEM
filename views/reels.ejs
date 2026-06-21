@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="/css/base.css">
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/schedule-post.css">
+    <link rel="stylesheet" href="/css/schedule-post-platform-picker.css">
+    <link rel="stylesheet" href="/css/schedule-post-account-picker.css">
     <link rel="stylesheet" href="/css/reels.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -74,6 +76,8 @@
                             <option value="YS">YouTube Short</option>
                             <option value="IG">Instagram</option>
                             <option value="TT">TikTok Video</option>
+                            <option value="TH">Threads Reels</option>
+                            <option value="PI">Pinterest Idea Pin</option>
                         </select>
                     </div>
                     <div class="filter-field filter-field--wide">
@@ -129,8 +133,9 @@
     </div>
 
     <!-- Modal Tạo Reels -->
-    <div class="post-modal" id="createPostModal">
+    <div class="post-modal reels-modal" id="createPostModal">
         <div class="post-modal-container">
+            <!-- Form Side -->
             <div class="modal-form-side">
                 <div class="form-header">
                     <div class="form-header__left">
@@ -139,15 +144,29 @@
                         </div>
                         <div class="form-header__text">
                             <h2 id="modalFormTitle">Tạo bài Reels mới</h2>
-                            <p id="modalFormSubtitle">Đăng video lên các nền tảng Reels</p>
+                            <p id="modalFormSubtitle">Đăng video Reels lên các nền tảng</p>
                         </div>
                     </div>
-                    <button type="button" class="btn-close-modal" id="btnCloseReelsModal" aria-label="Đóng">
+                    <button type="button" class="form-header__close" id="btnCloseReelsModal" aria-label="Đóng">
                         <i class="fa-solid fa-xmark"></i>
                     </button>
                 </div>
 
                 <div class="form-fields-scrollable">
+                    <!-- Tiêu đề video (chỉ hiện khi chọn Pinterest Idea Pin hoặc YouTube Shorts) -->
+                    <div class="form-section" id="reelsTitleSection" style="display:none;">
+                        <div class="form-section__header">
+                            <i class="fa-solid fa-heading"></i>
+                            <span>Tiêu đề video</span>
+                            <span class="form-section__required">*</span>
+                        </div>
+                        <input type="text" class="input-text" id="modalVideoTitleInput" maxlength="100" placeholder="VD: Sản phẩm hot tháng 6 - Giảm 50%">
+                        <div class="form-section__hint">
+                            <i class="fa-solid fa-info-circle"></i>
+                            <strong>Bắt buộc cho Pinterest Idea Pin & YouTube Shorts.</strong> Hiển thị làm tiêu đề chính của video trên các nền tảng này.
+                        </div>
+                    </div>
+
                     <!-- Nguồn video -->
                     <div class="form-section">
                         <div class="form-section__header">
@@ -173,9 +192,13 @@
                     <div class="form-section">
                         <div class="form-section__header">
                             <i class="fa-solid fa-pencil"></i>
-                            <span>Nội dung mô tả & hashtag</span>
+                            <span>Mô tả & hashtag</span>
                         </div>
                         <textarea class="input-text" id="modalCaptionInput" rows="4" placeholder="Nhập mô tả bài viết..."></textarea>
+                        <div class="form-section__hint">
+                            <i class="fa-solid fa-info-circle"></i>
+                            Mô tả chi tiết cho Reels. Có thể kèm hashtag để tăng tương tác.
+                        </div>
                     </div>
 
                     <!-- Thời gian -->
@@ -201,47 +224,102 @@
                         </div>
                     </div>
 
-                    <!-- Nền tảng (chọn nhiều) -->
+                    <!-- Nền tảng (Redesign 2026-06-21: card grid giống schedule-post) -->
                     <div class="form-section">
                         <div class="form-section__header">
                             <i class="fa-solid fa-share-nodes"></i>
                             <span>Nền tảng đăng tải</span>
+                            <span class="platform-picker-counter" id="reelsPlatformCounter" style="display:none;">0/0 đã chọn</span>
                         </div>
-                        <div class="platform-chips-grid">
-                            <label class="platform-chip platform-chip--fb" data-platform="FR">
+                        <div class="platform-picker-grid" id="reelsPlatformPickerGrid">
+                            <label class="platform-picker-card" data-platform="FR" style="--p-color: #1877F2">
                                 <input type="checkbox" class="platform-check" value="FR" checked>
-                                <i class="fa-brands fa-facebook"></i>
-                                <span>Facebook Reels</span>
-                                <div class="platform-chip__check"><i class="fa-solid fa-check"></i></div>
+                                <div class="platform-picker-card__icon"><i class="fa-brands fa-facebook"></i></div>
+                                <div class="platform-picker-card__body">
+                                    <div class="platform-picker-card__name">Facebook Reels</div>
+                                    <div class="platform-picker-card__desc">Đăng Reels lên Facebook</div>
+                                </div>
+                                <div class="platform-picker-card__check"><i class="fa-solid fa-check"></i></div>
                             </label>
-                            <label class="platform-chip platform-chip--yt" data-platform="YS">
+                            <label class="platform-picker-card" data-platform="YS" style="--p-color: #FF0000">
                                 <input type="checkbox" class="platform-check" value="YS">
-                                <i class="fa-brands fa-youtube"></i>
-                                <span>YouTube Short</span>
-                                <div class="platform-chip__check"><i class="fa-solid fa-check"></i></div>
+                                <div class="platform-picker-card__icon"><i class="fa-brands fa-youtube"></i></div>
+                                <div class="platform-picker-card__body">
+                                    <div class="platform-picker-card__name">YouTube Short</div>
+                                    <div class="platform-picker-card__desc">Đăng video Short lên kênh</div>
+                                </div>
+                                <div class="platform-picker-card__check"><i class="fa-solid fa-check"></i></div>
                             </label>
-                            <label class="platform-chip platform-chip--ig" data-platform="IG">
+                            <label class="platform-picker-card" data-platform="IG" style="--p-color: #E4405F">
                                 <input type="checkbox" class="platform-check" value="IG">
-                                <i class="fa-brands fa-instagram"></i>
-                                <span>Instagram</span>
-                                <div class="platform-chip__check"><i class="fa-solid fa-check"></i></div>
+                                <div class="platform-picker-card__icon"><i class="fa-brands fa-instagram"></i></div>
+                                <div class="platform-picker-card__body">
+                                    <div class="platform-picker-card__name">Instagram</div>
+                                    <div class="platform-picker-card__desc">Đăng Reels lên Instagram</div>
+                                </div>
+                                <div class="platform-picker-card__check"><i class="fa-solid fa-check"></i></div>
                             </label>
-                            <label class="platform-chip platform-chip--tt" data-platform="TT">
+                            <label class="platform-picker-card" data-platform="TT" style="--p-color: #000000">
                                 <input type="checkbox" class="platform-check" value="TT">
-                                <i class="fa-brands fa-tiktok"></i>
-                                <span>TikTok Video</span>
-                                <div class="platform-chip__check"><i class="fa-solid fa-check"></i></div>
+                                <div class="platform-picker-card__icon"><i class="fa-brands fa-tiktok"></i></div>
+                                <div class="platform-picker-card__body">
+                                    <div class="platform-picker-card__name">TikTok Video</div>
+                                    <div class="platform-picker-card__desc">Đăng video lên TikTok</div>
+                                </div>
+                                <div class="platform-picker-card__check"><i class="fa-solid fa-check"></i></div>
+                            </label>
+                            <label class="platform-picker-card" data-platform="TH" style="--p-color: #000000">
+                                <input type="checkbox" class="platform-check" value="TH">
+                                <div class="platform-picker-card__icon"><i class="fa-brands fa-threads"></i></div>
+                                <div class="platform-picker-card__body">
+                                    <div class="platform-picker-card__name">Threads</div>
+                                    <div class="platform-picker-card__desc">Đăng video Reels lên Threads</div>
+                                </div>
+                                <div class="platform-picker-card__check"><i class="fa-solid fa-check"></i></div>
+                            </label>
+                            <label class="platform-picker-card" data-platform="PI" style="--p-color: #E60023">
+                                <input type="checkbox" class="platform-check" value="PI">
+                                <div class="platform-picker-card__icon"><i class="fa-brands fa-pinterest"></i></div>
+                                <div class="platform-picker-card__body">
+                                    <div class="platform-picker-card__name">Pinterest</div>
+                                    <div class="platform-picker-card__desc">Đăng video Idea Pin lên Board</div>
+                                </div>
+                                <div class="platform-picker-card__check"><i class="fa-solid fa-check"></i></div>
                             </label>
                         </div>
                     </div>
 
-                    <!-- Tài khoản -->
-                    <div class="form-section">
-                        <div class="form-section__header">
-                            <i class="fa-solid fa-user-circle"></i>
-                            <span>Tài khoản đăng bài</span>
+                    <!-- Tài khoản (Redesign 2026-06-21: card có avatar giống schedule-post) -->
+                    <div class="form-section" id="accountPickerSection" style="display: none;">
+                        <div class="form-section__header account-picker-header">
+                            <i class="fa-solid fa-users"></i>
+                            <span>Tài khoản đăng</span>
+                            <span class="account-picker-counter" id="accountPickerCounter" style="display:none;">0/0 đã chọn</span>
                         </div>
-                        <div class="account-scroll-box" id="dynamicAccountBox">
+
+                        <div class="account-picker-toolbar" id="accountPickerToolbar" style="display:none;">
+                            <div class="account-picker-search">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="accountPickerSearch" placeholder="Tìm tên tài khoản..." />
+                                <button type="button" class="account-picker-search-clear" id="accountPickerSearchClear" style="display:none;">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                            <button type="button" class="account-picker-action-btn" id="accountPickerSelectAll" title="Chọn tất cả">
+                                <i class="fa-solid fa-check-double"></i>
+                                <span>Chọn tất cả</span>
+                            </button>
+                        </div>
+
+                        <div class="account-picker-empty" id="accountPickerEmpty" style="display:none;">
+                            <i class="fa-solid fa-plug"></i>
+                            <p>Chưa có tài khoản nào được kết nối</p>
+                            <a href="/channels" class="account-picker-empty-cta">
+                                <i class="fa-solid fa-plus"></i> Thêm tài khoản ngay
+                            </a>
+                        </div>
+
+                        <div class="account-picker" id="dynamicAccountBox">
                             <div class="empty-state">
                                 <i class="fa-solid fa-spinner fa-spin"></i>
                                 <span>Đang tải tài khoản...</span>
@@ -280,37 +358,100 @@
             </div>
 
             <!-- Preview Side -->
-            <div class="modal-preview-side">
+            <div class="modal-preview-side reels-modal-preview">
                 <div class="preview-label">
                     <i class="fa-solid fa-mobile-screen-button"></i>
-                    Xem trước trên điện thoại
-                </div>
-                <div class="phone-mockup reels-mode" id="phoneMockupContainer">
-                    <div class="phone-notch"></div>
-                    <div class="phone-play-center-btn" id="phoneCenterPlayIcon">
-                        <i class="fa-solid fa-play"></i>
-                    </div>
-                    <img class="phone-video-poster" id="phoneMockupPosterTag" alt="Video preview">
-                    <video class="phone-video-player" id="phoneMockupVideoTag" loop playsinline preload="auto" poster=""></video>
-                    <div class="phone-video-controls" id="phoneVideoControls">
-                        <button class="phone-control-btn" id="phonePlayPauseBtn" type="button" title="Play/Pause">
-                            <i class="fa-solid fa-play"></i>
-                        </button>
-                        <div class="phone-video-info">
-                            <span id="phoneVideoTitle">Video Preview</span>
-                            <span class="phone-video-duration" id="phoneVideoDuration">0:00</span>
-                        </div>
-                    </div>
+                    Xem trước Reels
                 </div>
 
-                <div class="reels-preview-text-panel">
-                    <div class="phone-acc-title">
-                        <i class="fa-solid fa-circle-user"></i>
-                        <span id="phonePreviewPlatformName">Xem trước Reels</span>
+                <div class="phone-stage">
+                    <div class="phone-stage__glow"></div>
+                    <div class="phone-mockup phone-mockup--reels reels-mode" id="phoneMockupContainer">
+                        <div class="phone-frame">
+                            <div class="phone-island">
+                                <span class="phone-island__dot"></span>
+                            </div>
+                            <div class="phone-statusbar">
+                                <span class="phone-statusbar__time" id="phoneStatusTime">9:41</span>
+                                <span class="phone-statusbar__icons">
+                                    <i class="fa-solid fa-signal"></i>
+                                    <i class="fa-solid fa-wifi"></i>
+                                    <i class="fa-solid fa-battery-three-quarters"></i>
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="phone-reels-bg" id="phoneReelsBg"></div>
+
+                        <div class="phone-play-center-btn" id="phoneCenterPlayIcon">
+                            <i class="fa-solid fa-play"></i>
+                        </div>
+                        <img class="phone-video-poster" id="phoneMockupPosterTag" alt="Video preview">
+                        <video class="phone-video-player" id="phoneMockupVideoTag" loop playsinline preload="auto" poster=""></video>
+
+                        <div class="phone-reels-top">
+                            <div class="phone-reels-top__tabs">
+                                <span>Following</span>
+                                <span class="is-active">For You</span>
+                            </div>
+                            <span class="phone-reels-search"><i class="fa-solid fa-magnifying-glass"></i></span>
+                        </div>
+
+                        <div class="phone-reels-right">
+                            <div class="phone-reels-action">
+                                <span class="phone-reels-action__icon"><i class="fa-solid fa-heart"></i></span>
+                                <strong>24.5K</strong>
+                            </div>
+                            <div class="phone-reels-action">
+                                <span class="phone-reels-action__icon"><i class="fa-solid fa-comment-dots"></i></span>
+                                <strong>1,208</strong>
+                            </div>
+                            <div class="phone-reels-action">
+                                <span class="phone-reels-action__icon"><i class="fa-solid fa-paper-plane"></i></span>
+                                <strong>342</strong>
+                            </div>
+                            <div class="phone-reels-action">
+                                <span class="phone-reels-action__icon"><i class="fa-solid fa-bookmark"></i></span>
+                            </div>
+                            <div class="phone-reels-disc">
+                                <span class="phone-reels-disc__ring"></span>
+                                <span class="phone-reels-disc__core"></span>
+                            </div>
+                        </div>
+
+                        <div class="phone-reels-bottom">
+                            <div class="phone-reels-user">
+                                <span class="phone-reels-user__avatar" id="phonePreviewPlatformAvatar">
+                                    <i class="fa-brands fa-facebook"></i>
+                                </span>
+                                <div class="phone-reels-user__info">
+                                    <strong id="phonePreviewPlatformName">Xem trước Reels</strong>
+                                    <span><i class="fa-solid fa-music"></i> Âm thanh gốc • ReelsFlow AI</span>
+                                </div>
+                                <button type="button" class="phone-reels-follow">Follow</button>
+                            </div>
+                            <div class="phone-reels-caption" id="livePreviewCaption">Nội dung Reels sẽ hiển thị tại đây.</div>
+                            <div class="phone-reels-progress">
+                                <span></span>
+                            </div>
+                        </div>
+
+                        <div class="phone-video-controls" id="phoneVideoControls">
+                            <button class="phone-control-btn" id="phonePlayPauseBtn" type="button" title="Play/Pause">
+                                <i class="fa-solid fa-play"></i>
+                            </button>
+                            <div class="phone-video-info">
+                                <span id="phoneVideoTitle">Video Preview</span>
+                                <span class="phone-video-duration" id="phoneVideoDuration">0:00</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="phone-caption-text" id="livePreviewCaption">Nội dung Reels sẽ hiển thị tại đây.</div>
-                    <div class="phone-music">
-                        <i class="fa-solid fa-music"></i> Âm thanh gốc
+
+                    <div class="phone-stage__platforms" id="reelsPreviewPlatformChips">
+                        <span class="phone-platform-chip is-active" data-code="FR"><i class="fa-brands fa-facebook"></i></span>
+                        <span class="phone-platform-chip" data-code="IG"><i class="fa-brands fa-instagram"></i></span>
+                        <span class="phone-platform-chip" data-code="YS"><i class="fa-brands fa-youtube"></i></span>
+                        <span class="phone-platform-chip" data-code="TT"><i class="fa-brands fa-tiktok"></i></span>
                     </div>
                 </div>
             </div>

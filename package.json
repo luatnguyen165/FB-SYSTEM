@@ -41,7 +41,7 @@
     "nodemailer": "^8.0.9",
     "nodemon": "^3.1.14",
     "openai": "^6.39.1",
-    "playwright": "^1.60.0",
+    "playwright": "^1.61.0",
     "playwright-extra": "^4.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "react": "^18.2.0",
@@ -112,5 +112,18 @@
     "extraMetadata": {
       "main": "electron/main.js"
     }
-  }
+  },
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/luatnguyen165/FB-SYSTEM.git"
+  },
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/luatnguyen165/FB-SYSTEM/issues"
+  },
+  "homepage": "https://github.com/luatnguyen165/FB-SYSTEM#readme"
 }

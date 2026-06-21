@@ -11,6 +11,9 @@ const { SESSION_ROOT, ensureDir, sanitizeFolderName, buildAccountFolder, getChro
 const ACTIVE_FB_SESSIONS = new Map();
 const PROFILE_URL_WATCHERS = global.__facebookProfileUrlWatchers || (global.__facebookProfileUrlWatchers = new Map());
 
+// Track background group-scan jobs theo sessionKey — chống trùng giữa các lần reconnect
+const GROUP_SCAN_JOBS = global.__facebookGroupScanJobs || (global.__facebookGroupScanJobs = new Map());
+
 // Alias for backward compatibility
 const buildFacebookAccountFolder = buildAccountFolder;
 
@@ -148,6 +151,7 @@ module.exports = {
     SESSION_ROOT,
     ACTIVE_FB_SESSIONS,
     PROFILE_URL_WATCHERS,
+    GROUP_SCAN_JOBS,
     ensureDir,
     sanitizeFolderName,
     buildFacebookAccountFolder,

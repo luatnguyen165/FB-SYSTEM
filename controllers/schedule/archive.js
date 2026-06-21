@@ -114,34 +114,91 @@ const exportPublishedArchive = async (req, res) => {
 
 const showPublishedArchive = async (req, res) => {
     try {
-        const schedules = await require('../../models/SchedulePost').find({ userId: req.user._id, status: 'posted' })
-            .populate(buildSchedulePopulateOptions(req.user._id))
+        // Lấy query params: status filter, type filter, platform filter, page
+        const statusFilter = String(req.query.status || 'all').toLowerCase(); // 'all' | 'posted' | 'failed' | 'partial'
+        const typeFilter = String(req.query.type || 'all').toLowerCase(); // 'all' | 'post' | 'reels' | 'tiktok'
+        const platformFilter = String(req.query.platform || 'all').toUpperCase();
+        const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+        const PAGE_SIZE = 20;
+
+        const SchedulePostModel = require('../../models/SchedulePost');
+        const mongoose = require('mongoose');
+        // Ép kiểu userId thành ObjectId chính xác (req.user._id có thể là string)
+        const userIdObj = new mongoose.Types.ObjectId(String(req.user._id));
+
+        // Build query: mặc định lấy CHỈ lịch đã đăng thành công (status='posted')
+        const query = { userId: userIdObj, status: 'posted' };
+        if (statusFilter === 'posted') query.status = 'posted';
+        else if (statusFilter === 'failed') query.status = 'failed';
+        else if (statusFilter === 'partial') {
+            query.status = 'posted';
+            query.platformResults = { $exists: true, $not: { $size: 0 } };
+            query['platformResults.success'] = false;
+        }
+        if (typeFilter !== 'all') query.type = typeFilter;
+        if (platformFilter !== 'all' && platformFilter !== 'ALL') query.platforms = platformFilter;
+
+        // DEBUG: log query để xem
+        console.log('[Archive] Query:', JSON.stringify(query));
+        const total = await SchedulePostModel.countDocuments(query);
+        console.log('[Archive] Total matched:', total);
+
+        // Load TOÀN BỘ rows — JS pagination sẽ lo phân trang client-side
+        const schedules = await SchedulePostModel.find(query)
+            .populate(buildSchedulePopulateOptions(userIdObj))
             .sort({ scheduledAt: -1 })
             .lean();
 
+        console.log('[Archive] Found schedules (all):', schedules.length);
+        if (schedules.length === 0) {
+            // DEBUG: thử query rộng hơn để xem có data gì không
+            const allAny = await SchedulePostModel.countDocuments({ userId: userIdObj });
+            const allByStatus = await SchedulePostModel.aggregate([
+                { $match: { userId: userIdObj } },
+                { $group: { _id: '$status', count: { $sum: 1 } } }
+            ]);
+            console.log('[Archive DEBUG] Total any status:', allAny);
+            console.log('[Archive DEBUG] By status:', JSON.stringify(allByStatus));
+        }
+
         const archiveRows = schedules.map(buildPublishedArchiveRow);
+        console.log('[Archive] archiveRows.length:', archiveRows.length);
+        if (archiveRows.length > 0) {
+            console.log('[Archive] Sample row:', JSON.stringify({
+                _id: archiveRows[0]._id,
+                status: archiveRows[0].status,
+                platforms: archiveRows[0].platforms,
+                type: archiveRows[0].type,
+                caption: archiveRows[0].caption?.substring(0, 50),
+                platformDetailsCount: archiveRows[0].platformDetails?.length || 0,
+                scheduledAt: archiveRows[0].scheduledAt
+            }, null, 2));
+        }
         const now = new Date();
         const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        const stats = {
-            total: archiveRows.length,
-            posts: archiveRows.filter(item => item.type === 'post').length,
-            reels: archiveRows.filter(item => item.type === 'reels').length,
-            fb: archiveRows.filter(item => item.platforms?.includes('FB')).length,
-            ig: archiveRows.filter(item => item.platforms?.includes('IG')).length,
-            tt: archiveRows.filter(item => item.platforms?.includes('TT')).length,
-            yt: archiveRows.filter(item => item.platforms?.includes('YT')).length,
-            today: archiveRows.filter(item => item.publishedAtDayKey === todayKey).length,
-            month: archiveRows.filter(item => item.publishedAtMonthKey === monthKey).length
-        };
 
-        res.render('schedule-archive', { user: req.user, schedules: archiveRows, stats });
+        // Stats — dùng full count (không phân trang)
+        const allRows = await getPublishedArchiveRows(userIdObj);
+        const stats = buildPublishedArchiveStats(allRows);
+
+        // Không paginate ở server nữa — JS pagination sẽ lo phân trang client-side
+        const totalPages = Math.max(1, Math.ceil(archiveRows.length / PAGE_SIZE));
+
+        res.render('schedule-archive', {
+            user: req.user,
+            schedules: archiveRows,
+            stats,
+            pagination: { page: 1, totalPages, total: archiveRows.length, pageSize: PAGE_SIZE },
+            filters: { status: statusFilter, type: typeFilter, platform: platformFilter }
+        });
     } catch (error) {
         console.error('Show Published Archive Error:', error);
         res.render('schedule-archive', {
             user: req.user,
             schedules: [],
-            stats: { total: 0, posts: 0, reels: 0, fb: 0, ig: 0, tt: 0, yt: 0, today: 0, month: 0 }
+            stats: { total: 0, posts: 0, reels: 0, fb: 0, ig: 0, tt: 0, yt: 0, today: 0, month: 0, partial: 0, failed: 0 },
+            pagination: { page: 1, totalPages: 1, total: 0, pageSize: 20 },
+            filters: { status: 'all', type: 'all', platform: 'all' }
         });
     }
 };

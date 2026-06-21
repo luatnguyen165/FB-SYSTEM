@@ -10,7 +10,9 @@ const { parseAIJsonResponse } = require('../utils/aiResponse');
 
 const CHECK_INTERVAL_MS = 60 * 1000;
 let isWorkerStarted = false;
+let isProcessing = false;          // Re-entrant guard
 let timer = null;
+let firstRunTimer = null;
 
 /**
  * Chọn topic dựa trên learning data và slot index
@@ -337,17 +339,26 @@ async function runPipeline(pipelineId) {
  * Xử lý tất cả pipeline active đến hạn
  */
 async function processActivePipelines() {
-    const now = new Date();
+    // Re-entrant guard: skip nếu tick trước còn đang chạy
+    if (isProcessing) {
+        console.log('[Auto Content] Skipped - previous tick still running');
+        return;
+    }
+    isProcessing = true;
+    const startedAt = Date.now();
 
-    // Tìm pipeline active và đến hạn chạy
-    const pipelines = await AutoContentPipeline.find({
-        status: 'active',
-        $or: [
-            { lastRunAt: null },
-            { lastRunAt: { $exists: false } },
-            { lastRunAt: { $lte: new Date(now.getTime() - 20 * 60 * 60 * 1000) } } // Chạy lại sau 20h
-        ]
-    }).lean();
+    try {
+        const now = new Date();
+
+        // Tìm pipeline active và đến hạn chạy
+        const pipelines = await AutoContentPipeline.find({
+            status: 'active',
+            $or: [
+                { lastRunAt: null },
+                { lastRunAt: { $exists: false } },
+                { lastRunAt: { $lte: new Date(now.getTime() - 20 * 60 * 60 * 1000) } } // Chạy lại sau 20h
+            ]
+        }).lean();
 
     if (pipelines.length === 0) return;
 
@@ -364,6 +375,13 @@ async function processActivePipelines() {
             }).catch(() => {});
         }
     }
+    } finally {
+        isProcessing = false;
+        const elapsed = Math.round((Date.now() - startedAt) / 1000);
+        if (elapsed > 5) {
+            console.log(`[Auto Content] Tick xong trong ${elapsed}s`);
+        }
+    }
 }
 
 /**
@@ -374,7 +392,7 @@ function startAutoContentRunner() {
     isWorkerStarted = true;
 
     // Chạy lần đầu sau 30s
-    setTimeout(() => {
+    firstRunTimer = setTimeout(() => {
         processActivePipelines().catch(console.error);
     }, 30000);
 
@@ -391,12 +409,17 @@ function stopAutoContentRunner() {
         clearInterval(timer);
         timer = null;
     }
+    if (firstRunTimer) {
+        clearTimeout(firstRunTimer);
+        firstRunTimer = null;
+    }
+    isProcessing = false;
     isWorkerStarted = false;
     console.log('[Auto Content Runner] Stopped');
 }
 
 function getAutoContentRunnerStatus() {
-    return { started: isWorkerStarted };
+    return { started: isWorkerStarted, processing: isProcessing };
 }
 
 /**

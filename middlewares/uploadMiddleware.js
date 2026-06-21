@@ -55,7 +55,8 @@ const uploadVideo = multer({
     }
 });
 
-const uploadImage = multer({
+// Multer instance gốc cho ảnh (chưa gọi .any/.single/.array)
+const _multerImageInstance = multer({
     storage: imageStorage,
     limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
     fileFilter: (req, file, cb) => {
@@ -67,4 +68,17 @@ const uploadImage = multer({
     }
 });
 
-module.exports = { uploadVideo, uploadImage, uploadErrorHandler };
+// Alias giữ API cũ: uploadImage.single('avatar') / .array(...) vẫn hoạt động
+const uploadImage = _multerImageInstance;
+
+// Wrapper parse TẤT CẢ field (text + file) cho multipart form gửi ảnh kèm data
+// Chỉ giữ lại các file có fieldname = 'images' trong req.files cho controller dùng
+const uploadImageArray = (req, res, next) => {
+    _multerImageInstance.any()(req, res, (err) => {
+        if (err) return next(err);
+        req.files = (req.files || []).filter(f => f.fieldname === 'images');
+        next();
+    });
+};
+
+module.exports = { uploadVideo, uploadImage, uploadImageArray, uploadErrorHandler };

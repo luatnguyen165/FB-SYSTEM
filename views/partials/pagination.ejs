@@ -1,0 +1,169 @@
+
+
+<%
+const _currentPage = (typeof currentPage !== 'undefined' && currentPage) ? parseInt(currentPage) : 1;
+const _totalPages  = (typeof totalPages !== 'undefined' && totalPages) ? parseInt(totalPages) : 1;
+const _totalItems  = (typeof totalItems !== 'undefined' && totalItems) ? parseInt(totalItems) : 0;
+const _baseUrl     = (typeof baseUrl !== 'undefined' && baseUrl) ? baseUrl : '';
+const _queryParams = (typeof queryParams !== 'undefined' && queryParams) ? queryParams : {};
+const _mode        = (typeof mode !== 'undefined' && mode) ? mode : 'server'; // 'server' | 'js'
+const _containerId = (typeof containerId !== 'undefined' && containerId) ? containerId : 'paginationContainer';
+const _maxButtons  = 7; // Số nút trang tối đa hiển thị
+const _showInfo    = (typeof showInfo === 'undefined') ? true : showInfo;
+const _pageParam   = (typeof pageParam !== 'undefined' && pageParam) ? pageParam : 'page';
+
+// Helper: build URL với query params
+function buildPageUrl(page) {
+    const params = Object.assign({}, _queryParams);
+    params[_pageParam] = page;
+    const qs = Object.entries(params)
+        .filter(([k, v]) => v !== '' && v !== null && v !== undefined)
+        .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+        .join('&');
+    return _baseUrl + (qs ? '?' + qs : '');
+}
+
+// Helper: tạo danh sách các nút trang cần hiển thị
+function getPageButtons() {
+    if (_totalPages <= _maxButtons) {
+        return Array.from({ length: _totalPages }, (_, i) => i + 1);
+    }
+    const half = Math.floor(_maxButtons / 2);
+    let start = Math.max(1, _currentPage - half);
+    let end = Math.min(_totalPages, start + _maxButtons - 1);
+    if (end - start + 1 < _maxButtons) {
+        start = Math.max(1, end - _maxButtons + 1);
+    }
+    const pages = [];
+    if (start > 1) {
+        pages.push(1);
+        if (start > 2) pages.push('...');
+    }
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (end < _totalPages) {
+        if (end < _totalPages - 1) pages.push('...');
+        pages.push(_totalPages);
+    }
+    return pages;
+}
+
+const _pageButtons = getPageButtons();
+const _hasPrev = _currentPage > 1;
+const _hasNext = _currentPage < _totalPages;
+const _startItem = _totalItems > 0 ? (_currentPage - 1) * (parseInt(_queryParams.limit) || 10) + 1 : 0;
+const _endItem = Math.min(_currentPage * (parseInt(_queryParams.limit) || 10), _totalItems);
+%>
+
+<div class="pagination-wrapper" data-pagination<% if (_mode === 'js') { %> data-container-id="<%= _containerId %>"<% } %>>
+    <% if (_showInfo && _totalItems > 0) { %>
+    <div class="pagination-info">
+        Hiển thị <strong><%= _startItem %>-<%= _endItem %></strong> / <strong><%= _totalItems %></strong>
+    </div>
+    <% } %>
+
+    <div class="pagination-controls">
+        <% if (_mode === 'server') { %>
+            <!-- Server-side: dùng link với query params -->
+            <a class="pagination-btn pagination-btn--nav <%= !_hasPrev ? 'is-disabled' : '' %>"
+               href="<%= _hasPrev ? buildPageUrl(_currentPage - 1) : '#' %>"
+               <%= !_hasPrev ? 'aria-disabled="true" tabindex="-1"' : '' %>
+               title="Trang trước">
+                <i class="fa-solid fa-chevron-left"></i>
+            </a>
+
+            <% _pageButtons.forEach(function(p) { %>
+                <% if (p === '...') { %>
+                    <span class="pagination-ellipsis">…</span>
+                <% } else { %>
+                    <a class="pagination-btn pagination-btn--page <%= p === _currentPage ? 'is-active' : '' %>"
+                       href="<%= buildPageUrl(p) %>"
+                       title="Trang <%= p %>">
+                        <%= p %>
+                    </a>
+                <% } %>
+            <% }); %>
+
+            <a class="pagination-btn pagination-btn--nav <%= !_hasNext ? 'is-disabled' : '' %>"
+               href="<%= _hasNext ? buildPageUrl(_currentPage + 1) : '#' %>"
+               <%= !_hasNext ? 'aria-disabled="true" tabindex="-1"' : '' %>
+               title="Trang sau">
+                <i class="fa-solid fa-chevron-right"></i>
+            </a>
+        <% } else { %>
+            <!-- JS mode: dùng button + data-page -->
+            <button class="pagination-btn pagination-btn--nav" data-page="prev" <%= !_hasPrev ? 'disabled' : '' %> title="Trang trước">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <div class="pagination-pages" data-pages></div>
+            <button class="pagination-btn pagination-btn--nav" data-page="next" <%= !_hasNext ? 'disabled' : '' %> title="Trang sau">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+
+            <script>
+            (function() {
+                const container = document.querySelector('[data-container-id="<%= _containerId %>"]');
+                if (!container) return;
+
+                const pagesContainer = container.querySelector('[data-pages]');
+                const prevBtn = container.querySelector('[data-page="prev"]');
+                const nextBtn = container.querySelector('[data-page="next"]');
+                let currentPage = parseInt(container.dataset.currentPage) || <%= _currentPage %>;
+                let totalPages  = parseInt(container.dataset.totalPages)  || <%= _totalPages %>;
+                const onPageClick = (typeof window.Pagination_onPageClick === 'function') ? window.Pagination_onPageClick : null;
+
+                function render() {
+                    pagesContainer.innerHTML = '';
+                    const maxButtons = <%= _maxButtons %>;
+                    const half = Math.floor(maxButtons / 2);
+                    let start = Math.max(1, currentPage - half);
+                    let end = Math.min(totalPages, start + maxButtons - 1);
+                    if (end - start + 1 < maxButtons) {
+                        start = Math.max(1, end - maxButtons + 1);
+                    }
+                    const buttons = [];
+                    if (start > 1) {
+                        buttons.push(makeBtn(1));
+                        if (start > 2) buttons.push('<span class="pagination-ellipsis">…</span>');
+                    }
+                    for (let i = start; i <= end; i++) buttons.push(makeBtn(i));
+                    if (end < totalPages) {
+                        if (end < totalPages - 1) buttons.push('<span class="pagination-ellipsis">…</span>');
+                        buttons.push(makeBtn(totalPages));
+                    }
+                    pagesContainer.innerHTML = buttons.join('');
+                    pagesContainer.querySelectorAll('[data-num]').forEach(btn => {
+                        btn.addEventListener('click', () => goTo(parseInt(btn.dataset.num)));
+                    });
+                    prevBtn.disabled = currentPage <= 1;
+                    nextBtn.disabled = currentPage >= totalPages;
+                }
+
+                function makeBtn(n) {
+                    return `<button class="pagination-btn pagination-btn--page ${n === currentPage ? 'is-active' : ''}" data-num="${n}">${n}</button>`;
+                }
+
+                function goTo(p) {
+                    if (p < 1 || p > totalPages || p === currentPage) return;
+                    currentPage = p;
+                    container.dataset.currentPage = p;
+                    render();
+                    if (onPageClick) onPageClick(p);
+                }
+
+                prevBtn.addEventListener('click', () => goTo(currentPage - 1));
+                nextBtn.addEventListener('click', () => goTo(currentPage + 1));
+
+                // Public API
+                window.Pagination = window.Pagination || {};
+                window.Pagination.update = function(opts) {
+                    if (opts.currentPage) { currentPage = opts.currentPage; container.dataset.currentPage = currentPage; }
+                    if (opts.totalPages)  { totalPages  = opts.totalPages;  container.dataset.totalPages  = totalPages;  }
+                    render();
+                };
+
+                render();
+            })();
+            </script>
+        <% } %>
+    </div>
+</div>

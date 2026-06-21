@@ -1,0 +1,276 @@
+/* ===================================
+   SCHEDULE-POST-TARGET-TABS.CSS
+   CSS cho tabs "Nơi đăng" (Phase 1 - đơn giản, không phá cấu trúc cũ)
+   =================================== */
+
+.target-tabs-wrapper {
+    margin-top: 16px;
+    border-top: 1px dashed var(--border-color, #e5e7eb);
+    padding-top: 12px;
+}
+
+.target-tabs-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-muted, #6b7280);
+    margin-bottom: 10px;
+    font-style: italic;
+}
+
+.target-tabs-hint i {
+    color: #f59e0b;
+}
+
+.target-tabs-nav {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border-color, #e5e7eb);
+    margin-bottom: 12px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+}
+
+.target-tab {
+    --tab-color: #6b7280;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted, #6b7280);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color .15s, border-color .15s, background .15s;
+    border-radius: 6px 6px 0 0;
+}
+
+.target-tab:hover {
+    color: var(--tab-color);
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.target-tab.active {
+    color: var(--tab-color);
+    border-bottom-color: var(--tab-color);
+    font-weight: 600;
+}
+
+.target-tab i {
+    font-size: 14px;
+    color: var(--tab-color);
+}
+
+.target-tab__badge {
+    font-size: 11px;
+    background: rgba(0, 0, 0, 0.06);
+    color: inherit;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-weight: 500;
+}
+
+.target-tab.active .target-tab__badge {
+    background: var(--tab-color);
+    color: #fff;
+}
+
+.target-tabs-content {
+    min-height: 80px;
+    animation: fadeIn .2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== TARGET BLOCK (chung cho mọi platform) ===== */
+.target-block {
+    border-left: 3px solid var(--tab-color, #6b7280);
+    padding: 12px 14px;
+    background: var(--bg-soft, #f9fafb);
+    border-radius: 0 8px 8px 0;
+}
+
+.target-block--fb { --tab-color: #1877F2; background: rgba(24, 119, 242, 0.04); }
+.target-block--ig { --tab-color: #E4405F; background: rgba(228, 64, 95, 0.04); }
+.target-block--tt { --tab-color: #000000; background: rgba(0, 0, 0, 0.03); }
+
+.target-block__header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    color: var(--tab-color, #6b7280);
+    font-size: 14px;
+}
+
+.target-block__header i {
+    font-size: 16px;
+}
+
+.target-block__sub {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text-muted, #6b7280);
+    font-weight: 400;
+}
+
+.target-block__empty {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    color: var(--text-muted, #6b7280);
+    font-size: 13px;
+    font-style: italic;
+}
+
+.target-block__empty i {
+    font-size: 18px;
+    color: var(--tab-color, #6b7280);
+    opacity: 0.6;
+}
+
+/* ===== IG/TT info box ===== */
+.ig-info-box,
+.tt-info-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    background: #fff;
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 12px;
+}
+
+.ig-info-box i,
+.tt-info-box i {
+    color: #3b82f6;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.form-section__sub {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px 0;
+}
+
+.ig-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background .15s, border-color .15s;
+}
+
+.ig-option:hover {
+    background: rgba(228, 64, 95, 0.04);
+    border-color: rgba(228, 64, 95, 0.3);
+}
+
+.ig-option input[type="checkbox"] {
+    margin: 0;
+    cursor: pointer;
+}
+
+.ig-option i {
+    color: #E4405F;
+    width: 16px;
+    text-align: center;
+}
+
+/* Group badge (chip đã chọn) - layout 2 dòng: tên + nền tảng */
+#schedulePostSelectedBadges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 4px 0;
+}
+
+.group-badge-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px 10px 7px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(24, 119, 242, 0.08) 0%, rgba(24, 119, 242, 0.04) 100%);
+    border: 1px solid rgba(24, 119, 242, 0.2);
+    cursor: pointer;
+    transition: all .15s ease;
+    max-width: 220px;
+}
+
+.group-badge-item:hover {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(239, 68, 68, 0.04) 100%);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.group-badge-item__name {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: #1877f2;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.group-badge-item__name i:first-child {
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
+.group-badge-item__name i:last-child {
+    font-size: 10px;
+    opacity: 0.6;
+    margin-left: 2px;
+    flex-shrink: 0;
+}
+
+.group-badge-item:hover .group-badge-item__name {
+    color: #ef4444;
+}
+
+.group-badge-item:hover .group-badge-item__name i:last-child {
+    opacity: 1;
+}
+
+.group-badge-item__platform {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: 3px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: rgba(24, 119, 242, 0.14);
+    color: #1877f2;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    line-height: 1.3;
+}
+
+.group-badge-item:hover .group-badge-item__platform {
+    background: rgba(239, 68, 68, 0.14);
+    color: #ef4444;
+}

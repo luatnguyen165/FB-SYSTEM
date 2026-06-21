@@ -21,25 +21,13 @@
     <%- include('partials/header') %>
 
     <div class="content-body">
-        <!-- Hero Section -->
-        <div class="ai-scan-hero">
-            <div class="ai-scan-hero-content">
-                <div class="ai-scan-hero-left">
-                    <div class="ai-scan-hero-title">
-                        <div class="ai-scan-hero-icon"><i class="fa-solid fa-robot"></i></div>
-                        <h1>Quét Bài Viết AI</h1>
-                    </div>
-                    <p class="ai-scan-hero-subtitle">
-                        Tự động quét bài viết trong group Facebook, dùng <strong>Puter.js AI</strong> (miễn phí) phân tích nhu cầu khách hàng và comment tự động. OpenAI làm fallback.
-                    </p>
-                </div>
-                <div class="ai-scan-hero-actions">
-                    <button class="btn-scan-hero" id="btnNewConfig">
-                        <i class="fa-solid fa-plus"></i> Tạo Cấu Hình Mới
-                    </button>
-                </div>
-            </div>
-        </div>
+        <!-- Welcome Section -->
+        <%- include('partials/welcome-section', {
+            eyebrow: 'AI Quét Nhu Cầu',
+            title: 'Quét Bài Viết AI',
+            description: 'Tự động quét bài viết trong group Facebook, dùng Puter.js AI (miễn phí) phân tích nhu cầu khách hàng và comment tự động. OpenAI làm fallback.',
+            actionHtml: '<button class="btn-scan-hero" id="btnNewConfig"><i class="fa-solid fa-plus"></i> Tạo Cấu Hình Mới</button>'
+        }) %>
 
         <!-- Stats Overview -->
         <div class="ai-scan-stats" id="statsOverview">
@@ -253,9 +241,8 @@
                 </table>
             </div>
             <!-- AI Scan Results Pagination -->
-            <div class="ai-scan-pagination" id="aiScanPagination">
-                <div class="ai-scan-pagination__info" id="aiScanPaginationInfo"></div>
-                <div class="ai-scan-pagination__controls" id="aiScanPaginationControls"></div>
+            <div id="aiScanPagination" data-current-page="1" data-total-pages="1">
+                <%- include('partials/pagination', { mode: 'js', containerId: 'aiScanPagination' }) %>
             </div>
         </div>
     </div>

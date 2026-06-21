@@ -5,8 +5,8 @@ const path = require('path');
 const { execSync } = require('child_process');
 const { imageDownloadQueue, DownloadQueue } = require('./facebookProfileScraper');
 
-// Queue riêng cho video group: 1 concurrent, delay 1s, 2 retries
-const videoDownloadQueue = new DownloadQueue(1, 1000, 2);
+// Queue riêng cho video group: 1 concurrent, delay 1s, 2 retries, max 200 queued (chống tràn RAM)
+const videoDownloadQueue = new DownloadQueue(1, 1000, 2, 200);
 
 const GRAPHQL_URL = 'https://www.facebook.com/api/graphql/';
 const DOC_ID = '25716860671307636'; // GroupsCometFeedRegularStoriesPaginationQuery

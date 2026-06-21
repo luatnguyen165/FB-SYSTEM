@@ -11,6 +11,7 @@ const {
     openThreadsLoginWindow,
     openExistingSocialBrowserWindow
 } = require('../services/socialPlaywrightService');
+const { extractCUserFromStorageState, extractUserIdFromStorageState } = require('../services/facebook/cookieUtils');
 const {
     normalizeEncryptedValue,
     prepareSensitiveValue,
@@ -19,6 +20,9 @@ const {
 const {
     startFacebookProfileUrlWatcher
 } = require('../services/facebook/utils');
+const {
+    startBackgroundGroupScan
+} = require('../services/facebook/groups');
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -99,6 +103,76 @@ async function findMatchingChannel(userId, platform, accountName, accountType) {
         const safe = restoreRecordForView(item, VIEW_RESTORE_FIELDS);
         return safe.accountName === accountName && safe.accountType === accountType;
     }) || null;
+}
+
+/**
+ * Find existing channel by Facebook c_user ID (chắc chắn unique, không đổi khi user đổi tên).
+ * Đọc storage-state.json của từng channel đang enabled, so sánh c_user cookie.
+ *
+ * @returns {Promise<Object|null>} Channel có cùng c_user, hoặc null
+ */
+async function findMatchingChannelByCUser(userId, platform, cUser) {
+    if (!cUser || platform !== 'FB') return null;
+    const candidates = await Channel
+        .find({ userId, platform, isEnabled: true })
+        .select('_id accountName accountType storageStatePath fbUserId')
+        .lean();
+    for (const ch of candidates) {
+        // Fast path: nếu channel đã lưu sẵn fbUserId thì so sánh trực tiếp
+        if (ch.fbUserId && String(ch.fbUserId) === String(cUser)) {
+            return ch;
+        }
+        // Slow path: đọc từ storage-state.json
+        const storagePath = normalizeEncryptedValue(ch.storageStatePath);
+        if (!storagePath) continue;
+        const existingCUser = extractCUserFromStorageState(storagePath);
+        if (existingCUser && String(existingCUser) === String(cUser)) {
+            return ch;
+        }
+    }
+    return null;
+}
+
+/**
+ * Generic: tìm channel theo user ID cho BẤT KỲ platform nào (FB/IG/TT/YT/ZO/PI/TH).
+ *
+ * @param {string} userId - ID user hiện tại
+ * @param {string} platform - 'FB' | 'IG' | 'TT' | 'YT' | 'ZO' | 'PI' | 'TH'
+ * @param {string} userIdValue - User ID vừa scrape được từ storage state mới
+ * @returns {Promise<Object|null>} Channel có cùng user ID
+ */
+async function findMatchingChannelByUserId(userId, platform, userIdValue) {
+    if (!userIdValue || !platform) return null;
+
+    // Fast path: nếu channel đã lưu sẵn platformUserId thì so sánh trực tiếp
+    const fastField = `platformUserId_${platform}`; // vd: platformUserId_FB, platformUserId_IG
+    const candidates = await Channel
+        .find({ userId, platform, isEnabled: true })
+        .select(`_id accountName accountType storageStatePath ${fastField} fbUserId platformUserId`)
+        .lean();
+
+    for (const ch of candidates) {
+        // Fast path: cache field
+        if (ch[fastField] && String(ch[fastField]) === String(userIdValue)) {
+            return ch;
+        }
+        // FB có fbUserId riêng (backward compat)
+        if (platform === 'FB' && ch.fbUserId && String(ch.fbUserId) === String(userIdValue)) {
+            return ch;
+        }
+        // Generic platformUserId
+        if (ch.platformUserId && String(ch.platformUserId) === String(userIdValue)) {
+            return ch;
+        }
+        // Slow path: đọc từ storage-state.json
+        const storagePath = normalizeEncryptedValue(ch.storageStatePath);
+        if (!storagePath) continue;
+        const existingUserId = extractUserIdFromStorageState(storagePath, platform);
+        if (existingUserId && String(existingUserId) === String(userIdValue)) {
+            return ch;
+        }
+    }
+    return null;
 }
 
 // ─── Page controller ─────────────────────────────────────────────────────────
@@ -226,12 +300,32 @@ const openPlatformConnect = async (req, res) => {
             ...(finalAvatarUrl && { avatarUrl: finalAvatarUrl })
         };
 
-        // Upsert: update existing or create new (dùng finalAccountName để match)
-        const matchedChannel = await findMatchingChannel(req.user._id, platform, finalAccountName, finalAccountType);
+        // ===== DEDUP THEO USER ID (cross-platform, chắc chắn unique) =====
+        // Mỗi platform có 1 user ID duy nhất (FB: c_user, IG: ds_user_id, ...)
+        // → match theo ID trước, fallback theo name nếu chưa có storage state
+        let matchedChannel = null;
+        const newUserId = extractUserIdFromStorageState(result.storageStatePath, platform);
+        if (newUserId) {
+            matchedChannel = await findMatchingChannelByUserId(req.user._id, platform, newUserId);
+            if (matchedChannel) {
+                // Cache userId cho lần sau (fast path)
+                updateData[`platformUserId_${platform}`] = newUserId;
+                if (platform === 'FB') updateData.fbUserId = newUserId;  // backward compat
+                console.log(`[openPlatformConnect:${platform}] Matched existing channel via userId=${newUserId} (was: "${matchedChannel.accountName}" → new: "${finalAccountName}")`);
+            }
+        }
+
+        // Fallback: match theo (accountName + accountType)
+        if (!matchedChannel) {
+            matchedChannel = await findMatchingChannel(req.user._id, platform, finalAccountName, finalAccountType);
+        }
+
         let channel;
         if (matchedChannel) {
+            // UPDATE channel cũ — KHÔNG tạo mới
             channel = await Channel.findByIdAndUpdate(matchedChannel._id, updateData, { returnDocument: "after" });
         } else {
+            // Chỉ tạo mới khi thực sự chưa có (lần đầu add account)
             channel = await Channel.create(updateData);
         }
 
@@ -245,6 +339,32 @@ const openPlatformConnect = async (req, res) => {
                 accountName: finalAccountName,
                 accountType: normalizedAccountType
             });
+        }
+
+        // FB: tự động quét groups ngầm dưới nền (fire-and-forget).
+        // - Tận dụng session Playwright vừa login nếu còn mở.
+        // - Idempotent: nếu account đã có cache groups thì skip.
+        // - Không await, không throw → response client trả về ngay.
+        if (platform === 'FB' && channel) {
+            try {
+                const started = startBackgroundGroupScan({
+                    sessionKey: result.sessionKey,
+                    userId: req.user._id,
+                    channelId: channel._id,
+                    accountName: finalAccountName,
+                    accountType: normalizedAccountType,
+                    existingSessionDir: result.storageStatePath
+                        ? require('path').dirname(result.storageStatePath)
+                        : '',
+                    scanMode: 'fast',
+                    force: false
+                });
+                if (started) {
+                    console.log(`[openPlatformConnect:FB] Đã kích hoạt auto-scan groups ngầm cho ${finalAccountName}`);
+                }
+            } catch (e) {
+                console.warn(`[openPlatformConnect:FB] Không thể bật auto-scan groups:`, e.message);
+            }
         }
 
         return res.json({
@@ -276,6 +396,34 @@ const createChannel = async (req, res) => {
         }
         if (!ALLOWED_PLATFORMS.includes(platform)) {
             return res.status(400).json({ success: false, message: 'Nền tảng không hợp lệ' });
+        }
+
+        // ===== DEDUP: chống tạo duplicate channel =====
+        // Match theo (accountName + accountType) — manual create không có cookies để check c_user
+        const existingByName = await findMatchingChannel(req.user._id, platform, accountName, accountType);
+        if (existingByName) {
+            return res.status(409).json({
+                success: false,
+                message: `Tài khoản "${accountName}" đã tồn tại trên ${PLATFORM_LABELS[platform] || platform}. Vui lòng chọn tên khác hoặc cập nhật tài khoản đã có.`,
+                duplicate: true,
+                existingChannelId: existingByName._id
+            });
+        }
+        // Nếu có storageStatePath truyền lên → check thêm bằng userId (mọi platform)
+        const storageStatePath = normalizeEncryptedValue(req.body.storageStatePath || '');
+        if (storageStatePath) {
+            const userIdValue = extractUserIdFromStorageState(storageStatePath, platform);
+            if (userIdValue) {
+                const existingByUserId = await findMatchingChannelByUserId(req.user._id, platform, userIdValue);
+                if (existingByUserId) {
+                    return res.status(409).json({
+                        success: false,
+                        message: `Tài khoản ${PLATFORM_LABELS[platform] || platform} này (ID: ${userIdValue}) đã được thêm trước đó với tên "${existingByUserId.accountName}". Vui lòng kết nối lại tài khoản đó thay vì tạo mới.`,
+                        duplicate: true,
+                        existingChannelId: existingByUserId._id
+                    });
+                }
+            }
         }
 
         const profileUrl = normalizeEncryptedValue(req.body.profileUrl || req.body.facebookUrl || '');

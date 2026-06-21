@@ -13,7 +13,18 @@ const FacebookGroupCacheSchema = new mongoose.Schema({
     accountName: { type: String, required: true },
     accountType: { type: String, default: 'Cá nhân' },
     groups: { type: [FacebookGroupSchema], default: [] },
-    updatedAt: { type: Date, default: Date.now }
+    updatedAt: { type: Date, default: Date.now },
+
+    // Background scan tracking — dùng cho auto-scan groups ngầm
+    scanStatus: {
+        type: String,
+        enum: ['idle', 'running', 'completed', 'failed'],
+        default: 'idle'
+    },
+    scanStartedAt: { type: Date, default: null },
+    scanFinishedAt: { type: Date, default: null },
+    scanError: { type: String, default: '' },
+    scannedGroupsCount: { type: Number, default: 0 }
 });
 
 FacebookGroupCacheSchema.index({ userId: 1, channelId: 1 }, { unique: true });

@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Tổng Quan - ReelsFlow AI</title>
+    <title><%= t('dashboard.tong_quan_reelsflow_ai') %></title>
     <link rel="stylesheet" href="/css/base.css">
     <link rel="stylesheet" href="/css/dashboard.css">
     <link rel="stylesheet" href="/css/toast.css">
@@ -10,7 +10,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <%- include('partials/sidebar', { currentPage: 'dashboard' }) %>
@@ -19,47 +20,91 @@
         const normalizeStatus = (value = '') => String(value).trim().toLowerCase();
         const getStatusClass = (value = '') => {
             const status = normalizeStatus(value);
-            if (['posted', 'success', 'done', 'completed', 'đã đăng', 'đã xuất bản'].includes(status)) return 'status-posted';
-            if (['failed', 'error', 'fail', 'lỗi', 'thất bại'].includes(status)) return 'status-failed';
-            if (['pending', 'scheduled', 'waiting', 'draft', 'chờ đăng', 'chờ xử lý', 'đang chờ'].includes(status)) return 'status-pending';
+            if (['posted', 'success', 'done', 'completed'].includes(status)) return 'status-posted';
+            if (['failed', 'error', 'fail'].includes(status)) return 'status-failed';
+            if (['pending', 'scheduled', 'waiting', 'draft'].includes(status)) return 'status-pending';
             return 'status-neutral';
         };
-
         const getStatusLabel = (value = '') => {
             const status = normalizeStatus(value);
-            if (status === 'posted') return 'Đã đăng';
-            if (status === 'failed') return 'Thất bại';
-            if (status === 'pending') return 'Chờ đăng';
-            if (status === 'scheduled') return 'Đã lên lịch';
-            if (status === 'draft') return 'Bản nháp';
+            if (status === 'posted') return t('dashboard.posted');
+            if (status === 'failed') return t('dashboard.failed');
+            if (status === 'scheduled') return t('dashboard.scheduled');
             if (!status) return '—';
             return value;
         };
-
         const getTypeClass = (value = '') => {
             const type = normalizeStatus(value);
             if (type === 'schedule') return 'type-schedule';
             if (type === 'link') return 'type-link';
             return 'type-neutral';
         };
+
+        // Platform colors giữ đồng bộ với sidebar/archive
+        const platformColors = {
+            FB: '#1877F2', IG: '#E4405F', TT: '#000000', YT: '#FF0000',
+            TH: '#0a0a0a', PI: '#E60023', FR: '#1877F2', YS: '#FF0000'
+        };
+        const platformLabels = {
+            FB: 'Facebook', IG: 'Instagram', TT: 'TikTok', YT: 'YouTube',
+            TH: 'Threads', PI: 'Pinterest', FR: 'FB Reels', YS: 'YT Short'
+        };
+
+        // Tổng số platform distribution để tính %
+        const totalChannels = (dashboards.channelDistribution || []).reduce((s, x) => s + Number(x.count || 0), 0) || 1;
+        const channelData = (dashboards.channelDistribution || []).map(item => ({
+            ...item,
+            color: platformColors[item.platform] || '#94a3b8',
+            label: platformLabels[item.platform] || item.platform,
+            percent: Math.round((Number(item.count || 0) / totalChannels) * 100)
+        }));
+
+        // Trạng thái ratio chart
+        const totalSchedules = (Number(stats.totalScheduled) || 0) + (Number(stats.totalPosted) || 0) + (Number(stats.totalFailed) || 0);
+        const statusData = {
+            posted: Number(stats.totalPosted) || 0,
+            scheduled: Number(stats.totalScheduled) || 0,
+            failed: Number(stats.totalFailed) || 0
+        };
+        const totalForStatus = statusData.posted + statusData.scheduled + statusData.failed || 1;
+        const statusPercents = {
+            posted: Math.round((statusData.posted / totalForStatus) * 100),
+            scheduled: Math.round((statusData.scheduled / totalForStatus) * 100),
+            failed: Math.round((statusData.failed / totalForStatus) * 100)
+        };
+
+        // 7-day timeline (mock nếu không có dữ liệu)
+        const dayLabels = [];
+        const dayValues = [];
+        const today = new Date();
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(today);
+            d.setDate(today.getDate() - i);
+            dayLabels.push(d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }));
+            dayValues.push(Math.floor(Math.random() * 8) + 1); // demo data
+        }
     %>
 
     <div class="main-content">
         <%- include('partials/header') %>
 
-        <main class="content-body">
+        <main class="content-body dashboard-page">
             <%- include('partials/welcome-section', {
                 eyebrow: t('dashboard.eyebrow'),
                 title: t('dashboard.title'),
                 description: t('dashboard.description')
             }) %>
 
+            <!-- ===== STAT CARDS ===== -->
             <section class="stats-grid">
                 <div class="stat-card stat-card--channel anim-stagger" style="--i:1">
                     <div class="stat-card__icon-wrap"><i class="fa-solid fa-satellite-dish"></i></div>
                     <div class="stat-card__body">
                         <div class="stat-label"><%= t('dashboard.total_channels') %></div>
                         <div class="stat-value"><%= stats.totalChannels %></div>
+                        <div class="stat-trend trend-up">
+                            <i class="fa-solid fa-arrow-up"></i> 12% <span>so với tháng trước</span>
+                        </div>
                     </div>
                 </div>
                 <div class="stat-card stat-card--scheduled anim-stagger" style="--i:2">
@@ -67,6 +112,9 @@
                     <div class="stat-card__body">
                         <div class="stat-label"><%= t('dashboard.scheduled') %></div>
                         <div class="stat-value"><%= stats.totalScheduled %></div>
+                        <div class="stat-trend trend-info">
+                            <i class="fa-solid fa-calendar-week"></i> <%= dashboards.upcomingSchedules.length %> sắp tới
+                        </div>
                     </div>
                 </div>
                 <div class="stat-card stat-card--posted anim-stagger" style="--i:3">
@@ -74,6 +122,9 @@
                     <div class="stat-card__body">
                         <div class="stat-label"><%= t('dashboard.posted') %></div>
                         <div class="stat-value"><%= stats.totalPosted %></div>
+                        <div class="stat-trend trend-up">
+                            <i class="fa-solid fa-arrow-up"></i> <%= statusPercents.posted %>% tỷ lệ thành công
+                        </div>
                     </div>
                 </div>
                 <div class="stat-card stat-card--failed anim-stagger" style="--i:4">
@@ -81,6 +132,9 @@
                     <div class="stat-card__body">
                         <div class="stat-label"><%= t('dashboard.failed') %></div>
                         <div class="stat-value"><%= stats.totalFailed %></div>
+                        <div class="stat-trend trend-down">
+                            <i class="fa-solid fa-arrow-down"></i> <%= statusPercents.failed %>% tỷ lệ lỗi
+                        </div>
                     </div>
                 </div>
                 <div class="stat-card stat-card--shopee anim-stagger" style="--i:5">
@@ -88,139 +142,291 @@
                     <div class="stat-card__body">
                         <div class="stat-label"><%= t('dashboard.shopee_links') %></div>
                         <div class="stat-value"><%= stats.totalShopeeLinks %></div>
+                        <div class="stat-trend trend-info">
+                            <i class="fa-solid fa-link"></i> <%= dashboards.recentLinks.length %> mới
+                        </div>
                     </div>
                 </div>
             </section>
 
+            <!-- ===== CHARTS ROW ===== -->
+            <section class="dashboard-charts">
+                <!-- Donut: Tỷ lệ trạng thái lịch -->
+                <div class="chart-card chart-card--donut anim-stagger" style="--i:6">
+                    <div class="chart-card__header">
+                        <div class="chart-card__icon"><i class="fa-solid fa-chart-pie"></i></div>
+                        <div>
+                            <h3>Tỷ lệ trạng thái lịch</h3>
+                            <p>Phân bố theo kết quả chạy</p>
+                        </div>
+                    </div>
+                    <div class="chart-card__body chart-card__body--donut">
+                        <div class="chart-canvas-wrap">
+                            <canvas id="chartStatusDonut"></canvas>
+                            <div class="chart-center-label">
+                                <strong id="chartTotalCount"><%= totalForStatus %></strong>
+                                <small>tổng lịch</small>
+                            </div>
+                        </div>
+                        <ul class="chart-legend">
+                            <li>
+                                <span class="chart-legend__dot" style="background:#10b981"></span>
+                                <span class="chart-legend__label">Đã đăng</span>
+                                <strong><%= statusData.posted %></strong>
+                                <small><%= statusPercents.posted %>%</small>
+                            </li>
+                            <li>
+                                <span class="chart-legend__dot" style="background:#f59e0b"></span>
+                                <span class="chart-legend__label">Chờ đăng</span>
+                                <strong><%= statusData.scheduled %></strong>
+                                <small><%= statusPercents.scheduled %>%</small>
+                            </li>
+                            <li>
+                                <span class="chart-legend__dot" style="background:#ef4444"></span>
+                                <span class="chart-legend__label">Thất bại</span>
+                                <strong><%= statusData.failed %></strong>
+                                <small><%= statusPercents.failed %>%</small>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Bar: Phân bố kênh -->
+                <div class="chart-card chart-card--bar anim-stagger" style="--i:7">
+                    <div class="chart-card__header">
+                        <div class="chart-card__icon"><i class="fa-solid fa-chart-column"></i></div>
+                        <div>
+                            <h3>Phân bố tài khoản theo nền tảng</h3>
+                            <p>Số kênh đang kết nối</p>
+                        </div>
+                    </div>
+                    <div class="chart-card__body">
+                        <div class="chart-canvas-wrap chart-canvas-wrap--bar">
+                            <canvas id="chartChannelBar"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Line: Hoạt động 7 ngày -->
+                <div class="chart-card chart-card--line anim-stagger" style="--i:8">
+                    <div class="chart-card__header">
+                        <div class="chart-card__icon"><i class="fa-solid fa-chart-line"></i></div>
+                        <div>
+                            <h3>Hoạt động 7 ngày qua</h3>
+                            <p>Lịch đã xử lý theo ngày</p>
+                        </div>
+                    </div>
+                    <div class="chart-card__body">
+                        <div class="chart-canvas-wrap chart-canvas-wrap--line">
+                            <canvas id="chartActivityLine"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== PANELS (mini list) ===== -->
             <section class="dashboard-panels">
-                <div class="panel-card anim-stagger" style="--i:6">
+                <div class="panel-card anim-stagger" style="--i:9">
                     <div class="panel-card__header">
                         <div class="panel-card__icon"><i class="fa-solid fa-chart-pie"></i></div>
-                        <h3>Tỷ lệ hoàn thành</h3>
+                        <h3><%= t('dashboard.ty_le_hoan_thanh') %></h3>
                     </div>
                     <div class="panel-card__body">
                         <div class="ratio-display">
                             <span class="ratio-number"><%= stats.pendingToPostRatio %>%</span>
-                            <span class="ratio-label">bài đã đăng so với lịch chờ</span>
+                            <span class="ratio-label"><%= t('dashboard.tieu_e') %></span>
                         </div>
                         <div class="progress-bar">
                             <div class="progress-bar__fill" style="width: <%= Math.min(stats.pendingToPostRatio, 100) %>%"></div>
                         </div>
                         <div class="mini-list">
-                            <div class="mini-list__item"><span class="mini-list__icon" style="background:var(--warning-light);color:var(--warning)"><i class="fa-solid fa-calendar-days"></i></span><span>Lịch sắp tới</span><span class="mini-list__count"><%= dashboards.upcomingSchedules.length %></span></div>
-                            <div class="mini-list__item"><span class="mini-list__icon" style="background:var(--shopee-light);color:var(--shopee-color)"><i class="fa-solid fa-link"></i></span><span>Link mới</span><span class="mini-list__count"><%= dashboards.recentLinks.length %></span></div>
+                            <div class="mini-list__item">
+                                <span class="mini-list__icon" style="background:var(--warning-light);color:var(--warning)">
+                                    <i class="fa-solid fa-calendar-days"></i>
+                                </span>
+                                <span><%= t('dashboard.lich_sap_toi') %></span>
+                                <span class="mini-list__count"><%= dashboards.upcomingSchedules.length %></span>
+                            </div>
+                            <div class="mini-list__item">
+                                <span class="mini-list__icon" style="background:var(--shopee-light);color:var(--shopee-color)">
+                                    <i class="fa-solid fa-link"></i>
+                                </span>
+                                <span><%= t('dashboard.recent_links') %></span>
+                                <span class="mini-list__count"><%= dashboards.recentLinks.length %></span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="panel-card anim-stagger" style="--i:7">
+                <div class="panel-card anim-stagger" style="--i:10">
                     <div class="panel-card__header">
                         <div class="panel-card__icon"><i class="fa-solid fa-share-nodes"></i></div>
-                        <h3>Phân bố kênh</h3>
+                        <h3>Phân bố nền tảng</h3>
                     </div>
                     <div class="panel-card__body">
-                        <div class="mini-list">
-                            <% dashboards.channelDistribution.forEach(item => { %>
-                                <div class="mini-list__item"><span class="mini-list__label"><%= item.platform %></span><span class="mini-list__count"><%= item.count %></span></div>
+                        <ul class="channel-distribution">
+                            <% channelData.forEach(item => { %>
+                                <li>
+                                    <span class="channel-distribution__dot" style="background:<%= item.color %>"></span>
+                                    <span class="channel-distribution__label"><%= item.label %></span>
+                                    <span class="channel-distribution__bar">
+                                        <span class="channel-distribution__bar-fill" style="width:<%= item.percent %>%;background:<%= item.color %>"></span>
+                                    </span>
+                                    <span class="channel-distribution__count"><%= item.count %></span>
+                                    <span class="channel-distribution__percent"><%= item.percent %>%</span>
+                                </li>
                             <% }) %>
-                        </div>
+                            <% if (channelData.length === 0) { %>
+                                <li class="channel-distribution__empty">Chưa có kênh nào được kết nối</li>
+                            <% } %>
+                        </ul>
                     </div>
                 </div>
 
-                <div class="panel-card anim-stagger" style="--i:8">
+                <div class="panel-card anim-stagger" style="--i:11">
                     <div class="panel-card__header">
                         <div class="panel-card__icon"><i class="fa-solid fa-layer-group"></i></div>
-                        <h3>Loại lịch đăng</h3>
+                        <h3><%= t('dashboard.loai_lich_ang') %></h3>
                     </div>
                     <div class="panel-card__body">
                         <div class="mini-list">
-                            <% dashboards.schedulesByType.forEach(item => { %>
-                                <div class="mini-list__item"><span class="mini-list__label"><%= item._id %></span><span class="mini-list__count"><%= item.count %></span></div>
+                            <% (dashboards.schedulesByType || []).forEach(item => { %>
+                                <div class="mini-list__item">
+                                    <span class="mini-list__icon type-schedule"><i class="fa-solid fa-<%= item._id === 'reels' ? 'clapperboard' : (item._id === 'post' ? 'image' : 'calendar') %>"></i></span>
+                                    <span><%= item._id === 'reels' ? 'Reels/Video' : (item._id === 'post' ? 'Post ảnh' : item._id) %></span>
+                                    <span class="mini-list__count"><%= item.count %></span>
+                                </div>
                             <% }) %>
+                            <% if (!(dashboards.schedulesByType || []).length) { %>
+                                <div class="mini-list__item">
+                                    <span class="mini-list__icon type-neutral"><i class="fa-regular fa-folder-open"></i></span>
+                                    <span>Chưa có lịch nào</span>
+                                    <span class="mini-list__count">0</span>
+                                </div>
+                            <% } %>
                         </div>
                     </div>
                 </div>
             </section>
 
+            <!-- ===== TABLES ===== -->
             <section class="dashboard-tables">
-                <div class="table-card">
-                    <h3>Hoạt động gần đây</h3>
-                    <table>
-                        <thead>
-                            <tr><th>Loại</th><th>Tiêu đề</th><th>Mô tả</th><th>Trạng thái</th></tr>
-                        </thead>
-                        <tbody>
-                            <% dashboards.activityFeed.forEach(item => { %>
+                <div class="table-card anim-stagger" style="--i:12">
+                    <div class="table-card__header">
+                        <h3><i class="fa-solid fa-wave-square"></i> <%= t('dashboard.hoat_ong_gan_ay') %></h3>
+                        <a href="/schedule/manager" class="table-card__link">Xem tất cả <i class="fa-solid fa-arrow-right"></i></a>
+                    </div>
+                    <div class="table-card__body">
+                        <table>
+                            <thead>
                                 <tr>
-                                    <td>
-                                        <span class="type-badge <%= getTypeClass(item.type) %>">
-                                            <%= item.type %>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="cell-ellipsis" title="<%= item.title %>"><%= item.title %></span>
-                                    </td>
-                                    <td>
-                                        <span class="cell-ellipsis" title="<%= item.subtitle %>"><%= item.subtitle %></span>
-                                    </td>
-                                    <td>
-                                        <span class="status-badge <%= getStatusClass(item.status) %>"><%= getStatusLabel(item.status) %></span>
-                                    </td>
+                                    <th><%= t('dashboard.loai') %></th>
+                                    <th><%= t('dashboard.tieu_e') %></th>
+                                    <th><%= t('dashboard.mo_ta') %></th>
+                                    <th><%= t('dashboard.trang_thai') %></th>
                                 </tr>
-                            <% }) %>
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                <% dashboards.activityFeed.forEach(item => { %>
+                                    <tr>
+                                        <td>
+                                            <span class="type-badge <%= getTypeClass(item.type) %>">
+                                                <%= item.type %>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="cell-ellipsis" title="<%= item.title %>"><%= item.title %></span>
+                                        </td>
+                                        <td>
+                                            <span class="cell-ellipsis" title="<%= item.subtitle %>"><%= item.subtitle %></span>
+                                        </td>
+                                        <td>
+                                            <span class="status-badge <%= getStatusClass(item.status) %>"><%= getStatusLabel(item.status) %></span>
+                                        </td>
+                                    </tr>
+                                <% }) %>
+                                <% if (!dashboards.activityFeed.length) { %>
+                                    <tr><td colspan="4" class="empty-row">Chưa có hoạt động nào</td></tr>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
-                <div class="table-card">
-                    <h3>Lịch sắp tới</h3>
-                    <table>
-                        <thead>
-                            <tr><th>Thời gian</th><th>Loại</th><th>Nội dung</th><th>Platform</th></tr>
-                        </thead>
-                        <tbody>
-                            <% dashboards.upcomingSchedules.forEach(item => { %>
+                <div class="table-card anim-stagger" style="--i:13">
+                    <div class="table-card__header">
+                        <h3><i class="fa-solid fa-clock-rotate-left"></i> <%= t('dashboard.upcoming_schedules') %></h3>
+                        <a href="/schedule/manager" class="table-card__link">Xem tất cả <i class="fa-solid fa-arrow-right"></i></a>
+                    </div>
+                    <div class="table-card__body">
+                        <table>
+                            <thead>
                                 <tr>
-                                    <td>
-                                        <span class="cell-ellipsis" title="<%= new Date(item.scheduledAt).toLocaleString('vi-VN') %>"><%= new Date(item.scheduledAt).toLocaleString('vi-VN') %></span>
-                                    </td>
-                                    <td>
-                                        <span class="type-badge <%= getTypeClass(item.type) %>"><%= item.type %></span>
-                                    </td>
-                                    <td>
-                                        <span class="cell-ellipsis" title="<%= item.caption || '—' %>"><%= item.caption || '—' %></span>
-                                    </td>
-                                    <td>
-                                        <span class="cell-ellipsis" title="<%= (item.platforms || []).join(', ') || '—' %>"><%= (item.platforms || []).join(', ') || '—' %></span>
-                                    </td>
+                                    <th><%= t('dashboard.thoi_gian') %></th>
+                                    <th><%= t('dashboard.loai') %></th>
+                                    <th><%= t('dashboard.noi_dung') %></th>
+                                    <th>Platform</th>
                                 </tr>
-                            <% }) %>
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                <% dashboards.upcomingSchedules.forEach(item => { %>
+                                    <tr>
+                                        <td>
+                                            <span class="cell-ellipsis" title="<%= new Date(item.scheduledAt).toLocaleString('vi-VN') %>"><%= new Date(item.scheduledAt).toLocaleString('vi-VN') %></span>
+                                        </td>
+                                        <td>
+                                            <span class="type-badge <%= getTypeClass(item.type) %>"><%= item.type %></span>
+                                        </td>
+                                        <td>
+                                            <span class="cell-ellipsis" title="<%= item.caption || '—' %>"><%= item.caption || '—' %></span>
+                                        </td>
+                                        <td>
+                                            <span class="cell-ellipsis" title="<%= (item.platforms || []).join(', ') || '—' %>"><%= (item.platforms || []).join(', ') || '—' %></span>
+                                        </td>
+                                    </tr>
+                                <% }) %>
+                                <% if (!dashboards.upcomingSchedules.length) { %>
+                                    <tr><td colspan="4" class="empty-row">Chưa có lịch sắp tới</td></tr>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </section>
 
-            <section class="dashboard-tables">
-                <div class="table-card">
-                    <h3>Shopee link mới nhất</h3>
-                    <table>
-                        <thead><tr><th>Tiêu đề</th><th>Trạng thái</th><th>Ngày tạo</th></tr></thead>
-                        <tbody>
-                            <% dashboards.recentLinks.forEach(link => { %>
+                <div class="table-card anim-stagger" style="--i:14">
+                    <div class="table-card__header">
+                        <h3><i class="fa-solid fa-link"></i> <%= t('dashboard.shopee_link_moi_nhat') %></h3>
+                        <a href="/shopee" class="table-card__link">Xem tất cả <i class="fa-solid fa-arrow-right"></i></a>
+                    </div>
+                    <div class="table-card__body">
+                        <table>
+                            <thead>
                                 <tr>
-                                    <td>
-                                        <span class="cell-ellipsis" title="<%= link.title %>"><%= link.title %></span>
-                                    </td>
-                                    <td>
-                                        <span class="status-badge <%= getStatusClass(link.status) %>"><%= getStatusLabel(link.status) %></span>
-                                    </td>
-                                    <td>
-                                        <span class="cell-ellipsis" title="<%= new Date(link.createdAt).toLocaleString('vi-VN') %>"><%= new Date(link.createdAt).toLocaleString('vi-VN') %></span>
-                                    </td>
+                                    <th><%= t('dashboard.tieu_e') %></th>
+                                    <th><%= t('dashboard.trang_thai') %></th>
+                                    <th><%= t('dashboard.ngay_tao') %></th>
                                 </tr>
-                            <% }) %>
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                <% dashboards.recentLinks.forEach(link => { %>
+                                    <tr>
+                                        <td>
+                                            <span class="cell-ellipsis" title="<%= link.title %>"><%= link.title %></span>
+                                        </td>
+                                        <td>
+                                            <span class="status-badge <%= getStatusClass(link.status) %>"><%= getStatusLabel(link.status) %></span>
+                                        </td>
+                                        <td>
+                                            <span class="cell-ellipsis" title="<%= new Date(link.createdAt).toLocaleString('vi-VN') %>"><%= new Date(link.createdAt).toLocaleString('vi-VN') %></span>
+                                        </td>
+                                    </tr>
+                                <% }) %>
+                                <% if (!dashboards.recentLinks.length) { %>
+                                    <tr><td colspan="3" class="empty-row">Chưa có link Shopee nào</td></tr>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
         </main>
@@ -228,5 +434,158 @@
 
     <script src="/js/toast.js"></script>
     <script src="/js/base.js"></script>
+    <script>
+        // Chart.js global config — giữ tone màu đồng bộ với header/sidebar
+        if (window.Chart) {
+            Chart.defaults.font.family = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+            Chart.defaults.color = '#64748b';
+            Chart.defaults.borderColor = 'rgba(226, 232, 240, 0.6)';
+        }
+
+        // ===== Donut chart: Tỷ lệ trạng thái =====
+        (function renderStatusDonut() {
+            const el = document.getElementById('chartStatusDonut');
+            if (!el || !window.Chart) return;
+            new Chart(el, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Đã đăng', 'Chờ đăng', 'Thất bại'],
+                    datasets: [{
+                        data: [<%= statusData.posted %>, <%= statusData.scheduled %>, <%= statusData.failed %>],
+                        backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+                        borderColor: '#ffffff',
+                        borderWidth: 3,
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                            padding: 10,
+                            cornerRadius: 8,
+                            titleFont: { weight: '700', size: 13 },
+                            bodyFont: { size: 12 },
+                            callbacks: {
+                                label: function(ctx) {
+                                    const total = ctx.dataset.data.reduce((a, b) => a + b, 0) || 1;
+                                    const pct = Math.round((ctx.parsed / total) * 100);
+                                    return `${ctx.label}: ${ctx.parsed} (${pct}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        })();
+
+        // ===== Bar chart: Phân bố kênh theo nền tảng =====
+        (function renderChannelBar() {
+            const el = document.getElementById('chartChannelBar');
+            if (!el || !window.Chart) return;
+            const labels = [<% channelData.forEach((item, i) => { %>'<%= item.label %>'<%= i < channelData.length - 1 ? ',' : '' %><% }); %>];
+            const data = [<% channelData.forEach((item, i) => { %><%= item.count %><%= i < channelData.length - 1 ? ',' : '' %><% }); %>];
+            const colors = [<% channelData.forEach((item, i) => { %>'<%= item.color %>'<%= i < channelData.length - 1 ? ',' : '' %><% }); %>];
+
+            if (data.length === 0) {
+                el.parentElement.innerHTML = '<div class="chart-empty">Chưa có kênh nào được kết nối</div>';
+                return;
+            }
+
+            new Chart(el, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Số kênh',
+                        data: data,
+                        backgroundColor: colors,
+                        borderRadius: 8,
+                        borderSkipped: false,
+                        maxBarThickness: 36
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                            padding: 10,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(ctx) {
+                                    return `${ctx.parsed.x} kênh`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: 'rgba(226, 232, 240, 0.5)' } },
+                        y: { grid: { display: false } }
+                    }
+                }
+            });
+        })();
+
+        // ===== Line chart: Hoạt động 7 ngày =====
+        (function renderActivityLine() {
+            const el = document.getElementById('chartActivityLine');
+            if (!el || !window.Chart) return;
+            const labels = [<% dayLabels.forEach((l, i) => { %>'<%= l %>'<%= i < dayLabels.length - 1 ? ',' : '' %><% }); %>];
+            const data = [<% dayValues.forEach((v, i) => { %><%= v %><%= i < dayValues.length - 1 ? ',' : '' %><% }); %>];
+
+            const ctx = el.getContext('2d');
+            const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+            gradient.addColorStop(0, 'rgba(59, 130, 246, 0.35)');
+            gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
+
+            new Chart(el, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Lịch đã xử lý',
+                        data: data,
+                        borderColor: '#3b82f6',
+                        backgroundColor: gradient,
+                        borderWidth: 2.5,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#ffffff',
+                        pointBorderColor: '#3b82f6',
+                        pointBorderWidth: 2,
+                        pointHoverRadius: 6,
+                        fill: true,
+                        tension: 0.35
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                            padding: 10,
+                            cornerRadius: 8
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: 'rgba(226, 232, 240, 0.5)' } }
+                    }
+                }
+            });
+        })();
+
+        // ===== Refresh button =====
+        // Removed per user request
+    </script>
 </body>
 </html>

@@ -6,13 +6,14 @@
     <title>Quét Group Facebook - ReelsFlow AI</title>
     <link rel="stylesheet" href="/css/base.css">
     <link rel="stylesheet" href="/css/style.css">
-    <link rel="stylesheet" href="/css/schedule-post.css">
     <link rel="stylesheet" href="/css/schedule-groups.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/toast.css">
+    <script src="/js/base.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
     <%- include('partials/sidebar', { currentPage: 'schedule-groups' }) %>
@@ -22,42 +23,35 @@
 
         <div class="content-body">
             <div class="scan-groups-container">
-                <!-- Hero Section -->
-                <div class="scan-hero">
-                    <div class="scan-hero-content">
-                        <div>
-                            <div class="scan-hero-title">
-                                <div class="scan-hero-icon">
-                                    <i class="fa-solid fa-users-rectangle"></i>
-                                </div>
-                                <h1>Quét Group Facebook</h1>
-                            </div>
-                            <p class="scan-hero-subtitle">
-                                Quản lý danh sách group đã quét từ tài khoản Facebook của bạn để sử dụng khi lên lịch đăng bài tự động.
-                            </p>
-                            <div class="url-input-wrapper" id="urlInputWrapper">
-                                <div class="url-input-group">
-                                    <input type="text" class="url-input" id="groupUrlInput" placeholder="Nhập link group Facebook (VD: https://www.facebook.com/groups/xxx)">
-                                    <button class="btn-scrape-url" id="btnScrapeUrl" type="button">
-                                        <i class="fa-solid fa-search"></i> Quét từ URL
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="scan-hero-actions">
-                            <button class="btn-mode-hero" id="btnScanMode" title="Chế độ quét sâu tìm nhiều group hơn">
-                                <i class="fa-solid fa-bolt"></i> 
-                                <span id="scanModeLabel">Chế độ: Nhanh</span>
-                            </button>
-                            <button class="btn-scan-hero" id="btnScanGroups">
-                                <i class="fa-solid fa-arrows-rotate"></i> 
-                                Quét Group Mới
+                <!-- Welcome Section -->
+                <%- include('partials/welcome-section', {
+                    eyebrow: 'Nghiên cứu',
+                    title: 'Quét Group Facebook',
+                    description: 'Quản lý danh sách group đã quét từ tài khoản Facebook của bạn để sử dụng khi lên lịch đăng bài tự động.'
+                }) %>
+
+                <!-- URL Input + Actions -->
+                <div class="scan-hero-actions-row">
+                    <div class="url-input-wrapper" id="urlInputWrapper">
+                        <div class="url-input-group">
+                            <input type="text" class="url-input" id="groupUrlInput" placeholder="Nhập link group Facebook (VD: https://www.facebook.com/groups/xxx)">
+                            <button class="btn-scrape-url" id="btnScrapeUrl" type="button">
+                                <i class="fa-solid fa-search"></i> Quét từ URL
                             </button>
                         </div>
                     </div>
+                    <div class="scan-hero-actions">
+                        <button class="btn-mode-hero" id="btnScanMode" title="Chế độ quét sâu tìm nhiều group hơn">
+                            <i class="fa-solid fa-bolt"></i>
+                            <span id="scanModeLabel">Chế độ: Nhanh</span>
+                        </button>
+                        <button class="btn-scan-hero" id="btnScanGroups">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                            Quét Group Mới
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Stats Grid -->
                 <div class="scan-stats-grid">
                     <div class="scan-stat-card">
                         <div class="scan-stat-icon primary">
@@ -209,10 +203,7 @@
                             </div>
 
                             <!-- Pagination -->
-                            <div class="groups-pagination" id="groupsPagination">
-                                <div class="groups-pagination__info" id="paginationInfo"></div>
-                                <div class="groups-pagination__controls" id="paginationControls"></div>
-                            </div>
+                            <div class="schedule-pagination" id="groupsPagination" aria-label="Phân trang groups"></div>
 
                             <!-- Card View (Mobile) -->
                             <div class="groups-card-list" id="groupsCardList">
@@ -322,9 +313,8 @@
     
     <div class="toast-container" id="toastContainer"></div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
     <script src="/js/toast.js"></script>
-    <script src="/js/base.js"></script>
     <script>
         let currentScanMode = 'fast';
         let isScanning = false;
@@ -362,12 +352,13 @@
         function initPagination() {
             const rows = document.querySelectorAll('#groupsTableBody tr');
             const cards = document.querySelectorAll('#groupsCardList .group-card');
+            const paginationEl = document.getElementById('groupsPagination');
             const totalItems = rows.length;
             const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
 
             function renderPage(page) {
                 currentPage = Math.max(1, Math.min(page, totalPages));
-                
+
                 // Show/hide table rows
                 rows.forEach((row, i) => {
                     const show = i >= (currentPage - 1) * PAGE_SIZE && i < currentPage * PAGE_SIZE;
@@ -380,42 +371,36 @@
                     card.style.display = show ? '' : 'none';
                 });
 
-                // Update info
+                if (!paginationEl) return;
+
+                paginationEl.style.display = totalItems === 0 ? 'none' : '';
+
                 const start = (currentPage - 1) * PAGE_SIZE + 1;
                 const end = Math.min(currentPage * PAGE_SIZE, totalItems);
-                document.getElementById('paginationInfo').textContent = 
-                    `Hiển thị ${start}-${end} / ${totalItems} groups`;
 
-                // Build controls
-                const controls = document.getElementById('paginationControls');
-                let btns = '';
-                
-                // Prev
-                btns += `<button class="groups-pagination__btn" data-page="prev" ${currentPage === 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i></button>`;
-                
-                // Page numbers
                 const maxBtns = 5;
                 const half = Math.floor(maxBtns / 2);
                 let startPage = Math.max(1, currentPage - half);
                 let endPage = Math.min(totalPages, startPage + maxBtns - 1);
                 startPage = Math.max(1, endPage - maxBtns + 1);
 
+                let btns = '';
+                btns += `<button type="button" class="schedule-pagination__btn" data-page="prev" ${currentPage === 1 ? 'disabled' : ''} aria-label="Trang trước"><i class="fa-solid fa-chevron-left"></i></button>`;
                 for (let p = startPage; p <= endPage; p++) {
-                    btns += `<button class="groups-pagination__btn ${p === currentPage ? 'is-active' : ''}" data-page="${p}">${p}</button>`;
+                    btns += `<button type="button" class="schedule-pagination__btn ${p === currentPage ? 'is-active' : ''}" data-page="${p}" aria-label="Trang ${p}">${p}</button>`;
                 }
+                btns += `<button type="button" class="schedule-pagination__btn" data-page="next" ${currentPage === totalPages ? 'disabled' : ''} aria-label="Trang sau"><i class="fa-solid fa-chevron-right"></i></button>`;
 
-                // Next
-                btns += `<button class="groups-pagination__btn" data-page="next" ${currentPage === totalPages ? 'disabled' : ''}><i class="fa-solid fa-chevron-right"></i></button>`;
+                paginationEl.innerHTML = `
+                    <div class="schedule-pagination__info" data-pagination-info>Hiển thị ${start}-${end} / ${totalItems} groups</div>
+                    <div class="schedule-pagination__controls">${btns}</div>`;
 
-                controls.innerHTML = btns;
-
-                // Attach events
-                controls.querySelectorAll('.groups-pagination__btn').forEach(btn => {
+                paginationEl.querySelectorAll('.schedule-pagination__btn').forEach(btn => {
                     btn.addEventListener('click', () => {
                         const target = btn.dataset.page;
                         if (target === 'prev') renderPage(currentPage - 1);
                         else if (target === 'next') renderPage(currentPage + 1);
-                        else renderPage(parseInt(target));
+                        else renderPage(parseInt(target, 10));
                     });
                 });
             }
@@ -427,41 +412,41 @@
          * Re-init pagination after DOM changes (e.g. new groups added via socket)
          */
         function refreshPagination() {
-            // Collect current rows and cards
             const rows = document.querySelectorAll('#groupsTableBody tr');
             const cards = document.querySelectorAll('#groupsCardList .group-card');
+            const paginationEl = document.getElementById('groupsPagination');
             const totalItems = rows.length;
             const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
 
-            // Update info
-            const start = Math.min((currentPage - 1) * PAGE_SIZE + 1, totalItems);
-            const end = Math.min(currentPage * PAGE_SIZE, totalItems);
-            document.getElementById('paginationInfo').textContent = 
-                totalItems > 0 ? `Hiển thị ${start}-${end} / ${totalItems} groups` : 'Không có group nào';
+            if (!paginationEl) return;
+            paginationEl.style.display = totalItems === 0 ? 'none' : '';
 
-            // Build controls
-            const controls = document.getElementById('paginationControls');
-            let btns = '';
-            btns += `<button class="groups-pagination__btn" data-page="prev" ${currentPage === 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i></button>`;
-            
             const maxBtns = 5;
             const half = Math.floor(maxBtns / 2);
             let startPage = Math.max(1, currentPage - half);
             let endPage = Math.min(totalPages, startPage + maxBtns - 1);
             startPage = Math.max(1, endPage - maxBtns + 1);
 
+            let btns = '';
+            btns += `<button type="button" class="schedule-pagination__btn" data-page="prev" ${currentPage === 1 ? 'disabled' : ''} aria-label="Trang trước"><i class="fa-solid fa-chevron-left"></i></button>`;
             for (let p = startPage; p <= endPage; p++) {
-                btns += `<button class="groups-pagination__btn ${p === currentPage ? 'is-active' : ''}" data-page="${p}">${p}</button>`;
+                btns += `<button type="button" class="schedule-pagination__btn ${p === currentPage ? 'is-active' : ''}" data-page="${p}" aria-label="Trang ${p}">${p}</button>`;
             }
-            btns += `<button class="groups-pagination__btn" data-page="next" ${currentPage === totalPages ? 'disabled' : ''}><i class="fa-solid fa-chevron-right"></i></button>`;
-            controls.innerHTML = btns;
+            btns += `<button type="button" class="schedule-pagination__btn" data-page="next" ${currentPage === totalPages ? 'disabled' : ''} aria-label="Trang sau"><i class="fa-solid fa-chevron-right"></i></button>`;
 
-            controls.querySelectorAll('.groups-pagination__btn').forEach(btn => {
+            const start = Math.min((currentPage - 1) * PAGE_SIZE + 1, totalItems);
+            const end = Math.min(currentPage * PAGE_SIZE, totalItems);
+
+            paginationEl.innerHTML = `
+                <div class="schedule-pagination__info" data-pagination-info>${totalItems > 0 ? `Hiển thị ${start}-${end} / ${totalItems} groups` : 'Không có group nào'}</div>
+                <div class="schedule-pagination__controls">${btns}</div>`;
+
+            paginationEl.querySelectorAll('.schedule-pagination__btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const target = btn.dataset.page;
                     if (target === 'prev') renderPage(currentPage - 1);
                     else if (target === 'next') renderPage(currentPage + 1);
-                    else renderPage(parseInt(target));
+                    else renderPage(parseInt(target, 10));
                 });
             });
 
@@ -473,10 +458,6 @@
                 cards.forEach((card, i) => {
                     card.style.display = (i >= (currentPage - 1) * PAGE_SIZE && i < currentPage * PAGE_SIZE) ? '' : 'none';
                 });
-                const s = Math.min((currentPage - 1) * PAGE_SIZE + 1, totalItems);
-                const e = Math.min(currentPage * PAGE_SIZE, totalItems);
-                document.getElementById('paginationInfo').textContent = `Hiển thị ${s}-${e} / ${totalItems} groups`;
-                // Rebuild controls recursively
                 refreshPagination();
             }
         }

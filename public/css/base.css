@@ -9,8 +9,8 @@
     --primary: #2563eb;
     --primary-dark: #1d4ed8;
     --primary-light: rgba(37, 99, 235, 0.08);
-    --primary-gradient: linear-gradient(135deg, #6366f1, #2563eb, #3b82f6);
-    --primary-gradient-subtle: linear-gradient(135deg, #6366f1 0%, #2563eb 50%, #3b82f6 100%);
+    --primary-gradient: linear-gradient(135deg, #3b82f6, #2563eb, #1d4ed8);
+    --primary-gradient-subtle: linear-gradient(135deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%);
     
     /* Semantic Colors */
     --success: #10b981;
@@ -160,7 +160,7 @@ img {
     height: auto;
 }
 
-/* ===== SIDEBAR ===== */
+/* ===== SIDEBAR (Redesign 2026-06-21 — giữ màu, chỉnh font) ===== */
 .sidebar {
     position: fixed;
     top: 0;
@@ -173,40 +173,42 @@ img {
     flex-direction: column;
     z-index: 100;
     transition: transform var(--transition-normal);
-    box-shadow: 1px 0 8px rgba(0,0,0,0.03);
+    box-shadow: 1px 0 12px rgba(15, 23, 42, 0.04);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .sidebar-brand {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 18px 20px 16px;
+    padding: 20px 22px 18px;
     border-bottom: 1px solid var(--border);
     font-size: 1.05rem;
     font-weight: 700;
     color: var(--text-main);
     position: relative;
     overflow: hidden;
+    letter-spacing: -0.3px;
 }
 
 .sidebar-brand::after {
     content: '';
     position: absolute;
     bottom: 0;
-    left: 20px;
-    right: 20px;
+    left: 22px;
+    right: 22px;
     height: 1px;
     background: linear-gradient(90deg, transparent, var(--primary), transparent);
-    opacity: 0.3;
+    opacity: 0.35;
 }
 
 .sidebar-brand i {
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     color: white;
     background: var(--primary-gradient);
-    padding: 8px;
+    padding: 9px;
     border-radius: var(--radius-sm);
-    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+    box-shadow: 0 2px 10px rgba(37, 99, 235, 0.3);
 }
 
 .sidebar-close-btn {
@@ -230,7 +232,7 @@ img {
 
 .sidebar-menu {
     list-style: none;
-    padding: 12px 10px;
+    padding: 14px 10px;
     flex: 1;
     overflow-y: auto;
 }
@@ -252,10 +254,19 @@ img {
     font-size: 0.65rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 1.2px;
     color: var(--text-light);
-    padding: 18px 12px 6px;
+    padding: 20px 14px 8px;
     position: relative;
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.menu-section-title i {
+    font-size: 0.7rem;
+    opacity: 0.7;
 }
 
 .menu-item {
@@ -271,10 +282,12 @@ img {
     text-decoration: none;
     font-size: 0.875rem;
     font-weight: 500;
+    letter-spacing: -0.1px;
     border-radius: var(--radius-sm);
     transition: all var(--transition-fast);
     position: relative;
     overflow: hidden;
+    font-family: 'Inter', sans-serif;
 }
 
 .menu-item a::before {
@@ -303,6 +316,7 @@ img {
     color: var(--primary);
     background: linear-gradient(135deg, var(--primary-light), rgba(37, 99, 235, 0.04));
     font-weight: 600;
+    letter-spacing: -0.15px;
     border: 1px solid rgba(37, 99, 235, 0.08);
 }
 
@@ -529,27 +543,45 @@ img {
     flex-direction: column;
 }
 
-/* ===== HEADER ===== */
+/* ===== HEADER (Redesign 2026-06-21) ===== */
 .top-nav {
     height: var(--header-height);
-    background: var(--header-bg, rgba(255, 255, 255, 0.85));
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 255, 0.85) 100%);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
     border-bottom: 1px solid var(--header-border, rgba(226, 232, 240, 0.6));
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 28px;
+    padding: 0 24px;
     position: sticky;
     top: 0;
     z-index: 50;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.02);
+}
+
+/* Accent line dưới header */
+.top-nav::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: linear-gradient(90deg,
+        transparent 0%,
+        var(--primary) 20%,
+        #6366f1 50%,
+        var(--primary) 80%,
+        transparent 100%);
+    opacity: 0.5;
+    pointer-events: none;
 }
 
 .nav-left {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 14px;
     flex: 1;
 }
 
@@ -562,36 +594,52 @@ img {
     cursor: pointer;
     padding: 8px 10px;
     border-radius: var(--radius-sm);
-    transition: background var(--transition-fast);
+    transition: all 0.15s ease;
 }
 
 .menu-toggle:hover {
     background: var(--bg-hover);
+    color: var(--primary);
 }
 
 .nav-brand {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding-right: 20px;
-    margin-right: 12px;
-    border-right: 1px solid var(--border);
+    padding-right: 18px;
+    margin-right: 6px;
     position: relative;
 }
 
+/* Divider giữa brand và search */
+.nav-brand::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 25%;
+    bottom: 25%;
+    width: 1px;
+    background: linear-gradient(180deg, transparent, var(--border) 50%, transparent);
+}
+
 .nav-brand-mark {
-    width: 38px;
-    height: 38px;
+    width: 40px;
+    height: 40px;
     border-radius: var(--radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
     background: var(--primary-gradient);
     color: white;
-    font-size: 1rem;
-    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+    font-size: 1.05rem;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25), 0 4px 16px rgba(99, 102, 241, 0.15);
     position: relative;
     overflow: hidden;
+    transition: transform 0.2s ease;
+}
+
+.nav-brand:hover .nav-brand-mark {
+    transform: scale(1.05) rotate(-3deg);
 }
 
 .nav-brand-mark::after {
@@ -601,7 +649,7 @@ img {
     left: -50%;
     width: 200%;
     height: 200%;
-    background: linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%);
+    background: linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.18) 50%, transparent 60%);
     animation: brandShine 4s ease-in-out infinite;
 }
 
@@ -617,7 +665,7 @@ img {
 }
 
 .nav-brand-label {
-    font-size: 0.95rem;
+    font-size: 0.98rem;
     font-weight: 700;
     color: var(--text-main);
     letter-spacing: -0.3px;
@@ -631,31 +679,38 @@ img {
     font-size: 0.7rem;
     color: var(--text-muted);
     letter-spacing: 0.3px;
+    font-weight: 500;
 }
 
 .nav-search {
     display: flex;
     align-items: center;
     gap: 10px;
-    background: var(--bg-main);
+    background: linear-gradient(135deg, var(--bg-main), rgba(241, 245, 249, 0.7));
     padding: 9px 14px;
     border-radius: var(--radius-full);
     width: 100%;
-    max-width: 360px;
-    border: 1.5px solid transparent;
-    transition: all var(--transition-fast);
+    max-width: 380px;
+    border: 1.5px solid var(--border);
+    transition: all 0.2s ease;
+}
+
+.nav-search:hover {
+    border-color: #cbd5e1;
+    background: linear-gradient(135deg, var(--bg-card), rgba(241, 245, 249, 0.5));
 }
 
 .nav-search:focus-within {
     border-color: var(--primary);
     background: var(--bg-card);
-    box-shadow: 0 0 0 4px var(--primary-light);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    transform: translateY(-1px);
 }
 
 .nav-search i {
     color: var(--text-light);
     font-size: 0.85rem;
-    transition: color var(--transition-fast);
+    transition: color 0.2s ease;
 }
 
 .nav-search:focus-within i {
@@ -669,6 +724,7 @@ img {
     width: 100%;
     font-size: 0.85rem;
     color: var(--text-main);
+    font-family: inherit;
 }
 
 .nav-search input::placeholder {
@@ -678,7 +734,12 @@ img {
 .nav-right {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+}
+
+/* Action button base — áp dụng cho bell, theme, language, profile */
+.nav-right > * {
+    position: relative;
 }
 
 /* Notification Bell */

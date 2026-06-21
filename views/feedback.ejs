@@ -17,19 +17,13 @@
     <%- include('partials/header') %>
     <div class="content-body">
 
-        <!-- Hero -->
-        <div class="feedback-hero">
-            <div class="feedback-hero-content">
-                <div class="feedback-hero-left">
-                    <div class="feedback-hero-title">
-                        <div class="feedback-hero-icon"><i class="fa-solid fa-message"></i></div>
-                        <h1>Góp Ý & Yêu Cầu</h1>
-                    </div>
-                    <p class="feedback-hero-subtitle">Bạn muốn AI phát triển theo hướng nào? Hãy gửi ý tưởng, yêu cầu tính năng hoặc báo lỗi tại đây.</p>
-                </div>
-                <button class="btn-feedback-hero" id="btnNewFeedback"><i class="fa-solid fa-plus"></i> Gửi Góp Ý</button>
-            </div>
-        </div>
+        <!-- Welcome Section -->
+        <%- include('partials/welcome-section', {
+            eyebrow: 'Phản hồi',
+            title: 'Góp Ý & Yêu Cầu',
+            description: 'Bạn muốn AI phát triển theo hướng nào? Hãy gửi ý tưởng, yêu cầu tính năng hoặc báo lỗi tại đây.',
+            actionHtml: '<button class="btn-feedback-hero" id="btnNewFeedback"><i class="fa-solid fa-plus"></i> Gửi Góp Ý</button>'
+        }) %>
 
         <!-- Feedback List -->
         <div class="feedback-list" id="feedbackList">

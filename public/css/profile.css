@@ -4,47 +4,52 @@
    =================================== */
 
 .container {
-    max-width: 720px;
+    max-width: 960px;
+    width: 100%;
+    margin: 0 auto;
 }
 
 .page-layout {
-    display: flex;
+    display: grid;
+    grid-template-columns: 220px 1fr;
     gap: 24px;
+    align-items: flex-start;
 }
 
 @media (max-width: 768px) {
     .page-layout {
-        flex-direction: column;
+        grid-template-columns: 1fr;
+        gap: 16px;
     }
 }
 
 /* Settings Nav */
 .settings-nav {
-    width: 200px;
-    flex-shrink: 0;
+    width: 100%;
     display: flex;
     flex-direction: column;
     gap: 4px;
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    padding: 8px;
+    padding: 10px;
     align-self: flex-start;
     position: sticky;
     top: 100px;
+    box-shadow: var(--shadow-sm);
 }
 
 .nav-item {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 12px;
-    border-radius: var(--radius-sm);
+    padding: 11px 14px;
+    border-radius: 8px;
     font-size: 0.875rem;
     font-weight: 500;
     color: var(--text-muted);
     text-decoration: none;
-    transition: all var(--transition-fast);
+    transition: all 0.15s ease;
 }
 
 .nav-item:hover {
@@ -66,25 +71,31 @@
 
 @media (max-width: 768px) {
     .settings-nav {
-        width: 100%;
         flex-direction: row;
         position: static;
         overflow-x: auto;
+        padding: 6px;
     }
-    
+
     .nav-item {
         white-space: nowrap;
+        padding: 8px 12px;
     }
 }
 
 /* Card Form */
 .card-form {
-    flex: 1;
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-xl);
-    padding: 28px;
+    padding: 32px;
     box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 640px) {
+    .card-form {
+        padding: 20px;
+    }
 }
 
 .section-title {
@@ -98,6 +109,8 @@
     font-size: 0.875rem;
     color: var(--text-muted);
     margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
 }
 
 /* Avatar Upload */
@@ -109,37 +122,42 @@
     background: var(--bg-muted);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    margin-bottom: 24px;
+    margin-bottom: 28px;
 }
 
 .avatar-preview-wrapper {
     flex-shrink: 0;
+    width: 88px;
+    height: 88px;
+    border-radius: 16px;
+    overflow: hidden;
 }
 
 .avatar-preview-img {
-    width: 80px;
-    height: 80px;
-    border-radius: var(--radius-lg);
+    width: 100%;
+    height: 100%;
     object-fit: cover;
     border: 3px solid var(--border);
+    border-radius: 16px;
+    display: block;
 }
 
 .avatar-preview-fallback {
-    width: 80px;
-    height: 80px;
-    border-radius: var(--radius-lg);
+    width: 100%;
+    height: 100%;
     background: var(--primary-gradient);
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    font-size: 1.5rem;
+    font-size: 1.6rem;
     font-weight: 700;
     border: 3px solid rgba(255,255,255,0.3);
 }
 
 .avatar-upload-copy {
     flex: 1;
+    min-width: 0;
 }
 
 .avatar-upload-copy h3 {
@@ -163,16 +181,17 @@
     background: var(--primary-light);
     color: var(--primary);
     border: 1px solid rgba(37, 99, 235, 0.2);
-    border-radius: var(--radius-sm);
+    border-radius: 8px;
     font-size: 0.85rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: all 0.15s ease;
 }
 
 .avatar-upload-btn:hover {
     background: var(--primary);
     color: white;
+    border-color: var(--primary);
 }
 
 /* Form Row */
@@ -180,7 +199,7 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 16px;
-    margin-bottom: 20px;
+    margin-bottom: 4px;
 }
 
 @media (max-width: 640px) {
@@ -192,7 +211,7 @@
 .form-group {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
     margin-bottom: 20px;
 }
 
@@ -208,12 +227,13 @@
     width: 100%;
     padding: 12px 14px;
     border: 1.5px solid var(--border);
-    border-radius: var(--radius-sm);
+    border-radius: 8px;
     font-size: 0.9rem;
     color: var(--text-main);
     background: var(--bg-card);
-    transition: all var(--transition-fast);
+    transition: all 0.15s ease;
     outline: none;
+    font-family: inherit;
 }
 
 .input:focus {
@@ -227,6 +247,16 @@
     cursor: not-allowed;
 }
 
+/* Form Actions */
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+}
+
 /* Save Button */
 .btn-save {
     display: inline-flex;
@@ -236,12 +266,12 @@
     background: var(--primary-gradient);
     color: white;
     border: none;
-    border-radius: var(--radius-sm);
+    border-radius: 8px;
     font-size: 0.9rem;
     font-weight: 600;
     cursor: pointer;
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-    transition: all var(--transition-fast);
+    transition: all 0.15s ease;
 }
 
 .btn-save:hover {
@@ -249,14 +279,30 @@
     box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
 }
 
+.btn-cancel {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-cancel:hover {
+    background: var(--bg-hover);
+    color: var(--text-main);
+}
+
 @media (max-width: 640px) {
     .avatar-upload-card {
         flex-direction: column;
         text-align: center;
-    }
-
-    .card-form {
-        padding: 20px;
     }
 }
 
@@ -334,7 +380,7 @@
     margin-top: 8px;
     padding: 12px;
     background: var(--bg-muted);
-    border-radius: var(--radius-sm);
+    border-radius: 8px;
     border: 1px solid var(--border);
 }
 
@@ -417,7 +463,7 @@
     align-items: flex-start;
     gap: 10px;
     padding: 12px 14px;
-    border-radius: var(--radius-sm);
+    border-radius: 8px;
     font-size: 0.85rem;
     margin-bottom: 16px;
     animation: fadeInUp 0.3s ease;
@@ -492,7 +538,7 @@
     justify-content: center;
     opacity: 0;
     transition: opacity var(--transition-normal);
-    border-radius: var(--radius-lg);
+    border-radius: 16px;
     z-index: 1;
 }
 
@@ -532,7 +578,7 @@
     padding: 16px;
     background: var(--danger-light);
     border: 1px solid rgba(239, 68, 68, 0.2);
-    border-radius: var(--radius-md);
+    border-radius: 8px;
 }
 
 .danger-zone-title {

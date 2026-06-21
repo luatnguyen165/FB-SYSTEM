@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const { requireAuth } = require('../middlewares/authMiddleware');
-const { uploadImage, uploadVideo } = require('../middlewares/uploadMiddleware');
+const { uploadImage, uploadImageArray, uploadVideo } = require('../middlewares/uploadMiddleware');
 const { uploadErrorHandler } = require('../middlewares/uploadMiddleware');
 const scheduleController = require('../controllers/scheduleController');
 const aiScanController = require('../controllers/aiScanController');
@@ -17,8 +17,10 @@ router.get('/reels', requireAuth, scheduleController.showScheduleReels);
 router.get('/groups', requireAuth, scheduleController.showScheduleGroups);
 
 // API endpoints
-router.post('/api/create', requireAuth, uploadImage.array('images', 10), uploadErrorHandler, scheduleController.createSchedule);
-router.put('/api/update', requireAuth, uploadImage.array('images', 10), uploadErrorHandler, scheduleController.updateSchedule);
+// Dùng uploadImageArray (wrap multer.any + filter images) thay vì multer.array() cũ,
+// để multer parse TẤT CẢ field text (accounts, platforms, ...) kèm theo images.
+router.post('/api/create', requireAuth, uploadImageArray, uploadErrorHandler, scheduleController.createSchedule);
+router.put('/api/update', requireAuth, uploadImageArray, uploadErrorHandler, scheduleController.updateSchedule);
 router.post('/api/upload-local-reels-video', requireAuth, uploadVideo.single('video'), scheduleController.uploadLocalReelsVideo);
 router.post('/api/upload-instant-reels', requireAuth, uploadVideo.single('video'), scheduleController.uploadInstantReels);
 router.get('/api/list', requireAuth, scheduleController.getSchedulesAPI);

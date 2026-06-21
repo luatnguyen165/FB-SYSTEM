@@ -200,8 +200,10 @@ async function updateReelsScheduleDateById(scheduleId, scheduledAtIso) {
         }
 
         const schedule = detailData.schedule;
-        if (String(schedule.status || 'pending') !== 'pending') {
-            showToast?.('Chỉ có thể kéo-thả lịch chưa đăng', 'warning');
+        // Cho phép kéo-thả lịch pending + failed (failed sẽ reset pending khi save)
+        const status = String(schedule.status || 'pending');
+        if (status !== 'pending' && status !== 'failed') {
+            showToast?.('Chỉ có thể kéo-thả lịch chưa đăng hoặc thất bại', 'warning');
             return;
         }
 
@@ -229,10 +231,10 @@ function handleReelsCalendarDragStart(event) {
     const item = event.target.closest?.('.schedule-item[data-schedule-id]');
     if (!item || !item.draggable) return;
     const schedule = getReelsScheduleFromRenderedItemElement(item);
-    if (!schedule || String(schedule.status || 'pending') !== 'pending') {
-        event.preventDefault();
-        return;
-    }
+    if (!schedule) { event.preventDefault(); return; }
+    const status = String(schedule.status || 'pending');
+    // Cho phép kéo-thả lịch pending + failed
+    if (status !== 'pending' && status !== 'failed') { event.preventDefault(); return; }
 
     reelsCalendarDragState = {
         scheduleId: String(schedule._id || ''),
@@ -273,8 +275,14 @@ async function handleReelsCalendarDrop(event) {
     if (!scheduleId) return;
 
     const schedule = getReelsScheduleFromRenderedItemElement({ dataset: { scheduleId } });
-    if (!schedule || String(schedule.status || 'pending') !== 'pending') {
-        showToast?.('Chỉ có thể kéo-thả lịch chưa đăng', 'warning');
+    if (!schedule) {
+        showToast?.('Chỉ có thể kéo-thả lịch chưa đăng hoặc thất bại', 'warning');
+        return;
+    }
+    const status = String(schedule.status || 'pending');
+    // Cho phép kéo-thả lịch pending + failed
+    if (status !== 'pending' && status !== 'failed') {
+        showToast?.('Chỉ có thể kéo-thả lịch chưa đăng hoặc thất bại', 'warning');
         return;
     }
 

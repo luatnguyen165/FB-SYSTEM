@@ -84,14 +84,8 @@
                 </table>
             </div>
 
-            <div class="pagination-bar" id="shopeePaginationBar">
-                <button type="button" class="page-nav-btn" id="btnPrevShopeePage">
-                    <i class="fa-solid fa-chevron-left"></i> Trước
-                </button>
-                <div class="page-info" id="shopeePageInfo">Trang 1/1</div>
-                <button type="button" class="page-nav-btn" id="btnNextShopeePage">
-                    Sau <i class="fa-solid fa-chevron-right"></i>
-                </button>
+            <div id="shopeePaginationContainer" data-current-page="1" data-total-pages="1">
+                <%- include('partials/pagination', { mode: 'js', containerId: 'shopeePaginationContainer' }) %>
             </div>
         </div>
     </div>

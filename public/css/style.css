@@ -373,13 +373,100 @@
     color: var(--info);
 }
 
-/* ===== PAGINATION ===== */
+/* ===== PAGINATION (chuẩn hóa toàn hệ thống) ===== */
+.pagination-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 16px 0;
+    margin-top: 12px;
+}
+
+.pagination-info {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+.pagination-info strong {
+    color: var(--text-main);
+    font-weight: 600;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.pagination-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 10px;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-main);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-decoration: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.pagination-btn:hover:not(.is-disabled):not(:disabled):not(.is-active) {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: var(--primary-light);
+    transform: translateY(-1px);
+}
+
+.pagination-btn.is-active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+}
+
+.pagination-btn:disabled,
+.pagination-btn.is-disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.pagination-btn--nav {
+    padding: 0 12px;
+    gap: 6px;
+}
+
+.pagination-btn--page {
+    min-width: 36px;
+}
+
+.pagination-ellipsis {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 36px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    user-select: none;
+}
+
+/* Legacy alias (giữ cho code cũ) */
 .pagination-bar {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 12px;
-        padding: 20px;
+    padding: 20px;
 }
 
 .page-nav-btn {
@@ -413,6 +500,80 @@
     color: var(--text-muted);
     font-weight: 500;
 }
+
+/* ===== BUTTON SYSTEM (chuẩn hóa toàn hệ thống) ===== */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1.2;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid transparent;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-decoration: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+.btn:disabled, .btn[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.btn-sm { padding: 5px 10px; font-size: 0.78rem; gap: 4px; }
+.btn-lg { padding: 11px 20px; font-size: 0.95rem; gap: 8px; }
+.btn-block { width: 100%; }
+
+.btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+.btn-primary:hover { background: var(--primary-dark, #1d4ed8); border-color: var(--primary-dark, #1d4ed8); transform: translateY(-1px); }
+
+.btn-secondary { background: var(--bg-card); color: var(--text-main); border-color: var(--border); }
+.btn-secondary:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+
+.btn-success { background: var(--success, #16a34a); color: #fff; border-color: var(--success, #16a34a); }
+.btn-success:hover { background: #15803d; border-color: #15803d; }
+
+.btn-danger { background: var(--danger, #dc2626); color: #fff; border-color: var(--danger, #dc2626); }
+.btn-danger:hover { background: #b91c1c; border-color: #b91c1c; }
+
+.btn-warning { background: var(--warning, #f59e0b); color: #fff; border-color: var(--warning, #f59e0b); }
+.btn-warning:hover { background: #d97706; border-color: #d97706; }
+
+.btn-ghost { background: transparent; color: var(--text-main); border-color: transparent; }
+.btn-ghost:hover { background: var(--primary-light); color: var(--primary); }
+
+.btn-outline { background: transparent; color: var(--primary); border-color: var(--primary); }
+.btn-outline:hover { background: var(--primary); color: #fff; }
+
+/* Icon-only button (cho action trong table) */
+.btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-decoration: none;
+}
+.btn-icon:hover {
+    background: var(--primary-light);
+    color: var(--primary);
+}
+.btn-icon--danger:hover { background: rgba(220, 38, 38, 0.1); color: var(--danger); }
+.btn-icon--success:hover { background: rgba(22, 163, 74, 0.1); color: var(--success); }
+
+.btn-icon--sm { width: 28px; height: 28px; font-size: 0.85rem; }
+.btn-icon--lg { width: 40px; height: 40px; font-size: 1.1rem; }
 
 /* ===== TOOLBAR ===== */
 .toolbar-left {

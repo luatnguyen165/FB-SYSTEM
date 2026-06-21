@@ -4,6 +4,8 @@
 
 let currentEditPayload = null;
 let editSelectedPlatform = null;
+let editSelectedPlatforms = []; // Multi-platform support: lưu tất cả platform đã chọn
+let editSelectedAccountIds = []; // Lưu tất cả account IDs đã chọn
 let editNewImages = [];
 let editExistingImages = [];
 let editLocalVideoFile = null;
@@ -50,9 +52,28 @@ function renderEditPlatformChips(type, selectedPlatforms = []) {
 
     container.querySelectorAll('.schedule-platform-chip').forEach((chip) => {
         chip.addEventListener('click', () => {
-            container.querySelectorAll('.schedule-platform-chip').forEach(c => c.classList.remove('active'));
-            chip.classList.add('active');
-            editSelectedPlatform = chip.dataset.platform;
+            // Multi-select: toggle platform
+            const code = chip.dataset.platform;
+            const isCurrentlyActive = chip.classList.contains('active');
+
+            if (isCurrentlyActive) {
+                chip.classList.remove('active');
+                editSelectedPlatforms = editSelectedPlatforms.filter(p => p !== code);
+                // Cleanup accounts thuộc platform này
+                const channelCode = PLATFORM_TO_CHANNEL[code] || code;
+                editSelectedAccountIds = editSelectedAccountIds.filter(id => {
+                    const ch = managerData.channels?.find(c => String(c._id) === String(id));
+                    return ch && ch.platform !== channelCode;
+                });
+            } else {
+                chip.classList.add('active');
+                if (!editSelectedPlatforms.includes(code)) editSelectedPlatforms.push(code);
+            }
+
+            // Set first active as editSelectedPlatform để tương thích code cũ
+            const firstActive = container.querySelector('.schedule-platform-chip.active');
+            editSelectedPlatform = firstActive ? firstActive.dataset.platform : null;
+
             onEditPlatformChange(type);
         });
     });
@@ -60,7 +81,7 @@ function renderEditPlatformChips(type, selectedPlatforms = []) {
 
 function onEditPlatformChange(type) {
     const chip = editSelectedPlatform || (type === 'post' ? 'FB' : 'FB');
-    renderEditAccountOptions(type, chip, []);
+    renderEditAccountOptions(type, chip, editSelectedAccountIds);
     if (type === 'post') onEditPostPlatformChange();
 }
 
@@ -87,8 +108,17 @@ function renderEditAccountOptions(type, selectedPlatform = null, selectedAccount
     if (!editFields.accounts) return;
     const channels = Array.isArray(managerData.channels) ? managerData.channels : [];
     let filterPlatforms;
-    if (type === 'post') filterPlatforms = ['FB', 'IG'];
-    else filterPlatforms = selectedPlatform ? [PLATFORM_TO_CHANNEL[selectedPlatform] || selectedPlatform] : ['FB'];
+    if (type === 'post') {
+        // Post: hiển thị accounts của TẤT CẢ platforms đã chọn
+        filterPlatforms = editSelectedPlatforms.length > 0
+            ? editSelectedPlatforms.map(p => PLATFORM_TO_CHANNEL[p] || p)
+            : ['FB', 'IG'];
+    } else {
+        // Reels: hiển thị accounts của TẤT CẢ platforms đã chọn
+        filterPlatforms = editSelectedPlatforms.length > 0
+            ? editSelectedPlatforms.map(p => PLATFORM_TO_CHANNEL[p] || p)
+            : (selectedPlatform ? [PLATFORM_TO_CHANNEL[selectedPlatform] || selectedPlatform] : ['FB']);
+    }
     const filtered = channels.filter(ch => filterPlatforms.includes(String(ch.platform || '').trim()));
     editFields.accounts.innerHTML = filtered.map((ch) => {
         const meta = PLATFORM_META[ch.platform] || { label: ch.platform, icon: 'fa-solid fa-user' };
@@ -97,7 +127,11 @@ function renderEditAccountOptions(type, selectedPlatform = null, selectedAccount
         return `<option value="${ch._id}" ${sel}>${ch.accountName}${badge} [${meta.label}]</option>`;
     }).join('');
     const desc = document.getElementById('editAccountsDesc');
-    if (desc) desc.textContent = 'Chọn 1 tài khoản đăng bài.';
+    if (desc) {
+        const total = filtered.length;
+        const platformList = editSelectedPlatforms.length > 0 ? editSelectedPlatforms.join(', ') : 'chưa chọn';
+        desc.textContent = `${total} tài khoản thuộc: ${platformList}`;
+    }
 }
 
 function renderEditFacebookSourceOptions(selectedSourceId = '') {
@@ -143,10 +177,13 @@ function openEditModalFromRow(row) {
     const scheduledDate = payload.publishedAtIso || payload.scheduledAt || '';
     if (editFields.dateTime) editFields.dateTime.value = formatForDateTimeLocal(scheduledDate);
     const platforms = Array.isArray(payload.platforms) ? payload.platforms : [];
+    editSelectedPlatforms = [...platforms];
     editSelectedPlatform = platforms[0] || 'FB';
+    // Lưu các account IDs đã chọn từ payload
+    editSelectedAccountIds = Array.isArray(payload.accounts) ? payload.accounts.map(String) : [];
     applyEditTypeSection(type);
     renderEditPlatformChips(type, platforms);
-    renderEditAccountOptions(type, editSelectedPlatform, payload.accounts || []);
+    renderEditAccountOptions(type, editSelectedPlatform, editSelectedAccountIds);
     if (type === 'post') {
         const images = Array.isArray(payload.images) ? payload.images : [];
         renderEditPostImages(images);
@@ -193,9 +230,12 @@ function openDuplicateModal(row) {
     if (editFields.type) editFields.type.value = type;
     if (editFields.dateTime) editFields.dateTime.value = '';
     const platforms = Array.isArray(payload.platforms) ? payload.platforms : [];
+    editSelectedPlatforms = [...platforms];
     editSelectedPlatform = platforms[0] || 'FB';
-    applyEditTypeSection(type); renderEditPlatformChips(type, platforms);
-    renderEditAccountOptions(type, editSelectedPlatform, payload.accounts || []);
+    editSelectedAccountIds = Array.isArray(payload.accounts) ? payload.accounts.map(String) : [];
+    applyEditTypeSection(type);
+    renderEditPlatformChips(type, platforms);
+    renderEditAccountOptions(type, editSelectedPlatform, editSelectedAccountIds);
     if (type === 'post') {
         const images = Array.isArray(payload.images) ? payload.images : [];
         renderEditPostImages(images);
@@ -220,7 +260,11 @@ function closeEditModal() {
     document.getElementById('editGroupComboboxDropdown')?.classList.remove('open');
     document.getElementById('editAffiliateComboboxDropdown')?.classList.remove('open');
     if (btnSaveEdit) { btnSaveEdit.disabled = false; btnSaveEdit.textContent = 'Lưu thay đổi'; btnSaveEdit.style.opacity = '1'; }
-    currentEditPayload = null; editNewImages = []; editExistingImages = []; editLocalVideoFile = null;
+    currentEditPayload = null;
+    editSelectedPlatform = null;
+    editSelectedPlatforms = [];
+    editSelectedAccountIds = [];
+    editNewImages = []; editExistingImages = []; editLocalVideoFile = null;
 }
 
 async function saveEditedSchedule() {
@@ -236,9 +280,13 @@ async function saveEditedSchedule() {
     const payload = {
         scheduleId, type, status: finalStatus, caption: editFields.caption?.value || '',
         scheduledAt: scheduledAtValue ? new Date(scheduledAtValue).toISOString() : '',
-        platforms: [editSelectedPlatform || (type === 'post' ? 'FB' : 'FR')], accounts: selectedAccounts, videoId,
+        // Gửi TẤT CẢ platforms đã chọn (multi-select), fallback về 1 platform nếu rỗng
+        platforms: editSelectedPlatforms.length > 0
+            ? [...editSelectedPlatforms]
+            : [editSelectedPlatform || (type === 'post' ? 'FB' : 'FR')],
+        accounts: selectedAccounts, videoId,
         targetGroupSourceChannelId: type === 'post' ? (editFields.sourceChannelId?.value || '') : '',
-        targetGroupIds: type === 'post' && editSelectedPlatform === 'FB' ? editSelectedGroupKeys : [],
+        targetGroupIds: type === 'post' && (editSelectedPlatforms.includes('FB') || editSelectedPlatform === 'FB') ? editSelectedGroupKeys : [],
         shopeeLinks: editSelectedShopeeLinks, existingImages: editExistingImages.filter(url => !url.startsWith('blob:')), newImages: editNewImages, localVideoFile: editLocalVideoFile
     };
     try {
@@ -279,7 +327,9 @@ async function saveDuplicateSchedule() {
     const payload = {
         type, status: 'pending', caption: editFields.caption?.value || origPayload.caption || '',
         scheduledAt: new Date(scheduledAtValue).toISOString(),
-        platforms: [editSelectedPlatform || (type === 'post' ? 'FB' : 'FR')], accounts: selectedAccounts, videoId,
+        platforms: editSelectedPlatforms.length > 0
+            ? [...editSelectedPlatforms]
+            : [editSelectedPlatform || (type === 'post' ? 'FB' : 'FR')], accounts: selectedAccounts, videoId,
         videoTitle: origPayload.videoTitle || '', videoPath: origPayload.videoPath || origPayload.videoUrl || '',
         videoUrl: origPayload.videoUrl || origPayload.videoPath || '',
         targetGroupSourceChannelId: type === 'post' ? (editFields.sourceChannelId?.value || origPayload.sourceChannelId || '') : '',

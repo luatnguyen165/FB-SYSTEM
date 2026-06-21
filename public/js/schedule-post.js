@@ -6,12 +6,39 @@
 let schedulePostAvailablePlatforms = new Set();
 let schedulePostDropdownJustOpened = false;
 
+/* ===================================
+   ACCOUNT PICKER STATE (Redesign 2026-06-21)
+   =================================== */
+let accountPickerData = [];           // toàn bộ accounts từ API
+let accountPickerPreferred = [];      // IDs đã tick từ schedule edit
+
+function getAccountPickerInitial(accountName = '') {
+    if (!accountName) return '?';
+    const parts = accountName.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+}
+
 function renderAccountList(preferredAccounts) {
     const checkedPlatforms = Array.from(document.querySelectorAll('.platform-check:checked')).map(cb => cb.value);
     const boxContainer = document.getElementById('dynamicAccountBox');
+    const toolbar = document.getElementById('accountPickerToolbar');
+    const counter = document.getElementById('accountPickerCounter');
+    const emptyState = document.getElementById('accountPickerEmpty');
     if (!boxContainer) return;
 
-    const typeOrder = { 'Fanpage': 0, 'Nhà sáng tạo': 1, 'Cá nhân': 2 };
+    // Normalize preferredAccounts: chấp nhận cả string ID lẫn object { _id }
+    const normalizedPreferred = (Array.isArray(preferredAccounts) ? preferredAccounts : [])
+        .map(a => {
+            if (typeof a === 'string') return a;
+            if (a && typeof a === 'object' && a._id) return String(a._id);
+            return '';
+        })
+        .filter(Boolean);
+    accountPickerPreferred = normalizedPreferred;
+
+    console.log('[schedule-post] renderAccountList - preferred:', accountPickerPreferred);
+
     const typeMeta = (accountType = '') => {
         const normalized = String(accountType || '').trim() || 'Cá nhân';
         if (normalized === 'Fanpage') return { label: 'Fanpage', className: 'account-type-pill--fanpage', icon: 'fa-solid fa-flag' };
@@ -19,39 +46,223 @@ function renderAccountList(preferredAccounts) {
         return { label: 'Cá nhân', className: 'account-type-pill--personal', icon: 'fa-regular fa-user' };
     };
 
+    const platformMeta = {
+        FB: { name: 'Facebook', icon: 'fa-brands fa-facebook', color: '#1877F2' },
+        IG: { name: 'Instagram', icon: 'fa-brands fa-instagram', color: '#E4405F' },
+        TT: { name: 'TikTok', icon: 'fa-brands fa-tiktok', color: '#000000' },
+        YT: { name: 'YouTube', icon: 'fa-brands fa-youtube', color: '#FF0000' },
+        TH: { name: 'Threads', icon: 'fa-brands fa-threads', color: '#000000' },
+        PI: { name: 'Pinterest', icon: 'fa-brands fa-pinterest', color: '#E60023' }
+    };
+
     fetch('/channels/api/list')
         .then(res => res.json())
         .then(data => {
             if (!data.success) return;
-            boxContainer.innerHTML = '';
-            const filtered = data.channels
-                .filter(ch => checkedPlatforms.includes(ch.platform))
-                .slice()
-                .sort((a, b) => {
-                    if (a.platform !== b.platform) return String(a.platform).localeCompare(String(b.platform), 'vi');
-                    return (typeOrder[String(a.accountType || 'Cá nhân').trim()] ?? 99) - (typeOrder[String(b.accountType || 'Cá nhân').trim()] ?? 99);
-                });
+            accountPickerData = Array.isArray(data.channels) ? data.channels : [];
 
+            // Filter theo platform đang tick
+            let filtered = accountPickerData.filter(ch => checkedPlatforms.includes(ch.platform));
+
+            if (filtered.length === 0) {
+                // Empty state
+                boxContainer.innerHTML = '';
+                if (toolbar) toolbar.style.display = 'none';
+                if (counter) counter.style.display = 'none';
+                if (emptyState) emptyState.style.display = '';
+                return;
+            }
+
+            if (emptyState) emptyState.style.display = 'none';
+            if (toolbar) toolbar.style.display = '';
+
+            // Group theo platform
+            const grouped = {};
             filtered.forEach(ch => {
-                const icons = { FB: 'fa-brands fa-facebook', IG: 'fa-brands fa-instagram', TT: 'fa-brands fa-tiktok', YT: 'fa-brands fa-youtube' };
-                const colors = { FB: '#1877f2', IG: '#e1306c', TT: '#000', YT: '#ff0000' };
-                const meta = typeMeta(ch.accountType);
-                const label = document.createElement('label');
-                label.className = `acc-pick-item acc-platform-${ch.platform}`;
-                const isChecked = preferredAccounts && preferredAccounts.includes(ch._id);
-                label.innerHTML = `
-                    <input type="checkbox" name="modalAccSelect" value="${ch._id}" ${isChecked ? 'checked' : ''}>
-                    <i class="${icons[ch.platform]}" style="color:${colors[ch.platform]}"></i>
-                    <span class="acc-pick-item__content">
-                        <span class="acc-pick-item__title">${ch.accountName}</span>
-                        <span class="acc-pick-item__meta">
-                            <span class="account-type-pill ${meta.className}"><i class="${meta.icon}"></i> ${meta.label}</span>
-                        </span>
-                    </span>`;
-                boxContainer.appendChild(label);
+                if (!grouped[ch.platform]) grouped[ch.platform] = [];
+                grouped[ch.platform].push(ch);
             });
+
+            // Render
+            const search = (document.getElementById('accountPickerSearch')?.value || '').toLowerCase().trim();
+            let html = '';
+            let visibleTotal = 0;
+            let checkedTotal = 0;
+
+            const platformOrder = ['FB', 'IG', 'TT', 'YT', 'TH', 'PI'];
+            platformOrder.forEach(platform => {
+                if (!grouped[platform]) return;
+                const accounts = grouped[platform].filter(ch => {
+                    if (!search) return true;
+                    return String(ch.accountName || '').toLowerCase().includes(search)
+                        || String(ch.accountType || '').toLowerCase().includes(search);
+                });
+                if (accounts.length === 0) return;
+                visibleTotal += accounts.length;
+
+                const pm = platformMeta[platform];
+                html += `
+                <div class="account-group" data-platform="${platform}">
+                    <div class="account-group__header" style="--group-color:${pm.color}">
+                        <i class="${pm.icon}"></i>
+                        <span>${pm.name}</span>
+                        <span class="account-group__count">${accounts.length}</span>
+                    </div>
+                    <div class="account-group__grid">`;
+
+                accounts.forEach(ch => {
+                    const meta = typeMeta(ch.accountType);
+                    // So sánh cả _id và accountName để cover cả 2 format DB
+                    const chId = String(ch._id);
+                    const chName = String(ch.accountName || '');
+                    const isChecked = accountPickerPreferred.some(p => {
+                        if (typeof p === 'string') {
+                            // Nếu p trông như ObjectId hex (24 chars), so sánh với _id
+                            if (/^[0-9a-fA-F]{24}$/.test(p)) return p === chId;
+                            // Nếu không phải hex (là tên), so sánh với accountName
+                            return p === chName;
+                        }
+                        return false;
+                    });
+                    if (isChecked) checkedTotal++;
+                    const initial = getAccountPickerInitial(ch.accountName);
+                    const avatarColor = pm.color;
+                    const avatarHtml = ch.avatarUrl
+                        ? `<img src="${ch.avatarUrl}" alt="${ch.accountName}" class="account-card__avatar-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" /><span class="account-card__avatar-fallback" style="background:${avatarColor};display:none;">${initial}</span>`
+                        : `<span class="account-card__avatar-fallback" style="background:${avatarColor};">${initial}</span>`;
+
+                    html += `
+                        <label class="account-card acc-platform-${platform} ${isChecked ? 'is-selected' : ''}" data-account-id="${ch._id}" data-account-name="${String(ch.accountName || '').toLowerCase()}" data-account-type="${String(ch.accountType || '').toLowerCase()}">
+                            <input type="checkbox" name="modalAccSelect" value="${ch._id}" data-account-name="${chName}" ${isChecked ? 'checked' : ''}>
+                            <span class="account-card__checkbox"><i class="fa-solid fa-check"></i></span>
+                            <span class="account-card__avatar">${avatarHtml}</span>
+                            <span class="account-card__body">
+                                <span class="account-card__name">${ch.accountName}</span>
+                                <span class="account-card__type">
+                                    <i class="${meta.icon}"></i> ${meta.label}
+                                </span>
+                            </span>
+                        </label>`;
+                });
+            });
+
+            if (visibleTotal === 0 && search) {
+                html = `
+                <div class="account-picker-no-result">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <p>Không tìm thấy tài khoản nào với từ khóa "<strong>${search}</strong>"</p>
+                </div>`;
+            }
+
+            boxContainer.innerHTML = html;
+            // Apply class is-selected ngay sau innerHTML (cách cũ để chắc chắn)
+            boxContainer.querySelectorAll('input[name="modalAccSelect"]:checked').forEach(cb => {
+                const card = cb.closest('.account-card');
+                if (card) card.classList.add('is-selected');
+            });
+
+            // Apply lại lần nữa sau tick để chắc chắn CSS áp dụng khi edit
+            setTimeout(() => {
+                boxContainer.querySelectorAll('input[name="modalAccSelect"]:checked').forEach(cb => {
+                    const card = cb.closest('.account-card');
+                    if (card) card.classList.add('is-selected');
+                });
+                // EDIT MODE: Sau khi account list render xong, gọi lại renderTargetTabs
+                // để "Nơi đăng" hiện ra với tab FB + group selection đúng theo account tick
+                if (currentEditingSchedule) {
+                    if (typeof renderTargetTabs === 'function') renderTargetTabs();
+                }
+            }, 10);
+
+            updateAccountPickerCounter(visibleTotal, checkedTotal);
         })
         .catch(err => console.error('Load channels error:', err));
+}
+
+function updateAccountPickerCounter(visibleTotal, checkedTotal) {
+    const counter = document.getElementById('accountPickerCounter');
+    if (!counter) return;
+    const total = accountPickerData.filter(ch => {
+        const checkedPlatforms = Array.from(document.querySelectorAll('.platform-check:checked')).map(cb => cb.value);
+        return checkedPlatforms.includes(ch.platform);
+    }).length;
+    if (total === 0) {
+        counter.style.display = 'none';
+    } else {
+        counter.style.display = '';
+        counter.textContent = `${checkedTotal}/${total} đã chọn`;
+    }
+}
+
+function setupAccountPickerEvents() {
+    const search = document.getElementById('accountPickerSearch');
+    const clearBtn = document.getElementById('accountPickerSearchClear');
+    const selectAllBtn = document.getElementById('accountPickerSelectAll');
+    const box = document.getElementById('dynamicAccountBox');
+
+    if (search) {
+        search.addEventListener('input', () => {
+            if (clearBtn) clearBtn.style.display = search.value ? '' : 'none';
+            renderAccountList(accountPickerPreferred);
+        });
+    }
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            if (search) search.value = '';
+            clearBtn.style.display = 'none';
+            renderAccountList(accountPickerPreferred);
+        });
+    }
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', () => {
+            const visibleCards = box.querySelectorAll('.account-card:not([style*="display: none"])');
+            const allChecked = Array.from(visibleCards).every(c => c.querySelector('input').checked);
+            visibleCards.forEach(card => {
+                card.querySelector('input').checked = !allChecked;
+                card.classList.toggle('is-selected', !allChecked);
+            });
+            // Đồng bộ preferred
+            accountPickerPreferred = Array.from(box.querySelectorAll('input[name="modalAccSelect"]:checked'))
+                .map(cb => String(cb.value));
+            const visibleTotal = visibleCards.length;
+            const checkedTotal = Array.from(visibleCards).filter(c => c.querySelector('input').checked).length;
+            updateAccountPickerCounter(visibleTotal, checkedTotal);
+            // Trigger change để các listener khác chạy
+            box.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    }
+    if (box) {
+        // Cập nhật counter khi tick/untick 1 card
+        // Ép mỗi platform chỉ tick được 1 account: tick account mới → untick các account cùng platform khác
+        box.addEventListener('change', (e) => {
+            if (e.target?.name === 'modalAccSelect') {
+                const card = e.target.closest('.account-card');
+                if (card) card.classList.toggle('is-selected', e.target.checked);
+
+                if (e.target.checked) {
+                    // Lấy platform của card vừa tick
+                    const platformMatch = card?.className?.match(/acc-platform-(\w+)/);
+                    const platform = platformMatch?.[1];
+                    if (platform) {
+                        // Untick các account CÙNG platform khác
+                        box.querySelectorAll(`.account-card.acc-platform-${platform} input[name="modalAccSelect"]:checked`)
+                            .forEach(cb => {
+                                if (cb !== e.target) {
+                                    cb.checked = false;
+                                    cb.closest('.account-card')?.classList.remove('is-selected');
+                                }
+                            });
+                    }
+                }
+
+                accountPickerPreferred = Array.from(box.querySelectorAll('input[name="modalAccSelect"]:checked'))
+                    .map(cb => String(cb.value));
+                const visibleTotal = box.querySelectorAll('.account-card').length;
+                const checkedTotal = box.querySelectorAll('input[name="modalAccSelect"]:checked').length;
+                updateAccountPickerCounter(visibleTotal, checkedTotal);
+            }
+        });
+    }
 }
 
 async function refreshSchedulePostPlatformOptions() {
@@ -75,18 +286,21 @@ async function refreshSchedulePostPlatformOptions() {
 
         const visibleChecked = Array.from(document.querySelectorAll('.platform-check:checked')).filter(cb => !cb.disabled);
         if (!visibleChecked.length) {
-            const firstAvailable = Array.from(document.querySelectorAll('.platform-check')).find(cb => !cb.disabled);
-            if (firstAvailable) firstAvailable.checked = true;
+            // Không tự tick platform đầu tiên — để user chủ động chọn
+            // firstAvailable = Array.from(document.querySelectorAll('.platform-check')).find(cb => !cb.disabled);
+            // if (firstAvailable) firstAvailable.checked = true;
         }
 
         renderAccountList();
-        toggleFacebookGroupSelectionForSchedulePost();
+        onPlatformChipsChange();
     } catch (err) {
         console.error('Refresh schedule post platform options failed:', err);
     }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    setupAccountPickerEvents();
+
     const btnCreate = document.getElementById('btnCreatePost');
     if (btnCreate) btnCreate.addEventListener('click', () => { resetScheduleForm(); openCreatePostModal(null); });
 
@@ -250,8 +464,26 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnDeleteSchedule')?.addEventListener('click', async () => { await deleteCurrentSchedulePost(); });
 
     document.querySelectorAll('.platform-check').forEach(cb => {
-        cb.addEventListener('change', () => { if (!cb.disabled) { renderAccountList(); toggleFacebookGroupSelectionForSchedulePost(); } });
+        cb.addEventListener('change', () => {
+            if (!cb.disabled) {
+                // Toggle class is-selected cho platform-picker-card tương ứng
+                const card = cb.closest('.platform-picker-card');
+                if (card) card.classList.toggle('is-selected', cb.checked);
+                renderAccountList();
+                onPlatformChipsChange();
+            }
+        });
     });
+    // Khi tick/untick account, cập nhật badge trên tab + show/hide tabs
+    const accountBox = document.getElementById('dynamicAccountBox');
+    if (accountBox) {
+        accountBox.addEventListener('change', (e) => {
+            if (e.target?.name === 'modalAccSelect') {
+                if (typeof refreshTargetTabsBadges === 'function') refreshTargetTabsBadges();
+                if (typeof onAccountPickerChange === 'function') onAccountPickerChange();
+            }
+        });
+    }
 
     window.addEventListener('resize', () => {
         const popover = document.getElementById('scheduleQuickPreviewPopover');

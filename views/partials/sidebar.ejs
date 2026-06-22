@@ -149,12 +149,12 @@
                 <% } %>
                 <% if (feat['ai-comments'] !== false) { %>
                 <li class="menu-item <%= currentPage === 'ai-comments' ? 'active' : '' %>">
-                    <a href="/schedule/ai-comments"><i class="fa-solid fa-comments"></i>AI Comment Sản Phẩm</a>
+                    <a href="/schedule/ai-comments"><i class="fa-solid fa-comments"></i>Thư Viện Bình Luận</a>
                 </li>
                 <% } %>
                 <% if (feat['comment-play'] !== false) { %>
                 <li class="menu-item <%= currentPage === 'comment-play' ? 'active' : '' %>">
-                    <a href="/schedule/ai-comment/play"><i class="fa-solid fa-bolt"></i>Kịch Bản Comment Tự Động</a>
+                    <a href="/schedule/ai-comment/play"><i class="fa-solid fa-bolt"></i>Lịch Trình Comment Tự Động</a>
                 </li>
                 <% } %>
                 <% if (feat['schedule-groups'] !== false) { %>
@@ -196,7 +196,6 @@
         <% } %>
 
         <!-- 📊 THU THẬP DỮ LIỆU -->
-        <% if (feat['comment-crawler'] !== false || feat.tracking !== false) { %>
         <li class="sidebar-group" data-sidebar-group-id="data-collection">
             <button
                 type="button"
@@ -216,7 +215,6 @@
                 </li>
             </ul>
         </li>
-        <% } %>
 
         <!-- 💬 HỖ TRỢ -->
         <% if (feat.feedback !== false) { %>

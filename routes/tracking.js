@@ -28,6 +28,9 @@ router.delete('/api/posts/:id', trackingController.deleteTrackingPost);
 router.put('/api/schedule/:id', trackingController.updateSchedule);
 router.get('/api/schedule/:id', trackingController.getSchedule);
 
+// Auto-repost pause/resume
+router.post('/api/repost-pause/:id', trackingController.toggleRepostPause);
+
 // Migration: fix absolute video paths
 router.post('/api/fix-paths', trackingController.fixVideoPaths);
 

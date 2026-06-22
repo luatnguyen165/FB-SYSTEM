@@ -289,6 +289,41 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Liên kết Telegram Bot để quản lý Comment -->
+                    <div class="telegram-link-card" id="telegramLinkCard">
+                        <div class="telegram-link-header">
+                            <i class="fa-solid fa-link"></i>
+                            <strong>Liên kết Telegram Bot để quản lý Comment</strong>
+                        </div>
+                        <div class="telegram-link-body" id="telegramLinkBody">
+                            <div class="telegram-link-status" id="telegramLinkStatus">
+                                <i class="fa-solid fa-spinner fa-spin"></i> Đang kiểm tra trạng thái...
+                            </div>
+                            <div class="telegram-link-actions" id="telegramLinkActions" style="display:none;">
+                                <div class="telegram-link-step">
+                                    <span class="step-num">1</span>
+                                    Bấm nút "Tạo mã liên kết" bên dưới
+                                </div>
+                                <div class="telegram-link-step">
+                                    <span class="step-num">2</span>
+                                    Mở Telegram, tìm bot <strong id="botUsername">@ReelsFlowBot</strong> và gửi: <code>/start <span id="linkTokenPreview">...</span></code>
+                                </div>
+                                <div class="telegram-link-step">
+                                    <span class="step-num">3</span>
+                                    Bot sẽ tự động liên kết. Sau đó gõ <code>/help</code> để xem lệnh.
+                                </div>
+                                <div class="telegram-link-buttons">
+                                    <button type="button" class="telegram-test-btn" id="btnGenerateLinkToken">
+                                        <i class="fa-solid fa-key"></i> Tạo mã liên kết
+                                    </button>
+                                    <button type="button" class="telegram-test-btn telegram-test-btn--danger" id="btnUnlinkTelegram" style="display:none;">
+                                        <i class="fa-solid fa-unlink"></i> Hủy liên kết
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 

@@ -44,7 +44,7 @@ const showAiComments = async (req, res) => {
 
 const createComment = async (req, res) => {
     try {
-        const { name, type, content, caption } = req.body;
+        const { name, type, content, caption, tags } = req.body;
 
         if (!type || !content) {
             return res.status(400).json({ success: false, message: 'Thiếu type hoặc content' });
@@ -53,6 +53,19 @@ const createComment = async (req, res) => {
         // Đếm số lượng để set order
         const count = await AiComment.countDocuments({ userId: req.user._id });
 
+        // Parse & normalize tags
+        let normalizedTags = [];
+        if (Array.isArray(tags)) {
+            normalizedTags = tags.map(t => String(t).trim().toLowerCase()).filter(Boolean);
+        } else if (typeof tags === 'string' && tags.trim()) {
+            try {
+                const parsed = JSON.parse(tags);
+                if (Array.isArray(parsed)) normalizedTags = parsed.map(t => String(t).trim().toLowerCase()).filter(Boolean);
+            } catch (e) {
+                normalizedTags = tags.split(',').map(t => String(t).trim().toLowerCase()).filter(Boolean);
+            }
+        }
+
         const comment = await AiComment.create({
             userId: req.user._id,
             name: String(name || '').trim(),
@@ -60,6 +73,7 @@ const createComment = async (req, res) => {
             content: String(content).trim(),
             caption: String(caption || '').trim(),
             isActive: true,
+            tags: normalizedTags,
             order: count + 1
         });
 
@@ -82,7 +96,7 @@ const updateComment = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Không tìm thấy comment' });
         }
 
-        const { name, type, content, caption, isActive, order } = req.body;
+        const { name, type, content, caption, isActive, order, tags } = req.body;
 
         if (name !== undefined) comment.name = String(name).trim();
         if (type !== undefined) comment.type = type;
@@ -90,6 +104,21 @@ const updateComment = async (req, res) => {
         if (caption !== undefined) comment.caption = String(caption || '').trim();
         if (isActive !== undefined) comment.isActive = isActive === true || isActive === 'true';
         if (order !== undefined) comment.order = parseInt(order, 10) || 0;
+
+        if (tags !== undefined) {
+            let normalizedTags = [];
+            if (Array.isArray(tags)) {
+                normalizedTags = tags.map(t => String(t).trim().toLowerCase()).filter(Boolean);
+            } else if (typeof tags === 'string' && tags.trim()) {
+                try {
+                    const parsed = JSON.parse(tags);
+                    if (Array.isArray(parsed)) normalizedTags = parsed.map(t => String(t).trim().toLowerCase()).filter(Boolean);
+                } catch (e) {
+                    normalizedTags = tags.split(',').map(t => String(t).trim().toLowerCase()).filter(Boolean);
+                }
+            }
+            comment.tags = normalizedTags;
+        }
 
         comment.updatedAt = new Date();
         await comment.save();

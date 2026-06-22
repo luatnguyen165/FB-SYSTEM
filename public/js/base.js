@@ -98,12 +98,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Lưu group đang mở trong sessionStorage để giữ trạng thái khi navigate
+    // Lưu group đang mở trong localStorage để giữ trạng thái qua navigation,
+    // refresh và mở tab mới (không dùng sessionStorage vì sẽ mất khi tab đóng).
     const STORAGE_KEY = 'sidebar:openGroupId';
 
     function getStoredOpenGroupId() {
         try {
-            return sessionStorage.getItem(STORAGE_KEY) || '';
+            return localStorage.getItem(STORAGE_KEY) || '';
         } catch (e) {
             return '';
         }
@@ -111,8 +112,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function setStoredOpenGroupId(groupId) {
         try {
-            if (groupId) sessionStorage.setItem(STORAGE_KEY, groupId);
-            else sessionStorage.removeItem(STORAGE_KEY);
+            if (groupId) localStorage.setItem(STORAGE_KEY, groupId);
+            else localStorage.removeItem(STORAGE_KEY);
         } catch (e) {
             /* ignore */
         }
@@ -141,27 +142,45 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            // Click vào link submenu: đảm bảo group cha được mở và lưu vào storage
+            // Click vào link submenu: lưu group cha vào storage, để page mới tự mở khi load
+            // KHÔNG toggle DOM trực tiếp — DOM cũ sẽ bị unmount khi navigate, toggle sẽ mất tác dụng.
             const subLink = e.target.closest('.sidebar-submenu .menu-item a');
             if (subLink && sidebarEl.contains(subLink)) {
                 const group = subLink.closest('.sidebar-group');
                 const groupId = group?.dataset?.sidebarGroupId || '';
-                openOnlySidebarGroup(group);
+                // Lưu ý: nếu group đang đóng, click vào link vẫn nên mở group đó visually TRƯỚC KHI navigate
+                // (giúp user thấy được item active đang chọn). Tuy nhiên vì navigate ngay lập tức, ta chỉ cần
+                // set storage — page mới sẽ restore đúng nhờ logic dưới.
+                if (group && !group.classList.contains('is-open')) {
+                    openOnlySidebarGroup(group);
+                }
                 setStoredOpenGroupId(groupId);
+                return;
+            }
+
+            // Click vào link menu-item cấp cao (NGOÀI submenu) — giữ nguyên group đang mở,
+            // không xóa storage. Trang mới load sẽ restore đúng group theo logic dưới.
+            const topLink = e.target.closest('.sidebar-menu > li.menu-item > a');
+            if (topLink && sidebarEl.contains(topLink)) {
+                return;
             }
         });
     }
 
-    // Khi load trang: ưu tiên mở group chứa currentPage active
+    // Khi load trang: ưu tiên theo thứ tự
+    // 1. Nếu có menu-item.active → mở group chứa nó (chắc chắn đúng vì server render currentPage)
+    // 2. Server-rendered aria-expanded="true" → mở đúng group đó
+    // 3. Nếu không có active item → restore từ storage
     const activeSidebarItem = document.querySelector('.sidebar .menu-item.active');
     const activeSidebarGroup = activeSidebarItem?.closest('.sidebar-group');
     if (activeSidebarGroup) {
-        // Có item active → mở group đó
+        // Có item active → mở group đó (server đã render đúng currentPage)
         openOnlySidebarGroup(activeSidebarGroup);
         const groupId = activeSidebarGroup.dataset.sidebarGroupId || '';
         setStoredOpenGroupId(groupId);
     } else {
-        // Không có item active → thử restore từ storage
+        // Item active không thuộc group nào (vd: FB Comment Crawler đứng độc lập)
+        // → giữ nguyên group đang mở trước đó từ localStorage
         const storedId = getStoredOpenGroupId();
         if (storedId) {
             const group = document.querySelector(`.sidebar-group[data-sidebar-group-id="${storedId}"]`);
@@ -171,7 +190,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 openOnlySidebarGroup(null);
             }
         } else {
-            openOnlySidebarGroup(null);
+            // Không có gì trong storage → check aria-expanded do server set
+            const serverOpened = document.querySelector('.sidebar-group[aria-expanded="true"]');
+            if (serverOpened) {
+                openOnlySidebarGroup(serverOpened);
+                setStoredOpenGroupId(serverOpened.dataset.sidebarGroupId || '');
+            } else {
+                openOnlySidebarGroup(null);
+            }
         }
     }
 

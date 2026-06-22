@@ -9,7 +9,7 @@ const { uploadVideoToInstagram, uploadImagesToInstagram } = require('./instagram
 const { postImagesToThreads, uploadVideoToThreads } = require('./threadsPlaywrightService');
 const { pinImageToPinterest, uploadVideoToPinterest } = require('./pinterestPlaywrightService');
 const { uploadVideoToYouTubeShort } = require('./youtubePlaywrightService');
-const { emitScheduleUpdate } = require('./socketService');
+const { emitScheduleUpdate, emitNotif } = require('./socketService');
 const { sendTelegramNotification, NOTIFICATION_TYPES } = require('./telegramService');
 const { normalizeEncryptedValue } = require('../utils/cryptoVault');
 const { buildFacebookGroupTargetUrl } = require('./common/facebook');
@@ -1047,6 +1047,16 @@ async function processDueSchedules() {
                         time: schedule.scheduledAt ? new Date(schedule.scheduledAt).toLocaleString('vi-VN') : '—',
                         caption: schedule.caption || ''
                     }).catch(() => {});
+
+                    // Bell notification
+                    try {
+                        emitNotif(schedule.userId, 'success', {
+                            id: 'schedule:' + schedule._id + ':success-' + Date.now(),
+                            title: '✅ Đăng bài thành công',
+                            message: (schedule.caption || schedule.videoId?.title || '—').substring(0, 100) + ' — ' + successCount + '/' + totalPlatforms + ' nền tảng',
+                            source: 'schedule'
+                        });
+                    } catch (e) { /* ignore */ }
                 } else {
                     console.error(`[Schedule Runner] Đăng lịch ${schedule._id} thất bại: ${successCount}/${totalPlatforms} nền tảng thành công`);
 
@@ -1056,6 +1066,16 @@ async function processDueSchedules() {
                         error: `Đăng thất bại (${successCount}/${totalPlatforms} nền tảng)`,
                         scheduleId: schedule._id
                     }).catch(() => {});
+
+                    // Bell notification
+                    try {
+                        emitNotif(schedule.userId, 'error', {
+                            id: 'schedule:' + schedule._id + ':fail-' + Date.now(),
+                            title: '❌ Đăng bài thất bại',
+                            message: (schedule.caption || schedule.videoId?.title || '—').substring(0, 100) + ' — ' + successCount + '/' + totalPlatforms + ' nền tảng',
+                            source: 'schedule'
+                        });
+                    } catch (e) { /* ignore */ }
                 }
 
                 emitScheduleUpdate(schedule.userId, {
@@ -1081,6 +1101,16 @@ async function processDueSchedules() {
                     error: error.message || 'Lỗi không xác định',
                     scheduleId: schedule._id
                 }).catch(() => {});
+
+                // Bell notification
+                try {
+                    emitNotif(schedule.userId, 'error', {
+                        id: 'schedule:' + schedule._id + ':throw-' + Date.now(),
+                        title: '❌ Lỗi khi đăng bài',
+                        message: (schedule.caption || '—').substring(0, 100) + ' — ' + (error.message || 'Lỗi không xác định').substring(0, 100),
+                        source: 'schedule'
+                    });
+                } catch (e) { /* ignore */ }
 
                 emitScheduleUpdate(schedule.userId, {
                     _id: schedule._id,

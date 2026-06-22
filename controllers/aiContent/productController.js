@@ -1,7 +1,7 @@
 // controllers/aiContent/productController.js
 const Product = require('../../models/Product');
 const aiContentService = require('../../services/aiContentService');
-const { getUserId, errorResponse, getUserApiConfig } = require('./helpers');
+const { getUserId, errorResponse, getUserApiConfig, mapProductInput, normalizeDirection } = require('./helpers');
 
 /** GET /ai-content/api/products */
 exports.getProducts = async (req, res) => {
@@ -26,9 +26,9 @@ exports.getProduct = async (req, res) => {
 exports.createProduct = async (req, res) => {
     try {
         const userId = getUserId(req);
-        const { name, description, category, price, audience, sellingPoints, competitors, writingStyleId, direction } = req.body;
-        if (!name) return res.status(400).json({ error: 'Cần tên sản phẩm' });
-        const product = await Product.create({ userId, name, description: description || '', category: category || '', price: price || '', targetAudience: audience || '', keySellingPoints: Array.isArray(sellingPoints) ? sellingPoints : [], competitorProducts: Array.isArray(competitors) ? competitors.join(', ') : (competitors || ''), writingStyleId: writingStyleId || null, direction: direction || 'unset' });
+        if (!req.body.name) return res.status(400).json({ error: 'Cần tên sản phẩm' });
+        const mapped = mapProductInput(req.body);
+        const product = await Product.create({ userId, ...mapped, direction: mapped.direction || 'unset' });
         res.json({ success: true, product });
     } catch (err) { errorResponse(res, err, 'createProduct'); }
 };
@@ -39,9 +39,10 @@ exports.updateProduct = async (req, res) => {
         const userId = getUserId(req);
         const product = await Product.findOne({ _id: req.params.id, userId });
         if (!product) return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
-        const updates = req.body;
-        const allowedFields = ['name', 'description', 'category', 'price', 'targetAudience', 'keySellingPoints', 'competitorProducts', 'writingStyleId', 'direction'];
-        for (const field of allowedFields) { if (updates[field] !== undefined) product[field] = updates[field]; }
+        const mapped = mapProductInput(req.body);
+        for (const [key, value] of Object.entries(mapped)) {
+            if (value !== undefined) product[key] = value;
+        }
         product.updatedAt = new Date();
         await product.save();
         res.json({ success: true, product });
@@ -68,7 +69,7 @@ exports.analyzeProduct = async (req, res) => {
         if (!aiConfig.apiKey?.trim()) return res.status(400).json({ error: 'Chưa cấu hình API Key.', code: 'MISSING_API_KEY' });
         const analysis = await aiContentService.analyzeProduct(product, aiConfig.apiKey, aiConfig);
         product.aiAnalysis = { suggestedDirection: analysis.suggestedDirection, recommendedAngles: analysis.recommendedAngles, hookIdeas: analysis.hookIdeas, targetEmotions: analysis.targetEmotions, keywords: analysis.keywords, summary: analysis.summary };
-        product.direction = analysis.suggestedDirection;
+        product.direction = normalizeDirection(analysis.suggestedDirection);
         product.updatedAt = new Date();
         await product.save();
         res.json({ success: true, analysis });

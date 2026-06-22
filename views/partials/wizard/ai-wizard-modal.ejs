@@ -1,0 +1,241 @@
+<!-- views/partials/wizard/ai-wizard-modal.ejs
+     Modal wizard cho AI Content Creator - 4 bước + toggle bước 5 (Auto Pipeline)
+     Load qua include từ views/ai-content.ejs -->
+<div id="aiWizardModal" class="ai-modal-overlay wizard-modal" style="display: none;">
+    <div class="ai-modal ai-modal-xl" onclick="event.stopPropagation()">
+        <div class="ai-modal-header">
+            <h2 id="wizardTitle"><i class="fa-solid fa-wand-magic-sparkles"></i> Tạo Nội Dung Mới</h2>
+            <button class="ai-modal-close" onclick="closeWizard()" aria-label="Đóng">&times;</button>
+        </div>
+
+        <div class="ai-modal-body">
+            <!-- Stepper -->
+            <div class="wizard-stepper" id="wizardStepper">
+                <div class="wizard-step active" data-step="1">
+                    <span class="wizard-step-num">1</span>
+                    <span class="wizard-step-label">Mục đích</span>
+                </div>
+                <div class="wizard-step-divider"></div>
+                <div class="wizard-step" data-step="2">
+                    <span class="wizard-step-num">2</span>
+                    <span class="wizard-step-label">Văn phong</span>
+                </div>
+                <div class="wizard-step-divider"></div>
+                <div class="wizard-step" data-step="3">
+                    <span class="wizard-step-num">3</span>
+                    <span class="wizard-step-label">Lịch đăng</span>
+                </div>
+                <div class="wizard-step-divider"></div>
+                <div class="wizard-step" data-step="4">
+                    <span class="wizard-step-num">4</span>
+                    <span class="wizard-step-label">Xem trước</span>
+                </div>
+            </div>
+
+            <!-- Body -->
+            <div class="wizard-body" id="wizardBody">
+                <!-- Pane 1: Purpose -->
+                <div class="wizard-pane active" data-pane="1">
+                    <h3>Bạn muốn đăng bài về gì?</h3>
+                    <p class="wizard-subtitle">Chọn mục đích để AI đề xuất cấu hình phù hợp.</p>
+
+                    <div class="wizard-choice-grid" id="purposeChoices">
+                        <button type="button" class="wizard-choice" data-purpose="regular">
+                            <i class="fa-solid fa-newspaper wizard-choice-icon"></i>
+                            <span class="wizard-choice-title">Đăng bài thường</span>
+                            <span class="wizard-choice-desc">Bài viết thường, không quảng cáo sản phẩm cụ thể.</span>
+                        </button>
+                        <button type="button" class="wizard-choice" data-purpose="product">
+                            <i class="fa-solid fa-bullhorn wizard-choice-icon"></i>
+                            <span class="wizard-choice-title">Quảng cáo sản phẩm</span>
+                            <span class="wizard-choice-desc">Bài viết gắn với một sản phẩm (cần có product).</span>
+                        </button>
+                    </div>
+
+                    <div class="wizard-form-row full" style="margin-top: 18px;">
+                        <div class="wizard-field">
+                            <label for="wizardCampaignName">Tên chiến dịch</label>
+                            <input type="text" id="wizardCampaignName" placeholder="VD: Bài đăng tuần 1 tháng 6" maxlength="120">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pane 2: Style -->
+                <div class="wizard-pane" data-pane="2">
+                    <h3>Chọn văn phong</h3>
+                    <p class="wizard-subtitle">Văn phong quyết định giọng điệu bài viết. Style chưa phân tích AI sẽ tự động chạy phân tích.</p>
+
+                    <div class="wizard-form-row full">
+                        <div class="wizard-field">
+                            <label for="wizardStyleSelect">Văn phong có sẵn</label>
+                            <select id="wizardStyleSelect">
+                                <option value="">-- Đang tải... --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="wizardStyleInfo" style="margin-top: 8px;"></div>
+
+                    <div style="margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border-color, #e5e7eb);">
+                        <button type="button" class="btn-secondary" id="wizardToggleCreateStyle">
+                            <i class="fa-solid fa-plus"></i> Tạo văn phong mới ngay
+                        </button>
+
+                        <div id="wizardCreateStyleForm" style="display: none; margin-top: 12px;">
+                            <div class="wizard-form-row full">
+                                <div class="wizard-field">
+                                    <label>Tên văn phong *</label>
+                                    <input type="text" id="wizardNewStyleName" placeholder="VD: Giọng Gen Z hài hước">
+                                </div>
+                            </div>
+                            <div class="wizard-field" style="margin-bottom: 12px;">
+                                <label>Bài viết mẫu * (dán ít nhất 1 bài)</label>
+                                <textarea id="wizardNewStyleSample" rows="4" placeholder="Dán 1 bài viết mẫu bạn thích giọng điệu..."></textarea>
+                            </div>
+                            <div class="wizard-field" style="margin-bottom: 12px;">
+                                <label>Chủ đề (mỗi dòng 1)</label>
+                                <textarea id="wizardNewStyleTopics" rows="2" placeholder="tips làm đẹp&#10;review sản phẩm"></textarea>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" class="btn-primary" id="wizardSaveNewStyle">
+                                    <i class="fa-solid fa-flask"></i> Tạo & Phân tích
+                                </button>
+                                <button type="button" class="btn-secondary" id="wizardCancelCreateStyle">Huỷ</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pane 3: Schedule -->
+                <div class="wizard-pane" data-pane="3">
+                    <h3>Cấu hình lịch đăng</h3>
+                    <p class="wizard-subtitle">Chọn ngày, khung giờ và tài khoản để đăng bài tự động.</p>
+
+                    <div class="wizard-form-row">
+                        <div class="wizard-field">
+                            <label>Ngày bắt đầu</label>
+                            <input type="date" id="wizardStartDate">
+                        </div>
+                        <div class="wizard-field">
+                            <label>Ngày kết thúc</label>
+                            <input type="date" id="wizardEndDate">
+                        </div>
+                    </div>
+
+                    <div class="wizard-section">
+                        <div class="wizard-section-title">Nền tảng & Tài khoản</div>
+                        <div id="wizardPlatformPicker"><!-- render bởi step3-schedule.js --></div>
+                    </div>
+
+                    <div class="wizard-section" id="wizardProductSection" style="display: none;">
+                        <div class="wizard-section-title">Sản phẩm & Hướng nội dung</div>
+                        <div id="wizardProductPicker"><!-- render bởi step3-schedule.js --></div>
+                    </div>
+
+                    <div class="wizard-section">
+                        <div class="wizard-section-title">Khung giờ đăng</div>
+                        <div id="wizardTimeSlots"><!-- render bởi step3-schedule.js --></div>
+                        <button type="button" class="btn-secondary" id="wizardAddTimeSlot" style="margin-top: 8px;">
+                            <i class="fa-solid fa-plus"></i> Thêm khung giờ
+                        </button>
+                    </div>
+
+                    <div class="wizard-section">
+                        <div class="wizard-section-title">Chủ đề</div>
+                        <textarea id="wizardTopics" rows="2" placeholder="Mỗi dòng 1 chủ đề. Để trống AI sẽ tự chọn."></textarea>
+                        <button type="button" class="btn-secondary" id="wizardGenerateTopics" style="margin-top: 6px;">
+                            <i class="fa-solid fa-robot"></i> AI đề xuất chủ đề
+                        </button>
+                    </div>
+
+                    <div class="wizard-form-row">
+                        <div class="wizard-field">
+                            <label>Số từ tối đa</label>
+                            <input type="number" id="wizardMaxWords" value="500" min="100" max="2000">
+                        </div>
+                        <div class="wizard-field">
+                            <label>Ngôn ngữ</label>
+                            <select id="wizardLanguage">
+                                <option value="vi">Tiếng Việt</option>
+                                <option value="en">English</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pane 4: Review -->
+                <div class="wizard-pane" data-pane="4">
+                    <h3>Xem trước & Tạo bài</h3>
+                    <p class="wizard-subtitle">Hệ thống dự kiến tạo <strong id="wizardSlotCount">0</strong> bài viết trong khoảng thời gian đã chọn.</p>
+
+                    <div id="wizardSlotPreview" class="wizard-empty">
+                        <i class="fa-solid fa-list-ol"></i>
+                        <div>Nhấn "Tính số slot" để xem trước.</div>
+                    </div>
+
+                    <div style="margin: 16px 0; display: flex; gap: 8px;">
+                        <button type="button" class="btn-secondary" id="wizardRecalcSlots">
+                            <i class="fa-solid fa-calculator"></i> Tính số slot
+                        </button>
+                        <button type="button" class="btn-primary" id="wizardGenerateNow">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Tạo bài ngay
+                        </button>
+                        <button type="button" class="btn-secondary" id="wizardRegenerate" style="display: none;">
+                            <i class="fa-solid fa-rotate"></i> Tạo lại (giữ bài cũ)
+                        </button>
+                    </div>
+
+                    <div id="wizardPostReview" style="display: none;">
+                        <div class="wizard-section-title">Bài viết đã tạo</div>
+                        <div class="wizard-post-list" id="wizardPostList"></div>
+                    </div>
+
+                    <div style="margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border-color, #e5e7eb);">
+                        <div class="wizard-toggle-row">
+                            <div class="label-text">
+                                <strong><i class="fa-solid fa-robot"></i> Bật Auto Pipeline</strong>
+                                <small>Tự động tạo bài mỗi ngày dựa trên cấu hình trên.</small>
+                            </div>
+                            <div class="wizard-switch" id="wizardAutoToggle"></div>
+                        </div>
+
+                        <div id="wizardAutoConfig" style="display: none;">
+                            <div class="wizard-form-row">
+                                <div class="wizard-field">
+                                    <label>Số bài mỗi ngày</label>
+                                    <input type="number" id="wizardPostsPerDay" value="2" min="1" max="10">
+                                </div>
+                                <div class="wizard-field">
+                                    <label>Hướng nội dung</label>
+                                    <select id="wizardPipelineDirection">
+                                        <option value="mixed">Kết hợp (mixed)</option>
+                                        <option value="advertising">Quảng cáo</option>
+                                        <option value="purchase">Mua hàng</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="wizard-footer">
+                <div class="wizard-footer-left">
+                    <button type="button" class="btn-secondary" id="wizardPrev" style="visibility: hidden;">
+                        <i class="fa-solid fa-arrow-left"></i> Quay lại
+                    </button>
+                </div>
+                <div class="wizard-footer-info" id="wizardFooterInfo"></div>
+                <div class="wizard-footer-right">
+                    <button type="button" class="btn-secondary" id="wizardSaveDraft">
+                        <i class="fa-solid fa-save"></i> Lưu nháp
+                    </button>
+                    <button type="button" class="btn-primary" id="wizardNext">
+                        Tiếp tục <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

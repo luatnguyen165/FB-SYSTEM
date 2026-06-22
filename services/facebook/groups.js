@@ -3,9 +3,7 @@ const FacebookGroupCache = require('../../models/FacebookGroupCache');
 const { ACTIVE_FB_SESSIONS, GROUP_SCAN_JOBS, getOrOpenFacebookContext } = require('./session');
 const socketService = require('../socketService');
 
-const FACEBOOK_GROUPS_URL = 'https://www.facebook.com/groups/';
-const FACEBOOK_GROUPS_FEED_URL = 'https://www.facebook.com/groups/feed/';
-const FACEBOOK_GROUPS_YOU_URL = 'https://www.facebook.com/groups/you/';
+const FACEBOOK_GROUPS_JOINS_URL = 'https://www.facebook.com/groups/joins/?nav_source=tab';
 
 function buildInvalidGroupSegments() {
     return new Set([
@@ -267,7 +265,7 @@ async function getJoinedFacebookGroups(userId, accountName, accountType = 'Cá n
         const page = context.pages()[0] || await context.newPage();
         const discovered = await scanFacebookGroups({
             page,
-            candidateUrls: [FACEBOOK_GROUPS_YOU_URL, FACEBOOK_GROUPS_FEED_URL, FACEBOOK_GROUPS_URL],
+            candidateUrls: [FACEBOOK_GROUPS_JOINS_URL],
             invalidSegments: buildInvalidGroupSegments(),
             initialWaitMs: 2500,
             maxRoundsPerUrl: 10,
@@ -301,7 +299,7 @@ async function getJoinedFacebookGroupsDeep({ userId, channelId, accountName, acc
 
             await scanFacebookGroups({
                 page,
-                candidateUrls: [FACEBOOK_GROUPS_YOU_URL, FACEBOOK_GROUPS_FEED_URL, FACEBOOK_GROUPS_URL],
+                candidateUrls: [FACEBOOK_GROUPS_JOINS_URL],
                 invalidSegments: buildInvalidGroupSegments(),
                 initialWaitMs: 2200,
                 maxRoundsPerUrl: 10,
@@ -354,14 +352,10 @@ async function getJoinedFacebookGroupsQuick({ userId, channelId, accountName, ac
 
     try {
         const page = context.pages()[0] || await context.newPage();
-        const candidateUrls = [
-            FACEBOOK_GROUPS_YOU_URL,
-            FACEBOOK_GROUPS_FEED_URL
-        ];
 
         const discovered = await scanFacebookGroups({
             page,
-            candidateUrls,
+            candidateUrls: [FACEBOOK_GROUPS_JOINS_URL],
             invalidSegments: buildInvalidGroupSegments(),
             initialWaitMs: 900,
             maxRoundsPerUrl: 4,
@@ -539,7 +533,7 @@ async function runBackgroundGroupScan({
         const discovered = new Map();
         const scanPromise = scanFacebookGroups({
             page,
-            candidateUrls: [FACEBOOK_GROUPS_YOU_URL, FACEBOOK_GROUPS_FEED_URL, FACEBOOK_GROUPS_URL],
+            candidateUrls: [FACEBOOK_GROUPS_JOINS_URL],
             invalidSegments: buildInvalidGroupSegments(),
             initialWaitMs: 2000,
             maxRoundsPerUrl: scanMode === 'deep' ? 10 : 6,
@@ -851,9 +845,7 @@ function stopGroupBackfillWorker() {
 }
 
 module.exports = {
-    FACEBOOK_GROUPS_URL,
-    FACEBOOK_GROUPS_FEED_URL,
-    FACEBOOK_GROUPS_YOU_URL,
+    FACEBOOK_GROUPS_JOINS_URL,
     buildInvalidGroupSegments,
     normalizeGroupLabel,
     extractFacebookGroupsFromPage,

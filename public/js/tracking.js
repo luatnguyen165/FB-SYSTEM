@@ -55,8 +55,10 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.target-cb').forEach(function (cb) {
         cb.addEventListener('change', function () {
             const row = this.closest('.target-platform-row');
+            const body = row.querySelector('.target-platform-body');
             const select = row.querySelector('.target-account-select');
             select.disabled = !this.checked;
+            body.style.display = this.checked ? 'block' : 'none';
             if (this.checked && select.options.length <= 1) {
                 loadChannelOptions(select, this.value);
             }
@@ -75,9 +77,24 @@ document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('.target-cb:checked').forEach(function (cb) {
             const row = cb.closest('.target-platform-row');
             const select = row.querySelector('.target-account-select');
+            const titleInput = row.querySelector('.target-mapping-title');
+            const captionInput = row.querySelector('.target-mapping-caption');
+            const hashtagsInput = row.querySelector('.target-mapping-hashtags');
+            const tagsInput = row.querySelector('.target-mapping-tags');
             const accountId = select.value;
             if (accountId) {
-                targetPlatforms.push({ platform: cb.value, accountId: accountId });
+                const mapping = {
+                    title: titleInput ? titleInput.value.trim() : '',
+                    caption: captionInput ? captionInput.value.trim() : '',
+                    hashtags: parseHashtagCsv(hashtagsInput ? hashtagsInput.value : ''),
+                    tags: parseCsv(tagsInput ? tagsInput.value : '')
+                };
+                targetPlatforms.push({
+                    platform: cb.value,
+                    accountId: accountId,
+                    enabled: true,
+                    mapping: mapping
+                });
             }
         });
 
@@ -88,7 +105,8 @@ document.addEventListener('DOMContentLoaded', function () {
             sourcePlatform: document.querySelector('input[name="sourcePlatform"]:checked')?.value || 'facebook',
             sourceAccountId: sourceAccountSelect?.value || '',
             targetPlatforms: JSON.stringify(targetPlatforms),
-            cookiesPath: cookiesPathInput?.value || ''
+            cookiesPath: cookiesPathInput?.value || '',
+            repostPaused: document.getElementById('repostPaused')?.checked ? true : false
         };
 
         submitBtn.disabled = true;
@@ -158,6 +176,24 @@ function platformToChannelCode(platformName) {
     return map[platformName] || platformName.toUpperCase();
 }
 
+// ---- Parse CSV for hashtags/tags ----
+function parseHashtagCsv(input) {
+    if (!input) return [];
+    return String(input)
+        .split(/[,\n]/)
+        .map(function (s) { return s.trim(); })
+        .filter(Boolean)
+        .map(function (s) { return s.startsWith('#') ? s : '#' + s; });
+}
+
+function parseCsv(input) {
+    if (!input) return [];
+    return String(input)
+        .split(/[,\n]/)
+        .map(function (s) { return s.trim(); })
+        .filter(Boolean);
+}
+
 // ---- Functions ----
 
 function openAddModal() {
@@ -170,6 +206,8 @@ function openAddModal() {
         sel.disabled = true;
         sel.innerHTML = '<option value="">Chọn tài khoản</option>';
     });
+    document.querySelectorAll('.target-platform-body').forEach(function (body) { body.style.display = 'none'; });
+    document.querySelectorAll('.target-cb').forEach(function (cb) { cb.checked = false; });
     var cookiesGroup = document.getElementById('cookiesUploadGroup');
     if (cookiesGroup) cookiesGroup.style.display = 'none';
     document.getElementById('trackingModal').style.display = 'flex';
@@ -211,15 +249,31 @@ function editTracking(id) {
                     if (cb) {
                         cb.checked = true;
                         var row = cb.closest('.target-platform-row');
+                        var body = row.querySelector('.target-platform-body');
                         var select = row.querySelector('.target-account-select');
+                        var titleInput = row.querySelector('.target-mapping-title');
+                        var captionInput = row.querySelector('.target-mapping-caption');
+                        var hashtagsInput = row.querySelector('.target-mapping-hashtags');
+                        var tagsInput = row.querySelector('.target-mapping-tags');
                         select.disabled = false;
+                        if (body) body.style.display = 'block';
                         // Load accounts then set
                         loadChannelOptions(select, tp.platform, function () {
                             select.value = tp.accountId._id || tp.accountId;
                         });
+                        // Fill mapping
+                        var mapping = tp.mapping || {};
+                        if (titleInput) titleInput.value = mapping.title || '';
+                        if (captionInput) captionInput.value = mapping.caption || '';
+                        if (hashtagsInput) hashtagsInput.value = (mapping.hashtags || []).join(' ');
+                        if (tagsInput) tagsInput.value = (mapping.tags || []).join(', ');
                     }
                 });
             }
+
+            // Set repostPaused
+            var pausedCb = document.getElementById('repostPaused');
+            if (pausedCb) pausedCb.checked = !!item.repostPaused;
 
             document.getElementById('modalSubmitBtn').innerHTML = '<i class="fa-solid fa-check"></i> Cập nhật';
             document.getElementById('trackingModal').style.display = 'flex';

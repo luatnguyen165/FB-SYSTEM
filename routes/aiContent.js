@@ -12,16 +12,22 @@ const aiLimiter = rateLimiter(10, 60000);
 router.get('/', requireAuth, ctrl.renderPage);
 
 // Writing Styles API
+router.get('/api/styles', requireAuth, ctrl.listStyles);
 router.post('/api/styles', requireAuth, ctrl.createStyle);
 router.post('/api/styles/:id/analyze', requireAuth, aiLimiter, ctrl.analyzeStyle);
+router.get('/api/styles/:id', requireAuth, ctrl.getStyle);
 router.put('/api/styles/:id', requireAuth, ctrl.updateStyle);
 router.delete('/api/styles/:id', requireAuth, ctrl.deleteStyle);
 
 // Schedules API
+router.get('/api/schedules', requireAuth, ctrl.listSchedules);
 router.post('/api/schedules', requireAuth, ctrl.createSchedule);
+router.post('/api/schedules/preview-slots', requireAuth, ctrl.previewSlots);
+router.get('/api/schedules/:id', requireAuth, ctrl.getSchedule);
 router.put('/api/schedules/:id', requireAuth, ctrl.updateSchedule);
 router.delete('/api/schedules/:id', requireAuth, ctrl.deleteSchedule);
 router.post('/api/schedules/:id/generate', requireAuth, aiLimiter, ctrl.generateNow);
+router.post('/api/schedules/:id/draft', requireAuth, ctrl.markDraft);
 
 // Posts API
 router.get('/api/posts', requireAuth, ctrl.getPosts);
@@ -55,7 +61,10 @@ router.get('/api/settings/openai-key', requireAuth, ctrl.checkApiKey);
 router.get('/api/stats', requireAuth, ctrl.getStats);
 
 // Auto Pipeline API
+router.get('/api/pipelines', requireAuth, ctrl.listPipelines);
 router.post('/api/pipelines', requireAuth, ctrl.createPipeline);
+router.get('/api/pipelines/:id', requireAuth, ctrl.getPipeline);
+router.put('/api/pipelines/:id', requireAuth, ctrl.updatePipeline);
 router.post('/api/pipelines/:id/run', requireAuth, aiLimiter, ctrl.runPipeline);
 router.post('/api/pipelines/:id/toggle', requireAuth, ctrl.togglePipeline);
 router.delete('/api/pipelines/:id', requireAuth, ctrl.deletePipeline);

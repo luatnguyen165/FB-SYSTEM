@@ -330,35 +330,65 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="postAllComments">
-                            <span><i class="fa-solid fa-play"></i> Post TẤT CẢ comment đã chọn lên mỗi bài viết (theo thứ tự)</span>
-                        </label>
-                        <small class="form-hint"><i class="fa-solid fa-info-circle"></i> Bật: 1 bài viết nhận được tất cả comment đã chọn. Tắt (mặc định): Random 1 comment mỗi lần chạy.</small>
+                        <label><i class="fa-solid fa-filter"></i> Chế độ chọn comment</label>
+                        <select id="selectionMode" class="cp-input">
+                            <option value="manual">Thủ công - chọn từng comment bên dưới</option>
+                            <option value="tag">Theo nhóm tag - tự pick comment có tag (auto-sync)</option>
+                            <option value="all-active">Tất cả đang bật - tự pick comment isActive=true (auto-sync)</option>
+                        </select>
+                        <small class="form-hint">
+                            <i class="fa-solid fa-magic"></i>
+                            <strong>Tag / Tất cả đang bật:</strong> thêm comment mới ở trang
+                            <a href="/schedule/ai-comments" target="_blank">AI Comment Sản Phẩm</a> sẽ tự động được dùng, không cần sửa kịch bản.
+                        </small>
                     </div>
 
-                    <div class="cp-comment-picker" id="commentPicker">
-                        <% if (!allComments || allComments.length === 0) { %>
-                        <div class="cp-empty" style="padding:20px;">
-                            <p><i class="fa-solid fa-comment-slash"></i> Chưa có comment nào trong kho. <a href="/schedule/ai-comments">Tạo comment</a></p>
-                        </div>
-                        <% } else { %>
-                        <% allComments.forEach(function(c) { %>
-                        <label class="cp-comment-pick-item" data-comment-id="<%= c._id %>">
-                            <input type="checkbox" class="cp-comment-check" value="<%= c._id %>">
-                            <span class="cp-comment-pick-type cp-type-<%= c.type %>">
-                                <% if (c.type === 'text') { %><i class="fa-solid fa-font"></i><% } %>
-                                <% if (c.type === 'image') { %><i class="fa-solid fa-image"></i><% } %>
-                                <% if (c.type === 'video') { %><i class="fa-solid fa-video"></i><% } %>
-                            </span>
-                            <span class="cp-comment-pick-name"><%= c.name || '(Không tên)' %></span>
-                            <span class="cp-comment-pick-preview"><%= (c.type === 'text' ? c.content : c.caption || '').substring(0, 60) %></span>
-                        </label>
-                        <% }); %>
-                        <% } %>
+                    <div class="form-group" id="tagsFilterGroup" style="display: none;">
+                        <label><i class="fa-solid fa-tags"></i> Lọc theo tag (chọn 1 hoặc nhiều)</label>
+                        <div id="tagsFilterContainer" class="cp-tags-filter"></div>
+                        <input type="text" id="tagsFilterInput" placeholder="Gõ tag rồi Enter (vd: bds, tech, xe)...">
+                        <small class="form-hint">Comment có ít nhất 1 tag trùng danh sách này sẽ được dùng.</small>
                     </div>
-                    <div class="cp-comment-count" id="commentCount">
-                        Đã chọn: <strong id="selectedCommentCount">0</strong> / <%= (allComments || []).length %> comment
+
+                    <div class="form-group" id="manualPickerGroup">
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="postAllComments">
+                                <span><i class="fa-solid fa-play"></i> Post TẤT CẢ comment đã chọn lên mỗi bài viết (theo thứ tự)</span>
+                            </label>
+                            <small class="form-hint"><i class="fa-solid fa-info-circle"></i> <strong>Manual mode:</strong> tắt (mặc định) = random 1 comment, bật = post tất cả. Các mode Tag / All-active tự động post tất cả theo thứ tự order.</small>
+                        </div>
+
+                        <div class="cp-comment-picker" id="commentPicker">
+                            <% if (!allComments || allComments.length === 0) { %>
+                            <div class="cp-empty" style="padding:20px;">
+                                <p><i class="fa-solid fa-comment-slash"></i> Chưa có comment nào trong kho. <a href="/schedule/ai-comments">Tạo comment</a></p>
+                            </div>
+                            <% } else { %>
+                            <% allComments.forEach(function(c) { %>
+                            <label class="cp-comment-pick-item" data-comment-id="<%= c._id %>">
+                                <input type="checkbox" class="cp-comment-check" value="<%= c._id %>">
+                                <span class="cp-comment-pick-type cp-type-<%= c.type %>">
+                                    <% if (c.type === 'text') { %><i class="fa-solid fa-font"></i><% } %>
+                                    <% if (c.type === 'image') { %><i class="fa-solid fa-image"></i><% } %>
+                                    <% if (c.type === 'video') { %><i class="fa-solid fa-video"></i><% } %>
+                                </span>
+                                <span class="cp-comment-pick-name"><%= c.name || '(Không tên)' %></span>
+                                <% if (c.tags && c.tags.length > 0) { %>
+                                <span class="cp-comment-pick-tags">
+                                    <% c.tags.forEach(function(t) { %>
+                                    <span class="cp-tag-chip"><%= t %></span>
+                                    <% }); %>
+                                </span>
+                                <% } %>
+                                <span class="cp-comment-pick-preview"><%= (c.type === 'text' ? c.content : c.caption || '').substring(0, 60) %></span>
+                            </label>
+                            <% }); %>
+                            <% } %>
+                        </div>
+                        <div class="cp-comment-count" id="commentCount">
+                            Đã chọn: <strong id="selectedCommentCount">0</strong> / <%= (allComments || []).length %> comment
+                        </div>
                     </div>
                 </div>
 

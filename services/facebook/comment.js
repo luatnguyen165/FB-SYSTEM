@@ -1,17 +1,40 @@
 // services/facebook/comment.js
 const fs = require('fs');
+const path = require('path');
 const { getOrOpenFacebookContext, ACTIVE_FB_SESSIONS } = require('./session');
 const { normalizeEncryptedValue } = require('../../utils/cryptoVault');
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
+// Resolve file path giống services/aiScan/helpers.js - hỗ trợ path tương đối dạng "/uploads/..."
+function resolveFilePath(filePath = '') {
+    const raw = String(filePath || '').trim();
+    if (!raw) return '';
+    if (path.isAbsolute(raw) && fs.existsSync(raw)) return raw;
+    const projectRoot = global.USER_DATA_DIR || path.join(__dirname, '..', '..');
+    const normalized = raw.replace(/^\/+/, '').replace(/^\.\/+/, '');
+    const candidates = [
+        path.join(projectRoot, normalized),
+        path.join(projectRoot, 'uploads', 'images', path.basename(normalized)),
+        path.join(projectRoot, 'uploads', 'videos', path.basename(normalized)),
+        path.join(projectRoot, 'uploads', 'comment-files', path.basename(normalized)),
+        path.join(projectRoot, 'uploads', 'ai-scan', path.basename(normalized))
+    ];
+    for (const candidate of candidates) {
+        if (fs.existsSync(candidate)) return candidate;
+    }
+    return raw;
+}
+
 async function uploadFileToComment(page, filePath) {
     console.log('  step=upload: Bat dau upload file', filePath);
     try {
-        if (!filePath || !fs.existsSync(filePath)) {
-            console.log('  step=upload: File khong ton tai ->', filePath);
+        const resolvedPath = resolveFilePath(filePath);
+        if (!resolvedPath || !fs.existsSync(resolvedPath)) {
+            console.log('  step=upload: File khong ton tai ->', filePath, '(resolved:', resolvedPath, ')');
             return false;
         }
+        filePath = resolvedPath;
 
         const attachBtns = [
             'div[aria-label="Đính kèm một ảnh hoặc video"]',
@@ -43,6 +66,59 @@ async function uploadFileToComment(page, filePath) {
         console.log('  step=upload: LOI ->', e.message);
         return false;
     }
+}
+
+// Đợi composer đóng/mở lại = comment đã gửi xong hoàn toàn
+async function waitForCommentSent(page, postUrl, baselineCount, timeoutMs) {
+    timeoutMs = timeoutMs || 25000;
+    const start = Date.now();
+    // Dấu hiệu 1: composer area biến mất (overlay đã đóng)
+    const composerGoneSel = [
+        'div[aria-label*="Đóng"] >> visible=true',
+        'div[aria-label*="Close"] >> visible=true'
+    ];
+    // Dấu hiệu 2: textbox rỗng (composer đã reset)
+    const composerInputSel = 'div[role="textbox"][aria-label*="Bình luận dưới tên"]';
+
+    let lastStatus = 'init';
+    while (Date.now() - start < timeoutMs) {
+        await wait(700);
+        // Check composer input còn nội dung không
+        const inputEl = page.locator(composerInputSel).first();
+        const inputVisible = await inputEl.isVisible().catch(() => false);
+        let inputEmpty = true;
+        if (inputVisible) {
+            const txt = (await inputEl.innerText().catch(() => '') || '').trim();
+            inputEmpty = txt.length === 0;
+        }
+        // Check overlay close button - dấu hiệu composer overlay đang mở
+        let overlayOpen = false;
+        for (const sel of composerGoneSel) {
+            try {
+                const el = page.locator(sel).first();
+                if (await el.count().catch(() => 0) > 0 && await el.isVisible().catch(() => false)) {
+                    overlayOpen = true;
+                    break;
+                }
+            } catch (e) { /* ignore */ }
+        }
+
+        if (!overlayOpen || inputEmpty) {
+            lastStatus = overlayOpen ? 'overlay_open_but_input_empty' : 'overlay_closed';
+            // Đợi thêm 1.5s cho chắc chắn
+            await wait(1500);
+            const stillClosed = !(await page.locator(composerGoneSel[0]).first().isVisible().catch(() => false))
+                && !(await page.locator(composerGoneSel[1]).first().isVisible().catch(() => false));
+            const stillEmpty = inputVisible ? ((await inputEl.innerText().catch(() => '') || '').trim().length === 0) : true;
+            if (stillClosed || stillEmpty) {
+                console.log('  step=verify: Comment da gui xong (status=' + lastStatus + ', elapsed=' + Math.round((Date.now()-start)/1000) + 's)');
+                return true;
+            }
+        }
+        lastStatus = 'composer_still_open (overlay=' + overlayOpen + ', empty=' + inputEmpty + ')';
+    }
+    console.log('  step=verify: TIMEOUT doi comment gui xong (last=' + lastStatus + ', ' + Math.round((Date.now()-start)/1000) + 's)');
+    return false;
 }
 
 async function sendTextComment(page, text) {
@@ -81,10 +157,44 @@ async function sendTextComment(page, text) {
                 }
                 console.log('  step=sendText: Da go xong', txtStr.length, 'ky tu');
                 await wait(800);
-                console.log('  step=sendText: Nhan Enter de post...');
-                await page.keyboard.press('Enter');
-                await wait(2500);
-                console.log('  step=sendText: Da gui Enter xong, doi 2.5s');
+
+                // Click nút Post/Đăng thay vì Enter
+                console.log('  step=sendText: Tim va click nut Post/Dang...');
+                var postBtnSelectors = [
+                    'div[aria-label="Đăng"] >> visible=true',
+                    'div[aria-label="Post"] >> visible=true',
+                    'div[role="button"]:has-text("Đăng")',
+                    'div[role="button"]:has-text("Post")',
+                    'span:has-text("Đăng") >> xpath=ancestor::div[@role="button"]',
+                    'span:has-text("Post") >> xpath=ancestor::div[@role="button"]',
+                    'div[aria-label*="Đăng"][role="button"]',
+                    'div[aria-label*="Post"][role="button"]',
+                    'div[data-testid="react-composer-post-button"]',
+                    'button[type="submit"]'
+                ];
+                var posted = false;
+                for (var b = 0; b < postBtnSelectors.length; b++) {
+                    try {
+                        var btnLoc = page.locator(postBtnSelectors[b]).first();
+                        if (await btnLoc.count() > 0 && await btnLoc.isVisible().catch(function () { return false; })) {
+                            console.log('  step=sendText: Click post button via', postBtnSelectors[b]);
+                            await btnLoc.click({ force: true });
+                            posted = true;
+                            break;
+                        }
+                    } catch (e) { /* try next */ }
+                }
+                if (!posted) {
+                    console.log('  step=sendText: Khong tim thay nut Post, fall back Enter...');
+                    await page.keyboard.press('Enter');
+                }
+
+                // Đợi composer đóng = comment đã gửi xong hoàn toàn
+                const sent = await waitForCommentSent(page, null, 0, 25000);
+                if (!sent) {
+                    console.log('  step=sendText: WARNING - Composer van mo sau 25s, co the comment chua gui');
+                    return { sent: false, error: 'Composer không đóng sau khi gửi - có thể comment chưa được post' };
+                }
                 return { sent: true, error: '' };
             } catch (e) {
                 console.log('  step=sendText: LOI voi selector nay ->', e.message, '| thu selector tiep theo');
@@ -101,10 +211,12 @@ async function sendMediaComment(page, filePath, caption, mediaType) {
         console.log('  step=sendMedia: Thieu filePath');
         return { sent: false, error: 'Missing file path' };
     }
-    if (!fs.existsSync(filePath)) {
-        console.log('  step=sendMedia: File khong ton tai ->', filePath);
+    const resolvedPath = resolveFilePath(filePath);
+    if (!resolvedPath || !fs.existsSync(resolvedPath)) {
+        console.log('  step=sendMedia: File khong ton tai ->', filePath, '(resolved:', resolvedPath, ')');
         return { sent: false, error: 'File not found' };
     }
+    filePath = resolvedPath;
 
     var selectors = [
         'div[role="textbox"][aria-label*="Bình luận dưới tên"] >> visible=true',
@@ -139,7 +251,8 @@ async function sendMediaComment(page, filePath, caption, mediaType) {
         return { sent: false, error: 'Khong the upload file' };
     }
 
-    await wait(Math.floor(Math.random()*1500, 3000));
+    // Đợi FB render xong thumbnail + nút Post
+    await wait(2500);
 
     if (caption) {
         console.log('  step=sendMedia: Go caption (length=', String(caption).length, ')');
@@ -153,15 +266,54 @@ async function sendMediaComment(page, filePath, caption, mediaType) {
                 for (var m = 0; m < cap.length; m++) {
                     await page.keyboard.type(cap[m], { delay: Math.floor(Math.random()*20, 60) });
                 }
-                await wait(400);
+                await wait(600);
                 break;
             }
         }
     }
-    console.log('  step=sendMedia: Nhan Enter de post...');
-    await page.keyboard.press('Enter');
-    await wait(3500);
-    console.log('  step=sendMedia: Da gui xong');
+
+    // Tìm và click nút Post/Đăng rõ ràng
+    console.log('  step=sendMedia: Tim va click nut Post/Dang...');
+    var postBtnSelectors = [
+        'div[aria-label="Đăng"] >> visible=true',
+        'div[aria-label="Post"] >> visible=true',
+        'span:has-text("Đăng") >> xpath=ancestor::div[@role="button"]',
+        'span:has-text("Post") >> xpath=ancestor::div[@role="button"]',
+        'div[role="button"]:has-text("Đăng")',
+        'div[role="button"]:has-text("Post")',
+        'div[aria-label*="Đăng"][role="button"]',
+        'div[aria-label*="Post"][role="button"]',
+        'div[data-testid="react-composer-post-button"]',
+        'button[type="submit"]'
+    ];
+    var posted = false;
+    for (var b = 0; b < postBtnSelectors.length; b++) {
+        try {
+            var btnLoc = page.locator(postBtnSelectors[b]).first();
+            var cnt = await btnLoc.count();
+            if (cnt > 0) {
+                var visible = await btnLoc.isVisible().catch(function () { return false; });
+                if (!visible) continue;
+                console.log('  step=sendMedia: Click post button via', postBtnSelectors[b]);
+                await btnLoc.click({ force: true });
+                posted = true;
+                break;
+            }
+        } catch (e) { /* try next */ }
+    }
+
+    if (!posted) {
+        console.log('  step=sendMedia: Khong tim thay nut Post, fall back Enter...');
+        await page.keyboard.press('Enter');
+    }
+
+    // Đợi composer đóng + media upload xong = comment gửi hoàn tất
+    const sent = await waitForCommentSent(page, null, 0, 35000);
+    if (!sent) {
+        console.log('  step=sendMedia: WARNING - Composer van mo sau 35s, co the comment chua gui');
+        return { sent: false, error: 'Composer không đóng sau khi gửi - có thể comment chưa được post (media upload có thể bị treo)' };
+    }
+    console.log('  step=sendMedia: Da gui xong (verified)');
     return { sent: true, error: '' };
 }
 
@@ -318,6 +470,8 @@ async function commentOnPost(params) {
 }
 
 module.exports = {
+    resolveFilePath,
+    waitForCommentSent,
     uploadFileToComment,
     sendTextComment,
     sendMediaComment,

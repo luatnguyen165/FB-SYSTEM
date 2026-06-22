@@ -307,35 +307,18 @@ async function viewTrainingStats(id) {
     }
 }
 
-// ==================== SCHEDULE MODAL ====================
-const scheduleModal = document.getElementById('scheduleModal');
-const timeSlotsList = document.getElementById('timeSlotsList');
+// ==================== SCHEDULE MODAL (đã thay bằng wizard) ====================
+// Schedule modal markup bị xóa, các hàm dưới đây chỉ còn để tương thích ngược
+// (không gọi trực tiếp từ page nữa — wizard xử lý). Một số hàm render có thể
+// throw nếu DOM không tồn tại; nên wrap defensive.
 
+// Bind nút "Tạo lịch" → mở wizard thay vì mở modal cũ
 document.getElementById('btnNewSchedule')?.addEventListener('click', () => {
-    document.getElementById('scheduleModalTitle').innerHTML = '<i class="fa-solid fa-calendar-plus"></i> Tạo Lịch Mới';
-    document.getElementById('scheduleEditId').value = '';
-    document.getElementById('scheduleName').value = '';
-    document.getElementById('scheduleStyleId').value = '';
-    // Default dates: today for start, 2 days later for end
-    const today = new Date();
-    const twoDaysLater = new Date(today);
-    twoDaysLater.setDate(twoDaysLater.getDate() + 2);
-    document.getElementById('scheduleStartDate').value = today.toISOString().split('T')[0];
-    document.getElementById('scheduleStartDate').type = 'date';
-    document.getElementById('scheduleEndDate').value = twoDaysLater.toISOString().split('T')[0];
-    document.getElementById('scheduleEndDate').type = 'date';
-    document.getElementById('scheduleTopics').value = '';
-    document.getElementById('scheduleMaxWords').value = '500';
-    document.getElementById('scheduleCustomInstructions').value = '';
-    document.getElementById('scheduleLanguage').value = 'vi';
-    document.getElementById('btnSaveSchedule').innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Tạo Lịch & Tạo Bài Ngay';
-    timeSlotsList.innerHTML = createTimeSlotEntry();
-    renderScheduleAccounts();
-    scheduleModal.style.display = 'flex';
-});
-
-document.getElementById('btnAddTimeSlot')?.addEventListener('click', () => {
-    timeSlotsList.insertAdjacentHTML('beforeend', createTimeSlotEntry());
+    if (typeof window.openWizard === 'function') {
+        window.openWizard({ mode: 'new-post' });
+    } else {
+        console.warn('Wizard chưa load, không thể mở schedule modal cũ');
+    }
 });
 
 // ==================== PLATFORM / ACCOUNT SELECTION ====================
@@ -1064,7 +1047,7 @@ function filterPosts() {
     const scheduleId = document.getElementById('filterSchedule').value;
     const status = document.getElementById('filterStatus').value;
     document.querySelectorAll('.ai-post-card').forEach(card => {
-        const matchSchedule = !scheduleId || card.querySelector('.ai-post-meta span')?.textContent.includes(scheduleId);
+        const matchSchedule = !scheduleId || card.dataset.scheduleId === scheduleId;
         const matchStatus = !status || card.dataset.status === status;
         card.style.display = (matchSchedule && matchStatus) ? '' : 'none';
     });
@@ -1072,8 +1055,13 @@ function filterPosts() {
 
 // ==================== UTILS ====================
 function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>').replace(/"/g, '"');
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 // Close modals on overlay click

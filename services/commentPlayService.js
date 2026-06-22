@@ -39,6 +39,8 @@ class CommentPlayService {
             channelId: data.channelId || null,
             selectedCommentIds: data.selectedCommentIds || [],
             postAllComments: data.postAllComments || false,
+            selectionMode: data.selectionMode || 'manual',
+            tagsFilter: Array.isArray(data.tagsFilter) ? data.tagsFilter.map(t => String(t).trim().toLowerCase()).filter(Boolean) : [],
             target: {
                 type: data.target?.type || 'group-posts',
                 groupIds: data.target?.groupIds || [],
@@ -81,6 +83,10 @@ class CommentPlayService {
         if (data.channelId !== undefined) play.channelId = data.channelId;
         if (data.selectedCommentIds !== undefined) play.selectedCommentIds = data.selectedCommentIds;
         if (data.postAllComments !== undefined) play.postAllComments = data.postAllComments;
+        if (data.selectionMode !== undefined) play.selectionMode = data.selectionMode;
+        if (data.tagsFilter !== undefined && Array.isArray(data.tagsFilter)) {
+            play.tagsFilter = data.tagsFilter.map(t => String(t).trim().toLowerCase()).filter(Boolean);
+        }
 
         if (data.target) {
             if (data.target.type !== undefined) play.target.type = data.target.type;
@@ -220,6 +226,15 @@ class CommentPlayService {
     }
 
     async _getCommentsToPost(play) {
+        // Auto-pick theo selectionMode (tag / all-active) - luôn sync với bank
+        const autoComments = await this._pickBySelectionMode(play);
+
+        if (autoComments !== null) {
+            // Mode auto (tag hoặc all-active): luôn post tất cả comment match theo thứ tự order
+            return autoComments;
+        }
+
+        // Manual mode (cũ): dùng selectedCommentIds
         if (play.postAllComments && play.selectedCommentIds && play.selectedCommentIds.length > 0) {
             // Post tất cả comment đã chọn theo thứ tự order
             return AiComment.find({
@@ -232,6 +247,39 @@ class CommentPlayService {
             const comment = await this._pickRandomComment(play);
             return comment ? [comment] : [];
         }
+    }
+
+    /**
+     * Auto-pick comment theo selectionMode.
+     * Return:
+     *   - null: không phải auto mode (giữ nguyên logic cũ)
+     *   - []: auto mode nhưng không tìm thấy comment nào match
+     *   - [array]: auto mode, danh sách comment đã filter
+     */
+    async _pickBySelectionMode(play) {
+        const mode = play.selectionMode || 'manual';
+
+        if (mode === 'all-active') {
+            // Tất cả comment isActive=true (tự sync khi thêm mới)
+            return AiComment.find({
+                userId: play.userId,
+                isActive: true
+            }).sort({ order: 1 }).lean();
+        }
+
+        if (mode === 'tag') {
+            const tags = (play.tagsFilter || []).filter(Boolean);
+            if (tags.length === 0) return [];
+            // Comment có ÍT NHẤT 1 tag trùng tagsFilter (logic OR - comment thuộc bất kỳ nhóm nào)
+            return AiComment.find({
+                userId: play.userId,
+                isActive: true,
+                tags: { $in: tags }
+            }).sort({ order: 1 }).lean();
+        }
+
+        // mode === 'manual' → giữ nguyên logic cũ
+        return null;
     }
 
     _getRandomDelay(play) {
@@ -342,12 +390,24 @@ class CommentPlayService {
 
     async _pickPostFromScanResults(play) {
         const AiScanResult = require('../models/AiScanResult');
+        const AiScanConfig = require('../models/AiScanConfig');
         const mongoose = require('mongoose');
 
         // Ép kiểu scanConfigId về ObjectId để tránh lệch kiểu khi so sánh
         let scanConfigId = play.target.scanConfigId;
         if (scanConfigId && typeof scanConfigId === 'string' && mongoose.Types.ObjectId.isValid(scanConfigId)) {
             scanConfigId = new mongoose.Types.ObjectId(scanConfigId);
+        }
+
+        // Lấy minAiScore từ config để lọc thêm (chỉ áp dụng khi AI detection bật)
+        let minAiScore = 0;
+        let useAiDetection = false;
+        if (scanConfigId) {
+            const cfg = await AiScanConfig.findById(scanConfigId).select('useAiDetection minAiScore').lean();
+            if (cfg) {
+                useAiDetection = cfg.useAiDetection === true;
+                minAiScore = cfg.minAiScore || 0;
+            }
         }
 
         // CROSS-PLAY DEDUP: Lấy danh sách postUrl đã được TẤT CẢ plays của user này comment thành công
@@ -381,6 +441,13 @@ class CommentPlayService {
             ...baseFilter,
             isMatching: true
         }).sort({ scannedAt: -1 }).limit(100).lean();
+
+        // ===== ÁP DỤNG minAiScore NẾU BẬT AI DETECTION =====
+        if (useAiDetection && minAiScore > 0) {
+            const before = results.length;
+            results = results.filter(r => (r.aiScore || 0) >= minAiScore);
+            console.log(`[CommentPlay] Filter by minAiScore>=${minAiScore}: ${results.length}/${before} posts`);
+        }
 
         console.log(`[CommentPlay] Found ${results.length} matching scan results for play ${play._id}. Cross-play commented URLs count: ${commentedSet.size}`);
 

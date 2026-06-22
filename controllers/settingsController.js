@@ -173,6 +173,70 @@ const testTelegram = async (req, res) => {
     }
 };
 
+// API: Tạo mã liên kết Telegram (one-time token, hết hạn 10 phút)
+const crypto = require('crypto');
+const { startTelegramBot } = require('../services/telegramBotService');
+
+const generateTelegramLinkToken = async (req, res) => {
+    try {
+        const token = crypto.randomBytes(16).toString('hex');
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+        await require('../models/User').updateOne(
+            { _id: req.user._id },
+            { $set: { telegramLinkToken: token } }
+        );
+        // Reset link state
+        const User = require('../models/User');
+        await User.updateOne(
+            { _id: req.user._id },
+            { $set: { telegramChatId: '', telegramLinked: false } }
+        );
+        res.json({ success: true, token, expiresAt, botUsername: await getBotUsername() });
+    } catch (error) {
+        console.error('Generate Telegram Link Token Error:', error);
+        res.status(500).json({ success: false, message: 'Lỗi: ' + error.message });
+    }
+};
+
+const getTelegramLinkStatus = async (req, res) => {
+    try {
+        const User = require('../models/User');
+        const user = await User.findById(req.user._id).select('telegramChatId telegramLinked telegramUsername telegramLinkedAt').lean();
+        res.json({
+            success: true,
+            linked: !!(user && user.telegramLinked),
+            chatId: user?.telegramChatId || '',
+            username: user?.telegramUsername || '',
+            linkedAt: user?.telegramLinkedAt || null,
+            botUsername: await getBotUsername()
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const unlinkTelegram = async (req, res) => {
+    try {
+        const User = require('../models/User');
+        await User.updateOne(
+            { _id: req.user._id },
+            { $set: { telegramChatId: '', telegramLinked: false, telegramLinkToken: '' } }
+        );
+        res.json({ success: true, message: 'Đã hủy liên kết Telegram' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+async function getBotUsername() {
+    try {
+        const { getBot } = require('../services/telegramBotService');
+        const bot = getBot();
+        if (bot && bot.botInfo) return bot.botInfo.username;
+    } catch (e) { /* ignore */ }
+    return null;
+}
+
 async function testAiConnection(req, res) {
     try {
         const { provider, apiKey, baseUrl, model } = req.body;
@@ -241,4 +305,14 @@ async function testAiConnection(req, res) {
     }
 }
 
-module.exports = { showSettings, saveSettings, resetSettings, getSecurityConfig, testTelegram, testAiConnection };
+module.exports = {
+    showSettings,
+    saveSettings,
+    resetSettings,
+    getSecurityConfig,
+    testTelegram,
+    testAiConnection,
+    generateTelegramLinkToken,
+    getTelegramLinkStatus,
+    unlinkTelegram
+};

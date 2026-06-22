@@ -203,6 +203,102 @@ async function testTelegramConnection() {
     }
 }
 
+// ============================================================
+// TELEGRAM LINK
+// ============================================================
+async function loadTelegramLinkStatus() {
+    const statusEl = document.getElementById('telegramLinkStatus');
+    const actionsEl = document.getElementById('telegramLinkActions');
+    const unlinkBtn = document.getElementById('btnUnlinkTelegram');
+    const generateBtn = document.getElementById('btnGenerateLinkToken');
+    const botUsernameEl = document.getElementById('botUsername');
+
+    try {
+        const res = await fetch('/settings/api/telegram/link-status');
+        const json = await res.json();
+        if (!json.success) return;
+
+        if (json.botUsername) botUsernameEl.textContent = '@' + json.botUsername;
+
+        if (json.linked) {
+            statusEl.innerHTML = '<i class="fa-solid fa-circle-check" style="color:#10b981;"></i> ' +
+                '<strong>Đã liên kết</strong>' +
+                (json.username ? ' với Telegram @' + escapeHtml(json.username) : '') +
+                (json.chatId ? ' <small style="color:var(--text-muted);">(chat ' + json.chatId + ')</small>' : '');
+            actionsEl.style.display = 'block';
+            if (generateBtn) generateBtn.style.display = 'none';
+            if (unlinkBtn) unlinkBtn.style.display = 'inline-flex';
+        } else {
+            statusEl.innerHTML = '<i class="fa-solid fa-circle-xmark" style="color:#9ca3af;"></i> Chưa liên kết Telegram. Tạo mã → gửi <code>/start &lt;mã&gt;</code> cho bot.';
+            actionsEl.style.display = 'block';
+            if (generateBtn) generateBtn.style.display = 'inline-flex';
+            if (unlinkBtn) unlinkBtn.style.display = 'none';
+        }
+    } catch (e) {
+        statusEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="color:#ef4444;"></i> Lỗi tải trạng thái: ' + e.message;
+    }
+}
+
+async function generateTelegramLinkToken() {
+    const btn = document.getElementById('btnGenerateLinkToken');
+    const previewEl = document.getElementById('linkTokenPreview');
+    const botUsernameEl = document.getElementById('botUsername');
+    const origHTML = btn.innerHTML;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    btn.disabled = true;
+    try {
+        const res = await fetch('/settings/api/telegram/generate-link-token', { method: 'POST' });
+        const json = await res.json();
+        if (json.success) {
+            if (json.botUsername) botUsernameEl.textContent = '@' + json.botUsername;
+            previewEl.textContent = json.token;
+            // Show toast with the start command
+            const cmd = '/start ' + json.token;
+            try { await navigator.clipboard.writeText(cmd); } catch (e) {}
+            showToast('Mã liên kết đã tạo! Lệnh /start đã copy vào clipboard. Gửi cho bot để liên kết.', 'success');
+            // Auto refresh status sau 2s
+            setTimeout(loadTelegramLinkStatus, 2000);
+        } else {
+            showToast(json.message || 'Lỗi tạo mã', 'error');
+        }
+    } catch (e) {
+        showToast('Lỗi: ' + e.message, 'error');
+    } finally {
+        btn.innerHTML = origHTML;
+        btn.disabled = false;
+    }
+}
+
+async function unlinkTelegram() {
+    if (!confirm('Hủy liên kết Telegram? Bạn sẽ không nhận thông báo nữa và không dùng được lệnh từ bot.')) return;
+    try {
+        const res = await fetch('/settings/api/telegram/unlink', { method: 'POST' });
+        const json = await res.json();
+        if (json.success) {
+            showToast('Đã hủy liên kết', 'success');
+            loadTelegramLinkStatus();
+        } else {
+            showToast(json.message || 'Lỗi', 'error');
+        }
+    } catch (e) {
+        showToast('Lỗi: ' + e.message, 'error');
+    }
+}
+
+function escapeHtml(s) {
+    return String(s || '').replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+}
+
+document.getElementById('btnGenerateLinkToken')?.addEventListener('click', generateTelegramLinkToken);
+document.getElementById('btnUnlinkTelegram')?.addEventListener('click', unlinkTelegram);
+
+// Auto-load status khi mở trang
+if (document.getElementById('telegramLinkCard')) {
+    loadTelegramLinkStatus();
+}
+
 async function saveAllSettingsData() {
     const autoFlip = document.getElementById('cfgFlip')?.checked;
     const autoMd5Change = document.getElementById('cfgMd5')?.checked;

@@ -221,11 +221,36 @@ function emitScheduleUpdate(userId, data) {
     console.log(`[Socket.IO] Emitted schedule-update to ${room}:`, data.status);
 }
 
+/**
+ * Emit notification bell event to user
+ * Chỉ dùng cho terminal state (success/failed) - KHÔNG dùng cho running
+ * @param {string} userId
+ * @param {'success'|'error'|'warning'|'info'} type
+ * @param {Object} payload - { id?, title, message, postUrl?, source? }
+ */
+function emitNotif(userId, type, payload) {
+    if (!io) return;
+    if (!userId || !type || !payload) return;
+    const room = `user:${userId}`;
+    const data = {
+        id: payload.id || ('notif_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)),
+        type,
+        title: payload.title || '',
+        message: payload.message || '',
+        postUrl: payload.postUrl || '',
+        source: payload.source || '',
+        time: Date.now(),
+        read: false
+    };
+    io.to(room).emit('notif:new', data);
+    console.log(`[Socket.IO] Emitted notif:new to ${room}: [${type}] ${data.title}`);
+}
+
 module.exports = (socketIoInstance) => {
     if (socketIoInstance) {
         return initializeSocketIO(socketIoInstance);
     }
-    return { emitScheduleUpdate };
+    return { emitScheduleUpdate, emitNotif };
 };
 
 // ============================================================

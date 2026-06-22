@@ -312,6 +312,7 @@ async function runPipeline(pipelineId) {
                 aiModel: aiConfig.model,
                 aiPrompt: prompt,
                 productId: product._id,
+                pipelineId: pipeline._id,
                 direction: pipeline.contentDirection,
                 schedulePostId: schedulePost._id,
             });

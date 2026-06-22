@@ -22,6 +22,14 @@ const UserSchema = new mongoose.Schema({
     resetPasswordToken: String,
     resetPasswordExpires: Date,
     language: { type: String, enum: ['vi', 'en'], default: 'vi' },
+
+    // Telegram linking
+    telegramChatId: { type: String, default: '', index: true },
+    telegramLinked: { type: Boolean, default: false },
+    telegramLinkToken: { type: String, default: '' }, // one-time token để user gõ /start <token>
+    telegramUsername: { type: String, default: '' },   // @username từ Telegram (optional, để hiển thị)
+    telegramLinkedAt: { type: Date, default: null },
+
     createdAt: { type: Date, default: Date.now }
 });
 

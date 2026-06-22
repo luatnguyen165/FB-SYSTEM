@@ -24,6 +24,9 @@
     const $fileProgressBar = document.getElementById('fileProgressBar');
     const $isActive = document.getElementById('commentIsActive');
     const $detectType = document.getElementById('detectType');
+    const $tagsContainer = document.getElementById('commentTagsContainer');
+    const $tagInput = document.getElementById('commentTagInput');
+    let commentTags = [];
 
     // ============================================================
     // AUTO-DETECT TYPE
@@ -212,6 +215,8 @@
         $isActive.checked = true;
         $modalTitle.innerHTML = '<i class="fa-solid fa-plus"></i> Tạo Comment Mới';
         updateDetectBadge();
+        commentTags = [];
+        renderTags();
     }
 
     document.getElementById('btnNewComment')?.addEventListener('click', function () {
@@ -269,7 +274,8 @@
             name: $name.value.trim(),
             content,
             caption,
-            isActive: $isActive.checked
+            isActive: $isActive.checked,
+            tags: commentTags
         };
 
         const btn = document.getElementById('btnSave');
@@ -332,6 +338,10 @@
             $name.value = comment.name || '';
             $isActive.checked = comment.isActive;
             $modalTitle.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Sửa Comment';
+
+            // Load tags
+            commentTags = Array.isArray(comment.tags) ? comment.tags.slice() : [];
+            renderTags();
 
             // Reset file preview trước
             resetFilePreview();
@@ -401,6 +411,51 @@
             }
         });
     });
+
+    // ============================================================
+    // TAGS MANAGEMENT
+    // ============================================================
+    function renderTags() {
+        if (!$tagsContainer) return;
+        var html = '';
+        commentTags.forEach(function (tag, idx) {
+            html += '<span class="aic-tag-chip">' + escapeHtml(tag) +
+                ' <i class="fa-solid fa-xmark" data-tag-idx="' + idx + '"></i></span>';
+        });
+        $tagsContainer.innerHTML = html;
+        $tagsContainer.querySelectorAll('i[data-tag-idx]').forEach(function (icon) {
+            icon.addEventListener('click', function () {
+                var idx = parseInt(this.getAttribute('data-tag-idx'), 10);
+                commentTags.splice(idx, 1);
+                renderTags();
+            });
+        });
+    }
+
+    if ($tagInput) {
+        $tagInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                var val = this.value.trim().replace(/,$/, '').trim().toLowerCase();
+                if (val && commentTags.indexOf(val) === -1) {
+                    commentTags.push(val);
+                    renderTags();
+                }
+                this.value = '';
+            } else if (e.key === 'Backspace' && this.value === '' && commentTags.length > 0) {
+                commentTags.pop();
+                renderTags();
+            }
+        });
+        $tagInput.addEventListener('blur', function () {
+            var val = this.value.trim().toLowerCase();
+            if (val && commentTags.indexOf(val) === -1) {
+                commentTags.push(val);
+                renderTags();
+                this.value = '';
+            }
+        });
+    }
 
     // ============================================================
     // HELPERS

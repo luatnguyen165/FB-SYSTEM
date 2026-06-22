@@ -10,7 +10,7 @@ const { wait, randomInt } = require('./helpers');
 const { normalizeEncryptedValue } = require('../../utils/cryptoVault');
 const { analyzeDbResult } = require('./aiAnalysis');
 const { savePostsToDb, crawlGroupPosts } = require('./crawler');
-const { commentOnMatchingResults, sendMultipleComments, commentOnPostLegacy } = require('./comments');
+const { commentOnPostLegacy } = require('./comments');
 
 // ===== RE-ENTRANT GUARD =====
 let isProcessing = false;
@@ -259,11 +259,32 @@ async function aiAnalyzePhase(config) {
 
 async function runAiScan(config) {
     console.log(`[Full Scan] Starting for: ${config.name}`);
+    const useAiDetection = config.useAiDetection === true;
+    console.log(`[Full Scan] Mode: ${useAiDetection ? 'AI DETECTION ON' : 'AI DETECTION OFF (keyword-based)'}`);
+
     const crawlResult = await crawlPhase(config);
     console.log(`[Full Scan] Crawl done: ${crawlResult.totalCrawled} posts`);
-    
+
+    // ===== BỎ QUA AI PHASE NẾU TẮT =====
+    let aiResult = { totalAnalyzed: 0, matchingPosts: 0, commentedPosts: 0 };
+
+    if (!useAiDetection) {
+        console.log(`[Full Scan] ⏭ Skipping AI analysis phase (useAiDetection=false). Posts already matched by keyword.`);
+        // Đếm số bài match đã được set trong crawl phase
+        const matchedCount = await AiScanResult.countDocuments({
+            configId: config._id,
+            isMatching: true
+        });
+        aiResult = {
+            totalAnalyzed: 0,
+            matchingPosts: matchedCount,
+            commentedPosts: 0
+        };
+        return { ...crawlResult, ...aiResult };
+    }
+
     const settings = await Settings.findOne({ userId: config.userId }).lean();
-    
+
     // Detect provider and get appropriate API key
     const provider = config.aiProvider || settings?.aiProvider || 'openai';
     let hasKey = false;
@@ -274,8 +295,7 @@ async function runAiScan(config) {
     } else if (provider === 'anthropic') {
         hasKey = !!(config.anthropicApiKey || settings?.anthropicApiKey || process.env.ANTHROPIC_API_KEY);
     }
-    
-    let aiResult = { totalAnalyzed: 0, matchingPosts: 0, commentedPosts: 0 };
+
     if (hasKey) {
         try {
             aiResult = await aiAnalyzePhase(config);
@@ -285,8 +305,37 @@ async function runAiScan(config) {
         }
     } else {
         console.log(`[Full Scan] ⏭ Skipping AI analysis (no API key).`);
+        // Fallback: nếu không có key, dùng keyword filter
+        console.log(`[Full Scan] ↪ Falling back to keyword-based matching...`);
+        const matchedCount = await AiScanResult.countDocuments({
+            configId: config._id,
+            isMatching: true
+        });
+        aiResult = { totalAnalyzed: 0, matchingPosts: matchedCount, commentedPosts: 0 };
     }
-    
+
+    // Terminal state → thông báo bell (CHỈ khi chạy xong, không thông báo running)
+    try {
+        const { emitNotif } = require('../socketService');
+        const totalScanned = (crawlResult && crawlResult.totalCrawled) || 0;
+        const matched = (aiResult && aiResult.matchingPosts) || 0;
+        if (totalScanned === 0) {
+            emitNotif(config.userId, 'warning', {
+                id: 'ai-scan:' + config._id + ':empty',
+                title: '⚠️ AI Scan: ' + config.name,
+                message: 'Không crawl được bài viết nào. Kiểm tra group FB hoặc tài khoản.',
+                source: 'ai-scan'
+            });
+        } else {
+            emitNotif(config.userId, matched > 0 ? 'success' : 'info', {
+                id: 'ai-scan:' + config._id + ':done-' + Date.now(),
+                title: matched > 0 ? '✅ AI Scan xong: ' + config.name : 'ℹ️ AI Scan: ' + config.name,
+                message: 'Crawl ' + totalScanned + ' bài, match ' + matched + ' bài',
+                source: 'ai-scan'
+            });
+        }
+    } catch (e) { /* ignore */ }
+
     return { ...crawlResult, ...aiResult };
 }
 
@@ -349,6 +398,16 @@ async function runScheduledScans() {
             results.push({ configId: cfg._id, name: cfg.name, success: true });
         } catch (e) {
             console.error(`[Scheduler] Error ${cfg.name}:`, e.message);
+            // Thông báo bell khi config fail (terminal state)
+            try {
+                const { emitNotif } = require('../socketService');
+                emitNotif(cfg.userId, 'error', {
+                    id: 'ai-scan:' + cfg._id + ':error-' + Date.now(),
+                    title: '❌ AI Scan lỗi: ' + cfg.name,
+                    message: (e.message || 'Lỗi không xác định').substring(0, 200),
+                    source: 'ai-scan'
+                });
+            } catch (ne) { /* ignore */ }
             results.push({ configId: cfg._id, name: cfg.name, success: false, error: e.message });
         }
         await wait(randomInt(3000, 8000));
@@ -364,82 +423,7 @@ async function runScheduledScans() {
 }
 
 async function playCommentForResult(resultId) {
-    console.log(`[Play] ▶ Re-running comment for result: ${resultId}`);
-    const doc = await AiScanResult.findById(resultId);
-    if (!doc) return { success: false, message: 'Không tìm thấy kết quả' };
-    if (!doc.postUrl) return { success: false, message: 'Bài viết không có URL' };
-
-    const config = await AiScanConfig.findById(doc.configId).lean();
-    if (!config) return { success: false, message: 'Không tìm thấy cấu hình quét' };
-
-    const channel = await Channel.findById(doc.channelId || config.channelId).lean();
-    if (!channel) return { success: false, message: 'Không tìm thấy tài khoản Facebook' };
-
-    let context = null;
-    let sessionKey = null;
-    try {
-        const ctx = await getOrOpenFacebookContext(
-            config.userId, channel.accountName, channel.accountType || 'Cá nhân', 'FB', { headless: false, existingSessionDir: channel.storageStatePath ? require('path').dirname(normalizeEncryptedValue(channel.storageStatePath)) : '' }
-        );
-        context = ctx.context;
-        sessionKey = ctx.sessionKey;
-    } catch (e) {
-        console.error(`[Play] ❌ Cannot open FB context:`, e.message);
-        return { success: false, message: 'Không mở được trình duyệt Facebook: ' + e.message };
-    }
-
-    let page = null;
-    try {
-        page = context.pages()[0] || await context.newPage();
-
-        // Lấy commentItems từ config (chỉ lấy những item được chọn)
-        const selectedComments = (config.commentItems || []).filter(ci => ci.selected !== false);
-
-        let itemsToSend = [];
-        if (selectedComments.length > 0) {
-            // Chọn ngẫu nhiên 1 comment từ danh sách đã chọn
-            const picked = selectedComments[randomInt(0, selectedComments.length - 1)];
-            itemsToSend = [{ type: picked.type, content: picked.content, caption: picked.caption || '' }];
-            console.log(`[Play] Picked comment: type=${picked.type}, name="${picked.name || ''}"`);
-        }
-
-        if (itemsToSend.length === 0) {
-            return { success: false, message: 'Cấu hình không có comment nào để gửi' };
-        }
-
-        console.log(`[Play] Navigating to: ${doc.postUrl}`);
-        await page.goto(doc.postUrl, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
-        await page.waitForTimeout(2000);
-
-        const commentResults = await sendMultipleComments(page, itemsToSend);
-        const anySent = commentResults.some(r => r.sent);
-        const firstError = commentResults.find(r => r.error)?.error || '';
-
-        doc.comments = commentResults;
-        doc.commentSent = anySent;
-        doc.commentContent = commentResults.filter(r => r.type === 'text').map(r => r.content).join(' | ');
-        doc.commentImage = commentResults.find(r => r.type === 'image')?.content || '';
-        doc.commentError = firstError;
-        doc.commentedAt = anySent ? new Date() : (doc.commentedAt || null);
-        await doc.save();
-
-        console.log(`[Play] ✓ Done. Sent: ${anySent}, Error: ${firstError || 'none'}`);
-        return {
-            success: anySent,
-            message: anySent ? 'Đã gửi comment thành công!' : ('Gửi comment thất bại: ' + (firstError || 'không rõ lỗi')),
-            result: doc
-        };
-    } catch (err) {
-        console.error(`[Play] ❌ Error:`, err.message);
-        try { doc.commentError = err.message; await doc.save(); } catch (e) {}
-        return { success: false, message: 'Lỗi: ' + err.message };
-    } finally {
-        try {
-            if (context) await context.close();
-            const sessions = global.__facebookPlaywrightSessions;
-            if (sessions && sessionKey) sessions.delete(sessionKey);
-        } catch (e) {}
-    }
+    return { success: false, message: 'Tính năng gửi comment đã bị tắt. AI Scan chỉ lưu bài viết dựa theo logic code.' };
 }
 
 module.exports = {

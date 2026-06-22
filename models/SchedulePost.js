@@ -31,7 +31,10 @@ const SchedulePostSchema = new mongoose.Schema({
     accounts: [{ type: String }], // Tên tài khoản
     status: { type: String, enum: ['pending', 'posted', 'failed'], default: 'pending' },
     platformResults: [PlatformResultSchema], // Kết quả per-platform sau khi chạy schedule
+    sourceTrackingPostId: { type: mongoose.Schema.Types.ObjectId, ref: 'TrackingPost', index: true, sparse: true }, // Link về TrackingPost (nếu được tạo từ auto-repost)
     createdAt: { type: Date, default: Date.now }
 });
+
+SchedulePostSchema.index({ sourceTrackingPostId: 1, platforms: 1 }); // Dedupe per-platform cho auto-repost
 
 module.exports = mongoose.model('SchedulePost', SchedulePostSchema);

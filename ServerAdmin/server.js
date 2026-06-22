@@ -42,7 +42,6 @@ const FeatureVisibilitySchema = new mongoose.Schema({
     dashboard: { type: Boolean, default: true },
     channels: { type: Boolean, default: true },
     storage: { type: Boolean, default: true },
-    storeVideo: { type: Boolean, default: true },
     shopeeLink: { type: Boolean, default: true },
     'schedule-manager': { type: Boolean, default: true },
     'schedule-post': { type: Boolean, default: true },
@@ -51,14 +50,13 @@ const FeatureVisibilitySchema = new mongoose.Schema({
     'schedule-groups': { type: Boolean, default: true },
     'ai-scan': { type: Boolean, default: true },
     'ai-comments': { type: Boolean, default: true },
+    'comment-crawler': { type: Boolean, default: true },
     'comment-play': { type: Boolean, default: true },
     'ai-reply-messenger': { type: Boolean, default: true },
-    'trend-music': { type: Boolean, default: true },
+    'ai-content': { type: Boolean, default: true },
+    feedback: { type: Boolean, default: true },
     profile: { type: Boolean, default: true },
     settings: { type: Boolean, default: true },
-    'analytics': { type: Boolean, default: true },
-    'hashtag-manager': { type: Boolean, default: true },
-    'telegram-notifications': { type: Boolean, default: true },
 }, { timestamps: true });
 
 const FeatureVisibility = mongoose.model('FeatureVisibility', FeatureVisibilitySchema);

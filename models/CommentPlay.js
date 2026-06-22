@@ -37,6 +37,13 @@ const CommentPlaySchema = new mongoose.Schema({
     selectedCommentIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'AiComment', default: null }],
     postAllComments: { type: Boolean, default: false }, // true = post all selected comments to each target post
 
+    // --- Comment Selection Mode ---
+    // - 'manual': dùng selectedCommentIds như cũ
+    // - 'tag': tự pick tất cả comment có tag trùng tagsFilter và isActive=true (auto-sync khi thêm comment mới)
+    // - 'all-active': tự pick tất cả comment isActive=true (auto-sync khi thêm comment mới)
+    selectionMode: { type: String, enum: ['manual', 'tag', 'all-active'], default: 'manual' },
+    tagsFilter: [{ type: String, trim: true, lowercase: true }], // áp dụng khi selectionMode === 'tag'
+
     // --- Target ---
     target: {
         type: {

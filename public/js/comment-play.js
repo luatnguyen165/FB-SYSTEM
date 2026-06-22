@@ -30,6 +30,12 @@
     const $commentChecks = document.querySelectorAll('.cp-comment-check');
     const $selectedCommentCount = document.getElementById('selectedCommentCount');
     const $postAllComments = document.getElementById('postAllComments');
+    const $selectionMode = document.getElementById('selectionMode');
+    const $tagsFilterGroup = document.getElementById('tagsFilterGroup');
+    const $tagsFilterContainer = document.getElementById('tagsFilterContainer');
+    const $tagsFilterInput = document.getElementById('tagsFilterInput');
+    const $manualPickerGroup = document.getElementById('manualPickerGroup');
+    let tagsFilter = [];
 
     // ============================================================
     // COMMENT PICKER - Update count
@@ -51,12 +57,56 @@
         return ids;
     }
 
-    function setSelectedCommentIds(ids) {
+        function setSelectedCommentIds(ids) {
         document.querySelectorAll('.cp-comment-check').forEach(function (cb) {
             cb.checked = ids.includes(cb.value);
         });
         updateCommentCount();
     }
+
+    // ============================================================
+    // TAGS FILTER (cho selectionMode = 'tag')
+    // ============================================================
+    function renderTagsFilter() {
+        if (!$tagsFilterContainer) return;
+        var html = '';
+        tagsFilter.forEach(function (tag, idx) {
+            html += '<span class="cp-tag-chip">' + escapeHtml(tag) +
+                ' <i class="fa-solid fa-xmark" data-tagf-idx="' + idx + '"></i></span>';
+        });
+        $tagsFilterContainer.innerHTML = html;
+        $tagsFilterContainer.querySelectorAll('i[data-tagf-idx]').forEach(function (icon) {
+            icon.addEventListener('click', function () {
+                var idx = parseInt(this.getAttribute('data-tagf-idx'), 10);
+                tagsFilter.splice(idx, 1);
+                renderTagsFilter();
+            });
+        });
+    }
+
+    $tagsFilterInput?.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            var val = this.value.trim().replace(/,$/, '').trim().toLowerCase();
+            if (val && tagsFilter.indexOf(val) === -1) {
+                tagsFilter.push(val);
+                renderTagsFilter();
+            }
+            this.value = '';
+        } else if (e.key === 'Backspace' && this.value === '' && tagsFilter.length > 0) {
+            tagsFilter.pop();
+            renderTagsFilter();
+        }
+    });
+
+    function updateSelectionModeUI() {
+        var mode = $selectionMode ? $selectionMode.value : 'manual';
+        if ($tagsFilterGroup) $tagsFilterGroup.style.display = (mode === 'tag') ? '' : 'none';
+        if ($manualPickerGroup) $manualPickerGroup.style.display = (mode === 'manual') ? '' : 'none';
+    }
+
+    $selectionMode?.addEventListener('change', updateSelectionModeUI);
+    updateSelectionModeUI();
 
     // ============================================================
     // TABS
@@ -263,6 +313,8 @@
             channelId: channelIdVal,
             selectedCommentIds: selectedCommentIds,
             postAllComments: $postAllComments ? $postAllComments.checked : false,
+            selectionMode: $selectionMode ? $selectionMode.value : 'manual',
+            tagsFilter: tagsFilter,
             target: {
                 type: $targetType.value,
                 groupIds: groupIdsArr,
@@ -377,6 +429,14 @@
                 $postAllComments.checked = !!play.postAllComments;
             }
 
+            // Selection mode + tags
+            if ($selectionMode) {
+                $selectionMode.value = play.selectionMode || 'manual';
+            }
+            tagsFilter = Array.isArray(play.tagsFilter) ? play.tagsFilter.slice() : [];
+            renderTagsFilter();
+            updateSelectionModeUI();
+
             openModal();
         });
     });
@@ -409,112 +469,11 @@
     };
 
     // ============================================================
-    // PLAY BUTTON = AUTO COMMENT ALL (gộp thành 1 nút)
+    // PLAY BUTTON = AUTO COMMENT ALL
     // ============================================================
-    var autoCommentProgress = null;
+    // (Đã bỏ popUp panel tiến trình, chỉ dùng toast thông báo)
 
-    function createProgressPanel() {
-        if (autoCommentProgress) return autoCommentProgress;
-        var panel = document.createElement('div');
-        panel.id = 'autoCommentProgress';
-        panel.className = 'cp-auto-progress';
-        panel.style.cssText = 'display:none;position:fixed;top:20px;right:20px;z-index:10000;width:380px;background:white;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.2);overflow:hidden;animation:slideIn 0.3s ease;';
-        panel.innerHTML = '' +
-            '<div style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:white;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;">' +
-                '<div style="display:flex;align-items:center;gap:10px;">' +
-                    '<i class="fa-solid fa-forward-fast" style="font-size:1.2rem;"></i>' +
-                    '<div>' +
-                        '<div style="font-weight:700;font-size:0.95rem;">Đang tự động comment...</div>' +
-                        '<div id="autoCommentStatus" style="font-size:0.8rem;opacity:0.9;margin-top:2px;">Đang khởi động...</div>' +
-                    '</div>' +
-                '</div>' +
-                '<button id="btnStopAutoComment" title="Dừng" style="background:rgba(255,255,255,0.2);border:none;color:white;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:1rem;">' +
-                    '<i class="fa-solid fa-stop"></i>' +
-                '</button>' +
-            '</div>' +
-            '<div style="padding:16px 20px;">' +
-                '<div style="display:flex;gap:16px;margin-bottom:12px;">' +
-                    '<div style="flex:1;text-align:center;padding:10px;background:#f0fdf4;border-radius:10px;">' +
-                        '<div id="autoCommentPosted" style="font-size:1.5rem;font-weight:800;color:#10b981;">0</div>' +
-                        '<div style="font-size:0.75rem;color:#6b7280;">Đã comment</div>' +
-                    '</div>' +
-                    '<div style="flex:1;text-align:center;padding:10px;background:#fef2f2;border-radius:10px;">' +
-                        '<div id="autoCommentErrors" style="font-size:1.5rem;font-weight:800;color:#ef4444;">0</div>' +
-                        '<div style="font-size:0.75rem;color:#6b7280;">Lỗi</div>' +
-                    '</div>' +
-                    '<div style="flex:1;text-align:center;padding:10px;background:#eff6ff;border-radius:10px;">' +
-                        '<div id="autoCommentIteration" style="font-size:1.5rem;font-weight:800;color:#2563eb;">0</div>' +
-                        '<div style="font-size:0.75rem;color:#6b7280;">Lượt</div>' +
-                    '</div>' +
-                '</div>' +
-                '<div style="margin-bottom:8px;">' +
-                    '<div style="height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden;">' +
-                        '<div id="autoCommentBar" style="height:100%;background:linear-gradient(90deg,#8b5cf6,#6d28d9);width:0%;transition:width 0.3s ease;border-radius:3px;"></div>' +
-                    '</div>' +
-                '</div>' +
-                '<div id="autoCommentLog" style="max-height:150px;overflow-y:auto;font-size:0.8rem;color:#6b7280;"></div>' +
-            '</div>';
-        document.body.appendChild(panel);
-        autoCommentProgress = panel;
-
-        // Stop button
-        document.getElementById('btnStopAutoComment').addEventListener('click', function () {
-            if (window.__autoCommentActive) {
-                window.__autoCommentActive = false;
-                showToast('Đã dừng tự động comment', 'warning');
-                hideProgressPanel();
-            }
-        });
-
-        return panel;
-    }
-
-    function showProgressPanel() {
-        var panel = createProgressPanel();
-        panel.style.display = 'block';
-    }
-
-    function hideProgressPanel() {
-        if (autoCommentProgress) {
-            autoCommentProgress.style.display = 'none';
-        }
-    }
-
-    function updateProgress(data) {
-        var posted = document.getElementById('autoCommentPosted');
-        var errors = document.getElementById('autoCommentErrors');
-        var iteration = document.getElementById('autoCommentIteration');
-        var status = document.getElementById('autoCommentStatus');
-        var bar = document.getElementById('autoCommentBar');
-        var log = document.getElementById('autoCommentLog');
-
-        if (posted) posted.textContent = data.totalPosted || 0;
-        if (errors) errors.textContent = data.totalErrors || 0;
-        if (iteration) iteration.textContent = data.iteration || 0;
-
-        if (data.type === 'progress' && status) {
-            var shortUrl = data.targetUrl || '';
-            if (shortUrl.length > 50) shortUrl = shortUrl.substring(0, 50) + '...';
-            status.textContent = 'Lượt ' + data.iteration + ': ' + (data.posted > 0 ? '✓' : '✕');
-            if (bar) {
-                var pct = Math.min(100, (data.totalPosted / Math.max(1, data.totalPosted + data.totalErrors)) * 100);
-                bar.style.width = pct + '%';
-            }
-            if (log) {
-                var logLine = document.createElement('div');
-                logLine.style.cssText = 'padding:4px 0;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;gap:6px;';
-                logLine.innerHTML = '<span style="color:' + (data.posted > 0 ? '#10b981' : '#ef4444') + ';">' + (data.posted > 0 ? '✓' : '✕') + '</span>' +
-                    '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (data.targetUrl || '') + '">' + escapeHtml(shortUrl) + '</span>';
-                log.appendChild(logLine);
-                log.scrollTop = log.scrollHeight;
-            }
-        } else if (data.type === 'complete' && status) {
-            status.textContent = 'Hoàn tất! Đã comment ' + (data.totalPosted || 0) + ' bài viết';
-            if (bar) bar.style.width = '100%';
-        }
-    }
-
-    // Play button = Auto Comment All (gộp thành 1 nút)
+    // Play button = Auto Comment All
     document.querySelectorAll('.cp-btn-run').forEach(function (btn) {
         btn.addEventListener('click', async function () {
             var id = this.dataset.playId;
@@ -527,18 +486,18 @@
                 var json = await res.json();
                 if (json.success) {
                     window.__autoCommentActive = true;
-                    showProgressPanel();
                     showToast('Đã bắt đầu tự động comment tất cả bài viết!', 'success');
 
-                    // Listen for socket progress
+                    // Listen for socket progress - chỉ dùng toast, không hiển thị panel
                     if (typeof io !== 'undefined') {
                         var socket = io();
                         socket.on('auto-comment-progress', function (data) {
-                            if (data.playId === id) updateProgress(data);
+                            if (data.playId === id && data.iteration % 5 === 0) {
+                                showToast('Đang comment lượt ' + data.iteration + '... (✓ ' + (data.totalPosted || 0) + ' / ✕ ' + (data.totalErrors || 0) + ')', 'info');
+                            }
                         });
                         socket.on('auto-comment-complete', function (data) {
                             if (data.playId === id) {
-                                updateProgress({ type: 'complete', totalPosted: data.totalPosted, totalErrors: data.totalErrors });
                                 window.__autoCommentActive = false;
                                 showToast('Hoàn tất! Đã comment ' + data.totalPosted + ' bài viết, ' + data.totalErrors + ' lỗi', 'success');
                                 setTimeout(function () { location.reload(); }, 2000);

@@ -153,11 +153,26 @@
     // ===== Socket.IO realtime =====
     if (window.io) {
         const socket = io();
+
+        // Lắng nghe notif:new từ emitNotif() backend - thông báo terminal state
+        socket.on('notif:new', (data) => {
+            if (!data) return;
+            addNotif({
+                id: data.id,
+                type: data.type,
+                title: data.title,
+                message: data.message,
+                postUrl: data.postUrl,
+                time: data.time || Date.now()
+            });
+        });
+
         socket.on('comment-crawler:progress', (data) => {
             if (!data) return;
             const id = 'job_' + (data.jobId || '');
             const postUrl = data.postUrl || '';
 
+            // CHỈ thông báo terminal state (success/failed) - KHÔNG thông báo running
             if (data.phase === 'success') {
                 addNotif({
                     id: id + '_success',
@@ -176,23 +191,6 @@
                     postUrl,
                     time: Date.now()
                 });
-            } else if (data.phase === 'init' || data.phase === 'navigate') {
-                // Add "đang chạy" chỉ 1 lần khi job bắt đầu
-                if (!loadNotifs().some(n => n.id === id + '_running')) {
-                    addNotif({
-                        id: id + '_running',
-                        type: 'running',
-                        title: '🔄 Đang scrape',
-                        message: (postUrl || '').substring(0, 60),
-                        postUrl,
-                        time: Date.now()
-                    });
-                }
-            } else if (data.phase === 'success' || data.phase === 'failed') {
-                // Xóa "đang chạy" khi xong
-                const notifs = loadNotifs().filter(n => n.id !== id + '_running');
-                saveNotifs(notifs);
-                renderNotifs();
             }
         });
     }

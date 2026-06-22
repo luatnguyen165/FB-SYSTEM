@@ -4,6 +4,7 @@ const TrackingPost = require('../models/TrackingPost');
 const Channel = require('../models/Channel');
 const { scrapeProfilePosts, imageDownloadQueue } = require('../services/facebookProfileScraper');
 const { scrapeGroupPosts, downloadGroupVideo, videoDownloadQueue } = require('../services/facebookGroupScraper');
+const autoRepostService = require('../services/autoRepostService');
 const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
@@ -217,6 +218,23 @@ exports.createTracking = async (req, res) => {
             console.error('[Tracking] Auto-scrape error:', e.message);
         }
 
+        // Auto-repost cho các bài vừa lưu (fire-and-forget)
+        try {
+            const recentPosts = await TrackingPost.find({ trackingId: tracking._id })
+                .sort({ scrapedAt: -1 })
+                .limit(50)
+                .lean();
+            for (const post of recentPosts) {
+                autoRepostService.enqueueAutoRepostForTrackingPost({
+                    trackingPost: post,
+                    tracking,
+                    userId
+                }).catch(err => console.error('[AutoRepost] error:', err.message));
+            }
+        } catch (e) {
+            console.error('[Tracking] Auto-repost batch error:', e.message);
+        }
+
         res.status(201).json({
             success: true,
             message: scrapeResult.scraped > 0
@@ -238,7 +256,7 @@ exports.updateTracking = async (req, res) => {
         const { id } = req.params;
 
         const updateData = {};
-        const allowedFields = ['name', 'url', 'sourceAccountId', 'targetPlatforms', 'cookiesPath', 'isActive'];
+        const allowedFields = ['name', 'url', 'sourceAccountId', 'targetPlatforms', 'cookiesPath', 'isActive', 'repostPaused'];
         
         allowedFields.forEach(field => {
             if (req.body[field] !== undefined) {
@@ -346,6 +364,28 @@ exports.getChannelsByPlatform = async (req, res) => {
 
         res.json({ success: true, data: channels });
     } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+// POST /tracking/api/repost-pause/:id - Tạm dừng/tiếp tục auto-repost
+exports.toggleRepostPause = async (req, res) => {
+    try {
+        const userId = req.session.userId || req.user?.id;
+        const { id } = req.params;
+        const { paused } = req.body;
+
+        const result = await autoRepostService.toggleRepostPause(id, userId, !!paused);
+        if (!result.success) {
+            return res.status(result.message.includes('Không tìm') ? 404 : 500).json(result);
+        }
+        res.json({
+            success: true,
+            message: result.repostPaused ? 'Đã tạm dừng auto-repost' : 'Đã bật lại auto-repost',
+            data: { repostPaused: result.repostPaused }
+        });
+    } catch (err) {
+        console.error('[Tracking] toggleRepostPause error:', err.message);
         res.status(500).json({ success: false, message: err.message });
     }
 };
@@ -579,6 +619,15 @@ exports.scrapeTracking = async (req, res) => {
                     { upsert: true, returnDocument: "after" }
                 );
                 saved++;
+
+                // Auto-repost hook (fire-and-forget, không làm chậm scrape loop)
+                if (newPost) {
+                    autoRepostService.enqueueAutoRepostForTrackingPost({
+                        trackingPost: newPost,
+                        tracking,
+                        userId
+                    }).catch(err => console.error('[AutoRepost] error:', err.message));
+                }
 
                 // Emit新 post saved
                 if (io) {

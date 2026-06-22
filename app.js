@@ -380,6 +380,9 @@ mongoose.connect(DB_URI, {
     global.mongoConnected = true;
     console.log('✅ Đã kết nối thành công tới MongoDB');
     startSchedulers();
+    // Khởi động Telegram bot (nếu có token trong Settings)
+    const { startTelegramBot } = require('./services/telegramBotService');
+    startTelegramBot().catch(err => console.error('[TG Bot] Start error:', err.message));
 })
 .catch(err => {
     console.error('❌ Lỗi kết nối MongoDB:', err.message);

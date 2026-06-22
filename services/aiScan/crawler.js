@@ -6,6 +6,28 @@ const AiScanResult = require('../../models/AiScanResult');
 const { extractGroupIdFromUrl, normalizeFacebookPostUrl, isTodayTimeString, randomInt } = require('./helpers');
 const { downloadGroupVideo, videoDownloadQueue } = require('../facebookGroupScraper');
 
+/**
+ * Match bài viết theo keyword đơn giản (khi tắt AI detection)
+ * @param {string} content - Nội dung bài viết
+ * @param {string[]} keywordFilter - Danh sách keyword (case-insensitive)
+ * @returns {{isMatching: boolean, reason: string}}
+ */
+function matchByKeyword(content, keywordFilter = []) {
+    if (!Array.isArray(keywordFilter) || keywordFilter.length === 0) {
+        // Không có keyword filter → mặc định match tất cả (khi tắt AI)
+        return { isMatching: true, reason: 'no_keyword_filter_match_all' };
+    }
+    const text = String(content || '').toLowerCase();
+    for (const kw of keywordFilter) {
+        const k = String(kw || '').trim().toLowerCase();
+        if (!k) continue;
+        if (text.includes(k)) {
+            return { isMatching: true, reason: `keyword_match:${k}` };
+        }
+    }
+    return { isMatching: false, reason: 'no_keyword_match' };
+}
+
 async function crawlGroupPosts(page, groupUrl, maxPosts = 10, maxDaysOld = 1) {
     console.log(`[Crawl] Scanning: ${groupUrl}, max: ${maxPosts}, maxDaysOld: ${maxDaysOld}`);
     
@@ -204,6 +226,57 @@ async function savePostsToDb(posts, config, groupUrl) {
                 skipped++;
                 continue;
             }
+
+            // ===== TIỀN LỌC KEYWORD TRƯỚC KHI TỐN TOKEN AI =====
+            // Chạy keyword match trước (rất rẻ, không tốn token).
+            // - Bài match keyword → tự động coi như match (không cần AI).
+            // - Bài KHÔNG match keyword → bỏ qua luôn, không lưu, không gửi AI.
+            // - Bài match keyword MÀ muốn AI verify lại → vẫn lưu với aiAnalyzed=false để AI phân tích.
+            const useAiDetection = config.useAiDetection === true;
+            const useKeywordPreFilter = config.useKeywordPreFilter !== false; // mặc định: bật
+            const keywordResult = matchByKeyword(content, config.keywordFilter || []);
+            const hasKeywordFilter = Array.isArray(config.keywordFilter) && config.keywordFilter.length > 0;
+
+            let isMatching = false;
+            let matchReason = 'awaiting_ai';
+            let aiAnalyzed = false;
+            let initialScore = 0;
+            let skipPost = false;
+
+            if (!useAiDetection) {
+                // Mode không dùng AI - match hoàn toàn theo keyword
+                isMatching = keywordResult.isMatching;
+                matchReason = keywordResult.reason;
+                aiAnalyzed = true;
+                initialScore = isMatching ? 80 : 0;
+            } else if (useKeywordPreFilter && hasKeywordFilter) {
+                // Mode AI: có bật tiền lọc keyword + có danh sách keyword
+                if (!keywordResult.isMatching) {
+                    // Bài KHÔNG chứa keyword → bỏ qua luôn, không tốn token AI
+                    console.log(`[Crawl] ⏭ Skip (no keyword): ${postId} - ${keywordResult.reason}`);
+                    skipPost = true;
+                } else {
+                    // Bài match keyword → lưu lại + để AI verify
+                    isMatching = true;
+                    matchReason = 'keyword_pre_filter:' + keywordResult.reason;
+                    initialScore = 50; // score tạm, AI sẽ update
+                }
+            }
+            // Nếu !hasKeywordFilter (không có keyword) + useAiDetection = true → lưu hết, AI phân tích sau (giữ logic cũ)
+
+            if (skipPost) {
+                skipped++;
+                continue;
+            }
+
+            // Bỏ qua lưu bài không match nếu keepNonMatching = false
+            // CHỉ áp dụng khi đã có kết quả match (tức là tắt AI hoặc đã pre-filter)
+            if (!isMatching && !useAiDetection && config.keepNonMatching === false) {
+                console.log(`[Crawl] ⏭ Skip non-matching: ${postId} (${matchReason})`);
+                skipped++;
+                continue;
+            }
+
             await AiScanResult.create({
                 userId: config.userId,
                 configId: config._id,
@@ -218,12 +291,15 @@ async function savePostsToDb(posts, config, groupUrl) {
                 postVideos: localVideos,
                 postAuthor: author,
                 postPublishedAt: publishedAt,
-                aiAnalyzed: false,
-                isMatching: true,
+                aiAnalyzed,
+                aiScore: initialScore,
+                isMatching,
+                matchReason,
                 scannedAt: new Date()
             });
             saved++;
-            console.log(`[Crawl] ✓ Saved: ${postId} (${(content || '').substring(0, 50)}...) [${localImages.length} images, ${localVideos.length} videos]`);
+            const mode = useAiDetection ? '[AI-pending]' : `[${isMatching ? '✓' : '✗'}]`;
+            console.log(`[Crawl] ${mode} Saved: ${postId} (${(content || '').substring(0, 50)}...) [${localImages.length} images, ${localVideos.length} videos]`);
         } catch (e) {
             errors++;
             console.error(`[Crawl] ✗ Error saving post:`, e.message);
@@ -236,5 +312,6 @@ async function savePostsToDb(posts, config, groupUrl) {
 module.exports = {
     crawlGroupPosts,
     downloadImageToLocal,
-    savePostsToDb
+    savePostsToDb,
+    matchByKeyword
 };

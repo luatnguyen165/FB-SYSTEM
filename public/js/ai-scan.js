@@ -77,6 +77,8 @@
                 showScanProgressMessage('✓ Quét hoàn tất! Đang tải lại bảng...');
                 // Request fresh table data via Socket.IO
                 socket.emit('scan:load-table', { userId: window.__USER_ID__ });
+                // Reset nút "Quét ngay" về trạng thái ban đầu khi server báo hoàn tất
+                if (typeof resetAllRunNowButtons === 'function') resetAllRunNowButtons();
             });
 
             // Listen for full table data from backend (Socket.IO)
@@ -91,6 +93,8 @@
                 if (data.stats) {
                     updateStats(data.stats);
                 }
+                // Có dữ liệu mới trong table -> reset nút quét ngay
+                if (typeof resetAllRunNowButtons === 'function') resetAllRunNowButtons();
             });
 
             // Listen for new results in real-time
@@ -103,6 +107,8 @@
                     });
                     // Re-init pagination
                     initAiScanPagination();
+                    // Có kết quả mới -> reset nút quét ngay
+                    if (typeof resetAllRunNowButtons === 'function') resetAllRunNowButtons();
                 }
             });
 
@@ -182,6 +188,21 @@
     const $configOpenaiKey = document.getElementById('configOpenaiKey');
     const $configScanScript = document.getElementById('configScanScript');
 
+    // AI Detection mode
+    const $useAiDetection = document.getElementById('configUseAiDetection');
+    const $aiDetectionOffFields = document.getElementById('aiDetectionOffFields');
+    const $aiDetectionOnFields = document.getElementById('aiDetectionOnFields');
+    const $aiModeHint = document.getElementById('aiModeHint');
+    const $keywordInput = document.getElementById('configKeywordInput');
+    const $keywordTagsContainer = document.getElementById('keywordTagsContainer');
+    const $keywordInputOn = document.getElementById('configKeywordInputOn');
+    const $keywordTagsContainerOn = document.getElementById('keywordTagsContainerOn');
+    const $keepNonMatching = document.getElementById('configKeepNonMatching');
+    const $aiProvider = document.getElementById('configAiProvider');
+    const $minAiScore = document.getElementById('configMinAiScore');
+    const $scanScriptVisible = document.getElementById('configScanScriptVisible');
+    const $configScanScriptHidden = document.getElementById('configScanScript');
+
     const $groupLoading = document.getElementById('groupLoading');
     const $groupEmpty = document.getElementById('groupEmpty');
     const $groupCheckboxList = document.getElementById('groupCheckboxList');
@@ -209,204 +230,102 @@
     }
 
     // ============================================================
-    // COMMENT ITEMS MANAGEMENT
+    // AI DETECTION MODE TOGGLE
     // ============================================================
-    var commentItems = [];
-    var commentFileUploading = false;
+    var keywordFilterList = [];
 
-    function renderCommentItems() {
-        var container = document.getElementById('commentItemsContainer');
-        if (!container) return;
-
-        if (commentItems.length === 0) {
-            container.innerHTML = '<div class="comment-items-empty"><i class="fa-solid fa-comment-dots"></i> Chưa có bình luận nào. Nhấn nút bên dưới để thêm.</div>';
-            return;
-        }
-
+    function renderKeywordTags() {
+        if (!$keywordTagsContainer) return;
         var html = '';
-        commentItems.forEach(function(item, idx) {
-            var typeIcon = item.type === 'video' ? 'fa-video' : item.type === 'image' ? 'fa-image' : 'fa-font';
-            var typeLabel = item.type === 'video' ? 'Video' : item.type === 'image' ? 'Hình' : 'Text';
-            var typeClass = item.type === 'video' ? 'ci-type-video' : item.type === 'image' ? 'ci-type-image' : 'ci-type-text';
-
-            html += '<div class="comment-item-card' + (item.selected ? ' ci-selected' : '') + '" data-idx="' + idx + '">';
-            html += '<div class="ci-header">';
-            html += '<label class="ci-checkbox"><input type="checkbox" ' + (item.selected ? 'checked' : '') + ' onchange="toggleCommentItem(' + idx + ')"><span class="ci-check"></span></label>';
-            html += '<span class="ci-type-badge ' + typeClass + '"><i class="fa-solid ' + typeIcon + '"></i> ' + typeLabel + '</span>';
-            if (item.name) html += '<span class="ci-name">' + escapeHtml(item.name) + '</span>';
-            html += '<div class="ci-actions">';
-            html += '<button type="button" class="ci-btn ci-btn-edit" onclick="editCommentItem(' + idx + ')" title="Sửa"><i class="fa-solid fa-pen"></i></button>';
-            html += '<button type="button" class="ci-btn ci-btn-delete" onclick="removeCommentItem(' + idx + ')" title="Xóa"><i class="fa-solid fa-trash"></i></button>';
-            html += '</div></div>';
-
-            if (item.type === 'text') {
-                html += '<div class="ci-preview ci-preview-text">' + escapeHtml((item.content || '').substring(0, 100)) + '</div>';
-            } else if (item.type === 'image' && item.content) {
-                html += '<div class="ci-preview ci-preview-media"><img src="' + escapeAttr(item.content) + '" onerror="this.style.display=\'none\'"></div>';
-                if (item.caption) html += '<div class="ci-caption"><i class="fa-solid fa-quote-left"></i> ' + escapeHtml(item.caption.substring(0, 60)) + '</div>';
-            } else if (item.type === 'video' && item.content) {
-                html += '<div class="ci-preview ci-preview-media"><video src="' + escapeAttr(item.content) + '" preload="metadata"></video></div>';
-                if (item.caption) html += '<div class="ci-caption"><i class="fa-solid fa-quote-left"></i> ' + escapeHtml(item.caption.substring(0, 60)) + '</div>';
-            }
-
-            html += '</div>';
+        keywordFilterList.forEach(function(kw, idx) {
+            html += '<span class="keyword-tag">' + escapeHtml(kw) +
+                ' <i class="fa-solid fa-xmark" onclick="removeKeywordTag(' + idx + ')"></i></span>';
         });
-
-        container.innerHTML = html;
+        $keywordTagsContainer.innerHTML = html;
     }
 
-    window.toggleCommentItem = function(idx) {
-        if (commentItems[idx]) {
-            commentItems[idx].selected = !commentItems[idx].selected;
-            renderCommentItems();
+    window.removeKeywordTag = function(idx) {
+        keywordFilterList.splice(idx, 1);
+        renderKeywordTags();
+    };
+
+    function toggleAiModeFields() {
+        if (!$useAiDetection) return;
+        var on = $useAiDetection.checked;
+        if ($aiDetectionOffFields) $aiDetectionOffFields.style.display = on ? 'none' : 'block';
+        if ($aiDetectionOnFields) $aiDetectionOnFields.style.display = on ? 'block' : 'none';
+        if ($aiModeHint) {
+            $aiModeHint.textContent = on
+                ? 'BẬT: AI sẽ đọc nội dung bài viết và đánh giá match nhu cầu (0-100%). Tốn OpenAI token nhưng chính xác hơn.'
+                : 'TẮT: Lưu bài xong comment ngay dựa trên keyword filter. Tốc độ nhanh, không tốn token OpenAI.';
         }
-    };
-
-    window.removeCommentItem = function(idx) {
-        commentItems.splice(idx, 1);
-        renderCommentItems();
-    };
-
-    window.editCommentItem = function(idx) {
-        var item = commentItems[idx];
-        if (!item) return;
-        showCommentItemModal(item, idx);
-    };
-
-    function addCommentItem(type) {
-        showCommentItemModal({ type: type, content: '', caption: '', name: '', selected: true }, -1);
     }
 
-    function showCommentItemModal(item, idx) {
-        var isNew = idx < 0;
-        var title = isNew ? 'Thêm Comment' : 'Sửa Comment';
-        var isMedia = item.type === 'image' || item.type === 'video';
-
-        var html = '<div class="ci-modal-overlay" id="ciModalOverlay">';
-        html += '<div class="ci-modal">';
-        html += '<div class="ci-modal-header"><h4>' + title + '</h4><button type="button" class="ci-modal-close" onclick="closeCiModal()"><i class="fa-solid fa-xmark"></i></button></div>';
-        html += '<div class="ci-modal-body">';
-
-        html += '<div class="ci-form-group"><label>Tên gợi nhớ</label><input type="text" id="ciName" value="' + escapeAttr(item.name || '') + '" placeholder="VD: Comment BĐS"></div>';
-
-        if (item.type === 'text') {
-            html += '<div class="ci-form-group"><label>Nội dung <span class="required">*</span></label><textarea id="ciContent" rows="4" placeholder="Nhập nội dung comment...">' + escapeHtml(item.content || '') + '</textarea></div>';
-        } else {
-            html += '<div class="ci-form-group"><label>File ' + (item.type === 'video' ? 'video' : 'hình ảnh') + ' <span class="required">*</span></label>';
-            html += '<div class="ci-file-upload" id="ciFileUpload">';
-            if (item.content) {
-                if (item.type === 'image') html += '<img src="' + escapeAttr(item.content) + '" class="ci-file-preview">';
-                else html += '<video src="' + escapeAttr(item.content) + '" class="ci-file-preview" controls preload="metadata"></video>';
-            }
-            html += '<input type="file" id="ciFileInput" accept="' + (item.type === 'video' ? 'video/*' : 'image/*') + '" onchange="uploadCiFile(this,\'' + item.type + '\')">';
-            html += '<input type="hidden" id="ciContent" value="' + escapeAttr(item.content || '') + '">';
-            html += '<div class="ci-file-info" id="ciFileInfo">' + (item.content ? item.content.split('/').pop() : 'Chưa chọn file') + '</div>';
-            html += '</div></div>';
-
-            html += '<div class="ci-form-group"><label>Caption (text đi kèm)</label><textarea id="ciCaption" rows="2" placeholder="Nhập caption...">' + escapeHtml(item.caption || '') + '</textarea></div>';
-        }
-
-        html += '</div>';
-        html += '<div class="ci-modal-footer">';
-        html += '<button type="button" class="btn btn-outline" onclick="closeCiModal()">Hủy</button>';
-        html += '<button type="button" class="btn btn-primary" onclick="saveCiModal(' + idx + ')"><i class="fa-solid fa-check"></i> Lưu</button>';
-        html += '</div></div></div>';
-
-        document.body.insertAdjacentHTML('beforeend', html);
+    if ($useAiDetection) {
+        $useAiDetection.addEventListener('change', toggleAiModeFields);
     }
 
-    window.closeCiModal = function() {
-        var overlay = document.getElementById('ciModalOverlay');
-        if (overlay) overlay.remove();
-    };
-
-    window.uploadCiFile = function(input, type) {
-        var file = input.files[0];
-        if (!file) return;
-
-        var formData = new FormData();
-        formData.append('file', file);
-
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', '/schedule/ai-comment/api/upload-file', true);
-
-        document.getElementById('ciFileInfo').textContent = 'Đang upload...';
-
-        xhr.onload = function() {
-            try {
-                var res = JSON.parse(xhr.responseText);
-                if (res.success && res.data) {
-                    document.getElementById('ciContent').value = res.data.filePath;
-                    document.getElementById('ciFileInfo').textContent = res.data.fileName;
-
-                    var preview = document.getElementById('ciFileUpload');
-                    var existing = preview.querySelector('.ci-file-preview');
-                    if (existing) existing.remove();
-
-                    if (type === 'image') {
-                        preview.insertAdjacentHTML('afterbegin', '<img src="' + res.data.filePath + '" class="ci-file-preview">');
-                    } else {
-                        preview.insertAdjacentHTML('afterbegin', '<video src="' + res.data.filePath + '" class="ci-file-preview" controls preload="metadata"></video>');
-                    }
-                } else {
-                    document.getElementById('ciFileInfo').textContent = 'Lỗi: ' + (res.message || 'Upload thất bại');
+    if ($keywordInput) {
+        $keywordInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                var val = this.value.trim().replace(/,$/, '').trim();
+                if (val && keywordFilterList.indexOf(val) === -1) {
+                    keywordFilterList.push(val);
+                    renderKeywordTags();
                 }
-            } catch(e) {
-                document.getElementById('ciFileInfo').textContent = 'Lỗi xử lý';
+                this.value = '';
+            } else if (e.key === 'Backspace' && this.value === '' && keywordFilterList.length > 0) {
+                keywordFilterList.pop();
+                renderKeywordTags();
             }
-        };
+        });
+        $keywordInput.addEventListener('blur', function () {
+            var val = this.value.trim();
+            if (val && keywordFilterList.indexOf(val) === -1) {
+                keywordFilterList.push(val);
+                renderKeywordTags();
+                this.value = '';
+            }
+        });
+    }
 
-        xhr.onerror = function() {
-            document.getElementById('ciFileInfo').textContent = 'Lỗi kết nối';
-        };
+    // Keyword pre-filter (khi bật AI mode) - dùng 1 list chung với keywordFilterList
+    // nhưng render ra container riêng để user biết nó áp dụng cho pre-filter
+    function renderKeywordTagsOn() {
+        if (!$keywordTagsContainerOn) return;
+        var html = '';
+        keywordFilterList.forEach(function(kw, idx) {
+            html += '<span class="keyword-tag">' + escapeHtml(kw) +
+                ' <i class="fa-solid fa-xmark" onclick="removeKeywordTag(' + idx + ')"></i></span>';
+        });
+        $keywordTagsContainerOn.innerHTML = html;
+    }
 
-        xhr.send(formData);
-    };
-
-    window.saveCiModal = function(idx) {
-        var isNew = idx < 0;
-        var name = (document.getElementById('ciName').value || '').trim();
-        var content = (document.getElementById('ciContent').value || '').trim();
-        var caption = document.getElementById('ciCaption') ? (document.getElementById('ciCaption').value || '').trim() : '';
-
-        if (!content) {
-            showToast('Vui lòng nhập nội dung hoặc upload file', 'error');
-            return;
-        }
-
-        var item = {
-            name: name,
-            type: isNew ? (commentItems.length > 0 ? commentItems[0].type : 'text') : commentItems[idx].type,
-            content: content,
-            caption: caption,
-            selected: true
-        };
-
-        // Xác định type từ context
-        if (document.getElementById('ciFileInput')) {
-            var accept = document.getElementById('ciFileInput').accept;
-            item.type = accept.includes('video') ? 'video' : 'image';
-        }
-
-        if (isNew) {
-            // Lấy type từ nút đã click
-            var lastType = window._lastCommentType || 'text';
-            item.type = lastType;
-            commentItems.push(item);
-        } else {
-            item.type = commentItems[idx].type;
-            item.selected = commentItems[idx].selected;
-            commentItems[idx] = item;
-        }
-
-        closeCiModal();
-        renderCommentItems();
-    };
-
-    // Nút thêm comment
-    document.getElementById('btnAddCommentText')?.addEventListener('click', function() { window._lastCommentType = 'text'; addCommentItem('text'); });
-    document.getElementById('btnAddCommentImage')?.addEventListener('click', function() { window._lastCommentType = 'image'; addCommentItem('image'); });
-    document.getElementById('btnAddCommentVideo')?.addEventListener('click', function() { window._lastCommentType = 'video'; addCommentItem('video'); });
+    if ($keywordInputOn) {
+        $keywordInputOn.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                var val = this.value.trim().replace(/,$/, '').trim();
+                if (val && keywordFilterList.indexOf(val) === -1) {
+                    keywordFilterList.push(val);
+                    renderKeywordTagsOn();
+                }
+                this.value = '';
+            } else if (e.key === 'Backspace' && this.value === '' && keywordFilterList.length > 0) {
+                keywordFilterList.pop();
+                renderKeywordTagsOn();
+            }
+        });
+        $keywordInputOn.addEventListener('blur', function () {
+            var val = this.value.trim();
+            if (val && keywordFilterList.indexOf(val) === -1) {
+                keywordFilterList.push(val);
+                renderKeywordTagsOn();
+                this.value = '';
+            }
+        });
+    }
 
     // ============================================================
     // MODAL HELPERS
@@ -435,9 +354,13 @@
         $configId.value = '';
         $modalTitle.textContent = 'Tạo Cấu Hình Quét AI';
         $configMaxPosts.value = '10';
-        commentItems = [];
-        renderCommentItems();
         resetGroupSelector();
+        // Reset AI mode
+        if ($useAiDetection) $useAiDetection.checked = false;
+        keywordFilterList = [];
+        renderKeywordTags();
+        renderKeywordTagsOn();
+        toggleAiModeFields();
     }
 
     function resetGroupSelector() {
@@ -636,14 +559,18 @@
             groupKeys: JSON.stringify(groupKeys),
             maxPostsPerScan: parseInt($configMaxPosts.value, 10) || 10,
             openaiApiKey: $configOpenaiKey.value.trim(),
-            scanScript: $configScanScript ? $configScanScript.value.trim() : '',
-            commentItems: JSON.stringify(commentItems),
+            scanScript: $scanScriptVisible ? $scanScriptVisible.value.trim() : '',
             scheduleEnabled: $scheduleEnabled ? $scheduleEnabled.checked : false,
             scanIntervalMinutes: parseInt($scanInterval.value, 10) || 60,
             maxPostsPerScanSchedule: parseInt($scheduleMaxPosts.value, 10) || 10,
             scheduleTimeStart: $scheduleTimeStart ? $scheduleTimeStart.value : '06:00',
             scheduleTimeEnd: $scheduleTimeEnd ? $scheduleTimeEnd.value : '23:00',
-            maxDaysOld: parseInt($maxDaysOld.value, 10) || 1
+            // AI Detection mode
+            useAiDetection: $useAiDetection ? $useAiDetection.checked : false,
+            keywordFilter: JSON.stringify(keywordFilterList),
+            minAiScore: $minAiScore ? parseInt($minAiScore.value, 10) || 60 : 60,
+            keepNonMatching: $keepNonMatching ? $keepNonMatching.checked : true,
+            aiProvider: $aiProvider ? $aiProvider.value : 'openai'
         };
 
         var btnText = document.querySelector('#btnSaveConfig');
@@ -718,12 +645,6 @@
             // Load scanScript
             if ($configScanScript) $configScanScript.value = config.scanScript || '';
 
-            // Load commentItems
-            commentItems = Array.isArray(config.commentItems) ? config.commentItems.map(function(ci) {
-                return { name: ci.name || '', type: ci.type || 'text', content: ci.content || '', caption: ci.caption || '', selected: ci.selected !== false };
-            }) : [];
-            renderCommentItems();
-
             // Load schedule fields
             if ($scheduleEnabled) {
                 $scheduleEnabled.checked = !!config.scheduleEnabled;
@@ -734,6 +655,17 @@
             if ($scheduleTimeStart) $scheduleTimeStart.value = config.scheduleTimeStart || '06:00';
             if ($scheduleTimeEnd) $scheduleTimeEnd.value = config.scheduleTimeEnd || '23:00';
             if ($maxDaysOld) $maxDaysOld.value = config.maxDaysOld || 1;
+
+            // Load AI Detection mode
+            if ($useAiDetection) $useAiDetection.checked = !!config.useAiDetection;
+            keywordFilterList = Array.isArray(config.keywordFilter) ? config.keywordFilter.slice() : [];
+            renderKeywordTags();
+            renderKeywordTagsOn();
+            if ($minAiScore) $minAiScore.value = config.minAiScore || 60;
+            if ($keepNonMatching) $keepNonMatching.checked = config.keepNonMatching !== false;
+            if ($aiProvider) $aiProvider.value = config.aiProvider || 'openai';
+            if ($scanScriptVisible) $scanScriptVisible.value = config.scanScript || '';
+            toggleAiModeFields();
 
             openModal();
             await loadGroups(config.channelId, config.groupKeys || []);
@@ -771,18 +703,38 @@
     document.querySelectorAll('.btn-run-now').forEach(function (btn) {
         btn.addEventListener('click', async function () {
             var configId = this.dataset.configId;
-            var originalHTML = this.innerHTML;
-            this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            // Đánh dấu nút này đang chờ kết quả
+            this.dataset.waiting = '1';
+            this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang quét...';
             this.disabled = true;
             try {
                 var res = await fetch('/schedule/ai-scan/api/scan-now', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ configId: configId }) });
                 var json = await res.json();
                 if (json.success) { showToast('Đã bắt đầu quét!', 'success'); showScanRunningIndicator(); }
-                else showToast(json.message || 'Lỗi chạy quét', 'error');
-            } catch (err) { showToast('Lỗi: ' + err.message, 'error'); }
-            finally { this.innerHTML = originalHTML; this.disabled = false; }
+                else {
+                    showToast(json.message || 'Lỗi chạy quét', 'error');
+                    this.dataset.waiting = '';
+                    this.innerHTML = '<i class="fa-solid fa-play"></i> Quét ngay';
+                    this.disabled = false;
+                }
+            } catch (err) {
+                showToast('Lỗi: ' + err.message, 'error');
+                this.dataset.waiting = '';
+                this.innerHTML = '<i class="fa-solid fa-play"></i> Quét ngay';
+                this.disabled = false;
+            }
+            // Không reset ở finally - sẽ reset khi socket emit 'scan:complete' (khi có dữ liệu mới)
         });
     });
+
+    // Reset nút "Quét ngay" về trạng thái ban đầu khi quét hoàn tất (có dữ liệu mới từ server)
+    function resetAllRunNowButtons() {
+        document.querySelectorAll('.btn-run-now[data-waiting="1"]').forEach(function (btn) {
+            btn.dataset.waiting = '';
+            btn.innerHTML = '<i class="fa-solid fa-play"></i> Quét ngay';
+            btn.disabled = false;
+        });
+    }
 
     // Clear results - use Socket.IO to refresh
     document.getElementById('btnClearResults')?.addEventListener('click', async function () {
@@ -794,6 +746,76 @@
             else showToast(json.message || 'Lỗi', 'error');
         } catch (err) { showToast('Lỗi: ' + err.message, 'error'); }
     });
+
+    // ============================================================
+    // VIEW RESULTS BY CONFIG (filter table theo từng cấu hình)
+    // ============================================================
+    var activeConfigFilter = null; // null = all, string = configId
+
+    document.querySelectorAll('.btn-view-results').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+            var configId = this.dataset.configId;
+            if (!configId) return;
+            await filterTableByConfig(configId);
+        });
+    });
+
+    document.getElementById('btnBackToAll')?.addEventListener('click', function () {
+        activeConfigFilter = null;
+        var titleEl = document.getElementById('resultsTitle');
+        if (titleEl) titleEl.textContent = 'Kết Quả Quét Gần Đây';
+        // Reset icon
+        var iconEl = document.querySelector('#resultsHeader i');
+        if (iconEl) iconEl.className = 'fa-solid fa-table-list';
+
+        // Ẩn table khi quay lại (giữ hành vi ban đầu: chỉ hiện khi click cấu hình)
+        var section = document.getElementById('recentResultsSection');
+        if (section) section.style.display = 'none';
+    });
+
+    async function filterTableByConfig(configId) {
+        try {
+            var btn = document.querySelector('.btn-view-results[data-config-id="' + configId + '"]');
+            var originalHTML = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                btn.disabled = true;
+            }
+
+            var res = await fetch('/schedule/ai-scan/api/results?configId=' + encodeURIComponent(configId) + '&limit=200');
+            var json = await res.json();
+
+            if (json.success) {
+                var config = data.configs.find(function (c) { return c._id === configId; });
+                var configName = config ? config.name : 'Cấu hình';
+
+                var titleEl = document.getElementById('resultsTitle');
+                var backBtn = document.getElementById('btnBackToAll');
+                var iconEl = document.querySelector('#resultsHeader i');
+                var section = document.getElementById('recentResultsSection');
+                if (titleEl) titleEl.textContent = 'Kết quả của: ' + configName + ' (' + json.results.length + ')';
+                if (backBtn) backBtn.style.display = 'inline-flex';
+                if (iconEl) iconEl.className = 'fa-solid fa-filter';
+                // Hiện section table
+                if (section) section.style.display = '';
+
+                refreshResultsTable(json.results);
+                activeConfigFilter = configId;
+
+                document.getElementById('recentResultsSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                showToast('Đang hiển thị ' + json.results.length + ' kết quả của "' + configName + '"', 'info');
+            } else {
+                showToast(json.message || 'Lỗi tải kết quả', 'error');
+            }
+
+            if (btn) {
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }
+        } catch (err) {
+            showToast('Lỗi: ' + err.message, 'error');
+        }
+    }
 
     // ============================================================
     // EDIT RESULT
@@ -1056,6 +1078,15 @@
             var postContent = result.postContent ? result.postContent.substring(0, 80) + (result.postContent.length > 80 ? '...' : '') : '(Không có nội dung)';
             var scannedAt = result.scannedAt ? new Date(result.scannedAt).toLocaleDateString('en-GB') + ' ' + new Date(result.scannedAt).toLocaleTimeString('en-GB') : '—';
 
+            var score = typeof result.aiScore === 'number' ? result.aiScore : 0;
+            var scoreClass = 'score-low';
+            if (score >= 70) scoreClass = 'score-high';
+            else if (score >= 40) scoreClass = 'score-mid';
+            var scoreHtml = '<div class="score-bar ' + scoreClass + '" title="' + score + '%">' +
+                '<div class="score-fill ' + scoreClass + '" style="width: ' + Math.min(100, Math.max(0, score)) + '%"></div>' +
+                '<span class="score-text">' + score + '%</span>' +
+                '</div>';
+
             html += '<tr class="result-row ' + (result.isMatching ? 'row-match' : 'row-no-match') + '" data-result-id="' + result._id + '">' +
                 '<td>' +
                     '<div class="result-post">' +
@@ -1071,6 +1102,7 @@
                     '</a>' +
                 '</td>' +
                 '<td><span class="match-badge ' + matchClass + '">' + matchText + '</span></td>' +
+                '<td class="score-cell">' + scoreHtml + '</td>' +
                 '<td>' + commentHtml + '</td>' +
                 '<td class="time-cell">' +
                     '<div>' + scannedAt + '</div>' +

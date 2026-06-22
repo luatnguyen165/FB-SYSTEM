@@ -7,257 +7,12 @@
     <link rel="stylesheet" href="/css/base.css">
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/toast.css">
+    <link rel="stylesheet" href="/css/comment-crawler.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="/socket.io/socket.io.js"></script>
-    <style>
-        .crawler-page { max-width: 1280px; margin: 0 auto; }
-        .crawler-card {
-            background: var(--card-bg, #fff);
-            border-radius: 14px;
-            padding: 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,.05), 0 4px 16px rgba(0,0,0,.04);
-            margin-bottom: 24px;
-            border: 1px solid #eef0f3;
-        }
-        .crawler-card h3 {
-            margin-top: 0;
-            font-size: 17px;
-            font-weight: 600;
-            color: #1c1e21;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding-bottom: 14px;
-            border-bottom: 1px solid #f0f2f5;
-            margin-bottom: 18px;
-        }
-        .crawler-card h3 i { color: #1877f2; font-size: 18px; }
-        .crawler-form-grid {
-            display: grid;
-            grid-template-columns: 2fr 1.3fr 0.8fr;
-            gap: 14px;
-            align-items: end;
-        }
-        .crawler-form-grid label {
-            display: block;
-            font-size: 13px;
-            color: #4b5563;
-            margin-bottom: 6px;
-            font-weight: 500;
-        }
-        .crawler-form-grid input,
-        .crawler-form-grid select,
-        .crawler-form-grid textarea {
-            width: 100%;
-            padding: 11px 14px;
-            border: 1.5px solid #e4e6eb;
-            border-radius: 10px;
-            font-size: 14px;
-            font-family: inherit;
-            box-sizing: border-box;
-            background: #f8f9fa;
-            transition: border-color .15s, background .15s;
-        }
-        .crawler-form-grid input:focus,
-        .crawler-form-grid select:focus,
-        .crawler-form-grid textarea:focus {
-            outline: none;
-            border-color: #1877f2;
-            background: #fff;
-        }
-        .crawler-form-grid textarea { min-height: 64px; resize: vertical; }
-        .crawler-btn-primary {
-            background: linear-gradient(135deg, #1877f2, #4f8df9);
-            color: #fff;
-            border: none;
-            padding: 11px 22px;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
-            font-size: 14px;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            box-shadow: 0 2px 8px rgba(24,119,242,.25);
-            transition: transform .1s, box-shadow .15s;
-        }
-        .crawler-btn-primary:hover:not(:disabled) {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 14px rgba(24,119,242,.35);
-        }
-        .crawler-btn-primary:disabled { background: #cbd5e1; cursor: not-allowed; box-shadow: none; }
-        .crawler-btn-secondary {
-            background: #f0f2f5;
-            color: #1c1e21;
-            border: 1px solid transparent;
-            padding: 7px 12px;
-            border-radius: 7px;
-            cursor: pointer;
-            font-size: 12.5px;
-            margin-left: 4px;
-            transition: background .15s, border-color .15s;
-        }
-        .crawler-btn-secondary:hover { background: #e4e6eb; border-color: #d4d6db; }
-        .crawler-stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 16px;
-            margin-bottom: 24px;
-        }
-        .crawler-stat-card {
-            background: var(--card-bg, #fff);
-            padding: 18px 20px;
-            border-radius: 12px;
-            border: 1px solid #eef0f3;
-            box-shadow: 0 1px 3px rgba(0,0,0,.04);
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-        .crawler-stat-card .stat-icon {
-            width: 44px; height: 44px;
-            border-radius: 10px;
-            display: inline-flex;
-            align-items: center; justify-content: center;
-            font-size: 18px;
-            flex-shrink: 0;
-        }
-        .crawler-stat-card .stat-info { flex: 1; }
-        .crawler-stat-card .stat-value {
-            display: block;
-            font-size: 22px;
-            font-weight: 700;
-            color: #1c1e21;
-            line-height: 1.2;
-        }
-        .crawler-stat-card .stat-label {
-            display: block;
-            font-size: 12px;
-            color: #65676b;
-            margin-top: 2px;
-        }
-
-        .crawler-progress {
-            margin-top: 16px;
-            background: linear-gradient(135deg, #f0f4ff, #f8f9fa);
-            border-radius: 10px;
-            padding: 14px 16px;
-            display: none;
-            border: 1px solid #e0e7ff;
-        }
-        .crawler-progress.active { display: block; }
-        .crawler-progress-bar {
-            height: 10px;
-            background: #e4e6eb;
-            border-radius: 5px;
-            overflow: hidden;
-            margin-top: 10px;
-        }
-        .crawler-progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #1877f2, #42a5f5);
-            transition: width .3s;
-            border-radius: 5px;
-        }
-        .crawler-progress-text { font-size: 13px; color: #1c1e21; margin-top: 8px; font-weight: 500; }
-
-        .crawler-table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            background: var(--card-bg, #fff);
-            border-radius: 10px;
-            overflow: hidden;
-            border: 1px solid #eef0f3;
-        }
-        .crawler-table th, .crawler-table td {
-            padding: 12px 14px;
-            text-align: left;
-            border-bottom: 1px solid #f0f2f5;
-            font-size: 13px;
-        }
-        .crawler-table tbody tr:hover { background: #f8f9fa; }
-        .crawler-table tbody tr:last-child td { border-bottom: none; }
-        .crawler-table th { background: #f7f8fa; font-weight: 600; color: #4b5563; font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; }
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 12px;
-            border-radius: 999px;
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-        }
-        .status-badge .status-spinner {
-            display: inline-block;
-            width: 10px; height: 10px;
-            border: 2px solid currentColor;
-            border-right-color: transparent;
-            border-radius: 50%;
-            animation: statusSpin 0.8s linear infinite;
-        }
-        .status-badge.spinning {
-            box-shadow: 0 0 0 3px rgba(24,119,242,.15);
-        }
-        @keyframes statusSpin { to { transform: rotate(360deg); } }
-        .status-success { background: #d4f4dd; color: #15803d; }
-        .status-partial { background: #fef3c7; color: #b45309; }
-        .status-failed  { background: #fee2e2; color: #b91c1c; }
-        .status-stale_failed { background: #fed7aa; color: #c2410c; }
-        .status-running { background: #dbeafe; color: #1d4ed8; }
-        .status-pending { background: #f3f4f6; color: #4b5563; }
-
-        /* Row mới thêm vào — highlight fade-in */
-        #scrapesTbody tr.fresh { animation: fadeIn .4s ease-out; background: #eef6ff; }
-        @keyframes fadeIn { from { background: #dbeafe; } to { background: #fff; } }
-
-        /* Tree view */
-        .tree-comment {
-            border-left: 2px solid #e4e6eb;
-            margin: 6px 0 6px 14px;
-            padding: 8px 0 8px 14px;
-        }
-        .tree-comment.depth-0 { border-left-color: #1877f2; border-left-width: 3px; }
-        .tree-comment .author {
-            font-weight: 600;
-            color: #1877f2;
-            margin-right: 6px;
-        }
-        .tree-comment .meta {
-            font-size: 11px;
-            color: #65676b;
-            margin-left: 6px;
-        }
-        .tree-comment .text {
-            font-size: 14px;
-            margin-top: 4px;
-            color: #050505;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-        .tree-comment .toggle-replies {
-            font-size: 12px;
-            color: #65676b;
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 4px 0;
-        }
-        .empty-state {
-            padding: 40px;
-            text-align: center;
-            color: #65676b;
-        }
-
-        @media (max-width: 768px) {
-            .crawler-form-grid { grid-template-columns: 1fr; }
-        }
-    </style>
 </head>
 <body>
 <%- include('partials/sidebar', { currentPage: 'comment-crawler' }) %>
@@ -265,54 +20,85 @@
 <div class="main-content">
     <%- include('partials/header') %>
 
-    <main class="content-body crawler-page">
-        <%- include('partials/welcome-section', {
-            eyebrow: 'Crawler bình luận',
-            title: 'FB Comment Crawler',
-            description: 'Quét toàn bộ bình luận + reply lồng nhau từ một bài viết Facebook, xuất JSON/CSV. Tận dụng tài khoản FB đã kết nối.'
-        }) %>
+    <main class="content-body cc-page">
+        <!-- Hero -->
+        <section class="cc-hero">
+            <div class="cc-hero__row">
+                <div class="cc-hero__text">
+                    <span class="cc-hero__eyebrow">
+                        <i class="fa-brands fa-facebook-messenger"></i>
+                        Crawler bình luận
+                    </span>
+                    <h1 class="cc-hero__title">FB Comment Crawler</h1>
+                    <p class="cc-hero__desc">Quét toàn bộ bình luận + reply lồng nhau từ một bài viết Facebook, xuất JSON/CSV. Tận dụng tài khoản FB đã kết nối.</p>
+                </div>
+                <div class="cc-hero__badge">
+                    <i class="fa-solid fa-comments"></i>
+                </div>
+            </div>
+        </section>
 
-        <!-- Stats Overview -->
-        <div class="crawler-stats-grid">
-            <div class="crawler-stat-card">
-                <span class="stat-icon" style="background:rgba(24,119,242,.12); color:#1877f2;"><i class="fa-solid fa-list-check"></i></span>
-                <span class="stat-value"><%= stats.totalScrapes %></span>
-                <span class="stat-label">Lần scrape</span>
+        <!-- Stats -->
+        <section class="cc-stats">
+            <div class="cc-stat">
+                <div class="cc-stat__icon blue"><i class="fa-solid fa-list-check"></i></div>
+                <div>
+                    <span class="cc-stat__value"><%= stats.totalScrapes %></span>
+                    <span class="cc-stat__label">Lần scrape</span>
+                </div>
             </div>
-            <div class="crawler-stat-card">
-                <span class="stat-icon" style="background:rgba(34,197,94,.12); color:#16a34a;"><i class="fa-solid fa-circle-check"></i></span>
-                <span class="stat-value"><%= stats.successScrapes %></span>
-                <span class="stat-label">Thành công</span>
+            <div class="cc-stat">
+                <div class="cc-stat__icon green"><i class="fa-solid fa-circle-check"></i></div>
+                <div>
+                    <span class="cc-stat__value"><%= stats.successScrapes %></span>
+                    <span class="cc-stat__label">Thành công</span>
+                </div>
             </div>
-            <div class="crawler-stat-card">
-                <span class="stat-icon" style="background:rgba(245,158,11,.12); color:#f59e0b;"><i class="fa-solid fa-comments"></i></span>
-                <span class="stat-value"><%= stats.totalComments %></span>
-                <span class="stat-label">Tổng comments</span>
+            <div class="cc-stat">
+                <div class="cc-stat__icon amber"><i class="fa-solid fa-comments"></i></div>
+                <div>
+                    <span class="cc-stat__value"><%= stats.totalComments %></span>
+                    <span class="cc-stat__label">Tổng comments</span>
+                </div>
             </div>
-            <div class="crawler-stat-card">
-                <span class="stat-icon" style="background:rgba(139,92,246,.12); color:#8b5cf6;"><i class="fa-regular fa-clock"></i></span>
-                <span class="stat-value">
-                    <% if (stats.lastScrapedAt) { %>
-                        <%= new Date(stats.lastScrapedAt).toLocaleString('vi-VN') %>
-                    <% } else { %>—<% } %>
+            <div class="cc-stat">
+                <div class="cc-stat__icon purple"><i class="fa-regular fa-clock"></i></div>
+                <div>
+                    <span class="cc-stat__value">
+                        <% if (stats.lastScrapedAt) { %>
+                            <%= new Date(stats.lastScrapedAt).toLocaleString('vi-VN') %>
+                        <% } else { %>—<% } %>
+                    </span>
+                    <span class="cc-stat__label">Lần cuối</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Form -->
+        <section class="cc-card">
+            <div class="cc-card__header">
+                <h3 class="cc-card__title">
+                    <i class="fa-solid fa-rocket"></i>
+                    Bắt đầu quét mới
+                </h3>
+                <span class="cc-card__hint">
+                    <i class="fa-solid fa-info-circle"></i> Mặc định lấy cả main + reply
                 </span>
-                <span class="stat-label">Lần cuối</span>
             </div>
-        </div>
-
-        <!-- Form scrape -->
-        <div class="crawler-card">
-            <h3><i class="fa-solid fa-rocket"></i> Bắt đầu quét mới</h3>
             <form id="scrapeForm">
-                <div class="crawler-form-grid" style="grid-template-columns: 2fr 1.3fr;">
-                    <div>
-                        <label>Link bài viết Facebook</label>
-                        <textarea name="postUrl" id="postUrl" required
+                <div class="cc-form-grid">
+                    <div class="cc-field">
+                        <label class="cc-field__label" for="postUrl">
+                            <i class="fa-solid fa-link"></i> Link bài viết Facebook
+                        </label>
+                        <textarea id="postUrl" name="postUrl" class="cc-textarea" required
                                   placeholder="https://www.facebook.com/PAGE/posts/..."></textarea>
                     </div>
-                    <div>
-                        <label>Tài khoản FB dùng để scrape</label>
-                        <select name="channelId" id="channelId" required>
+                    <div class="cc-field">
+                        <label class="cc-field__label" for="channelId">
+                            <i class="fa-solid fa-user-shield"></i> Tài khoản FB dùng để scrape
+                        </label>
+                        <select id="channelId" name="channelId" class="cc-select" required>
                             <option value="">-- Chọn tài khoản FB --</option>
                             <% channels.forEach(function(ch) { %>
                                 <option value="<%= ch._id %>">
@@ -321,164 +107,203 @@
                             <% }); %>
                         </select>
                         <% if (!channels || channels.length === 0) { %>
-                            <p style="color:#b91c1c; font-size:12px; margin:6px 0 0;">
+                            <p class="cc-field__warn">
                                 <i class="fa-solid fa-triangle-exclamation"></i>
-                                Chưa có tài khoản FB nào — vào <a href="/channels?platform=FB">Kết Nối Tài Khoản</a> để thêm.
+                                Chưa có tài khoản FB nào — vào
+                                <a href="/channels?platform=FB">Kết Nối Tài Khoản</a> để thêm.
                             </p>
                         <% } %>
                     </div>
                 </div>
-                <div style="margin-top: 16px;">
-                    <button type="submit" class="crawler-btn-primary" id="btnScrape" <%= !channels || channels.length === 0 ? 'disabled' : '' %>>
+                <div class="cc-form-actions">
+                    <button type="submit" class="cc-btn cc-btn--primary" id="btnScrape" <%= !channels || channels.length === 0 ? 'disabled' : '' %>>
                         <i class="fa-solid fa-play"></i> Bắt đầu scrape
                     </button>
+                    <span class="cc-form-hint">
+                        <i class="fa-solid fa-shield-halved"></i> Job chạy nền, có thể đóng tab
+                    </span>
                 </div>
             </form>
-        </div>
+        </section>
 
-        <!-- Danh sách scrape gần đây -->
-        <div class="crawler-card">
-            <h3><i class="fa-solid fa-clock-rotate-left"></i> Lịch sử scrape</h3>
+        <!-- History -->
+        <section class="cc-card">
+            <div class="cc-card__header">
+                <h3 class="cc-card__title">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    Lịch sử scrape
+                </h3>
+                <span class="cc-card__hint">
+                    <i class="fa-solid fa-database"></i> Tối đa 20 lần gần nhất
+                </span>
+            </div>
             <% if (!scrapes || scrapes.length === 0) { %>
-                <div class="empty-state">
-                    <i class="fa-regular fa-folder-open" style="font-size:36px; color:#cbd5e1;"></i>
-                    <p>Chưa có lần scrape nào.</p>
+                <div class="cc-empty">
+                    <i class="fa-regular fa-folder-open"></i>
+                    <p class="cc-empty__title">Chưa có lần scrape nào</p>
+                    <p class="cc-empty__text">Dán link bài viết Facebook ở trên và bấm "Bắt đầu scrape" để bắt đầu.</p>
                 </div>
             <% } else { %>
-                <table class="crawler-table">
-                    <thead>
-                        <tr>
-                            <th>Trạng thái</th>
-                            <th>Bài viết</th>
-                            <th>Comments</th>
-                            <th>Thời gian</th>
-                            <th>Hành động</th>
-                        </tr>
-                    </thead>
-                    <tbody id="scrapesTbody">
-                        <% scrapes.forEach(function(s) { %>
-                            <tr data-job-id="<%= s._id %>">
-                                <td>
-                                    <span class="status-badge status-<%= s.status %><%= s.status === 'running' ? ' spinning' : '' %>" data-job-status="<%= s._id %>">
-                                        <% if (s.status === 'running') { %><span class="status-spinner"></span><% } %>
-                                        <%= s.status %>
-                                    </span>
-                                </td>
-                                <td>
-                                    <a href="<%= s.postUrl %>" target="_blank" style="color:#1877f2; text-decoration:none;">
-                                        <%= s.postTitle || s.postUrl.substring(0, 60) + '...' %>
-                                    </a>
-                                    <div style="font-size:11px; color:#65676b; margin-top:2px;">
-                                        <i class="fa-solid fa-user"></i> <%= s.accountName %>
-                                    </div>
-                                </td>
-                                <td>
-                                    <strong><%= s.stats?.totalComments || 0 %></strong>
-                                    <span style="font-size:11px; color:#65676b;">
-                                        (<%= s.stats?.mainComments || 0 %> main / <%= s.stats?.replies || 0 %> reply)
-                                    </span>
-                                </td>
-                                <td style="font-size:12px; color:#65676b;">
-                                    <%= new Date(s.scrapedAt).toLocaleString('vi-VN') %>
-                                </td>
-                                <td>
-                                    <button class="crawler-btn-secondary btn-view" data-id="<%= s._id %>"><i class="fa-solid fa-eye"></i> Xem</button>
-                                    <button class="crawler-btn-secondary btn-rescrape" data-id="<%= s._id %>" data-url="<%= s.postUrl %>" data-channel="<%= s.channelId %>" title="Quét lại bài viết này"><i class="fa-solid fa-rotate"></i> Quét lại</button>
-                                    <a class="crawler-btn-secondary" href="/tracking/comments/api/job/<%= s._id %>/export?format=json"><i class="fa-solid fa-download"></i> JSON</a>
-                                    <a class="crawler-btn-secondary" href="/tracking/comments/api/job/<%= s._id %>/export?format=csv"><i class="fa-solid fa-file-csv"></i> CSV</a>
-                                    <button class="crawler-btn-secondary btn-delete" data-id="<%= s._id %>" style="color:#b91c1c;"><i class="fa-solid fa-trash"></i></button>
-                                </td>
+                <div class="cc-table-wrap">
+                    <table class="cc-table">
+                        <thead>
+                            <tr>
+                                <th>Trạng thái</th>
+                                <th>Bài viết</th>
+                                <th>Comments</th>
+                                <th>Thời gian</th>
+                                <th>Hành động</th>
                             </tr>
-                        <% }); %>
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody id="scrapesTbody">
+                            <% scrapes.forEach(function(s) { %>
+                                <tr data-job-id="<%= s._id %>">
+                                    <td>
+                                        <span class="cc-badge cc-badge--<%= s.status %><%= s.status === 'running' ? '' : '' %>" data-job-status="<%= s._id %>">
+                                            <% if (s.status === 'running') { %><span class="cc-badge__spinner"></span><% } %>
+                                            <%= s.status %>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="<%= s.postUrl %>" target="_blank" class="cc-table__post-link" title="<%= s.postUrl %>">
+                                            <%= s.postTitle || s.postUrl.substring(0, 60) + '...' %>
+                                        </a>
+                                        <div class="cc-table__post-meta">
+                                            <i class="fa-solid fa-user"></i> <%= s.accountName %>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cc-table__comments">
+                                            <strong><%= s.stats?.totalComments || 0 %></strong>
+                                            <small>(<%= s.stats?.mainComments || 0 %> main / <%= s.stats?.replies || 0 %> reply)</small>
+                                        </div>
+                                    </td>
+                                    <td class="cc-table__time">
+                                        <%= new Date(s.scrapedAt).toLocaleString('vi-VN') %>
+                                    </td>
+                                    <td>
+                                        <div class="cc-table__actions">
+                                            <button class="cc-btn cc-btn--ghost btn-view" data-id="<%= s._id %>" title="Xem chi tiết">
+                                                <i class="fa-solid fa-eye"></i> Xem
+                                            </button>
+                                            <button class="cc-btn cc-btn--ghost btn-rescrape" data-id="<%= s._id %>" data-url="<%= s.postUrl %>" data-channel="<%= s.channelId %>" title="Quét lại bài viết này">
+                                                <i class="fa-solid fa-rotate"></i>
+                                            </button>
+                                            <a class="cc-btn cc-btn--ghost" href="/tracking/comments/api/job/<%= s._id %>/export?format=json" title="Tải JSON">
+                                                <i class="fa-solid fa-download"></i> JSON
+                                            </a>
+                                            <a class="cc-btn cc-btn--ghost" href="/tracking/comments/api/job/<%= s._id %>/export?format=csv" title="Tải CSV">
+                                                <i class="fa-solid fa-file-csv"></i>
+                                            </a>
+                                            <button class="cc-btn cc-btn--ghost cc-btn--danger btn-delete" data-id="<%= s._id %>" title="Xóa">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
             <% } %>
-        </div>
-
-        <!-- Floating widget + Modal popup realtime scrape -->
-        <div id="crawlerWidget" style="display:none; position:fixed; bottom:20px; right:20px; z-index:9998; background:#fff; border-radius:14px; box-shadow:0 8px 32px rgba(0,0,0,.18); padding:14px 18px; min-width:280px; max-width:360px; cursor:pointer; border:1px solid #e0e7ff;">
-            <div style="display:flex; align-items:center; gap:10px;">
-                <div style="width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,#1877f2,#42a5f5); display:flex; align-items:center; justify-content:center; color:#fff; flex-shrink:0;">
-                    <i class="fa-solid fa-spinner fa-spin" id="widgetSpinner"></i>
-                </div>
-                <div style="flex:1; min-width:0;">
-                    <div style="font-size:13px; font-weight:600; color:#1c1e21;" id="widgetTitle">Đang scrape...</div>
-                    <div style="font-size:11px; color:#65676b; margin-top:2px;" id="widgetSubtitle">Đang khởi tạo</div>
-                </div>
-                <i class="fa-solid fa-chevron-up" style="color:#9ca3af; font-size:12px;"></i>
-            </div>
-            <div style="height:5px; background:#e4e6eb; border-radius:3px; overflow:hidden; margin-top:10px;">
-                <div id="widgetProgressFill" style="height:100%; width:0%; background:linear-gradient(90deg,#1877f2,#42a5f5); border-radius:3px; transition:width .3s;"></div>
-            </div>
-        </div>
-
-        <!-- (Đã xóa modal popup realtime - chỉ giữ widget spin) -->
-
-        <!-- Modal alert/confirm đồng bộ style -->
-        <div id="notifyModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,.55); z-index:10000; padding:20px; backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center;">
-            <div id="notifyBox" style="max-width:420px; width:100%; background:#fff; border-radius:16px; overflow:hidden; box-shadow:0 25px 60px rgba(0,0,0,.3); animation:popIn .2s ease-out;">
-                <div id="notifyHeader" style="padding:20px 24px 12px; display:flex; align-items:center; gap:12px;">
-                    <div id="notifyIcon" style="width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:20px; color:#fff; background:linear-gradient(135deg,#1877f2,#4f8df9);">
-                        <i class="fa-solid fa-info"></i>
-                    </div>
-                    <div style="flex:1;">
-                        <div id="notifyTitle" style="font-size:16px; font-weight:600; color:#1c1e21;">Thông báo</div>
-                    </div>
-                </div>
-                <div style="padding:0 24px 20px;">
-                    <div id="notifyMessage" style="font-size:14px; color:#4b5563; line-height:1.5; padding-left:56px;">Nội dung thông báo</div>
-                </div>
-                <div id="notifyActions" style="padding:14px 24px; background:#f8f9fa; display:flex; gap:10px; justify-content:flex-end;">
-                    <button id="notifyCancel" style="background:#e4e6eb; color:#1c1e21; border:none; padding:9px 18px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:500;">Huỷ</button>
-                    <button id="notifyOk" style="background:linear-gradient(135deg,#1877f2,#4f8df9); color:#fff; border:none; padding:9px 22px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; box-shadow:0 2px 6px rgba(24,119,242,.25);">OK</button>
-                </div>
-            </div>
-        </div>
-        <style>
-            @keyframes popIn { from { transform:scale(.9); opacity:0; } to { transform:scale(1); opacity:1; } }
-            #notifyModal.show { display:flex !important; }
-        </style>
-        <!-- Modal xem chi tiết -->
-        <div id="detailModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9999; padding:20px; overflow:auto;">
-            <div style="max-width:1000px; margin:20px auto; background:#fff; border-radius:12px; padding:20px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                    <h3 id="detailTitle" style="margin:0;">Chi tiết comments</h3>
-                    <button id="closeDetail" style="background:none; border:none; font-size:20px; cursor:pointer;">×</button>
-                </div>
-                <div id="detailStats" style="font-size:13px; color:#65676b; margin-bottom:12px;"></div>
-                <div id="detailBody" style="max-height:70vh; overflow:auto;"></div>
-            </div>
-        </div>
+        </section>
     </main>
 </div>
 
+<!-- Floating widget (realtime) -->
+<div id="crawlerWidget" class="cc-widget">
+    <div class="cc-widget__row">
+        <div class="cc-widget__icon" id="widgetIcon">
+            <i class="fa-solid fa-spinner fa-spin" id="widgetSpinner"></i>
+        </div>
+        <div class="cc-widget__body">
+            <div class="cc-widget__title" id="widgetTitle">Đang scrape...</div>
+            <div class="cc-widget__sub" id="widgetSubtitle">Đang khởi tạo</div>
+        </div>
+        <i class="fa-solid fa-chevron-up cc-widget__chev"></i>
+    </div>
+    <div class="cc-widget__bar">
+        <div id="widgetProgressFill" class="cc-widget__fill"></div>
+    </div>
+</div>
+
+<!-- Notify modal (alert / confirm) -->
+<div id="notifyModal" class="cc-modal-backdrop">
+    <div class="cc-modal">
+        <div class="cc-modal__header">
+            <div id="notifyIcon" class="cc-modal__icon info">
+                <i class="fa-solid fa-info"></i>
+            </div>
+            <div class="cc-modal__title" id="notifyTitle">Thông báo</div>
+        </div>
+        <div id="notifyMessage" class="cc-modal__body">Nội dung thông báo</div>
+        <div class="cc-modal__footer">
+            <button id="notifyCancel" class="cc-modal__btn cc-modal__btn--cancel">Huỷ</button>
+            <button id="notifyOk" class="cc-modal__btn cc-modal__btn--confirm info">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- Detail modal -->
+<div id="detailModal" class="cc-modal-backdrop">
+    <div class="cc-modal cc-detail-modal">
+        <div class="cc-detail-header">
+            <h3 id="detailTitle">Chi tiết comments</h3>
+            <button id="closeDetail" class="cc-detail-close" aria-label="Đóng">×</button>
+        </div>
+        <div id="detailStats" class="cc-detail-stats"></div>
+        <div id="detailBody" class="cc-detail-body"></div>
+    </div>
+</div>
+
+<script src="/js/base.js"></script>
 <script>
 (function() {
-    // ===== Notify Modal (alert/confirm thay thế) =====
-    const notifyModal = document.getElementById('notifyModal');
-    const notifyIcon = document.getElementById('notifyIcon');
-    const notifyTitle = document.getElementById('notifyTitle');
-    const notifyMessage = document.getElementById('notifyMessage');
-    const notifyOk = document.getElementById('notifyOk');
-    const notifyCancel = document.getElementById('notifyCancel');
+    'use strict';
+
+    // ====== DOM refs ======
+    const $ = (id) => document.getElementById(id);
+
+    const form = $('scrapeForm');
+    const btn = $('btnScrape');
+    const widget = $('crawlerWidget');
+    const widgetIcon = $('widgetIcon');
+    const widgetSpinner = $('widgetSpinner');
+    const widgetTitle = $('widgetTitle');
+    const widgetSubtitle = $('widgetSubtitle');
+    const widgetFill = $('widgetProgressFill');
+
+    const notifyModal = $('notifyModal');
+    const notifyIcon = $('notifyIcon');
+    const notifyTitle = $('notifyTitle');
+    const notifyMessage = $('notifyMessage');
+    const notifyOk = $('notifyOk');
+    const notifyCancel = $('notifyCancel');
+
+    const detailModal = $('detailModal');
+    const detailTitle = $('detailTitle');
+    const detailStats = $('detailStats');
+    const detailBody = $('detailBody');
+    const closeDetail = $('closeDetail');
+
+    // ====== Notify modal helpers ======
+    const NOTIFY_STYLES = {
+        info:    { icon: 'fa-info',          cls: 'info' },
+        success: { icon: 'fa-check',         cls: 'success' },
+        warning: { icon: 'fa-triangle-exclamation', cls: 'warning' },
+        error:   { icon: 'fa-xmark',         cls: 'error' },
+        danger:  { icon: 'fa-trash',         cls: 'danger' }
+    };
 
     function showNotify({ type = 'info', title = 'Thông báo', message = '', okText = 'OK', cancelText = 'Huỷ', showCancel = false } = {}) {
         return new Promise((resolve) => {
-            // Style icon theo type
-            const styles = {
-                info:    { bg: 'linear-gradient(135deg,#1877f2,#4f8df9)', icon: 'fa-info' },
-                success: { bg: 'linear-gradient(135deg,#16a34a,#4ade80)', icon: 'fa-check' },
-                warning: { bg: 'linear-gradient(135deg,#f59e0b,#fbbf24)', icon: 'fa-triangle-exclamation' },
-                error:   { bg: 'linear-gradient(135deg,#b91c1c,#f87171)', icon: 'fa-xmark' },
-                danger:  { bg: 'linear-gradient(135deg,#b91c1c,#f87171)', icon: 'fa-trash' }
-            };
-            const s = styles[type] || styles.info;
-            notifyIcon.style.background = s.bg;
+            const s = NOTIFY_STYLES[type] || NOTIFY_STYLES.info;
+            notifyIcon.className = 'cc-modal__icon ' + s.cls;
             notifyIcon.innerHTML = '<i class="fa-solid ' + s.icon + '"></i>';
             notifyTitle.textContent = title;
             notifyMessage.textContent = message;
             notifyOk.textContent = okText;
-            notifyOk.style.background = s.bg;
+            notifyOk.className = 'cc-modal__btn cc-modal__btn--confirm ' + s.cls;
             notifyCancel.textContent = cancelText;
             notifyCancel.style.display = showCancel ? 'inline-block' : 'none';
 
@@ -495,367 +320,269 @@
             notifyModal.classList.add('show');
         });
     }
+    window.appAlert = (m, t = 'Thông báo') => showNotify({ type: 'info', title: t, message: m });
+    window.appConfirm = (m, t = 'Xác nhận') => showNotify({ type: 'warning', title: t, message: m, showCancel: true, okText: 'Đồng ý' });
+    window.appError = (m, t = 'Lỗi') => showNotify({ type: 'error', title: t, message: m, okText: 'Đóng' });
+    window.appSuccess = (m, t = 'Thành công') => showNotify({ type: 'success', title: t, message: m });
+    window.appDanger = (m, t = 'Cảnh báo') => showNotify({ type: 'danger', title: t, message: m, showCancel: true, okText: 'Xóa' });
 
-    // Click ra ngoài modal → đóng như cancel
-    notifyModal.addEventListener('click', (e) => {
-        if (e.target === notifyModal) {
-            notifyModal.classList.remove('show');
-        }
-    });
+    // Click backdrop đóng modal
+    notifyModal.addEventListener('click', (e) => { if (e.target === notifyModal) notifyModal.classList.remove('show'); });
+    detailModal.addEventListener('click', (e) => { if (e.target === detailModal) detailModal.classList.remove('show'); });
+    closeDetail.addEventListener('click', () => detailModal.classList.remove('show'));
 
-    // Helper thay thế alert/confirm
-    window.appAlert = (message, title = 'Thông báo') => {
-        return showNotify({ type: 'info', title, message });
-    };
-    window.appConfirm = (message, title = 'Xác nhận') => {
-        return showNotify({ type: 'warning', title, message, showCancel: true, okText: 'Đồng ý' });
-    };
-    window.appError = (message, title = 'Lỗi') => {
-        return showNotify({ type: 'error', title, message, okText: 'Đóng' });
-    };
-    window.appSuccess = (message, title = 'Thành công') => {
-        return showNotify({ type: 'success', title, message });
-    };
-    window.appDanger = (message, title = 'Cảnh báo') => {
-        return showNotify({ type: 'danger', title, message, showCancel: true, okText: 'Xóa' });
-    };
-
-    const form = document.getElementById('scrapeForm');
-    const btn = document.getElementById('btnScrape');
-    const widget = document.getElementById('crawlerWidget');
-    const widgetSpinner = document.getElementById('widgetSpinner');
-    const widgetTitle = document.getElementById('widgetTitle');
-    const widgetSubtitle = document.getElementById('widgetSubtitle');
-    const widgetFill = document.getElementById('widgetProgressFill');
-
+    // ====== Widget helpers ======
     function showWidget() { widget.style.display = 'block'; }
     function hideWidget() { widget.style.display = 'none'; }
+    function setWidgetState(state, title, subtitle) {
+        widgetIcon.className = 'cc-widget__icon';
+        if (state === 'success') {
+            widgetIcon.classList.add('success');
+            widgetSpinner.className = 'fa-solid fa-check';
+        } else if (state === 'error') {
+            widgetIcon.classList.add('error');
+            widgetSpinner.className = 'fa-solid fa-xmark';
+        } else {
+            widgetSpinner.className = 'fa-solid fa-spinner fa-spin';
+        }
+        widgetTitle.textContent = title;
+        widgetSubtitle.textContent = subtitle;
+    }
+    function resetButton() {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-play"></i> Bắt đầu scrape';
+        }
+    }
 
-    // (Đã xóa logic modal popup realtime - chỉ giữ widget spin)
-
-    // Socket.IO progress
-    if (window.io) {
-        const socket = io();
-        socket.on('comment-crawler:progress', (data) => {
-            if (!data) return;
-            // Chỉ hiện widget spin — không mở modal
-            showWidget();
-
-            // Update status badge trong bảng lịch sử → spin nếu đang chạy
-            if (data.jobId) {
-                updateRowStatus(data.jobId, 'running');
-            }
-
-            const statusText = data.statusText || data.phase || 'Đang chạy...';
-            widgetTitle.textContent = statusText;
-            widgetSubtitle.textContent = (data.scrapedCount != null ? data.scrapedCount + ' comments' : (data.buttonsClicked != null ? data.buttonsClicked + ' clicked' : 'Đang xử lý...'));
-            if (typeof data.progress === 'number') {
-                widgetFill.style.width = data.progress + '%';
-            }
-
-            if (data.phase === 'success' || data.phase === 'failed') {
-                if (data.phase === 'success') {
-                    widgetTitle.textContent = '✅ Hoàn thành';
-                    widgetSubtitle.textContent = (data.mainComments != null ? data.mainComments : 0) + ' main / ' + (data.replies != null ? data.replies : 0) + ' reply';
-                    widgetSpinner.className = 'fa-solid fa-check';
-                    widgetSpinner.parentElement.style.background = 'linear-gradient(135deg,#16a34a,#4ade80)';
-                } else {
-                    widgetTitle.textContent = '❌ Lỗi';
-                    widgetSubtitle.textContent = data.error || 'Unknown';
-                    widgetSpinner.className = 'fa-solid fa-xmark';
-                    widgetSpinner.parentElement.style.background = 'linear-gradient(135deg,#b91c1c,#f87171)';
-                }
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fa-solid fa-play"></i> Bắt đầu scrape';
-
-                // KHÔNG reload — prepend row mới vào bảng lịch sử
-                if (data.jobId) {
-                    appendJobRow(data.jobId);
-                    // Update status → tắt spin
-                    updateRowStatus(data.jobId, data.phase === 'success' ? 'success' : 'failed', data.stats);
-                }
-                // Ẩn widget sau 8s nếu thành công
-                if (data.phase === 'success') {
-                    setTimeout(hideWidget, 8000);
-                }
+    // Reset tất cả nút rescrape trong table (vì nút này không liên quan btn chính)
+    function resetAllRescrapeButtons() {
+        document.querySelectorAll('.btn-rescrape').forEach(function (b) {
+            b.disabled = false;
+            if (b.dataset.origHtml) {
+                b.innerHTML = b.dataset.origHtml;
+            } else {
+                b.innerHTML = '<i class="fa-solid fa-rotate"></i>';
             }
         });
     }
 
-    // Update status badge của 1 row trong bảng (kèm spin nếu running)
+    // ====== Row helpers ======
+    function escapeHtml(s) {
+        return String(s || '').replace(/[&<>"']/g, ch => ({'&':'&','<':'<','>':'>','"':'"',"'":'&#39;'}[ch]));
+    }
+    function escapeAttr(s) {
+        return String(s || '').replace(/"/g, '"');
+    }
+
     function updateRowStatus(jobId, status, stats) {
-        const badge = document.querySelector(`.status-badge[data-job-status="${jobId}"]`);
+        const badge = document.querySelector(`.cc-badge[data-job-status="${jobId}"]`);
         if (!badge) return;
-        // Tắt spin các class cũ
-        badge.classList.remove('spinning', 'status-running', 'status-success', 'status-failed', 'status-partial', 'status-stale_failed');
-        badge.classList.add('status-' + status);
+        badge.className = 'cc-badge cc-badge--' + status;
         if (status === 'running') {
-            badge.classList.add('spinning');
-            badge.innerHTML = '<span class="status-spinner"></span>' + status;
+            badge.innerHTML = '<span class="cc-badge__spinner"></span>running';
         } else {
             badge.textContent = status;
         }
-        // Update stats cột comments nếu có
         if (stats) {
             const row = badge.closest('tr');
             if (row) {
-                const totalCell = row.querySelector('td:nth-child(3)');
-                if (totalCell) {
-                    const total = (stats.totalComments != null) ? stats.totalComments : 0;
-                    const main = (stats.mainComments != null) ? stats.mainComments : 0;
-                    const replies = (stats.replies != null) ? stats.replies : 0;
-                    totalCell.innerHTML = `<strong>${total}</strong><span style="font-size:11px; color:#65676b;"> (${main} main / ${replies} reply)</span>`;
+                const cell = row.querySelector('td:nth-child(3)');
+                if (cell) {
+                    const total = stats.totalComments != null ? stats.totalComments : 0;
+                    const main = stats.mainComments != null ? stats.mainComments : 0;
+                    const replies = stats.replies != null ? stats.replies : 0;
+                    cell.innerHTML = `<div class="cc-table__comments"><strong>${total}</strong><small>(${main} main / ${replies} reply)</small></div>`;
                 }
             }
         }
     }
 
-    // Thêm 1 row mới vào bảng lịch sử (không cần reload)
+    function buildRowHtml(s) {
+        return `
+            <td>
+                <span class="cc-badge cc-badge--${s.status}" data-job-status="${s._id}">
+                    ${s.status === 'running' ? '<span class="cc-badge__spinner"></span>' : ''}
+                    ${s.status}
+                </span>
+            </td>
+            <td>
+                <a href="${escapeAttr(s.postUrl)}" target="_blank" class="cc-table__post-link" title="${escapeAttr(s.postUrl)}">
+                    ${escapeHtml(s.postTitle || (s.postUrl || '').substring(0, 60) + '...')}
+                </a>
+                <div class="cc-table__post-meta">
+                    <i class="fa-solid fa-user"></i> ${escapeHtml(s.accountName || '')}
+                </div>
+            </td>
+            <td>
+                <div class="cc-table__comments">
+                    <strong>${s.stats?.totalComments || 0}</strong>
+                    <small>(${s.stats?.mainComments || 0} main / ${s.stats?.replies || 0} reply)</small>
+                </div>
+            </td>
+            <td class="cc-table__time">${new Date(s.scrapedAt || s.createdAt).toLocaleString('vi-VN')}</td>
+            <td>
+                <div class="cc-table__actions">
+                    <button class="cc-btn cc-btn--ghost btn-view" data-id="${s._id}" title="Xem chi tiết">
+                        <i class="fa-solid fa-eye"></i> Xem
+                    </button>
+                    <button class="cc-btn cc-btn--ghost btn-rescrape" data-id="${s._id}" data-url="${escapeAttr(s.postUrl)}" data-channel="${s.channelId || ''}" title="Quét lại">
+                        <i class="fa-solid fa-rotate"></i>
+                    </button>
+                    <a class="cc-btn cc-btn--ghost" href="/tracking/comments/api/job/${s._id}/export?format=json" title="JSON">
+                        <i class="fa-solid fa-download"></i> JSON
+                    </a>
+                    <a class="cc-btn cc-btn--ghost" href="/tracking/comments/api/job/${s._id}/export?format=csv" title="CSV">
+                        <i class="fa-solid fa-file-csv"></i>
+                    </a>
+                    <button class="cc-btn cc-btn--ghost cc-btn--danger btn-delete" data-id="${s._id}" title="Xóa">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+        `;
+    }
+
+    function bindRowEvents(tr) {
+        tr.querySelector('.btn-view')?.addEventListener('click', () => viewJobDetail(tr.dataset.jobId));
+        const rescrapeBtn = tr.querySelector('.btn-rescrape');
+        if (rescrapeBtn && !rescrapeBtn.dataset.origHtml) {
+            rescrapeBtn.dataset.origHtml = rescrapeBtn.innerHTML;
+        }
+        rescrapeBtn?.addEventListener('click', () => rescrapeJob(tr));
+        tr.querySelector('.btn-delete')?.addEventListener('click', () => deleteJob(tr));
+    }
+
+    async function viewJobDetail(jobId) {
+        detailBody.innerHTML = '<div class="cc-detail-loading"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải...</div>';
+        detailModal.classList.add('show');
+        try {
+            const res = await fetch('/tracking/comments/api/job/' + jobId);
+            const data = await res.json();
+            if (!data.success) {
+                detailBody.innerHTML = '<p style="color:#b91c1c;">Lỗi: ' + escapeHtml(data.message) + '</p>';
+                return;
+            }
+            const job = data.job;
+            detailTitle.textContent = job.postTitle || job.postUrl;
+            const incomplete = job.stats?.hasIncompleteReplies;
+            detailStats.innerHTML = `
+                Tổng: <strong>${job.stats?.totalComments || 0}</strong>
+                &nbsp;|&nbsp; Main: <strong>${job.stats?.mainComments || 0}</strong>
+                &nbsp;|&nbsp; Reply: <strong>${job.stats?.replies || 0}</strong>
+                &nbsp;|&nbsp; Max depth: <strong>${job.stats?.maxDepth || 0}</strong>
+                &nbsp;|&nbsp; ${incomplete ? '<span style="color:#b45309;">⚠️ Còn reply chưa load</span>' : '<span style="color:#15803d;">✓ Đủ</span>'}
+            `;
+            detailBody.innerHTML = renderTree(job.tree || [], 0);
+        } catch (err) {
+            detailBody.innerHTML = '<p style="color:#b91c1c;">Lỗi: ' + escapeHtml(err.message) + '</p>';
+        }
+    }
+
+    async function rescrapeJob(tr) {
+        const btnEl = tr.querySelector('.btn-rescrape');
+        const url = btnEl.dataset.url;
+        const channelId = btnEl.dataset.channel;
+        if (!url || !channelId) {
+            appError('Không tìm thấy URL hoặc channel của lần scrape này.');
+            return;
+        }
+        if (!await appConfirm('Quét lại bài viết này?\n\nURL: ' + url + '\n\nLần scrape cũ sẽ được cập nhật với dữ liệu mới nhất (dữ liệu cũ vẫn được giữ trong DB cho đến khi job mới hoàn tất).')) return;
+
+        // Reset tất cả nút rescrape trước khi bắt đầu
+        resetAllRescrapeButtons();
+        btnEl.disabled = true;
+        const origHtml = btnEl.dataset.origHtml || '<i class="fa-solid fa-rotate"></i>';
+        btnEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+        try {
+            const res = await fetch('/tracking/comments/api/scrape', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ postUrl: url, channelId, maxComments: 0, includeReplies: true, skipPreviousUsers: false, visible: true })
+            });
+            const data = await res.json();
+            if (!data.success) {
+                appError(data.message || 'Lỗi không xác định');
+                btnEl.innerHTML = origHtml;
+                btnEl.disabled = false;
+            } else {
+                updateRowStatus(data.jobId, 'running');
+                // Giữ spinner trên nút - sẽ được reset khi reload trang
+            }
+        } catch (err) {
+            appError('Lỗi kết nối: ' + err.message);
+            btnEl.innerHTML = origHtml;
+            btnEl.disabled = false;
+        }
+    }
+
+    async function deleteJob(tr) {
+        if (!await appConfirm('Xoá lần scrape này?')) return;
+        const id = tr.dataset.jobId;
+        try {
+            const res = await fetch('/tracking/comments/api/job/' + id, { method: 'DELETE' });
+            if (res.ok) tr.remove();
+            else appError('Lỗi khi xóa');
+        } catch (err) {
+            appError('Lỗi: ' + err.message);
+        }
+    }
+
     async function appendJobRow(jobId) {
         try {
             const res = await fetch('/tracking/comments/api/job/' + jobId);
             const data = await res.json();
             if (!data.success) return;
             const job = data.job;
-            const tbody = document.getElementById('scrapesTbody');
+            const tbody = $('scrapesTbody');
             if (!tbody) return;
 
-            // Xóa empty state nếu có
-            const emptyState = tbody.parentElement.parentElement.querySelector('.empty-state');
-            if (emptyState) emptyState.remove();
+            // Xóa empty state nếu còn
+            const empty = document.querySelector('.cc-empty');
+            if (empty) empty.remove();
+            const tableWrap = document.querySelector('.cc-table-wrap');
+            if (tableWrap && tableWrap.style.display === 'none') tableWrap.style.display = '';
 
-            // Build row
             const tr = document.createElement('tr');
             tr.dataset.jobId = job._id;
-            const s = job;
-            tr.innerHTML = `
-                <td>
-                    <span class="status-badge status-${s.status}${s.status === 'running' ? ' spinning' : ''}" data-job-status="${s._id}">
-                        ${s.status === 'running' ? '<span class="status-spinner"></span>' : ''}
-                        ${s.status}
-                    </span>
-                </td>
-                <td>
-                    <a href="${s.postUrl}" target="_blank" style="color:#1877f2; text-decoration:none;">
-                        ${escapeHtml(s.postTitle || s.postUrl.substring(0, 60) + '...')}
-                    </a>
-                    <div style="font-size:11px; color:#65676b; margin-top:2px;">
-                        <i class="fa-solid fa-user"></i> ${escapeHtml(s.accountName || '')}
-                    </div>
-                </td>
-                <td>
-                    <strong>${s.stats?.totalComments || 0}</strong>
-                    <span style="font-size:11px; color:#65676b;">
-                        (${s.stats?.mainComments || 0} main / ${s.stats?.replies || 0} reply)
-                    </span>
-                </td>
-                <td style="font-size:12px; color:#65676b;">
-                    ${new Date(s.scrapedAt || s.createdAt).toLocaleString('vi-VN')}
-                </td>
-                <td>
-                    <button class="crawler-btn-secondary btn-view" data-id="${s._id}"><i class="fa-solid fa-eye"></i> Xem</button>
-                    <button class="crawler-btn-secondary btn-rescrape" data-id="${s._id}" data-url="${escapeAttr(s.postUrl)}" data-channel="${s.channelId || ''}" title="Quét lại bài viết này"><i class="fa-solid fa-rotate"></i> Quét lại</button>
-                    <a class="crawler-btn-secondary" href="/tracking/comments/api/job/${s._id}/export?format=json"><i class="fa-solid fa-download"></i> JSON</a>
-                    <a class="crawler-btn-secondary" href="/tracking/comments/api/job/${s._id}/export?format=csv"><i class="fa-solid fa-file-csv"></i> CSV</a>
-                    <button class="crawler-btn-secondary btn-delete" data-id="${s._id}" style="color:#b91c1c;"><i class="fa-solid fa-trash"></i></button>
-                </td>
-            `;
+            tr.innerHTML = buildRowHtml(job);
 
-            // Nếu đã có row cũ với cùng jobId → update row đó, không tạo mới
-            const existingRow = tbody.querySelector(`tr[data-job-id="${s._id}"]`);
-            if (existingRow) {
-                const wasRunning = existingRow.querySelector('.status-spinner');
-                existingRow.outerHTML = tr.outerHTML;
-                const newRow = tbody.querySelector(`tr[data-job-id="${s._id}"]`);
+            const existing = tbody.querySelector(`tr[data-job-id="${job._id}"]`);
+            if (existing) {
+                existing.outerHTML = tr.outerHTML;
+                const newRow = tbody.querySelector(`tr[data-job-id="${job._id}"]`);
                 bindRowEvents(newRow);
-                // Giữ spin nếu job vẫn đang chạy
-                if (wasRunning && s.status === 'running') {
-                    const badge = newRow.querySelector('.status-badge');
-                    if (badge) {
-                        badge.classList.add('spinning');
-                        badge.innerHTML = '<span class="status-spinner"></span>' + s.status;
-                    }
-                }
+                if (job.status === 'running') updateRowStatus(job._id, 'running');
                 return;
             }
 
-            // Prepend + giới hạn 20 dòng (giống backend)
             tr.classList.add('fresh');
             tbody.insertBefore(tr, tbody.firstChild);
-            while (tbody.children.length > 20) {
-                tbody.removeChild(tbody.lastChild);
-            }
-
-            // Bind event cho row mới
+            while (tbody.children.length > 20) tbody.removeChild(tbody.lastChild);
             bindRowEvents(tr);
         } catch (e) {
             console.log('appendJobRow error:', e.message);
         }
     }
 
-    function escapeAttr(s) { return String(s || '').replace(/"/g, '&quot;'); }
-
-    function bindRowEvents(tr) {
-        tr.querySelector('.btn-view')?.addEventListener('click', async () => {
-            const id = tr.dataset.jobId;
-            const modal = document.getElementById('detailModal');
-            const body = document.getElementById('detailBody');
-            const title = document.getElementById('detailTitle');
-            const statsEl = document.getElementById('detailStats');
-            body.innerHTML = '<div style="padding:30px; text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải...</div>';
-            modal.style.display = 'block';
-            try {
-                const res = await fetch('/tracking/comments/api/job/' + id);
-                const data = await res.json();
-                if (!data.success) { body.innerHTML = '<p>Lỗi: ' + data.message + '</p>'; return; }
-                const job = data.job;
-                title.textContent = job.postTitle || job.postUrl;
-                statsEl.innerHTML = `
-                    Tổng: <strong>${job.stats?.totalComments || 0}</strong>
-                    | Main: <strong>${job.stats?.mainComments || 0}</strong>
-                    | Reply: <strong>${job.stats?.replies || 0}</strong>
-                    | Max depth: <strong>${job.stats?.maxDepth || 0}</strong>
-                    | ${job.stats?.hasIncompleteReplies ? '<span style="color:#b45309;">⚠️ Còn reply chưa load</span>' : '<span style="color:#15803d;">✓ Đủ</span>'}
-                `;
-                body.innerHTML = renderTree(job.tree || [], 0);
-            } catch (err) {
-                body.innerHTML = '<p>Lỗi: ' + err.message + '</p>';
-            }
-        });
-        tr.querySelector('.btn-rescrape')?.addEventListener('click', async () => {
-            const url = tr.querySelector('.btn-rescrape').dataset.url;
-            const channelId = tr.querySelector('.btn-rescrape').dataset.channel;
-            if (!url || !channelId) { appError('Không tìm thấy URL hoặc channel của lần scrape này.'); return; }
-            if (!await appConfirm('Quét lại bài viết này?\n\nURL: ' + url + '\n\nLần scrape cũ sẽ được cập nhật với dữ liệu mới nhất.')) return;
-
-            // Chỉ hiện widget spin, không mở modal
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang bắt đầu...';
-            window.__skipPreviousUsersOnSubmit = true;
-            showWidget();
-            widgetTitle.textContent = 'Đang khởi động...';
-            widgetSubtitle.textContent = 'Gọi API scrape...';
-            widgetFill.style.width = '5%';
-
-            try {
-                const res = await fetch('/tracking/comments/api/scrape', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        postUrl: url,
-                        channelId: channelId,
-                        maxComments: 0,
-                        includeReplies: true,   // ← lấy cả main + reply
-                        skipPreviousUsers: false,
-                        visible: true
-                    })
-                });
-                const data = await res.json();
-                if (!data.success) {
-                    appError(data.message);
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fa-solid fa-play"></i> Bắt đầu scrape';
-                    hideWidget();
-                }
-                // Phần còn lại socket sẽ lo realtime
-            } catch (err) {
-                appError('Lỗi kết nối: ' + err.message);
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fa-solid fa-play"></i> Bắt đầu scrape';
-                hideWidget();
-            }
-        });
-        tr.querySelector('.btn-delete')?.addEventListener('click', async () => {
-            if (!await appConfirm('Xoá lần scrape này?')) return;
-            const id = tr.dataset.jobId;
-            const res = await fetch('/tracking/comments/api/job/' + id, { method: 'DELETE' });
-            if (res.ok) tr.remove();
-            else appError('Lỗi khi xóa');
-        });
-    }
-
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const postUrl = document.getElementById('postUrl').value.trim();
-        const channelId = document.getElementById('channelId').value;
-        // Defaults cố định: chạy ngầm, lấy cả reply, khi quét lại thì bỏ user cũ
-        const maxComments = 0;
-        const includeReplies = true;  // ← lấy cả main + reply
-        const visible = true;  // ← mở browser để user check
-        const skipPreviousUsers = window.__skipPreviousUsersOnSubmit === true;
-        if (window.__skipPreviousUsersOnSubmit) window.__skipPreviousUsersOnSubmit = false;
-        if (!postUrl || !channelId) return;
-
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang bắt đầu...';
-
-        try {
-            const res = await fetch('/tracking/comments/api/scrape', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ postUrl, channelId, maxComments, includeReplies, skipPreviousUsers, visible })
-            });
-            const data = await res.json();
-            if (!data.success) {
-                appError(data.message);
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fa-solid fa-play"></i> Bắt đầu scrape';
-                hideWidget();
-            }
-            // Phần còn lại socket sẽ lo — không đóng widget, để user theo dõi tiếp
-        } catch (err) {
-            appError('Lỗi kết nối: ' + err.message);
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fa-solid fa-play"></i> Bắt đầu scrape';
-            hideWidget();
-        }
-    });
-
-    // View detail
-    document.querySelectorAll('.btn-view').forEach(b => b.addEventListener('click', async () => {
-        const id = b.dataset.id;
-        const modal = document.getElementById('detailModal');
-        const body = document.getElementById('detailBody');
-        const title = document.getElementById('detailTitle');
-        const statsEl = document.getElementById('detailStats');
-        body.innerHTML = '<div style="padding:30px; text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải...</div>';
-        modal.style.display = 'block';
-        try {
-            const res = await fetch('/tracking/comments/api/job/' + id);
-            const data = await res.json();
-            if (!data.success) { body.innerHTML = '<p>Lỗi: ' + data.message + '</p>'; return; }
-            const job = data.job;
-            title.textContent = job.postTitle || job.postUrl;
-            statsEl.innerHTML = `
-                Tổng: <strong>${job.stats?.totalComments || 0}</strong>
-                | Main: <strong>${job.stats?.mainComments || 0}</strong>
-                | Reply: <strong>${job.stats?.replies || 0}</strong>
-                | Max depth: <strong>${job.stats?.maxDepth || 0}</strong>
-                | ${job.stats?.hasIncompleteReplies ? '<span style="color:#b45309;">⚠️ Còn reply chưa load</span>' : '<span style="color:#15803d;">✓ Đủ</span>'}
-            `;
-            body.innerHTML = renderTree(job.tree || [], 0);
-        } catch (err) {
-            body.innerHTML = '<p>Lỗi: ' + err.message + '</p>';
-        }
-    }));
-
+    // ====== Tree render ======
     function renderTree(nodes, depth) {
-        if (!nodes || nodes.length === 0) return '<p style="color:#999; padding:20px;">Không có comment.</p>';
+        if (!nodes || nodes.length === 0) return '<div class="cc-tree-empty">Không có comment.</div>';
         let html = '';
         nodes.forEach(c => {
+            const hasReplies = c.replies && c.replies.length > 0;
             html += `
-                <div class="tree-comment depth-${depth % 5}">
+                <div class="cc-tree-comment depth-${depth % 5}">
                     <div>
-                        <span class="author">${escapeHtml(c.author || '[NO AUTHOR]')}</span>
-                        <span class="meta">${escapeHtml(c.timestamp || '')}</span>
-                        ${c.likes ? '<span class="meta">❤ ' + c.likes + '</span>' : ''}
+                        <span class="cc-tree-comment__author">${escapeHtml(c.author || '[NO AUTHOR]')}</span>
+                        <span class="cc-tree-comment__meta">${escapeHtml(c.timestamp || '')}</span>
+                        ${c.likes ? '<span class="cc-tree-comment__likes">❤ ' + c.likes + '</span>' : ''}
                     </div>
-                    <div class="text">${escapeHtml(c.text || '')}</div>
-                    ${c.replies && c.replies.length > 0
-                        ? '<button class="toggle-replies" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\'">▼ ' + c.replies.length + ' reply</button>'
-                        : ''}
-                    <div ${c.replies && c.replies.length > 0 ? 'style="display:none;"' : ''}>
-                        ${c.replies && c.replies.length > 0 ? renderTree(c.replies, depth + 1) : ''}
+                    <div class="cc-tree-comment__text">${escapeHtml(c.text || '')}</div>
+                    ${hasReplies ? `<button class="cc-tree-comment__toggle" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">▼ ${c.replies.length} reply</button>` : ''}
+                    <div ${hasReplies ? 'style="display:none;"' : ''}>
+                        ${hasReplies ? renderTree(c.replies, depth + 1) : ''}
                     </div>
                 </div>
             `;
@@ -863,26 +590,110 @@
         return html;
     }
 
-    function escapeHtml(s) {
-        return String(s || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    // ====== Socket.IO realtime ======
+    if (window.io) {
+        const socket = io();
+        let reloadTimer = null;
+
+        socket.on('comment-crawler:progress', (data) => {
+            if (!data) return;
+
+            const isFinal = data.phase === 'success' || data.phase === 'failed';
+
+            if (data.jobId) {
+                if (isFinal) {
+                    updateRowStatus(data.jobId, data.phase === 'success' ? 'success' : 'failed', data.stats);
+                } else {
+                    updateRowStatus(data.jobId, 'running');
+                }
+            }
+
+            if (!isFinal) return;
+
+            // Phase cuối: reset nút + auto reload
+            resetButton();
+            resetAllRescrapeButtons();
+
+            if (reloadTimer) clearTimeout(reloadTimer);
+            reloadTimer = setTimeout(() => {
+                console.log('[CommentCrawler] Auto-reload sau khi job hoàn tất');
+                window.location.reload();
+            }, 1500);
+        });
+
+        socket.on('disconnect', () => {
+            console.warn('[CommentCrawler] Socket disconnected, resetting buttons');
+            resetButton();
+            resetAllRescrapeButtons();
+            const hasRunning = document.querySelectorAll('.cc-badge.cc-badge--running').length > 0;
+            if (hasRunning) {
+                setTimeout(() => window.location.reload(), 3000);
+            }
+        });
+        socket.on('reconnect', () => {
+            console.log('[CommentCrawler] Socket reconnected');
+        });
     }
 
-    document.getElementById('closeDetail').addEventListener('click', () => {
-        document.getElementById('detailModal').style.display = 'none';
-    });
+    // ====== Form submit ======
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const postUrl = $('postUrl').value.trim();
+        const channelId = $('channelId').value;
+        if (!postUrl || !channelId) return;
 
-    // Bind events cho các row ban đầu (render từ server)
-    document.querySelectorAll('#scrapesTbody tr').forEach(tr => bindRowEvents(tr));
+        const skipPreviousUsers = window.__skipPreviousUsersOnSubmit === true;
+        if (window.__skipPreviousUsersOnSubmit) window.__skipPreviousUsersOnSubmit = false;
 
-    // Khi load trang: scan tất cả job có status='running' → bật spin
-    // (trường hợp user F5 / chuyển trang trong khi job vẫn đang chạy ngầm)
-    document.querySelectorAll('.status-badge.status-running').forEach(badge => {
-        if (!badge.querySelector('.status-spinner')) {
-            badge.classList.add('spinning');
-            const text = badge.textContent;
-            badge.innerHTML = '<span class="status-spinner"></span>' + text;
+        const origHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang bắt đầu...';
+
+        try {
+            const res = await fetch('/tracking/comments/api/scrape', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ postUrl, channelId, maxComments: 0, includeReplies: true, skipPreviousUsers, visible: true })
+            });
+            const data = await res.json();
+            if (!data.success) {
+                appError(data.message || 'Lỗi không xác định');
+                btn.innerHTML = origHtml;
+                btn.disabled = false;
+            } else if (data.jobId) {
+                // Update row mới nhất sang running ngay
+                updateRowStatus(data.jobId, 'running');
+            }
+        } catch (err) {
+            appError('Lỗi kết nối: ' + err.message);
+            btn.innerHTML = origHtml;
+            btn.disabled = false;
         }
     });
+
+    // ====== Initial bindings ======
+    document.querySelectorAll('#scrapesTbody tr').forEach(tr => bindRowEvents(tr));
+
+    // Khôi phục spin cho các job đang running
+    document.querySelectorAll('.cc-badge.cc-badge--running').forEach(badge => {
+        if (!badge.querySelector('.cc-badge__spinner')) {
+            const text = badge.textContent.trim();
+            badge.innerHTML = '<span class="cc-badge__spinner"></span>' + text;
+        }
+    });
+
+    // Fallback: nếu có job running trong DB mà socket không emit final event
+    // → tự động reset UI sau 15 phút (giả định backend bị kẹt)
+    setTimeout(function() {
+        const runningBadges = document.querySelectorAll('.cc-badge.cc-badge--running');
+        if (runningBadges.length > 0 && btn && !btn.disabled) {
+            console.warn('[CommentCrawler] Auto-clearing stuck running badges');
+            runningBadges.forEach(function(badge) {
+                badge.className = 'cc-badge cc-badge--failed';
+                badge.innerHTML = '<i class="fa-solid fa-clock"></i> Timeout';
+            });
+        }
+    }, 15 * 60 * 1000);
 })();
 </script>
 </body>

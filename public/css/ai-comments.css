@@ -1138,3 +1138,52 @@ img[data-fallback-hide] {
         justify-content: center;
     }
 }
+
+/* ============================================================
+   TAGS (Nhóm tag cho kịch bản)
+   ============================================================ */
+.aic-tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+    min-height: 4px;
+}
+.aic-tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: rgba(16, 185, 129, 0.1);
+    color: #047857;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+.aic-tag-chip i {
+    cursor: pointer;
+    font-size: 0.7rem;
+    opacity: 0.7;
+}
+.aic-tag-chip i:hover {
+    opacity: 1;
+    color: #ef4444;
+}
+#commentTagInput {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    background: var(--bg-card);
+    color: var(--text-main);
+    outline: none;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+#commentTagInput:focus {
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}

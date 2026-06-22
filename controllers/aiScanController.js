@@ -25,10 +25,11 @@ const showAiScan = async (req, res) => {
             Settings.findOne({ userId: req.user._id }).select('openaiApiKey').lean()
         ]);
 
-        // Lấy kết quả quét gần đây (30 ngày)
+        // Lấy kết quả quét gần đây (phân trang ở client, server trả về 200 để dropdown chọn trang nhanh)
+        const RESULTS_PER_PAGE = 200;
         const recentResults = await AiScanResult.find({ userId: req.user._id })
             .sort({ scannedAt: -1 })
-            .limit(50)
+            .limit(RESULTS_PER_PAGE)
             .lean();
 
         // Stats
@@ -109,7 +110,8 @@ const createConfig = async (req, res) => {
             scheduleTimeStart, scheduleTimeEnd, maxPostsPerScanSchedule,
             maxDaysOld, openaiApiKey, model,
             aiProvider, openaiCompatibleApiKey, openaiCompatibleBaseUrl, openaiCompatibleModel,
-            anthropicApiKey, anthropicModel
+            anthropicApiKey, anthropicModel,
+            useAiDetection, keywordFilter, minAiScore, keepNonMatching
         } = req.body;
 
         if (!name || !channelId) {
@@ -130,13 +132,39 @@ const createConfig = async (req, res) => {
             groupKeys = Array.isArray(req.body.groupKeys) ? req.body.groupKeys : (req.body.groupKeys ? [req.body.groupKeys] : []);
         }
 
-        // Parse commentItems từ JSON string
-        let parsedCommentItems = [];
+        // Parse keywordFilter từ JSON string
+        let parsedKeywordFilter = [];
         try {
-            parsedCommentItems = req.body.commentItems ? JSON.parse(req.body.commentItems) : [];
-            if (!Array.isArray(parsedCommentItems)) parsedCommentItems = [];
+            parsedKeywordFilter = keywordFilter ? (typeof keywordFilter === 'string' ? JSON.parse(keywordFilter) : keywordFilter) : [];
+            if (!Array.isArray(parsedKeywordFilter)) parsedKeywordFilter = [];
         } catch (parseErr) {
-            parsedCommentItems = [];
+            parsedKeywordFilter = Array.isArray(keywordFilter) ? keywordFilter : (keywordFilter ? [keywordFilter] : []);
+        }
+
+        // ====== Auto-sync AI provider từ Settings ======
+        // Nếu user chưa chọn provider ở modal AI Scan (hoặc chọn openai mà Settings đang dùng openai-compatible)
+        // thì lấy provider + key + baseUrl + model từ Settings làm mặc định.
+        const userSettings = await Settings.findOne({ userId: req.user._id }).lean();
+        const settingsProvider = userSettings?.aiProvider || 'openai';
+        const finalProvider = aiProvider || settingsProvider;
+        let finalOpenaiKey = String(openaiApiKey || '').trim();
+        let finalOpenaiCompatibleKey = String(openaiCompatibleApiKey || '').trim();
+        let finalOpenaiCompatibleBaseUrl = String(openaiCompatibleBaseUrl || '').trim();
+        let finalOpenaiCompatibleModel = String(openaiCompatibleModel || '').trim();
+        let finalAnthropicKey = String(anthropicApiKey || '').trim();
+        let finalAnthropicModel = String(anthropicModel || '').trim();
+        // Nếu key rỗng → fallback sang Settings
+        if (finalProvider === 'openai' && !finalOpenaiKey) {
+            finalOpenaiKey = userSettings?.openaiApiKey || '';
+        }
+        if (finalProvider === 'openai-compatible') {
+            if (!finalOpenaiCompatibleKey) finalOpenaiCompatibleKey = userSettings?.openaiCompatibleApiKey || userSettings?.openaiApiKey || '';
+            if (!finalOpenaiCompatibleBaseUrl) finalOpenaiCompatibleBaseUrl = userSettings?.openaiCompatibleBaseUrl || '';
+            if (!finalOpenaiCompatibleModel) finalOpenaiCompatibleModel = userSettings?.openaiCompatibleModel || 'gpt-3.5-turbo';
+        }
+        if (finalProvider === 'anthropic') {
+            if (!finalAnthropicKey) finalAnthropicKey = userSettings?.anthropicApiKey || '';
+            if (!finalAnthropicModel) finalAnthropicModel = userSettings?.anthropicModel || 'claude-3-haiku-20240307';
         }
 
         const config = await AiScanConfig.create({
@@ -145,27 +173,31 @@ const createConfig = async (req, res) => {
             channelId,
             groupKeys,
             scanScript: String(scanScript).trim(),
-            commentItems: parsedCommentItems,
             scheduleEnabled: scheduleEnabled === 'true' || scheduleEnabled === true,
             scheduleHour: parseInt(scheduleHour, 10) || 8,
             scheduleMinute: parseInt(scheduleMinute, 10) || 0,
             scheduleTimeStart: scheduleTimeStart || '06:00',
             scheduleTimeEnd: scheduleTimeEnd || '23:00',
             maxDaysOld: parseInt(maxDaysOld, 10) || 1,
-            openaiApiKey: String(openaiApiKey || '').trim(),
+            openaiApiKey: finalOpenaiKey,
             scanIntervalMinutes: parseInt(scanIntervalMinutes, 10) || 60,
             maxPostsPerScan: parseInt(maxPostsPerScan || maxPostsPerScanSchedule, 10) || 10,
             model: String(model || 'gpt-4o-mini').trim(),
-            aiProvider: aiProvider || 'openai',
-            openaiCompatibleApiKey: String(openaiCompatibleApiKey || '').trim(),
-            openaiCompatibleBaseUrl: String(openaiCompatibleBaseUrl || '').trim(),
-            openaiCompatibleModel: String(openaiCompatibleModel || 'gpt-3.5-turbo').trim(),
-            anthropicApiKey: String(anthropicApiKey || '').trim(),
-            anthropicModel: String(anthropicModel || 'claude-3-haiku-20240307').trim(),
+            aiProvider: finalProvider,
+            openaiCompatibleApiKey: finalOpenaiCompatibleKey,
+            openaiCompatibleBaseUrl: finalOpenaiCompatibleBaseUrl,
+            openaiCompatibleModel: finalOpenaiCompatibleModel,
+            anthropicApiKey: finalAnthropicKey,
+            anthropicModel: finalAnthropicModel,
+            // AI Detection mode
+            useAiDetection: useAiDetection === 'true' || useAiDetection === true,
+            keywordFilter: parsedKeywordFilter,
+            minAiScore: parseInt(minAiScore, 10) || 60,
+            keepNonMatching: keepNonMatching === 'true' || keepNonMatching === true || keepNonMatching === undefined,
             isActive: true
         });
 
-        console.log(`[AI Scan] Created config: ${config.name} (${config._id})`);
+        console.log(`[AI Scan] Created config: ${config.name} (${config._id}) | provider=${finalProvider} | model=${finalProvider === 'openai-compatible' ? finalOpenaiCompatibleModel : finalProvider === 'anthropic' ? finalAnthropicModel : config.model}`);
 
         return res.json({ success: true, message: 'Đã tạo cấu hình quét AI', config });
     } catch (error) {
@@ -194,7 +226,8 @@ const updateConfig = async (req, res) => {
             scheduleTimeStart, scheduleTimeEnd, maxDaysOld,
             openaiApiKey, isActive, model,
             aiProvider, openaiCompatibleApiKey, openaiCompatibleBaseUrl, openaiCompatibleModel,
-            anthropicApiKey, anthropicModel
+            anthropicApiKey, anthropicModel,
+            useAiDetection, keywordFilter, minAiScore, keepNonMatching
         } = req.body;
 
         if (name !== undefined) config.name = String(name).trim();
@@ -219,6 +252,12 @@ const updateConfig = async (req, res) => {
         if (openaiCompatibleModel !== undefined) config.openaiCompatibleModel = String(openaiCompatibleModel || 'gpt-3.5-turbo').trim();
         if (anthropicApiKey !== undefined) config.anthropicApiKey = String(anthropicApiKey || '').trim();
         if (anthropicModel !== undefined) config.anthropicModel = String(anthropicModel || 'claude-3-haiku-20240307').trim();
+        // AI Detection mode
+        if (useAiDetection !== undefined) config.useAiDetection = useAiDetection === 'true' || useAiDetection === true;
+        if (minAiScore !== undefined) config.minAiScore = parseInt(minAiScore, 10) || 60;
+        if (keepNonMatching !== undefined) {
+            config.keepNonMatching = keepNonMatching === 'true' || keepNonMatching === true;
+        }
 
         // Parse groupKeys
         try {
@@ -227,11 +266,11 @@ const updateConfig = async (req, res) => {
             }
         } catch (parseErr) { /* ignore */ }
 
-        // Parse commentItems
+        // Parse keywordFilter
         try {
-            if (req.body.commentItems !== undefined) {
-                const parsed = typeof req.body.commentItems === 'string' ? JSON.parse(req.body.commentItems) : req.body.commentItems;
-                if (Array.isArray(parsed)) config.commentItems = parsed;
+            if (keywordFilter !== undefined) {
+                const parsed = typeof keywordFilter === 'string' ? JSON.parse(keywordFilter) : keywordFilter;
+                if (Array.isArray(parsed)) config.keywordFilter = parsed;
             }
         } catch (parseErr) { /* ignore */ }
 

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comment Sản Phẩm - ReelsFlow AI</title>
+    <title>Thư Viện Bình Luận - ReelsFlow AI</title>
     <link rel="stylesheet" href="/css/base.css">
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/ai-comments.css">
@@ -23,7 +23,7 @@
         <!-- Welcome Section -->
         <%- include('partials/welcome-section', {
             eyebrow: 'AI Tự Động',
-            title: 'Comment Sản Phẩm',
+            title: 'Thư Viện Bình Luận',
             description: 'Tạo sẵn các comment (text, hình ảnh sản phẩm, video). Bật/Tắt để chọn comment sẽ được dùng khi quét AI tự động post. Tắt (bỏ qua) comment nào không muốn dùng.',
             actionHtml: '<button class="btn-aic-hero" id="btnNewComment"><i class="fa-solid fa-plus"></i> Tạo Sản Phẩm</button>'
         }) %>
@@ -204,6 +204,14 @@
                         <input type="checkbox" id="commentIsActive" checked>
                         <span>Đang hoạt động (bỏ tick để tạm tắt / bỏ qua)</span>
                     </label>
+                </div>
+
+                <!-- Tags (cho kịch bản theo nhóm) -->
+                <div class="form-group">
+                    <label><i class="fa-solid fa-tags" style="color:#10b981;"></i> Nhóm tag <span class="optional-tag">tuỳ chọn</span></label>
+                    <div id="commentTagsContainer" class="aic-tags-container"></div>
+                    <input type="text" id="commentTagInput" placeholder="Gõ tag rồi Enter (vd: bds, tech, xe)...">
+                    <small class="form-hint"><i class="fa-solid fa-info-circle"></i> Kịch bản có thể lọc theo tag — thêm comment mới với cùng tag sẽ tự được dùng.</small>
                 </div>
 
                 <div class="form-actions">

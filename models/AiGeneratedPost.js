@@ -33,6 +33,9 @@ const AiGeneratedPostSchema = new mongoose.Schema({
     productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
     direction: { type: String, enum: ['advertising', 'purchase', 'mixed', 'unset'] },
 
+    // Liên kết pipeline tạo ra bài này (mới thêm Bundle D)
+    pipelineId: { type: mongoose.Schema.Types.ObjectId, ref: 'AutoContentPipeline' },
+
     // Engagement tracking
     engagement: {
         likes: { type: Number, default: 0 },
@@ -49,5 +52,6 @@ AiGeneratedPostSchema.index({ userId: 1, scheduleId: 1 });
 AiGeneratedPostSchema.index({ userId: 1, status: 1 });
 AiGeneratedPostSchema.index({ userId: 1, scheduledAt: 1 });
 AiGeneratedPostSchema.index({ userId: 1, productId: 1 });
+AiGeneratedPostSchema.index({ userId: 1, pipelineId: 1 });
 
 module.exports = mongoose.model('AiGeneratedPost', AiGeneratedPostSchema);

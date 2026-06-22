@@ -8,6 +8,7 @@ const AiCommentSchema = new mongoose.Schema({
     content: { type: String, default: '' }, // Nội dung text hoặc file path
     caption: { type: String, default: '' }, // Caption (cho image/video)
     isActive: { type: Boolean, default: true }, // Bật/tắt - tắt = bỏ qua
+    tags: [{ type: String, trim: true, lowercase: true }], // Nhóm tag để kịch bản pick theo nhóm
     order: { type: Number, default: 0 }, // Thứ tự sắp xếp
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
@@ -15,5 +16,6 @@ const AiCommentSchema = new mongoose.Schema({
 
 AiCommentSchema.index({ userId: 1, isActive: 1 });
 AiCommentSchema.index({ userId: 1, order: 1 });
+AiCommentSchema.index({ userId: 1, tags: 1 });
 
 module.exports = mongoose.model('AiComment', AiCommentSchema);

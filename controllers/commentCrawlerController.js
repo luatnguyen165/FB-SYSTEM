@@ -56,8 +56,9 @@ exports.showCommentCrawler = async (req, res) => {
             scrapes,
             stats,
             features: res.locals.features || {},
-            user: req.session.user || req.user || null,
-            t: (key) => key
+            user: req.session.user || req.user || null
+            // KHÔNG override t() ở đây — để res.locals.t từ i18nMiddleware/authMiddleware hoạt động
+            // Nếu override bằng `(key) => key` thì t('app.name') sẽ trả raw key thay vì 'ReelsFlow AI'
         });
     } catch (err) {
         console.error('[Comment Crawler] showCommentCrawler error:', err.message);

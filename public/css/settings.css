@@ -891,3 +891,85 @@ input[type="time"].input-text {
     color: var(--primary);
     border-color: var(--primary);
 }
+
+/* ============================================================
+   TELEGRAM LINK CARD
+   ============================================================ */
+.telegram-link-card {
+    margin-top: 8px;
+    padding: 18px 20px;
+    background: linear-gradient(135deg, rgba(56, 161, 243, 0.06), rgba(56, 161, 243, 0.02));
+    border: 1px solid rgba(56, 161, 243, 0.25);
+    border-radius: 14px;
+}
+.telegram-link-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #229ED9;
+    font-size: 0.95rem;
+    margin-bottom: 12px;
+}
+.telegram-link-header i {
+    font-size: 1.1rem;
+}
+.telegram-link-status {
+    padding: 12px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 0.9rem;
+    margin-bottom: 12px;
+    line-height: 1.5;
+}
+.telegram-link-status code {
+    background: rgba(56, 161, 243, 0.1);
+    color: #229ED9;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.85em;
+}
+.telegram-link-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    font-size: 0.88rem;
+    color: var(--text-main);
+    line-height: 1.5;
+}
+.telegram-link-step .step-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #229ED9;
+    color: white;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+.telegram-link-step code {
+    background: rgba(56, 161, 243, 0.1);
+    color: #229ED9;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.85em;
+}
+.telegram-link-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+.telegram-test-btn--danger {
+    background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25) !important;
+}
+.telegram-test-btn--danger:hover {
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.35) !important;
+}

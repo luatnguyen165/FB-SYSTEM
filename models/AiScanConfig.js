@@ -24,6 +24,18 @@ const AiScanConfigSchema = new mongoose.Schema({
     openaiCompatibleModel: { type: String, default: 'gpt-3.5-turbo' },
     anthropicApiKey: { type: String, default: '' },
     anthropicModel: { type: String, default: 'claude-3-haiku-20240307' },
+
+    // --- AI Detection Mode (Optional) ---
+    // Tắt = lưu bài xong comment luôn (dựa vào keywordFilter)
+    // Bật = dùng OpenAI/Puter phân tích nhu cầu trước khi comment
+    useAiDetection: { type: Boolean, default: false },
+    // Keyword filter khi tắt AI: nếu content chứa 1 trong các keyword → isMatching: true
+    keywordFilter: { type: [String], default: [] },
+    // Ngưỡng điểm AI tối thiểu (0-100) khi bật AI
+    minAiScore: { type: Number, default: 60, min: 0, max: 100 },
+    // Nếu true: vẫn lưu bài không match để tham khảo, không xóa
+    keepNonMatching: { type: Boolean, default: true },
+
     commentItems: [{
         name: { type: String, default: '' },
         type: { type: String, enum: ['text', 'image', 'video'], default: 'text' },

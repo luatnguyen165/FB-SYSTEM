@@ -503,6 +503,25 @@ img {
     display: flex;
 }
 
+/* Server-rendered mở group khi load (ưu tiên hơn localStorage) */
+.sidebar-group[aria-expanded="true"] > .sidebar-submenu {
+    display: flex;
+}
+
+.sidebar-group[aria-expanded="true"] > .sidebar-group-toggle .sidebar-group-chevron {
+    transform: rotate(180deg);
+    opacity: 0.8;
+}
+
+.sidebar-group[aria-expanded="true"] > .sidebar-group-toggle::before {
+    transform: translateY(-50%) scaleY(1);
+}
+
+.sidebar-group[aria-expanded="true"] > .sidebar-group-toggle {
+    color: var(--primary);
+    background: var(--primary-light);
+}
+
 .sidebar-submenu .menu-item a {
     padding: 7px 12px;
     font-size: 0.825rem;

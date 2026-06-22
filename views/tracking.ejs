@@ -117,15 +117,22 @@
                                     <i class="fa-solid fa-user"></i> <%= t.sourceAccountId.accountName %>
                                 </span>
                                 <% } %>
-                                <% /* TẠM ẨN targetPlatforms
+                                <% /* targetPlatforms */
                                 if (t.targetPlatforms && t.targetPlatforms.length > 0) { %>
                                 <span class="meta-badge">
                                     <i class="fa-solid fa-share-nodes"></i> Đăng lên:
-                                    <% t.targetPlatforms.forEach(function(tp, idx) { %>
-                                        <%= tp.platform %><%= idx < t.targetPlatforms.length - 1 ? ', ' : '' %>
+                                    <% t.targetPlatforms.forEach(function(tp, idx) {
+                                        var codeMap = {facebook:'FB', tiktok:'TT', instagram:'IG', youtube:'YT', pinterest:'PI', threads:'TH'};
+                                        var code = codeMap[tp.platform] || tp.platform; %>
+                                        <%= code %><%= idx < t.targetPlatforms.length - 1 ? ', ' : '' %>
                                     <% }); %>
                                 </span>
-                                <% } */ %>
+                                <% } %>
+                                <% if (t.repostPaused) { %>
+                                <span class="meta-badge badge-paused">
+                                    <i class="fa-solid fa-hand"></i> Tạm dừng repost
+                                </span>
+                                <% } %>
                                 <span class="meta-badge <%= t.isActive ? 'badge-active' : 'badge-paused' %>">
                                     <i class="fa-solid <%= t.isActive ? 'fa-play' : 'fa-pause' %>"></i>
                                     <%= t.isActive ? 'Đang theo dõi' : 'Tạm dừng' %>
@@ -156,6 +163,9 @@
                             </button>
                             <button class="btn-icon-card" title="Xem bài viết" onclick="viewPosts('<%= t._id %>')">
                                 <i class="fa-solid fa-list"></i>
+                            </button>
+                            <button class="btn-icon-card <%= t.repostPaused ? 'btn-icon-warning' : '' %>" title="<%= t.repostPaused ? 'Bật lại auto-repost' : 'Tạm dừng auto-repost' %>" onclick="toggleRepostPause('<%= t._id %>', <%= t.repostPaused ? 'true' : 'false' %>)">
+                                <i class="fa-solid <%= t.repostPaused ? 'fa-hand' : 'fa-share-from-square' %>"></i>
                             </button>
                             <button class="btn-icon-card" title="Bật/Tắt" onclick="toggleTracking('<%= t._id %>')">
                                 <i class="fa-solid <%= t.isActive ? 'fa-pause' : 'fa-play' %>"></i>
@@ -257,14 +267,59 @@
                         </select>
                     </div>
 
-                    <!-- Nền tảng đăng — TẠM ẨN
+                    <!-- Nền tảng đăng - Auto-repost -->
                     <div class="form-group">
-                        <label class="form-label">Nền tảng đăng (chọn nhiều)</label>
+                        <label class="form-label">
+                            <i class="fa-solid fa-share-from-square"></i> Auto đăng lại (chọn nhiều)
+                        </label>
+                        <div class="form-section__hint" style="margin-bottom:12px;">
+                            <i class="fa-solid fa-circle-info"></i> Mỗi bài scrape về sẽ tự động đăng lên các nền tảng đã chọn.
+                            <br>• Có ảnh+video: đăng tất cả. Chỉ có ảnh: bỏ qua TikTok/YouTube.
+                        </div>
                         <div class="target-platforms-selector" id="targetPlatformsContainer">
-                            ...
+                            <%
+                                const platformList = [
+                                    { key: 'facebook',  label: 'Facebook',  icon: 'fa-brands fa-facebook', color: '#1877f2', hasGroup: true },
+                                    { key: 'instagram', label: 'Instagram', icon: 'fa-brands fa-instagram', color: '#e1306c' },
+                                    { key: 'tiktok',    label: 'TikTok',    icon: 'fa-brands fa-tiktok', color: '#000' },
+                                    { key: 'youtube',   label: 'YouTube',   icon: 'fa-brands fa-youtube', color: '#ff0000' },
+                                    { key: 'threads',   label: 'Threads',   icon: 'fa-brands fa-threads', color: '#000' },
+                                    { key: 'pinterest', label: 'Pinterest', icon: 'fa-brands fa-pinterest', color: '#bd081c' }
+                                ];
+                            %>
+                            <% platformList.forEach(function(p) { %>
+                            <div class="target-platform-row" data-platform="<%= p.key %>" style="border:1px solid var(--border-soft);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--bg-soft);">
+                                <label class="target-platform-header" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:600;">
+                                    <input type="checkbox" class="target-cb" value="<%= p.key %>">
+                                    <i class="<%= p.icon %>" style="color:<%= p.color %>;"></i>
+                                    <span><%= p.label %></span>
+                                </label>
+                                <div class="target-platform-body" style="margin-top:10px;padding-left:24px;display:none;">
+                                    <select class="form-input target-account-select" disabled style="margin-bottom:8px;">
+                                        <option value="">-- Chọn tài khoản --</option>
+                                    </select>
+                                    <input type="text" class="form-input target-mapping-title" placeholder="Title (Pinterest/YouTube). VD: {{text|first_100_chars}}" style="margin-bottom:6px;font-size:12px;">
+                                    <textarea class="form-input target-mapping-caption" rows="2" placeholder="Caption. VD: {{text}}" style="margin-bottom:6px;font-size:12px;"></textarea>
+                                    <input type="text" class="form-input target-mapping-hashtags" placeholder="Hashtags (TikTok/Threads). VD: #fyp #viral" style="margin-bottom:6px;font-size:12px;">
+                                    <input type="text" class="form-input target-mapping-tags" placeholder="Tags (YouTube). VD: shorts, viral" style="font-size:12px;">
+                                    <% if (p.hasGroup) { %>
+                                    <div class="form-section__hint" style="margin-top:6px;color:#f59e0b;">
+                                        <i class="fa-solid fa-triangle-exclamation"></i> Facebook Post ảnh cần group đích (chưa hỗ trợ qua form này).
+                                    </div>
+                                    <% } %>
+                                </div>
+                            </div>
+                            <% }); %>
                         </div>
                     </div>
-                    -->
+
+                    <!-- Tạm dừng auto-repost -->
+                    <div class="form-group">
+                        <label class="schedule-toggle" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                            <input type="checkbox" id="repostPaused">
+                            <span><i class="fa-solid fa-hand"></i> Tạm dừng auto-repost (vẫn scrape bình thường)</span>
+                        </label>
+                    </div>
 
                     <!-- Upload cookies — TẠM ẨN (chỉ cho TikTok) -->
                 </div>
@@ -450,6 +505,38 @@
                 showToast('error', data.message);
             }
         } catch (e) { showToast('error', 'Lỗi: ' + e.message); }
+    }
+
+    // Toggle repost pause
+    async function toggleRepostPause(id, currentPaused) {
+        if (!confirm(currentPaused ? 'Bật lại auto-repost cho đối tượng này?' : 'Tạm dừng auto-repost? Vẫn sẽ scrape bài viết bình thường.')) return;
+        try {
+            const res = await fetch(`/tracking/api/repost-pause/${id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ paused: !currentPaused })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast('success', data.message);
+                setTimeout(() => location.reload(), 600);
+            } else {
+                showToast('error', data.message || 'Lỗi');
+            }
+        } catch (e) { showToast('error', 'Lỗi: ' + e.message); }
+    }
+
+    // Render badge repost status cho posts table
+    function renderRepostStatus(results) {
+        if (!Array.isArray(results) || results.length === 0) return '';
+        const codeMap = { facebook: 'FB', tiktok: 'TT', instagram: 'IG', youtube: 'YS', pinterest: 'PI', threads: 'TH' };
+        const statusMap = { pending: { c: '#f59e0b', i: 'fa-clock' }, posted: { c: '#10b981', i: 'fa-check' }, failed: { c: '#ef4444', i: 'fa-xmark' }, skipped: { c: '#94a3b8', i: 'fa-forward' } };
+        const badges = results.map(r => {
+            const s = statusMap[r.status] || statusMap.pending;
+            const code = r.platform && r.platform.length <= 3 ? r.platform : (codeMap[r.platform] || r.platform);
+            return '<span class="repost-badge" title="' + (r.error || r.status || '').replace(/"/g, '&quot;') + '" style="display:inline-block;padding:2px 6px;margin:2px;border-radius:6px;font-size:10px;font-weight:600;background:' + s.c + '22;color:' + s.c + ';"><i class="fa-solid ' + s.i + '"></i> ' + code + '</span>';
+        }).join('');
+        return '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:2px;">' + badges + '</div>';
     }
 
     // Mở modal cài đặt
@@ -648,7 +735,7 @@
                                 <span><i class="fa-solid fa-comment"></i> ${p.commentCount || 0}</span>
                             </div>
                         </td>
-                        ${showTime ? `<td><span class="table-time">${publishTime || new Date(p.scrapedAt).toLocaleString('vi-VN')}</span></td>` : ''}
+                        ${showTime ? `<td><span class="table-time">${publishTime || new Date(p.scrapedAt).toLocaleString('vi-VN')}</span>${renderRepostStatus(p.repostResults)}</td>` : `<td>${renderRepostStatus(p.repostResults)}</td>`}
                         <td>
                             <div class="table-actions">
                                 <button class="btn-icon btn-icon--sm" title="Chỉnh sửa" onclick="editPost('${p._id}')"><i class="fa-solid fa-pen"></i></button>

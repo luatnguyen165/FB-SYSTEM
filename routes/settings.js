@@ -17,4 +17,9 @@ router.post('/api/reset', requireAuth, settingsController.resetSettings);
 router.post('/api/telegram-test', requireAuth, settingsController.testTelegram);
 router.post('/api/test-ai-connection', requireAuth, settingsController.testAiConnection);
 
+// API: Telegram link (one-time token)
+router.post('/api/telegram/generate-link-token', requireAuth, settingsController.generateTelegramLinkToken);
+router.get('/api/telegram/link-status', requireAuth, settingsController.getTelegramLinkStatus);
+router.post('/api/telegram/unlink', requireAuth, settingsController.unlinkTelegram);
+
 module.exports = router;

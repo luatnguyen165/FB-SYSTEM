@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/css/base.css">
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/ai-scan.css?v=2026061918">
+    <link rel="stylesheet" href="/css/ai-scan-detection.css">
     <link rel="stylesheet" href="/css/toast.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,7 +26,7 @@
         <%- include('partials/welcome-section', {
             eyebrow: 'AI Quét Nhu Cầu',
             title: 'Quét Bài Viết AI',
-            description: 'Tự động quét bài viết trong group Facebook, dùng Puter.js AI (miễn phí) phân tích nhu cầu khách hàng và comment tự động. OpenAI làm fallback.',
+            description: 'Tự động quét bài viết trong group Facebook theo logic code của bạn, lưu kết quả vào bảng để xem lại và phân tích.',
             actionHtml: '<button class="btn-scan-hero" id="btnNewConfig"><i class="fa-solid fa-plus"></i> Tạo Cấu Hình Mới</button>'
         }) %>
 
@@ -73,7 +74,7 @@
         <div class="scan-progress-panel" id="scanProgressPanel" style="display: none;">
             <div class="scan-progress-header">
                 <i class="fa-solid fa-robot"></i>
-                <span>Đang quét bài viết qua Puter.js AI...</span>
+                <span>Đang quét bài viết...</span>
                 <button class="btn-icon" id="btnCloseScanProgress" title="Đóng"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="scan-progress-body" id="scanProgressBody">
@@ -105,6 +106,15 @@
                         <div class="config-name-group">
                             <span class="config-status-dot <%= config.isActive ? 'active' : '' %>" title="<%= config.isActive ? 'Đang hoạt động' : 'Đã tắt' %>"></span>
                             <h3><%= config.name %></h3>
+                            <% if (config.useAiDetection) { %>
+                            <span class="config-badge ai-badge" title="Đang bật AI phân tích nhu cầu">
+                                <i class="fa-solid fa-robot"></i> AI Detection
+                            </span>
+                            <% } else { %>
+                            <span class="config-badge keyword-badge" title="Match theo keyword - không tốn token">
+                                <i class="fa-solid fa-bolt"></i> Keyword Mode
+                            </span>
+                            <% } %>
                             <% if (config.scheduleEnabled) { %>
                             <span class="config-badge schedule-badge">
                                 <i class="fa-solid fa-clock"></i> Mỗi <%= config.scanIntervalMinutes || 60 %> phút (<%= config.scheduleTimeStart || '06:00' %> → <%= config.scheduleTimeEnd || '23:00' %>)
@@ -114,6 +124,9 @@
                          <div class="config-actions">
                             <button class="config-run-btn btn-run-now" data-config-id="<%= config._id %>" title="Chạy quét ngay">
                                 <i class="fa-solid fa-play"></i> Quét ngay
+                            </button>
+                            <button class="btn-icon btn-view-results" data-config-id="<%= config._id %>" title="Xem kết quả của cấu hình này">
+                                <i class="fa-solid fa-table-list"></i>
                             </button>
                             <button class="btn-icon btn-edit-config" data-config-id="<%= config._id %>" title="Sửa">
                                 <i class="fa-solid fa-pen-to-square"></i>
@@ -145,10 +158,13 @@
         </div>
 
         <!-- Recent Results -->
-        <div class="ai-scan-section">
+        <div class="ai-scan-section" id="recentResultsSection" style="display: none;">
             <div class="section-header">
-                <h2><i class="fa-solid fa-table-list"></i> Kết Quả Quét Gần Đây</h2>
+                <h2 id="resultsHeader"><i class="fa-solid fa-table-list"></i> <span id="resultsTitle">Kết Quả Quét Gần Đây</span></h2>
                 <div class="section-actions">
+                    <button class="btn btn-sm btn-outline" id="btnBackToAll">
+                        <i class="fa-solid fa-arrow-left"></i> Quay lại tất cả
+                    </button>
                     <button class="btn btn-sm btn-outline" id="btnClearResults">
                         <i class="fa-solid fa-broom"></i> Xóa kết quả
                     </button>
@@ -161,13 +177,14 @@
                             <th>Bài viết</th>
                             <th>Group</th>
                             <th>Match</th>
+                            <th>AI Score</th>
                             <th>Comment</th>
                             <th>Thời gian</th>
                         </tr>
                     </thead>
                     <tbody>
                         <% if (recentResults.length === 0) { %>
-                        <tr><td colspan="5" class="empty-cell">Chưa có kết quả quét nào</td></tr>
+                        <tr><td colspan="6" class="empty-cell">Chưa có kết quả quét nào</td></tr>
                         <% } else { %>
                         <% recentResults.forEach(function(result) { %>
                         <tr class="result-row <%= result.isMatching ? 'row-match' : 'row-no-match' %>">
@@ -209,6 +226,18 @@
                                     <%= result.isMatching ? '✓ Match' : '✗ No' %>
                                 </span>
                             </td>
+                            <td class="score-cell">
+                                <%
+                                    const score = typeof result.aiScore === 'number' ? result.aiScore : 0;
+                                    let scoreClass = 'score-low';
+                                    if (score >= 70) scoreClass = 'score-high';
+                                    else if (score >= 40) scoreClass = 'score-mid';
+                                %>
+                                <div class="score-bar <%= scoreClass %>" title="<%= score %>%">
+                                    <div class="score-fill <%= scoreClass %>" style="width: <%= Math.min(100, Math.max(0, score)) %>%"></div>
+                                    <span class="score-text"><%= score %>%</span>
+                                </div>
+                            </td>
                             <td>
                                 <% 
                                 const hasComments = result.comments && result.comments.length > 0;
@@ -240,9 +269,10 @@
                     </tbody>
                 </table>
             </div>
-            <!-- AI Scan Results Pagination -->
-            <div id="aiScanPagination" data-current-page="1" data-total-pages="1">
-                <%- include('partials/pagination', { mode: 'js', containerId: 'aiScanPagination' }) %>
+            <!-- AI Scan Results Pagination (client-side, 10 rows / page) -->
+            <div class="ai-scan-pagination" id="aiScanPagination">
+                <div class="ai-scan-pagination__info" id="aiScanPaginationInfo">Đang tải...</div>
+                <div class="ai-scan-pagination__controls" id="aiScanPaginationControls"></div>
             </div>
         </div>
     </div>
@@ -309,6 +339,85 @@
                 <input type="hidden" id="configOpenaiKey" value="">
                 <input type="hidden" id="configScanScript" value="">
 
+                <!-- ============ AI DETECTION MODE (Optional) ============ -->
+                <div class="form-section-divider"><i class="fa-solid fa-robot"></i> Phát Hiện Nhu Cầu Bằng AI <span class="optional-tag">tùy chọn</span></div>
+
+                <div class="form-group">
+                    <label class="checkbox-label ai-toggle-label">
+                        <input type="checkbox" id="configUseAiDetection">
+                        <span class="toggle-switch"></span>
+                        <span>
+                            <strong>Bật AI phân tích nhu cầu</strong>
+                            <small class="form-hint" style="display:block; margin-top:4px;">
+                                <i class="fa-solid fa-info-circle"></i>
+                                <span id="aiModeHint">TẮT: Lưu bài xong comment ngay dựa trên keyword filter. Tốc độ nhanh, không tốn token OpenAI.</span>
+                            </small>
+                        </span>
+                    </label>
+                </div>
+
+                <div id="aiDetectionOffFields">
+                    <div class="form-group">
+                        <label><i class="fa-solid fa-keyboard"></i> Keyword filter <span class="optional-tag">không bắt buộc</span></label>
+                        <div class="keyword-input-wrapper">
+                            <div id="keywordTagsContainer" class="keyword-tags-container"></div>
+                            <input type="text" id="configKeywordInput" placeholder="Gõ keyword rồi Enter (VD: mua, bán, iphone...)">
+                        </div>
+                        <small class="form-hint">
+                            <i class="fa-solid fa-info-circle"></i>
+                            Để trống = lưu tất cả bài. Có keyword = chỉ lưu bài chứa 1 trong các keyword.
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="configKeepNonMatching" checked>
+                            <span>Lưu bài không match (để xem lại)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="aiDetectionOnFields" style="display: none;">
+                    <!-- Keyword pre-filter - hiển thị cả khi bật AI để tiết kiệm token -->
+                    <div class="form-group">
+                        <label><i class="fa-solid fa-keyboard"></i> Keyword pre-filter <span class="optional-tag">không bắt buộc - giúp tiết kiệm token</span></label>
+                        <div class="keyword-input-wrapper">
+                            <div id="keywordTagsContainerOn" class="keyword-tags-container"></div>
+                            <input type="text" id="configKeywordInputOn" placeholder="Gõ keyword rồi Enter (VD: mua, bán, iphone...)">
+                        </div>
+                        <small class="form-hint">
+                            <i class="fa-solid fa-info-circle"></i>
+                            <strong>Tiền lọc trước khi gửi AI</strong> - chỉ bài chứa keyword mới gửi cho AI phân tích. Để trống = gửi tất cả cho AI (tốn token hơn).
+                        </small>
+                    </div>
+
+                    <div class="form-row form-row-2">
+                        <div class="form-group">
+                            <label><i class="fa-solid fa-microchip"></i> AI Provider</label>
+                            <select id="configAiProvider">
+                                <option value="openai">OpenAI (GPT-4o-mini)</option>
+                                <option value="openai-compatible">OpenAI Compatible</option>
+                                <option value="anthropic">Anthropic (Claude)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fa-solid fa-percent"></i> Match score tối thiểu</label>
+                            <div class="input-group">
+                                <input type="number" id="configMinAiScore" value="60" min="0" max="100">
+                                <span class="input-suffix">/ 100</span>
+                            </div>
+                            <small class="form-hint">Chỉ comment bài có score ≥ ngưỡng này</small>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fa-solid fa-brain"></i> Kịch bản phân tích AI</label>
+                        <textarea id="configScanScriptVisible" rows="8" placeholder="Mô tả cho AI cách đánh giá bài viết...">Bạn là chuyên gia phân tích nhu cầu khách hàng. Đọc bài viết và đánh giá xem người đăng có nhu cầu phù hợp với sản phẩm/dịch vụ không. Trả về JSON: {isMatching, score, reason}</textarea>
+                        <small class="form-hint">
+                            <i class="fa-solid fa-info-circle"></i>
+                            Prompt mặc định đang chung chung. <strong>Nên sửa cho phù hợp với sản phẩm/dịch vụ của bạn</strong> — VD: "Mình bán điện thoại, tìm người có nhu cầu mua hoặc hỏi về điện thoại...".
+                        </small>
+                    </div>
+                </div>
+
                 <!-- Lịch chạy tự động -->
                 <div class="form-section-divider"><i class="fa-solid fa-clock"></i> Lịch Chạy Tự Động</div>
                 
@@ -342,34 +451,6 @@
                             <label><i class="fa-regular fa-moon"></i> Khung giờ kết thúc</label>
                             <input type="time" id="configScheduleTimeEnd" value="23:00">
                         </div>
-                    </div>
-                    <div class="form-group">
-                        <label><i class="fa-solid fa-calendar-days"></i> Quét bài viết trong</label>
-                        <div class="input-group">
-                            <input type="number" id="configMaxDaysOld" value="1" min="1" max="30">
-                            <span class="input-suffix">ngày gần đây</span>
-                        </div>
-                        <small class="form-hint">1 = chỉ hôm nay, 2 = hôm nay + hôm qua, 3 = 3 ngày...</small>
-                    </div>
-                </div>
-
-                <!-- ============ COMMENT SẢN PHẨM ============ -->
-                <div class="form-section-divider"><i class="fa-solid fa-comments"></i> Comment Sản Phẩm</div>
-
-                <div class="form-group">
-                    <label>Quản lý bình luận</label>
-                    <small class="form-hint">Tạo các bình luận mẫu (text, hình, video). Chọn bình luận nào thì auto comment bình luận đó. Chọn hết thì comment hết.</small>
-                    <div id="commentItemsContainer" class="comment-items-container"></div>
-                    <div class="comment-items-toolbar">
-                        <button type="button" class="btn btn-sm btn-outline" id="btnAddCommentText">
-                            <i class="fa-solid fa-font"></i> + Text
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline" id="btnAddCommentImage">
-                            <i class="fa-solid fa-image"></i> + Hình
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline" id="btnAddCommentVideo">
-                            <i class="fa-solid fa-video"></i> + Video
-                        </button>
                     </div>
                 </div>
 

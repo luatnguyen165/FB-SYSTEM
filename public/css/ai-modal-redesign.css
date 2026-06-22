@@ -1,0 +1,382 @@
+/* ===================================
+   AI-MODAL-REDESIGN.CSS
+   Minimal + monospace title style
+   Density thấp, border mỏng, khoảng trắng nhiều
+   =================================== */
+
+/* ===== Override modal shell ===== */
+.ai-modal-overlay {
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    animation: overlayFade var(--transition-normal);
+}
+
+@keyframes overlayFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.ai-modal {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.04),
+        0 24px 48px -12px rgba(0, 0, 0, 0.18);
+    max-height: 90vh;
+    animation: modalRise 320ms cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
+}
+
+@keyframes modalRise {
+    from { opacity: 0; transform: translateY(20px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Header — minimal, title 20px weight 500, monospace, no icon */
+.ai-modal-header {
+    padding: 36px 40px 24px;
+    border-bottom: none;
+    background: var(--bg-card);
+    position: relative;
+}
+
+.ai-modal-header::after {
+    content: '';
+    position: absolute;
+    left: 40px;
+    right: 40px;
+    bottom: 0;
+    height: 1px;
+    background: var(--border);
+}
+
+.ai-modal-header h2 {
+    font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--text-main);
+    letter-spacing: -0.01em;
+    margin: 0;
+    padding-right: 40px;
+}
+
+.ai-modal-header h2 i {
+    display: none; /* Ẩn icon, chỉ giữ title monospace */
+}
+
+.ai-modal-close {
+    position: absolute;
+    top: 28px;
+    right: 28px;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-light);
+    font-size: 18px;
+    line-height: 1;
+    border-radius: 8px;
+    transition: all var(--transition-fast);
+}
+
+.ai-modal-close:hover {
+    background: var(--bg-hover);
+    border-color: var(--border);
+    color: var(--text-main);
+}
+
+/* Body — nhiều khoảng trắng, density thấp */
+.ai-modal-body {
+    padding: 32px 40px;
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--text-main);
+}
+
+.ai-modal-body .form-group {
+    margin-bottom: 28px;
+}
+
+.ai-modal-body .form-group label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.ai-modal-body .form-input {
+    border: none;
+    border-bottom: 1.5px solid var(--border);
+    border-radius: 0;
+    padding: 10px 0;
+    font-size: 15px;
+    background: transparent;
+    transition: border-color var(--transition-fast);
+}
+
+.ai-modal-body .form-input:focus {
+    border-bottom-color: var(--primary);
+    box-shadow: none;
+    outline: none;
+}
+
+.ai-modal-body textarea.form-input {
+    padding: 10px 0;
+    min-height: 80px;
+}
+
+.ai-modal-body .form-row {
+    gap: 24px;
+}
+
+/* Footer — minimal, không background, border-top mỏng */
+.ai-modal-footer {
+    padding: 20px 40px 32px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-card);
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.ai-modal-footer .btn-primary,
+.ai-modal-footer .btn-secondary {
+    font-size: 14px;
+    font-weight: 500;
+    padding: 9px 22px;
+    border-radius: 8px;
+    letter-spacing: 0.01em;
+}
+
+.ai-modal-footer .btn-primary {
+    background: var(--text-main);
+    color: white;
+    box-shadow: none;
+    border: 1px solid var(--text-main);
+}
+
+.ai-modal-footer .btn-primary:hover {
+    background: #1e293b;
+    transform: none;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15);
+}
+
+.ai-modal-footer .btn-secondary {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+}
+
+.ai-modal-footer .btn-secondary:hover {
+    color: var(--text-main);
+    border-color: var(--text-main);
+    background: transparent;
+}
+
+/* Article entries (style modal) — minimal list */
+.article-entry {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 12px;
+    position: relative;
+    transition: border-color var(--transition-fast);
+}
+
+.article-entry:hover {
+    border-color: var(--border-dark);
+}
+
+.article-entry .form-input {
+    margin-bottom: 10px;
+}
+
+.article-entry .form-input:last-of-type {
+    margin-bottom: 0;
+}
+
+.article-entry .btn-remove-article {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-light);
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+}
+
+.article-entry .btn-remove-article:hover {
+    color: var(--danger);
+    background: var(--danger-light);
+    border-color: transparent;
+}
+
+/* Post edit — keep premium look but minimal */
+.post-edit-meta-bar {
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+}
+
+.post-edit-title-input {
+    border: none;
+    border-bottom: 1.5px solid var(--border);
+    border-radius: 0;
+    font-size: 22px;
+    font-weight: 600;
+    padding: 8px 0;
+    background: transparent;
+}
+
+.post-edit-title-input:focus {
+    border-bottom-color: var(--primary);
+    box-shadow: none;
+}
+
+.post-edit-textarea {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    font-size: 15px;
+    line-height: 1.75;
+    background: var(--bg-main);
+}
+
+.post-edit-textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+    background: var(--bg-card);
+}
+
+.post-channel-chip {
+    border-radius: 8px;
+    padding: 7px 14px;
+}
+
+/* Direction selector (dùng trong wizard) */
+.direction-selector {
+    gap: 12px;
+}
+
+.direction-option {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    background: var(--bg-card);
+    transition: all var(--transition-fast);
+}
+
+.direction-option:hover {
+    border-color: var(--border-dark);
+}
+
+.direction-option.active {
+    border-color: var(--text-main);
+    background: var(--bg-main);
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+    .ai-modal-overlay {
+        padding: 12px;
+    }
+
+    .ai-modal-header {
+        padding: 24px 20px 16px;
+    }
+
+    .ai-modal-header::after {
+        left: 20px;
+        right: 20px;
+    }
+
+    .ai-modal-body {
+        padding: 20px;
+    }
+
+    .ai-modal-footer {
+        padding: 16px 20px 20px;
+    }
+
+    .ai-modal-header h2 {
+        font-size: 18px;
+    }
+}
+
+/* ===== Dark mode (auto) ===== */
+@media (prefers-color-scheme: dark) {
+    .ai-modal {
+        background: #0f172a;
+        border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .ai-modal-header {
+        background: #0f172a;
+    }
+
+    .ai-modal-header::after {
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    .ai-modal-header h2 {
+        color: #f1f5f9;
+    }
+
+    .ai-modal-body {
+        color: #cbd5e1;
+    }
+
+    .ai-modal-body .form-group label {
+        color: #94a3b8;
+    }
+
+    .ai-modal-body .form-input {
+        color: #f1f5f9;
+        border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .ai-modal-body .form-input:focus {
+        border-bottom-color: var(--primary);
+    }
+
+    .ai-modal-footer {
+        background: #0f172a;
+        border-top-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .ai-modal-footer .btn-secondary {
+        color: #94a3b8;
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .ai-modal-footer .btn-secondary:hover {
+        color: #f1f5f9;
+        border-color: #f1f5f9;
+    }
+
+    .ai-modal-footer .btn-primary {
+        background: #f1f5f9;
+        color: #0f172a;
+        border-color: #f1f5f9;
+    }
+
+    .ai-modal-footer .btn-primary:hover {
+        background: #fff;
+    }
+
+    .article-entry {
+        background: #0f172a;
+        border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .post-edit-textarea {
+        background: #1e293b;
+        color: #f1f5f9;
+    }
+}

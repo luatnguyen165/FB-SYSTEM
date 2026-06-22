@@ -279,10 +279,12 @@ async function generatePostsForSchedule(scheduleId, apiKey, options = {}) {
 
     // Nếu schedule có productId, lấy thông tin sản phẩm
     let product = null;
+    // Schedule direction được ưu tiên khi không phải 'unset'.
+    // Chỉ fallback sang product.direction khi schedule.direction = 'unset'.
     let direction = schedule.direction || 'unset';
     if (schedule.productId) {
         product = await Product.findOne({ _id: schedule.productId }).lean();
-        if (product && product.direction) {
+        if ((direction === 'unset' || !direction) && product?.direction && product.direction !== 'unset') {
             direction = product.direction;
         }
     }

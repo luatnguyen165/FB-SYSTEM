@@ -997,3 +997,79 @@
     .modal-header { padding: 20px 20px 16px; }
     .modal-body { padding: 20px; }
 }
+
+/* ============================================================
+   SELECTION MODE + TAGS FILTER (Comment Play)
+   ============================================================ */
+.cp-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    background: var(--bg-card);
+    color: var(--text-main);
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+}
+.cp-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+.cp-tags-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+    min-height: 4px;
+}
+#tagsFilterInput {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    background: var(--bg-card);
+    color: var(--text-main);
+    outline: none;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+#tagsFilterInput:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+.cp-tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: var(--primary-light);
+    color: var(--primary);
+    border: 1px solid rgba(37, 99, 235, 0.25);
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+.cp-tag-chip i {
+    cursor: pointer;
+    font-size: 0.7rem;
+    opacity: 0.7;
+}
+.cp-tag-chip i:hover {
+    opacity: 1;
+    color: #ef4444;
+}
+.cp-comment-pick-tags {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-left: 8px;
+}
+.cp-comment-pick-tags .cp-tag-chip {
+    font-size: 0.65rem;
+    padding: 2px 7px;
+}

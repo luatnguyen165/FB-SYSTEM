@@ -209,11 +209,10 @@ const scrapeGroupMembersAPI = async (req, res) => {
         // Callback lưu groups vào DB ngay khi có groups mới
         const saveGroupsToDB = async (allGroups, newGroups) => {
             try {
-                const mergedGroupsMap = new Map(existingGroupsMap);
-                allGroups.forEach(g => mergedGroupsMap.set(g.groupId, g));
+                // Cập nhật existingGroupsMap với groups mới để tránh duplicate ở lần callback sau
+                allGroups.forEach(g => existingGroupsMap.set(g.groupId, g));
 
-                const mergedGroups = Array.from(mergedGroupsMap.values())
-                    .filter((group, idx, arr) => arr.findIndex(g => g.groupId === group.groupId) === idx)
+                const mergedGroups = Array.from(existingGroupsMap.values())
                     .sort((a, b) => a.groupName.localeCompare(b.groupName, 'vi'));
                 
                 await persistFacebookGroupCache({
@@ -389,12 +388,10 @@ const scrapeGroupsFromJoinsAPI = async (req, res) => {
         // Callback lưu groups vào DB + emit socket batch
         const saveGroupsToDBAndEmit = async (allGroups, newGroups) => {
             try {
-                // Merge với dữ liệu cũ
-                const mergedGroupsMap = new Map(existingGroupsMap);
-                allGroups.forEach(g => mergedGroupsMap.set(g.groupId, g));
+                // Cập nhật existingGroupsMap với groups mới để tránh duplicate ở lần callback sau
+                allGroups.forEach(g => existingGroupsMap.set(g.groupId, g));
 
-                const mergedGroups = Array.from(mergedGroupsMap.values())
-                    .filter((group, idx, arr) => arr.findIndex(g => g.groupId === group.groupId) === idx)
+                const mergedGroups = Array.from(existingGroupsMap.values())
                     .sort((a, b) => a.groupName.localeCompare(b.groupName, 'vi'));
                 
                 // Lưu vào DB ngay

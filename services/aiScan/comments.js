@@ -190,39 +190,6 @@ async function commentOnPostLegacy(page, postUrl, commentText, filePath = '') {
     return results.some(r => r.sent);
 }
 
-async function commentOnMatchingResults(page, results, config) {
-    for (const doc of results) {
-        if (!doc.isMatching) continue;
-
-        // Lấy commentItems từ config (chỉ lấy những item được chọn)
-        const selectedComments = (config.commentItems || []).filter(ci => ci.selected !== false);
-        let itemsToSend = [];
-
-        if (selectedComments.length > 0) {
-            // Chọn ngẫu nhiên 1 comment từ danh sách đã chọn
-            const picked = selectedComments[randomInt(0, selectedComments.length - 1)];
-            itemsToSend = [{ type: picked.type, content: picked.content, caption: picked.caption || '' }];
-            console.log(`[Comment] Picked: type=${picked.type}, name="${picked.name || ''}"`);
-        }
-
-        if (itemsToSend.length === 0) continue;
-
-        await page.goto(doc.postUrl, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
-        await page.waitForTimeout(2000);
-
-        const commentResults = await sendMultipleComments(page, itemsToSend);
-        const anySent = commentResults.some(r => r.sent);
-        doc.comments = commentResults;
-        doc.commentSent = anySent;
-        doc.commentContent = commentResults.filter(r => r.type === 'text').map(r => r.content).join(' | ');
-        doc.commentImage = commentResults.find(r => r.type === 'image' || r.type === 'video')?.content || '';
-        doc.commentError = commentResults.find(r => r.error)?.error || '';
-        doc.commentedAt = anySent ? new Date() : null;
-        await doc.save();
-        await wait(randomInt(1500, 4000));
-    }
-}
-
 module.exports = {
     humanLikeTyping,
     uploadFileToComment,
@@ -230,6 +197,5 @@ module.exports = {
     sendMediaComment,
     sendCommentItem,
     sendMultipleComments,
-    commentOnPostLegacy,
-    commentOnMatchingResults
+    commentOnPostLegacy
 };

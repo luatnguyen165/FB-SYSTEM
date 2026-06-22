@@ -22,14 +22,25 @@ const TrackingSchema = new mongoose.Schema({
     // Các nền tảng đích để đăng (có thể chọn nhiều)
     targetPlatforms: [{
         platform: { type: String, enum: ['facebook', 'tiktok', 'instagram', 'youtube', 'pinterest', 'threads'], required: true },
-        accountId: { type: mongoose.Schema.Types.ObjectId, ref: 'Channel' }
+        accountId: { type: mongoose.Schema.Types.ObjectId, ref: 'Channel' },
+        // Per-platform mapping cho auto-repost (chỉ dùng khi enabled=true)
+        enabled: { type: Boolean, default: true },
+        mapping: {
+            title: { type: String, default: '' },        // {{text|first_100_chars}} | {{permalink}}
+            caption: { type: String, default: '' },     // {{text}}
+            hashtags: [{ type: String }],                // TikTok: ['#fyp', '#viral']
+            tags: [{ type: String }]                    // YouTube: ['shorts', 'viral']
+        }
     }],
-    
+
     // Cookies file path (riêng cho TikTok)
     cookiesPath: { type: String, default: '' },
-    
+
     // Trạng thái
     isActive: { type: Boolean, default: true },
+
+    // Tạm dừng auto-repost (vẫn scrape bình thường, không tạo SchedulePost mới)
+    repostPaused: { type: Boolean, default: false },
 
     // Cài đặt scrape
     scrapeSettings: {

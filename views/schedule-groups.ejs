@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quét Group Facebook - ReelsFlow AI</title>
     <link rel="stylesheet" href="/css/base.css">
-    <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/schedule-groups.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,16 +29,8 @@
                     description: 'Quản lý danh sách group đã quét từ tài khoản Facebook của bạn để sử dụng khi lên lịch đăng bài tự động.'
                 }) %>
 
-                <!-- URL Input + Actions -->
+                <!-- Actions -->
                 <div class="scan-hero-actions-row">
-                    <div class="url-input-wrapper" id="urlInputWrapper">
-                        <div class="url-input-group">
-                            <input type="text" class="url-input" id="groupUrlInput" placeholder="Nhập link group Facebook (VD: https://www.facebook.com/groups/xxx)">
-                            <button class="btn-scrape-url" id="btnScrapeUrl" type="button">
-                                <i class="fa-solid fa-search"></i> Quét từ URL
-                            </button>
-                        </div>
-                    </div>
                     <div class="scan-hero-actions">
                         <button class="btn-mode-hero" id="btnScanMode" title="Chế độ quét sâu tìm nhiều group hơn">
                             <i class="fa-solid fa-bolt"></i>
@@ -187,7 +178,7 @@
                                                 <td>
                                                     <div class="group-actions">
                                                         <button class="btn-action copy" title="Sao chép link" 
-                                                                onclick="copyGroupLink('<%= encodeURIComponent(group.groupUrl || 'https://www.facebook.com/groups/' + group.groupId) %>')">
+                                                                onclick="copyGroupLink('<%= encodeURIComponent(group.groupUrl || `https://www.facebook.com/groups/${group.groupId}`) %>')">
                                                             <i class="fa-regular fa-copy"></i>
                                                         </button>
                                                         <button class="btn-action" title="Mở trong Facebook" 
@@ -227,7 +218,7 @@
                                             <i class="fa-solid fa-link"></i> Mở group
                                         </a>
                                         <div class="group-card-actions">
-                                            <button class="btn-action copy" onclick="copyGroupLink('<%= encodeURIComponent(group.groupUrl || 'https://www.facebook.com/groups/' + group.groupId) %>')">
+                                            <button class="btn-action copy" onclick="copyGroupLink('<%= encodeURIComponent(group.groupUrl || `https://www.facebook.com/groups/${group.groupId}`) %>')">
                                                 <i class="fa-regular fa-copy"></i>
                                             </button>
                                             <button class="btn-action" onclick="openGroupInFacebook('<%= group.groupId %>')">
@@ -318,7 +309,7 @@
     <script>
         let currentScanMode = 'fast';
         let isScanning = false;
-        let currentScrapeType = 'channel'; // 'channel' hoặc 'url'
+        let currentScrapeType = 'joins';
         let scannedGroups = []; // Lưu groups đã quét để hiển thị real-time
         let allGroupsData = []; // Lưu toàn bộ groups từ socket
 
@@ -338,7 +329,6 @@
             initScanMode();
             initFilters();
             initScanButton();
-            initScrapeUrlButton();
             initSelectAll();
             initExport();
             initCheckAll();
@@ -579,18 +569,13 @@
         function initScanMode() {
             const btnScanMode = document.getElementById('btnScanMode');
             const scanModeLabel = document.getElementById('scanModeLabel');
-            const urlInputWrapper = document.getElementById('urlInputWrapper');
+            
+            if (!btnScanMode || !scanModeLabel) return;
             
             btnScanMode.addEventListener('click', function() {
                 currentScanMode = currentScanMode === 'fast' ? 'deep' : 'fast';
                 scanModeLabel.textContent = currentScanMode === 'fast' ? 'Chế độ: Nhanh' : 'Chế độ: Sâu';
                 btnScanMode.classList.toggle('active', currentScanMode === 'deep');
-            });
-
-            // Toggle URL input - always show when focused
-            const groupUrlInput = document.getElementById('groupUrlInput');
-            groupUrlInput.addEventListener('focus', function() {
-                urlInputWrapper.classList.add('active');
             });
         }
 
@@ -602,32 +587,38 @@
             socket.on('groups:batch', (data) => {
                 const { allGroups, newGroups, progress } = data;
                 
-                console.log(`[Socket] groups:batch received: +${newGroups.length} new, total: ${allGroups.length}`);
+                // Dedup allGroups theo groupId trước khi xử lý
+                const dedupMap = new Map();
+                (allGroups || []).forEach(g => {
+                    if (g && g.groupId) dedupMap.set(g.groupId, g);
+                });
+                const dedupedAll = Array.from(dedupMap.values());
                 
-                // Update allGroupsData
-                allGroupsData = allGroups;
+                console.log(`[Socket] groups:batch received: +${(newGroups || []).length} new, total: ${dedupedAll.length}`);
+                
+                // Update allGroupsData (đã dedup)
+                allGroupsData = dedupedAll;
                 
                 // Update scanning modal stats
-                document.getElementById('scanGroupsFound').textContent = allGroups.length;
-                document.getElementById('liveGroupsCount').textContent = allGroups.length;
+                document.getElementById('scanGroupsFound').textContent = dedupedAll.length;
+                document.getElementById('liveGroupsCount').textContent = dedupedAll.length;
                 
-                // Add new groups to table
-                const startIndex = allGroups.length - newGroups.length;
-                newGroups.forEach((group, i) => {
-                    addGroupToTable(group, startIndex + i);
+                // Add new groups to table (addGroupToTable tự check duplicate bằng data-group-id)
+                (newGroups || []).forEach((group, i) => {
+                    addGroupToTable(group, 0);
                 });
 
-                // Update live preview in modal
-                updateLiveGroupsUI(allGroups);
+                // Update live preview in modal (đã dedup bên trong)
+                updateLiveGroupsUI(dedupedAll);
 
                 // Update pagination
                 refreshPagination();
 
                 // Update header count badge
-                document.getElementById('filteredCount').textContent = allGroups.length;
+                document.getElementById('filteredCount').textContent = dedupedAll.length;
 
                 // Add log entry
-                addLog(`+${newGroups.length} groups mới (tổng: ${allGroups.length})`, 'success');
+                addLog(`+${(newGroups || []).length} groups mới (tổng: ${dedupedAll.length})`, 'success');
             });
 
             // Receive progress updates
@@ -681,7 +672,6 @@
                     showToast(`Đã quét thành công ${totalGroups} group!`, 'success');
                     isScanning = false;
                     document.getElementById('btnScanGroups').disabled = false;
-                    document.getElementById('btnScrapeUrl').disabled = false;
                 }, 1500);
             });
 
@@ -776,7 +766,7 @@
 
             btnScan.addEventListener('click', async function() {
                 const accountSelect = document.getElementById('filterAccount');
-                const selectedChannelId = accountSelect.value || '<%= currentChannelId || '' %>';
+                const selectedChannelId = accountSelect.value;
 
                 if (!selectedChannelId) {
                     showToast('Vui lòng chọn tài khoản Facebook trước', 'error');
@@ -789,54 +779,11 @@
             });
         }
 
-        function initScrapeUrlButton() {
-            const btnScrapeUrl = document.getElementById('btnScrapeUrl');
-            const urlInput = document.getElementById('groupUrlInput');
-            const overlay = document.getElementById('scanningOverlay');
-            const status = document.getElementById('scanningStatus');
-            const progressBar = document.getElementById('scanningProgressBar');
-            const log = document.getElementById('scanningLog');
-
-            btnScrapeUrl.addEventListener('click', async function() {
-                const accountSelect = document.getElementById('filterAccount');
-                const selectedChannelId = accountSelect.value || '<%= currentChannelId || '' %>';
-                const groupUrl = urlInput.value.trim();
-
-                if (!selectedChannelId) {
-                    showToast('Vui lòng chọn tài khoản Facebook trước', 'error');
-                    accountSelect.focus();
-                    return;
-                }
-
-                if (!groupUrl) {
-                    showToast('Vui lòng nhập link group Facebook', 'error');
-                    urlInput.focus();
-                    return;
-                }
-
-                // Validate URL
-                try {
-                    const parsed = new URL(groupUrl);
-                    if (!/facebook\.com$/i.test(parsed.hostname)) {
-                        throw new Error('Invalid URL');
-                    }
-                } catch (e) {
-                    showToast('Link không hợp lệ. Vui lòng nhập link Facebook.', 'error');
-                    return;
-                }
-
-                currentScrapeType = 'url';
-                await startScanning(overlay, status, progressBar, log, selectedChannelId, groupUrl);
-            });
-        }
-
         async function startScanning(overlay, status, progressBar, log, channelId, groupUrl) {
             isScanning = true;
             const btnScan = document.getElementById('btnScanGroups');
-            const btnScrapeUrl = document.getElementById('btnScrapeUrl');
             
             btnScan.disabled = true;
-            btnScrapeUrl.disabled = true;
             overlay.classList.add('active');
             log.innerHTML = '';
             progressBar.style.width = '0%';
@@ -872,21 +819,12 @@
                     status.textContent = step.msg;
                 }
 
-                // Gọi API - kết quả sẽ được stream qua socket
-                let apiEndpoint;
-                if (currentScrapeType === 'url') {
-                    apiEndpoint = '/schedule/api/scrape-group';
-                } else {
-                    apiEndpoint = '/schedule/api/scrape-joins';
-                }
-                
+                // Gọi API scrape-joins - kết quả sẽ được stream qua socket
+                const apiEndpoint = '/schedule/api/scrape-joins';
                 const requestBody = {
                     channelId: channelId,
                     scanMode: currentScanMode
                 };
-                if (currentScrapeType === 'url') {
-                    requestBody.groupUrl = groupUrl;
-                }
 
                 // Gọi API scrape - groups sẽ được push real-time qua socket
                 const scrapeResponse = await fetch(apiEndpoint, {
@@ -912,7 +850,6 @@
             } finally {
                 isScanning = false;
                 btnScan.disabled = false;
-                btnScrapeUrl.disabled = false;
             }
         }
         
@@ -920,8 +857,15 @@
             const container = document.getElementById('liveGroupsList');
             if (!container) return;
             
+            // Dedup groups theo groupId trước khi hiển thị
+            const dedupMap = new Map();
+            (groups || allGroupsData).forEach(g => {
+                if (g && g.groupId) dedupMap.set(g.groupId, g);
+            });
+            const dedupedGroups = Array.from(dedupMap.values());
+            
             // Hiển thị tối đa 20 groups gần nhất
-            const displayGroups = (groups || allGroupsData).slice(-20);
+            const displayGroups = dedupedGroups.slice(-20);
             
             container.innerHTML = displayGroups.map(group => `
                 <div class="live-group-item">
@@ -1033,7 +977,6 @@
             overlay.classList.remove('active');
             isScanning = false;
             document.getElementById('btnScanGroups').disabled = false;
-            document.getElementById('btnScrapeUrl').disabled = false;
         }
 
         function showToast(message, type = 'info') {

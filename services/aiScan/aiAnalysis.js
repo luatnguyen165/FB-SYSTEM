@@ -1,39 +1,17 @@
 // services/aiScan/aiAnalysis.js
-const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
-const socketService = require('../socketService');
 
 /**
- * Gọi AI dựa trên provider được cấu hình
+ * Gọi AI dựa trên provider được cấu hình trong config.
+ * Provider hỗ trợ: 'openai' | 'openai-compatible' | 'anthropic'.
+ * Puter.js đã bỏ - chỉ gọi backend provider đã chọn.
+ *
  * @param {string} userId
  * @param {object} postData
  * @param {string} prompt
- * @param {object} config - { configId, openaiApiKey, model, aiProvider, openaiCompatibleApiKey, openaiCompatibleBaseUrl, openaiCompatibleModel, anthropicApiKey, anthropicModel, usePuter }
+ * @param {object} config - { configId, openaiApiKey, model, aiProvider, openaiCompatibleApiKey, openaiCompatibleBaseUrl, openaiCompatibleModel, anthropicApiKey, anthropicModel }
  */
 async function callAiForAnalysis(userId, postData, prompt, config = {}) {
-    const usePuter = config.usePuter !== false;
-    if (usePuter) {
-        try {
-            const requestId = uuidv4();
-            socketService.emitScanProgress(userId, config.configId, {
-                status: 'analyzing',
-                current: postData._currentPostIndex || '?',
-                total: postData._totalPosts || '?',
-                message: `Đang phân tích: ${(postData.postContent || '').substring(0, 50)}...`
-            });
-            const result = await socketService.requestAiAnalysis(userId, requestId, {
-                postId: postData.postId,
-                postUrl: postData.postUrl,
-                postContent: postData.postContent,
-                postAuthor: postData.postAuthor,
-                postImages: postData.postImages || []
-            }, prompt, 30000);
-            return result;
-        } catch (puterErr) {
-            console.warn(`[AI Scan] Puter.js failed, trying AI provider:`, puterErr.message);
-        }
-    }
-
     const aiProvider = config.aiProvider || 'openai';
 
     if (aiProvider === 'openai') {
@@ -60,7 +38,7 @@ async function callAiForAnalysis(userId, postData, prompt, config = {}) {
 
     // Fallback to OpenAI
     const apiKey = config.openaiApiKey || '';
-    if (!apiKey) throw new Error('Không có Puter.js frontend và chưa cấu hình AI provider');
+    if (!apiKey) throw new Error('Chưa chọn AI provider hoặc chưa cấu hình API key');
     return await callOpenAi(prompt, apiKey, config.model || 'gpt-4o-mini');
 }
 
@@ -82,6 +60,7 @@ async function callOpenAi(prompt, apiKey, modelName = 'gpt-4o-mini') {
 
 async function callOpenAiCompatible(prompt, apiKey, baseUrl, modelName = 'gpt-3.5-turbo') {
     const cleanBaseUrl = String(baseUrl).replace(/\/+$/, '');
+    console.log(`[AI Compatible] POST ${cleanBaseUrl}/chat/completions | model=${modelName}`);
     const response = await axios.post(`${cleanBaseUrl}/chat/completions`, {
         model: String(modelName).trim(),
         messages: [
@@ -94,7 +73,9 @@ async function callOpenAiCompatible(prompt, apiKey, baseUrl, modelName = 'gpt-3.
         headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
         timeout: 30000
     });
-    return response.data?.choices?.[0]?.message?.content || '';
+    const raw = response.data?.choices?.[0]?.message?.content || '';
+    console.log(`[AI Compatible] Response (first 200 chars): ${String(raw).substring(0, 200)}`);
+    return raw;
 }
 
 async function callAnthropic(prompt, apiKey, modelName = 'claude-3-haiku-20240307') {
@@ -120,7 +101,7 @@ async function callAnthropic(prompt, apiKey, modelName = 'claude-3-haiku-2024030
 
 function parseAiResponse(rawText = '') {
     try {
-        const clean = rawText.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+        const clean = String(rawText).replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
         const parsed = JSON.parse(clean);
         return {
             isMatching: Boolean(parsed.isMatching || parsed.is_matching || false),
@@ -129,12 +110,19 @@ function parseAiResponse(rawText = '') {
             reason: String(parsed.reason || parsed.matchReason || parsed.match_reason || '')
         };
     } catch (e) {
-        const text = rawText.toLowerCase();
+        // Lưu raw response để debug
+        console.warn('[AI] parseAiResponse FAILED, raw text:', String(rawText).substring(0, 500));
+        const text = String(rawText).toLowerCase();
+        // Tìm "isMatching": true / "match" / "phù hợp"
+        const explicitTrue = /"ismatching"\s*:\s*true/.test(text) || /"is_matching"\s*:\s*true/.test(text);
+        const explicitFalse = /"ismatching"\s*:\s*false/.test(text) || /"is_matching"\s*:\s*false/.test(text);
+        const matchHint = /"có nhu cầu"|"phù hợp"|"tiềm năng"|"should match"|"match"|"yes"/i.test(text);
+        const noMatchHint = /"không phù hợp"|"không có nhu cầu"|"should not"|"no match"|"not match"|"no"/i.test(text);
         return {
-            isMatching: text.includes('có nhu cầu') || text.includes('khách hàng tiềm năng') || text.includes('nên comment') || text.includes('match'),
-            score: text.includes('có nhu cầu') ? 60 : 20,
+            isMatching: explicitTrue || (!explicitFalse && matchHint && !noMatchHint),
+            score: matchHint ? 60 : 20,
             analysis: rawText,
-            reason: ''
+            reason: 'parse-fallback'
         };
     }
 }
@@ -147,9 +135,10 @@ Tác giả: ${doc.postAuthor || 'Không rõ'}
 Nội dung: ${doc.postContent}
 
 ==== HƯỚNG DẪN ====
-Trả về JSON: {"isMatching": true/false, "score": 0-100, "analysis": "...", "reason": "..."}`;
+Trả về JSON thuần: {"isMatching": true/false, "score": 0-100, "analysis": "...", "reason": "..."}
+KHÔNG thêm markdown, KHÔNG thêm giải thích ngoài JSON.`;
 
-    console.log(`[AI] Analyzing DB post: ${doc.postId}`);
+    console.log(`[AI] Analyzing DB post: ${doc.postId} | provider=${config.aiProvider || 'openai'} | model=${config.openaiCompatibleModel || config.anthropicModel || config.model || 'gpt-4o-mini'}`);
 
     // Build AI config with all possible provider fields
     const aiConfig = {
@@ -161,20 +150,34 @@ Trả về JSON: {"isMatching": true/false, "score": 0-100, "analysis": "...", "
         openaiCompatibleBaseUrl: config.openaiCompatibleBaseUrl,
         openaiCompatibleModel: config.openaiCompatibleModel,
         anthropicApiKey: config.anthropicApiKey,
-        anthropicModel: config.anthropicModel,
-        usePuter: true
+        anthropicModel: config.anthropicModel
     };
 
-    const aiRawResponse = await callAiForAnalysis(config.userId, {
-        postId: doc.postId,
-        postUrl: doc.postUrl,
-        postContent: doc.postContent,
-        postAuthor: doc.postAuthor,
-        postImages: doc.postImages || [],
-        _currentPostIndex: doc._batchIndex || '?',
-        _totalPosts: doc._batchTotal || '?'
-    }, analysisPrompt, aiConfig);
+    let aiRawResponse = '';
+    try {
+        aiRawResponse = await callAiForAnalysis(config.userId, {
+            postId: doc.postId,
+            postUrl: doc.postUrl,
+            postContent: doc.postContent,
+            postAuthor: doc.postAuthor,
+            postImages: doc.postImages || [],
+            _currentPostIndex: doc._batchIndex || '?',
+            _totalPosts: doc._batchTotal || '?'
+        }, analysisPrompt, aiConfig);
+    } catch (err) {
+        console.error(`[AI] Call FAILED for post ${doc.postId}:`, err.message);
+        // Lưu lỗi vào doc để user debug
+        doc.aiAnalysis = '[AI Error] ' + err.message;
+        doc.aiScore = 0;
+        doc.isMatching = false;
+        doc.matchReason = 'ai-error: ' + err.message;
+        doc.aiAnalyzed = true;
+        await doc.save();
+        return doc;
+    }
+
     const aiResult = parseAiResponse(aiRawResponse);
+    console.log(`[AI] Post ${doc.postId}: raw="${String(aiRawResponse).substring(0, 100)}" → match=${aiResult.isMatching} score=${aiResult.score}`);
 
     doc.aiAnalysis = aiResult.analysis;
     doc.aiScore = aiResult.score;
@@ -183,7 +186,6 @@ Trả về JSON: {"isMatching": true/false, "score": 0-100, "analysis": "...", "
     doc.aiAnalyzed = true;
     await doc.save();
 
-    console.log(`[AI] Post ${doc.postId}: match=${aiResult.isMatching}, score=${aiResult.score}`);
     return doc;
 }
 

@@ -31,7 +31,7 @@
         <!-- API Key Status Bar -->
         <div class="ai-api-key-bar">
             <i class="fa-solid fa-key"></i>
-            <span class="ai-api-key-status" id="apiKeyStatus"><%= openaiApiKey ? '✅ Đã cấu hình' : '⚠️ Chưa có OpenAI API Key.' %></span>
+            <span class="ai-api-key-status" id="apiKeyStatus"><%= openaiApiKey ? '✅ Đã cấu hình' : '⚠️ Chưa có OpenAI API Key' %></span>
             <% if (!openaiApiKey) { %>
             <a href="/settings" class="btn-save-apikey"><i class="fa-solid fa-gear"></i> Cấu hình ngay</a>
             <% } %>
@@ -55,6 +55,16 @@
                 <div class="stat-icon warning"><i class="fa-solid fa-paper-plane"></i></div>
                 <div class="stat-info"><span class="stat-value" id="statPublished">0</span><span class="stat-label">Đã đăng</span></div>
             </div>
+        </div>
+
+        <!-- Wizard entry buttons -->
+        <div style="display: flex; gap: 10px; margin: 18px 0 8px;">
+            <button type="button" class="btn-primary" id="btnOpenWizardPost">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Tạo nội dung mới
+            </button>
+            <button type="button" class="btn-secondary" id="btnOpenWizardPipeline">
+                <i class="fa-solid fa-robot"></i> Tạo Auto Pipeline
+            </button>
         </div>
 
         <!-- Tabs -->
@@ -231,7 +241,7 @@
                             <% if (sch.status === 'active' || sch.status === 'draft') { %>
                             <button class="btn-sm btn-generate" onclick="generateNow(this)" data-id="<%= sch._id %>" title="Tạo bài ngay"><i class="fa-solid fa-wand-magic-sparkles"></i> Tạo bài</button>
                             <% } %>
-                            <button class="btn-sm btn-edit" onclick="editSchedule('<%= sch._id %>')" title="Sửa"><i class="fa-solid fa-pen"></i> Sửa</button>
+                            <button class="btn-sm btn-edit" onclick="openEditScheduleWizard('<%= sch._id %>')" title="Sửa"><i class="fa-solid fa-pen"></i> Sửa</button>
                             <button class="btn-sm btn-delete" onclick="deleteSchedule('<%= sch._id %>')" title="Xóa"><i class="fa-solid fa-trash"></i> Xóa</button>
                         </div>
                     </div>
@@ -335,7 +345,7 @@
             <% } else { %>
             <div class="ai-posts-list" id="postsList">
                 <% posts.forEach(function(post) { %>
-                <div class="ai-post-card" data-id="<%= post._id %>" data-status="<%= post.status %>">
+                <div class="ai-post-card" data-id="<%= post._id %>" data-schedule-id="<%= post.scheduleId?._id || post.scheduleId || '' %>" data-status="<%= post.status %>">
                     <div class="ai-post-header">
                         <div class="ai-post-status status-<%= post.status %>"><%= post.status %></div>
                         <div class="ai-post-date"><%= new Date(post.scheduledAt).toLocaleString('vi-VN') %></div>
@@ -365,6 +375,7 @@
             <div class="ai-content-section-header">
                 <h2><i class="fa-solid fa-robot"></i> Auto Content Pipeline</h2>
                 <button class="btn-primary" id="btnNewPipeline"><i class="fa-solid fa-plus"></i> Tạo Pipeline Mới</button>
+            <script>document.getElementById('btnNewPipeline').onclick = () => window.openWizard({ mode: 'new-pipeline', purpose: 'product' });</script>
             </div>
 
             <div id="pipelinesList">
@@ -393,6 +404,9 @@
                                         </button>
                                         <button class="btn-sm btn-edit" onclick="togglePipeline('<%= pipeline._id %>')" title="Bật/Tắt">
                                             <i class="fa-solid fa-power-off"></i>
+                                        </button>
+                                        <button class="btn-sm btn-edit" onclick="openEditPipelineWizard('<%= pipeline._id %>')" title="Sửa">
+                                            <i class="fa-solid fa-pen"></i> Sửa
                                         </button>
                                         <button class="btn-sm btn-delete" onclick="deletePipeline('<%= pipeline._id %>')" title="Xóa">
                                             <i class="fa-solid fa-trash"></i>
@@ -548,155 +562,7 @@
     </div>
 </div>
 
-<div class="ai-modal-overlay" id="scheduleModal" style="display:none;">
-    <div class="ai-modal ai-modal-lg">
-        <div class="ai-modal-header">
-            <h2 id="scheduleModalTitle"><i class="fa-solid fa-calendar-plus"></i> Tạo Lịch & Tạo Bài Ngay</h2>
-            <button class="ai-modal-close" onclick="closeScheduleModal()">&times;</button>
-        </div>
-        <div class="ai-modal-body">
-            <input type="hidden" id="scheduleEditId" value="">
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Tên lịch <span class="required">*</span></label>
-                    <input type="text" id="scheduleName" placeholder="VD: Lịch tuần 1 tháng 7" class="form-input">
-                </div>
-                <div class="form-group">
-                    <label>Văn phong <span class="required">*</span></label>
-                    <select id="scheduleStyleId" class="form-input">
-                        <option value="">-- Chọn văn phong --</option>
-                        <% styles.forEach(function(s) { %>
-                        <option value="<%= s._id %>"><%= s.name %></option>
-                        <% }); %>
-                    </select>
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Ngày bắt đầu <span class="required">*</span></label>
-                    <input type="text" id="scheduleStartDate" class="form-input" placeholder="dd/mm/yyyy" onfocus="(this.type='date')" onblur="if(!this.value)(this.type='text')">
-                </div>
-                <div class="form-group">
-                    <label>Ngày kết thúc <span class="required">*</span></label>
-                    <input type="text" id="scheduleEndDate" class="form-input" placeholder="dd/mm/yyyy" onfocus="(this.type='date')" onblur="if(!this.value)(this.type='text')">
-                </div>
-            </div>
-
-            <!-- Platform & Account Selection -->
-            <div class="form-group">
-                <label>Nền tảng đăng bài <span class="required">*</span></label>
-                <div class="platform-checkbox-group" id="schedulePlatformGroup">
-                    <label class="platform-chip" data-platform="FB">
-                        <input type="radio" name="schedulePlatformPick" class="platform-check" value="FB" checked onchange="renderScheduleAccounts()">
-                        <i class="fa-brands fa-facebook"></i> <span>Facebook</span>
-                        <div class="platform-chip__check"><i class="fa-solid fa-check"></i></div>
-                    </label>
-                    <label class="platform-chip" data-platform="IG">
-                        <input type="radio" name="schedulePlatformPick" class="platform-check" value="IG" onchange="renderScheduleAccounts()">
-                        <i class="fa-brands fa-instagram"></i> <span>Instagram</span>
-                        <div class="platform-chip__check"><i class="fa-solid fa-check"></i></div>
-                    </label>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>Tài khoản đăng bài</label>
-                <div id="scheduleAccountsList" class="schedule-accounts-list"></div>
-            </div>
-
-            <div class="form-group" id="postTypeGroup" style="display:none;">
-                <label>Đăng lên</label>
-                <div class="post-type-selector">
-                    <label class="post-type-chip active" data-posttype="personal" onclick="selectPostType('personal')">
-                        <input type="radio" name="postTypePick" value="personal" checked>
-                        <i class="fa-solid fa-user"></i> <span>Cá nhân</span>
-                    </label>
-                    <label class="post-type-chip" data-posttype="group" onclick="selectPostType('group')" id="postTypeGroupOption">
-                        <input type="radio" name="postTypePick" value="group">
-                        <i class="fa-solid fa-users"></i> <span>Nhóm</span>
-                    </label>
-                </div>
-            </div>
-
-            <div class="form-group" id="groupSelectContainer" style="display:none;">
-                <label>Chọn nhóm Facebook</label>
-                <div id="scheduleGroupsList" class="schedule-groups-list"></div>
-            </div>
-
-            <div class="form-group">
-                <label>Khung giờ đăng bài <span class="required">*</span></label>
-                <div id="timeSlotsList">
-                    <!-- Time slot entries rendered by JS -->
-                </div>
-                <button type="button" class="btn-secondary" id="btnAddTimeSlot"><i class="fa-solid fa-plus"></i> Thêm khung giờ</button>
-            </div>
-
-            <div class="form-group">
-                <label style="display:flex;align-items:center;justify-content:space-between;">
-                    <span>Chủ đề xoay vòng <small>(mỗi dòng 1 chủ đề)</small></span>
-                    <button type="button" class="btn-sm btn-generate" id="btnGenerateTopics" onclick="generateTopicsAI()" style="font-size:11px;padding:5px 12px;">
-                        <i class="fa-solid fa-wand-magic-sparkles"></i> AI tạo chủ đề
-                    </button>
-                </label>
-                <textarea id="scheduleTopics" rows="4" class="form-input" placeholder="Nhấn nút 'AI tạo chủ đề' để AI tự động tạo hot topics...&#10;Hoặc nhập thủ công mỗi dòng 1 chủ đề"></textarea>
-                <div id="generatedTopicsList" style="display:none;margin-top:10px;"></div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Số từ tối đa</label>
-                    <input type="number" id="scheduleMaxWords" class="form-input" value="500" min="100">
-                </div>
-                <div class="form-group">
-                    <label>Ngôn ngữ</label>
-                    <select id="scheduleLanguage" class="form-input">
-                        <option value="vi">Tiếng Việt</option>
-                        <option value="en">English</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- Product & Direction Selection -->
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Sản phẩm liên quan <small>(tùy chọn)</small></label>
-                    <select id="scheduleProductId" class="form-input" onchange="onScheduleProductChange()">
-                        <option value="">-- Không chọn --</option>
-                        <% (products || []).forEach(function(p) { %>
-                        <option value="<%= p._id %>" data-direction="<%= p.direction || '' %>"><%= p.name %></option>
-                        <% }); %>
-                    </select>
-                </div>
-                <div class="form-group" id="scheduleDirectionGroup" style="display:none;">
-                    <label>Hướng nội dung <span class="required">*</span></label>
-                    <div class="direction-selector" id="scheduleDirectionSelector">
-                        <label class="direction-option" data-direction="advertising">
-                            <input type="radio" name="scheduleDirection" value="advertising" checked>
-                            <i class="fa-solid fa-bullhorn"></i> Quảng cáo
-                        </label>
-                        <label class="direction-option" data-direction="purchase">
-                            <input type="radio" name="scheduleDirection" value="purchase">
-                            <i class="fa-solid fa-cart-shopping"></i> Mua hàng
-                        </label>
-                        <label class="direction-option" data-direction="hybrid">
-                            <input type="radio" name="scheduleDirection" value="hybrid">
-                            <i class="fa-solid fa-merge"></i> Kết hợp
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>Hướng dẫn thêm cho AI</label>
-                <textarea id="scheduleCustomInstructions" rows="2" class="form-input" placeholder="VD: Luôn bắt đầu bằng câu hỏi, thêm emoji ở đầu mỗi đoạn"></textarea>
-            </div>
-        </div>
-        <div class="ai-modal-footer">
-            <button class="btn-secondary" onclick="closeScheduleModal()">Hủy</button>
-            <button class="btn-primary" id="btnSaveSchedule"><i class="fa-solid fa-wand-magic-sparkles"></i> Tạo Lịch & Tạo Bài Ngay</button>
-        </div>
-    </div>
-</div>
+<div class="ai-modal-overlay" id="scheduleModal" style="display:none;"></div>
 
 <!-- Modal: Xem/Sửa Bài Viết — Premium Editor -->
 <div class="ai-modal-overlay" id="postModal" style="display:none;">
@@ -771,80 +637,48 @@
 <script src="/js/base.js"></script>
 <script src="/js/ai-content.js"></script>
 
-<!-- Auto Pipeline Modal -->
-<div class="ai-modal-overlay" id="pipelineModal" style="display:none;">
-    <div class="ai-modal ai-modal-lg">
-        <div class="ai-modal-header">
-            <h2><i class="fa-solid fa-robot"></i> Tạo Auto Content Pipeline</h2>
-            <button class="ai-modal-close" onclick="closePipelineModal()"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <div class="ai-modal-body">
-            <form id="pipelineForm">
-                <div class="form-group">
-                    <label>📦 Sản phẩm <span class="required">*</span></label>
-                    <select name="productId" class="form-input" required id="pipelineProductSelect">
-                        <option value="">-- Chọn sản phẩm --</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>✍️ Văn phong</label>
-                    <select name="writingStyleId" class="form-input" id="pipelineStyleSelect">
-                        <option value="">-- Mặc định (từ sản phẩm) --</option>
-                    </select>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>📝 Số bài/ngày</label>
-                        <input type="number" name="postsPerDay" class="form-input" value="2" min="1" max="10">
-                    </div>
-                    <div class="form-group">
-                        <label>🎯 Hướng nội dung</label>
-                        <select name="contentDirection" class="form-input">
-                            <option value="mixed">Kết hợp</option>
-                            <option value="advertising">Quảng cáo</option>
-                            <option value="purchase">Mua hàng</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>📱 Nền tảng đăng <span class="required">*</span></label>
-                    <div class="platform-checkbox-group" id="pipelinePlatforms"></div>
-                </div>
-                <div class="form-group">
-                    <label>👤 Tài khoản đăng</label>
-                    <div class="schedule-accounts-list" id="pipelineAccounts"></div>
-                </div>
-                <div class="form-group">
-                    <label>👥 Group IDs (Facebook)</label>
-                    <textarea name="groupIds" class="form-input" rows="3" placeholder="Mỗi group ID trên một dòng"></textarea>
-                </div>
-                <div class="form-group">
-                    <label>⏰ Khung giờ đăng</label>
-                    <div class="time-slot-entry">
-                        <div style="display:flex;align-items:center;gap:8px;flex:1;">
-                            <span style="font-size:13px;font-weight:600;color:var(--text-muted);min-width:60px;">Slot 1:</span>
-                            <input type="number" name="slot_hour_0" class="form-input" value="9" min="0" max="23" style="width:80px;">
-                            <span style="font-weight:700;color:var(--text-light);">:</span>
-                            <input type="number" name="slot_minute_0" class="form-input" value="0" min="0" max="59" style="width:80px;">
-                        </div>
-                    </div>
-                    <div class="time-slot-entry">
-                        <div style="display:flex;align-items:center;gap:8px;flex:1;">
-                            <span style="font-size:13px;font-weight:600;color:var(--text-muted);min-width:60px;">Slot 2:</span>
-                            <input type="number" name="slot_hour_1" class="form-input" value="18" min="0" max="23" style="width:80px;">
-                            <span style="font-weight:700;color:var(--text-light);">:</span>
-                            <input type="number" name="slot_minute_1" class="form-input" value="0" min="0" max="59" style="width:80px;">
-                        </div>
-                    </div>
-                </div>
-            </form>
-        </div>
-        <div class="ai-modal-footer">
-            <button class="btn-secondary" onclick="closePipelineModal()">Hủy</button>
-            <button class="btn-primary" onclick="submitPipeline()"><i class="fa-solid fa-check"></i> Tạo Pipeline</button>
-        </div>
-    </div>
-</div>
+<!-- Wizard scripts (load sau các global + base) -->
+<link rel="stylesheet" href="/css/ai-wizard.css">
+<link rel="stylesheet" href="/css/ai-modal-redesign.css">
+<script src="/js/ai-wizard/state.js"></script>
+<script src="/js/ai-wizard/api.js"></script>
+<script src="/js/ai-wizard/steps/step3-schedule.js"></script>
+<script src="/js/ai-wizard/wizard.js"></script>
+
+<!-- Wizard Modal (include partial) -->
+<%- include('partials/wizard/ai-wizard-modal') %>
+
+<script>
+    // Bridge: nút "Sửa" cũ trên schedule/pipeline card → mở wizard edit-mode
+    function openEditScheduleWizard(id) {
+        if (typeof window.openWizard === 'function') {
+            window.openWizard({ mode: 'edit-schedule', scheduleId: id });
+        } else {
+            console.warn('Wizard chưa load, fallback về editSchedule() cũ');
+            if (typeof editSchedule === 'function') editSchedule(id);
+        }
+    }
+    function openEditPipelineWizard(id) {
+        if (typeof window.openWizard === 'function') {
+            window.openWizard({ mode: 'edit-pipeline', pipelineId: id });
+        } else {
+            console.warn('Wizard chưa load');
+        }
+    }
+</script>
+
+<script>
+    // Bind entry buttons
+    (function () {
+        const btnPost = document.getElementById('btnOpenWizardPost');
+        const btnPipeline = document.getElementById('btnOpenWizardPipeline');
+        if (btnPost) btnPost.addEventListener('click', () => window.openWizard({ mode: 'new-post' }));
+        if (btnPipeline) btnPipeline.addEventListener('click', () => window.openWizard({ mode: 'new-pipeline', purpose: 'product' }));
+        if (window.WizardBind) window.WizardBind();
+    })();
+</script>
+
+<div class="ai-modal-overlay" id="pipelineModal" style="display:none;"></div>
 
 <script>
 // ===== Research Functions =====
@@ -903,101 +737,12 @@ async function startResearch() {
     }
 }
 
-// ===== Auto Pipeline Functions =====
+// ===== Auto Pipeline Functions (run/toggle/delete cho card, modal dùng wizard) =====
 (function() {
     const products = window.__productsData || [];
     const styles = window.__stylesData || [];
     const channels = window.__channelsData || [];
     const pipelines = window.__pipelinesData || [];
-
-    // Open modal
-    document.getElementById('btnNewPipeline')?.addEventListener('click', openPipelineModal);
-
-    function openPipelineModal() {
-        // Populate products
-        const sel = document.getElementById('pipelineProductSelect');
-        sel.innerHTML = '<option value="">-- Chọn sản phẩm --</option>';
-        products.forEach(p => {
-            sel.innerHTML += `<option value="${p._id}">${p.name} (${p.category || 'N/A'})</option>`;
-        });
-
-        // Populate styles
-        const styleSel = document.getElementById('pipelineStyleSelect');
-        styleSel.innerHTML = '<option value="">-- Mặc định --</option>';
-        styles.forEach(s => {
-            styleSel.innerHTML += `<option value="${s._id}">${s.name}</option>`;
-        });
-
-        // Populate platforms
-        const platformsDiv = document.getElementById('pipelinePlatforms');
-        platformsDiv.innerHTML = '';
-        [{v:'FB',i:'facebook',l:'Facebook'},{v:'TT',i:'tiktok',l:'TikTok'},{v:'IG',i:'instagram',l:'Instagram'}].forEach(p => {
-            platformsDiv.innerHTML += `
-                <label class="platform-chip" data-platform="${p.v}">
-                    <input type="checkbox" name="platforms" value="${p.v}" ${p.v==='FB'?'checked':''}>
-                    <i class="fa-brands fa-${p.i}"></i>
-                    <span>${p.l}</span>
-                    <span class="platform-chip__check"><i class="fa-solid fa-check"></i></span>
-                </label>`;
-        });
-
-        // Populate accounts
-        const accDiv = document.getElementById('pipelineAccounts');
-        accDiv.innerHTML = '';
-        if (channels.length === 0) {
-            accDiv.innerHTML = '<div class="schedule-accounts-empty"><i class="fa-solid fa-link"></i> Chưa có tài khoản. <a href="/channels">Thêm ngay</a></div>';
-        } else {
-            channels.forEach(ch => {
-                const icon = ch.platform==='FB'?'facebook':ch.platform==='TT'?'tiktok':'instagram';
-                accDiv.innerHTML += `
-                    <label class="schedule-account-item">
-                        <input type="checkbox" name="accountIds" value="${ch._id}">
-                        <div class="schedule-account-avatar"><i class="fa-brands fa-${icon}"></i></div>
-                        <div class="schedule-account-info">
-                            <span class="schedule-account-name">${ch.accountName}</span>
-                            <span class="schedule-account-type">[${ch.platform}] ${ch.accountType}</span>
-                        </div>
-                        <span class="schedule-account-check"><i class="fa-solid fa-check"></i></span>
-                    </label>`;
-            });
-        }
-
-        document.getElementById('pipelineModal').style.display = 'flex';
-    }
-
-    window.closePipelineModal = function() {
-        document.getElementById('pipelineModal').style.display = 'none';
-    };
-
-    window.submitPipeline = async function() {
-        const form = document.getElementById('pipelineForm');
-        const fd = new FormData(form);
-        const platforms = fd.getAll('platforms');
-        if (!fd.get('productId')) return showToast('Vui lòng chọn sản phẩm', 'error');
-        if (platforms.length === 0) return showToast('Vui lòng chọn ít nhất 1 nền tảng', 'error');
-
-        const accountIds = fd.getAll('accountIds');
-        const groupIds = (fd.get('groupIds')||'').split('\n').map(s=>s.trim()).filter(Boolean);
-        const timeSlots = [];
-        for (let i=0;i<2;i++) {
-            const h=parseInt(fd.get(`slot_hour_${i}`)), m=parseInt(fd.get(`slot_minute_${i}`));
-            if(!isNaN(h)) timeSlots.push({hour:h,minute:m||0});
-        }
-
-        try {
-            const res = await fetch('/ai-content/api/pipelines', {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({
-                    productId:fd.get('productId'), writingStyleId:fd.get('writingStyleId')||null,
-                    postsPerDay:parseInt(fd.get('postsPerDay'))||2, platforms, accountIds, groupIds,
-                    timeSlots, contentDirection:fd.get('contentDirection')||'mixed'
-                })
-            });
-            const data = await res.json();
-            if(data.success) { showToast('Tạo pipeline thành công!','success'); closePipelineModal(); setTimeout(()=>location.reload(),1000); }
-            else showToast(data.error||'Lỗi','error');
-        } catch(e) { showToast('Lỗi: '+e.message,'error'); }
-    };
 
     window.runPipelineNow = async function(id) {
         if (!(await showConfirm('Chạy pipeline ngay? Sẽ tạo bài viết mới.'))) return;
@@ -1028,11 +773,6 @@ async function startResearch() {
             else showToast(data.error||'Lỗi','error');
         } catch(e) { showToast('Lỗi: '+e.message,'error'); }
     };
-
-    // Close on overlay click
-    document.getElementById('pipelineModal')?.addEventListener('click', function(e) {
-        if(e.target===this) closePipelineModal();
-    });
 })();
 </script>
 </body>

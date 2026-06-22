@@ -27,7 +27,8 @@ function resolveFilePath(filePath = '') {
 }
 
 /**
- * Validate duration YouTube Shorts: tối đa 60 giây
+ * Lấy duration video (giây). Không check limit — để YouTube Studio tự xử lý.
+ * Trả về 0 nếu không đọc được ffprobe.
  */
 function assertYouTubeShortDuration(videoPath) {
     return new Promise((resolve) => {
@@ -36,16 +37,9 @@ function assertYouTubeShortDuration(videoPath) {
             const ffmpeg = require('fluent-ffmpeg');
             ffmpeg.ffprobe(videoPath, (err, data) => {
                 if (err || !data?.format?.duration) return resolve(0);
-                const duration = Number(data.format.duration);
-                if (duration > 0 && duration > 60) {
-                    throw new Error(
-                        `YouTube Shorts chỉ hỗ trợ video tối đa 60 giây. Video này dài ${Math.round(duration)} giây.`
-                    );
-                }
-                resolve(duration);
+                resolve(Number(data.format.duration));
             });
         } catch (e) {
-            if (e.message.includes('YouTube Shorts')) throw e;
             resolve(0);
         }
     });

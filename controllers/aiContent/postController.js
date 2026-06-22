@@ -26,9 +26,19 @@ exports.updatePost = async (req, res) => {
         const userId = getUserId(req);
         const post = await AiGeneratedPost.findOne({ _id: req.params.id, userId });
         if (!post) return res.status(404).json({ error: 'Không tìm thấy bài viết' });
-        const { title, content } = req.body;
+        const { title, content, platforms } = req.body;
         if (title !== undefined) post.title = title;
-        if (content !== undefined) { post.content = content; if (post.schedulePostId) await SchedulePost.findByIdAndUpdate(post.schedulePostId, { caption: content }); }
+        if (content !== undefined) {
+            post.content = content;
+            if (post.schedulePostId) await SchedulePost.findByIdAndUpdate(post.schedulePostId, { caption: content });
+        }
+        if (Array.isArray(platforms)) {
+            post.platforms = platforms;
+            if (post.schedulePostId) {
+                // SchedulePost.platforms lưu enum giống AiGeneratedPost (FB/IG/TT)
+                await SchedulePost.findByIdAndUpdate(post.schedulePostId, { platforms });
+            }
+        }
         post.updatedAt = new Date();
         await post.save();
         res.json({ success: true, post });

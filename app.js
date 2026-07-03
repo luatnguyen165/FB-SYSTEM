@@ -28,12 +28,12 @@ require('dotenv').config();
 
 connectDB = require('./db');
 connectDB().then(() => {
-    global.mongoConnected = true;
+    global.dbConnected = true;
     console.log('✅ Database connected, starting schedulers...');
     startSchedulers();
 }).catch(err => {
-    console.error('❌ MongoDB connection failed:', err.message);
-    global.mongoConnected = false;
+    console.error('❌ Database connection failed:', err.message);
+    global.dbConnected = false;
 });
 // Xác định thư mục gốc dữ liệu người dùng
 // Khi chạy qua Electron build, dùng USER_DATA_DIR để đảm bảo có quyền ghi
@@ -279,10 +279,8 @@ function startServer(port) {
 // Khởi động server trước (routes đã được định nghĩa ở trên)
 const server = startServer(DEFAULT_PORT);
 
-// Sau đó kết nối MongoDB - scheduler sẽ được khởi động sau khi kết nối thành công
-// QUAN TRỌNG: global.mongoConnected được set trong callback, không phải đồng bộ
-const DB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/reelsflow';
-global.mongoConnected = false;
+// Sau đó kết nối DB - scheduler sẽ được khởi động sau khi kết nối thành công
+global.dbConnected = false;
 
 // Track scheduled intervals so we can clear them on disconnect
 const schedulerIntervals = [];
@@ -294,7 +292,7 @@ function clearAllSchedulers() {
 }
 
 function startSchedulers() {
-    if (global.mongoConnected !== true) return;
+    if (global.dbConnected !== true) return;
     console.log('[Scheduler] Khởi động tất cả schedulers...');
 
     // === KHỞI ĐỘNG SCHEDULER SAU KHI CÓ DB ===
@@ -323,7 +321,7 @@ function startSchedulers() {
 
     // AI Scan scheduler
     schedulerIntervals.push(setInterval(() => {
-        if (!global.mongoConnected) return;
+        if (!global.dbConnected) return;
         runScheduledScans().then(results => {
             if (results && results.length > 0) {
                 console.log(`[AI Scan Scheduler] Đã xử lý ${results.length} cấu hình`);
@@ -337,7 +335,7 @@ function startSchedulers() {
     // Comment Play scheduler
     let isCommentPlayProcessing = false;
     schedulerIntervals.push(setInterval(() => {
-        if (!global.mongoConnected || isCommentPlayProcessing) return;
+        if (!global.dbConnected || isCommentPlayProcessing) return;
         try {
             const commentPlayService = require('./services/commentPlayService');
             isCommentPlayProcessing = true;

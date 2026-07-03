@@ -870,11 +870,13 @@ function applySelectObject(doc, select) {
 function createModel(schema) {
     ensureTable(schema);
 
-    const modelName = schema.tableName;
+    // Register by modelName (e.g. 'SchedulePost') for getModel() lookups
+    const modelName = schema.modelName || schema.tableName;
 
     const model = {
         _schema: schema,
         _tableName: schema.tableName,
+        _modelName: modelName,
 
         // --- Static methods (Mongoose-compatible) ---
 
@@ -1344,8 +1346,11 @@ function createModel(schema) {
         },
     };
 
-    // Store model reference for populate lookups
+    // Store model reference for populate lookups (by both modelName and tableName)
     registeredModels.set(modelName, model);
+    if (schema.tableName !== modelName) {
+        registeredModels.set(schema.tableName, model);
+    }
 
     return model;
 }

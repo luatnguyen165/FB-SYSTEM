@@ -66,10 +66,10 @@ exports.getSchedulerStatus = async (req, res) => {
             queues.videoDownload = fgs.videoDownloadQueue.getStats();
         } catch (_) {}
 
-        // MongoDB connection
-        const mongo = {
-            connected: global.mongoConnected === true,
-            readyState: global.mongooseReadyState || null
+        // Database connection
+        const db = {
+            connected: global.dbConnected === true,
+            type: 'sqlite'
         };
 
         // Uptime
@@ -87,7 +87,7 @@ exports.getSchedulerStatus = async (req, res) => {
                 rssBytes: memUsage.rss,
                 heapUsedBytes: memUsage.heapUsed
             },
-            mongo,
+            db,
             schedulers: {
                 reelsSchedule: reelsStatus,
                 autoContent: autoContentStatus,

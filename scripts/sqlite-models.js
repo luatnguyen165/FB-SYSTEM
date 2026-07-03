@@ -8,6 +8,7 @@ const models = {};
 // 1. User
 models.User = createModel({
   tableName: 'users',
+  modelName: 'User',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },
@@ -34,6 +35,7 @@ models.User = createModel({
 // 2. Channel
 models.Channel = createModel({
   tableName: 'channels',
+  modelName: 'Channel',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },
@@ -58,6 +60,7 @@ models.Channel = createModel({
 // 3. SchedulePost
 models.SchedulePost = createModel({
   tableName: 'schedule_posts',
+  modelName: 'SchedulePost',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },
@@ -97,6 +100,7 @@ models.SchedulePost = createModel({
 // 4. Settings
 models.Settings = createModel({
   tableName: 'settings',
+  modelName: 'Settings',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT', unique: true },
@@ -136,6 +140,7 @@ models.Settings = createModel({
 // 5. AiComment
 models.AiComment = createModel({
   tableName: 'ai_comments',
+  modelName: 'AiComment',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },
@@ -158,6 +163,7 @@ models.AiComment = createModel({
 // 6. AiScanConfig
 models.AiScanConfig = createModel({
   tableName: 'ai_scan_configs',
+  modelName: 'AiScanConfig',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },
@@ -198,6 +204,7 @@ models.AiScanConfig = createModel({
 // 7. AiScanResult
 models.AiScanResult = createModel({
   tableName: 'ai_scan_results',
+  modelName: 'AiScanResult',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },
@@ -236,6 +243,7 @@ models.AiScanResult = createModel({
 // 8. AiImage
 models.AiImage = createModel({
   tableName: 'ai_images',
+  modelName: 'AiImage',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },
@@ -250,6 +258,7 @@ models.AiImage = createModel({
 // 9. CommentPlay
 models.CommentPlay = createModel({
   tableName: 'comment_plays',
+  modelName: 'CommentPlay',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },
@@ -274,6 +283,7 @@ models.CommentPlay = createModel({
 // 10. CommentPlayLog
 models.CommentPlayLog = createModel({
   tableName: 'comment_play_logs',
+  modelName: 'CommentPlayLog',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     playId: { type: 'TEXT' },
@@ -292,6 +302,7 @@ models.CommentPlayLog = createModel({
 // 11. CommentScrape
 models.CommentScrape = createModel({
   tableName: 'comment_scrapes',
+  modelName: 'CommentScrape',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },
@@ -319,6 +330,7 @@ models.CommentScrape = createModel({
 // 12. FacebookGroupCache
 models.FacebookGroupCache = createModel({
   tableName: 'facebook_group_caches',
+  modelName: 'FacebookGroupCache',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },
@@ -339,6 +351,7 @@ models.FacebookGroupCache = createModel({
 // 13. FeatureVisibility
 models.FeatureVisibility = createModel({
   tableName: 'feature_visibilities',
+  modelName: 'FeatureVisibility',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     channels: { type: 'INTEGER', default: 1 },
@@ -368,6 +381,7 @@ models.FeatureVisibility = createModel({
 // 14. Feedback
 models.Feedback = createModel({
   tableName: 'feedbacks',
+  modelName: 'Feedback',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },
@@ -390,6 +404,7 @@ models.Feedback = createModel({
 // 15. LicenseKey
 models.LicenseKey = createModel({
   tableName: 'license_keys',
+  modelName: 'LicenseKey',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     key: { type: 'TEXT', unique: true },
@@ -410,6 +425,7 @@ models.LicenseKey = createModel({
 // 16. MusicTrending
 models.MusicTrending = createModel({
   tableName: 'music_trendings',
+  modelName: 'MusicTrending',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },
@@ -430,6 +446,7 @@ models.MusicTrending = createModel({
 // 17. ShopeeLink
 models.ShopeeLink = createModel({
   tableName: 'shopee_links',
+  modelName: 'ShopeeLink',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },
@@ -444,6 +461,7 @@ models.ShopeeLink = createModel({
 // 18. Tracking
 models.Tracking = createModel({
   tableName: 'trackings',
+  modelName: 'Tracking',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },
@@ -471,6 +489,7 @@ models.Tracking = createModel({
 // 19. TrackingPost
 models.TrackingPost = createModel({
   tableName: 'tracking_posts',
+  modelName: 'TrackingPost',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },
@@ -497,6 +516,7 @@ models.TrackingPost = createModel({
 // 20. Video
 models.Video = createModel({
   tableName: 'videos',
+  modelName: 'Video',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },
@@ -517,6 +537,7 @@ models.Video = createModel({
 // 21. VideoBug
 models.VideoBug = createModel({
   tableName: 'video_bugs',
+  modelName: 'VideoBug',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },
@@ -537,6 +558,7 @@ models.VideoBug = createModel({
 // 22. WritingStyle
 models.WritingStyle = createModel({
   tableName: 'writing_styles',
+  modelName: 'WritingStyle',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },
@@ -554,6 +576,7 @@ models.WritingStyle = createModel({
 // 23. ContentTrainingLog
 models.ContentTrainingLog = createModel({
   tableName: 'content_training_logs',
+  modelName: 'ContentTrainingLog',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },
@@ -572,6 +595,7 @@ models.ContentTrainingLog = createModel({
 // 24. Product
 models.Product = createModel({
   tableName: 'products',
+  modelName: 'Product',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },
@@ -595,6 +619,7 @@ models.Product = createModel({
 // 25. AiGeneratedPost
 models.AiGeneratedPost = createModel({
   tableName: 'ai_generated_posts',
+  modelName: 'AiGeneratedPost',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },
@@ -625,6 +650,7 @@ models.AiGeneratedPost = createModel({
 // 26. AutoContentPipeline
 models.AutoContentPipeline = createModel({
   tableName: 'auto_content_pipelines',
+  modelName: 'AutoContentPipeline',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },
@@ -653,6 +679,7 @@ models.AutoContentPipeline = createModel({
 // 27. DouyinTracking
 models.DouyinTracking = createModel({
   tableName: 'douyin_trackings',
+  modelName: 'DouyinTracking',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },
@@ -680,6 +707,7 @@ models.DouyinTracking = createModel({
 // 28. DouyinVideo
 models.DouyinVideo = createModel({
   tableName: 'douyin_videos',
+  modelName: 'DouyinVideo',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },
@@ -713,6 +741,7 @@ models.DouyinVideo = createModel({
 // 29. TikTokTracking
 models.TikTokTracking = createModel({
   tableName: 'tiktok_trackings',
+  modelName: 'TikTokTracking',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },
@@ -740,6 +769,7 @@ models.TikTokTracking = createModel({
 // 30. TikTokVideo
 models.TikTokVideo = createModel({
   tableName: 'tiktok_videos',
+  modelName: 'TikTokVideo',
   fields: {
     _id: { type: 'TEXT', primaryKey: true },
     userId: { type: 'TEXT' },

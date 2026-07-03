@@ -122,12 +122,8 @@ const showPublishedArchive = async (req, res) => {
         const PAGE_SIZE = 20;
 
         const SchedulePostModel = require('../../models/SchedulePost');
-        const mongoose = require('mongoose');
-        // Ép kiểu userId thành ObjectId chính xác (req.user._id có thể là string)
-        const userIdObj = new mongoose.Types.ObjectId(String(req.user._id));
-
-        // Build query: mặc định lấy CHỈ lịch đã đăng thành công (status='posted')
-        const query = { userId: userIdObj, status: 'posted' };
+        // SQLite: userId is already a string
+        const query = { userId: req.user._id, status: 'posted' };
         if (statusFilter === 'posted') query.status = 'posted';
         else if (statusFilter === 'failed') query.status = 'failed';
         else if (statusFilter === 'partial') {

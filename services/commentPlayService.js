@@ -391,13 +391,9 @@ class CommentPlayService {
     async _pickPostFromScanResults(play) {
         const AiScanResult = require('../models/AiScanResult');
         const AiScanConfig = require('../models/AiScanConfig');
-        const mongoose = require('mongoose');
 
-        // Ép kiểu scanConfigId về ObjectId để tránh lệch kiểu khi so sánh
+        // SQLite: scanConfigId is already a string
         let scanConfigId = play.target.scanConfigId;
-        if (scanConfigId && typeof scanConfigId === 'string' && mongoose.Types.ObjectId.isValid(scanConfigId)) {
-            scanConfigId = new mongoose.Types.ObjectId(scanConfigId);
-        }
 
         // Lấy minAiScore từ config để lọc thêm (chỉ áp dụng khi AI detection bật)
         let minAiScore = 0;

@@ -454,11 +454,9 @@ function filterPublishedArchiveRows(rows = [], filters = {}) {
 }
 
 async function getPublishedArchiveRows(userId) {
-    const mongoose = require('mongoose');
-    const userIdObj = userId instanceof mongoose.Types.ObjectId ? userId : new mongoose.Types.ObjectId(String(userId));
-    // CHỈ lấy lịch đã đăng thành công (status='posted')
-    const schedules = await SchedulePost.find({ userId: userIdObj, status: 'posted' })
-        .populate(buildSchedulePopulateOptions(userIdObj))
+    // SQLite: userId is already a string
+    const schedules = await SchedulePost.find({ userId: userId, status: 'posted' })
+        .populate(buildSchedulePopulateOptions(userId))
         .sort({ scheduledAt: -1 })
         .lean();
 

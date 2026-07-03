@@ -52,6 +52,11 @@ Desktop.ini
 .DS_Store
 ._*
 
+# ==================== SQLite ====================
+fb-system.sqlite
+fb-system.sqlite-shm
+fb-system.sqlite-wal
+
 # ==================== IDE ====================
 .vscode/
 .idea/

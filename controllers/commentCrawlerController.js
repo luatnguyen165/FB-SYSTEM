@@ -46,7 +46,7 @@ exports.showCommentCrawler = async (req, res) => {
 
         // Tổng số comments (aggregate từ stats.totalComments)
         const agg = await CommentScrape.aggregate([
-            { $match: { userId: typeof userId === 'string' ? new (require('mongoose').Types.ObjectId)(userId) : userId } },
+            { $match: { userId: userId } },
             { $group: { _id: null, total: { $sum: '$stats.totalComments' } } }
         ]);
         stats.totalComments = agg[0]?.total || 0;

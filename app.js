@@ -1,4 +1,10 @@
 // app.js
+// ============================================================
+// REBROWSER-PATCHES: Fix CDP Runtime.Enable leak
+// PHẢI set TRƯỚC KHI require playwright ở bất kỳ đâu
+// ============================================================
+process.env.REBROWSER_PATCHES_RUNTIME_FIX_MODE = 'addBinding';
+
 const path = require('path');
 const fs = require('fs');
 
@@ -18,8 +24,17 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // Load .env từ thư mục app (quan trọng khi chạy qua Electron build)
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+require('dotenv').config();
 
+connectDB = require('./db');
+connectDB().then(() => {
+    global.mongoConnected = true;
+    console.log('✅ MongoDB connected, starting schedulers...');
+    startSchedulers();
+}).catch(err => {
+    console.error('❌ MongoDB connection failed:', err.message);
+    global.mongoConnected = false;
+});
 // Xác định thư mục gốc dữ liệu người dùng
 // Khi chạy qua Electron build, dùng USER_DATA_DIR để đảm bảo có quyền ghi
 // Khi dev (nodemon), dùng thư mục project hiện tại
@@ -30,7 +45,7 @@ global.USER_DATA_DIR = USER_DATA_DIR;
 const ensureDirectories = [
     '', 'uploads', 'uploads/ai-images', 'uploads/avatars', 'uploads/competitor-posts',
     'uploads/crypto-keys', 'uploads/images', 'uploads/video-projects',
-    'uploads/videos', 'page_post', 'page_post/PANZI',
+    'uploads/videos', 'uploads/video-bugs', 'page_post', 'page_post/PANZI',
     'social-sessions', 'views/fb_session', 'public/music', 'public/output'
 ];
 ensureDirectories.forEach(dir => {
@@ -78,6 +93,8 @@ if (isSilent) {
             msg.includes('[YouTube Short]') ||
             msg.includes('[Archive DEBUG]')||
             msg.includes('[Archive]') ||
+            msg.includes('[Douyin Tracker]') ||
+            msg.includes('[TikTok Tracker]') ||
             msg.includes('#####')) {
             originalLog(...args);
         }
@@ -105,14 +122,12 @@ const commentPlayRoutes = require('./routes/commentPlay');
 const aiImageRoutes = require('./routes/aiImages');
 const licenseRoutes = require('./routes/licenses');
 const musicTrendingRoutes = require('./routes/musicTrending');
-const aiContentRoutes = require('./routes/aiContent');
 const feedbackRoutes = require('./routes/feedback');
 const schedulerRoutes = require('./routes/scheduler');
 const { rateLimiter } = require('./middlewares/rateLimiter');
 const { loadFeatureVisibility } = require('./middlewares/authMiddleware');
 const { loadUserChannels } = require('./middlewares/channelMiddleware');
 const { startReelsScheduleRunner } = require('./services/reelsScheduleRunner');
-const { startAutoContentRunner } = require('./services/autoContentRunner');
 const { runScheduledScans } = require('./services/aiScanService');
 const { startGroupBackfillWorker } = require('./services/facebook/groups');
 const { startFbSessionCleanupCron } = require('./services/facebook/utils');
@@ -145,7 +160,7 @@ app.use(
                 defaultSrc: ["'self'"],
                 scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com"],
                 scriptSrcAttr: ["'unsafe-inline'"],
-                imgSrc: ["'self'", "data:", "blob:", "https://images.unsplash.com", "https://oaiusercontent.com"],
+                imgSrc: ["'self'", "data:", "blob:", "https:", "http:"],
                 mediaSrc: ["'self'", "blob:", "https://assets.mixkit.co"],
                 styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
                 fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com", "data:"],
@@ -212,11 +227,16 @@ app.use('/ai-images', aiImageRoutes);              // Tạo Ảnh AI
 app.use('/admin/licenses', licenseRoutes);        // License Key Management
 app.use('/music-trending', musicTrendingRoutes);  // Music Trending
 app.use('/download', require('./routes/download')); // Download YouTube video/audio
-app.use('/ai-content', aiContentRoutes);           // AI Content Creator + Auto Pipeline
 app.use('/feedback', feedbackRoutes);              // Feedback & Feature Requests
 app.use('/admin/scheduler', schedulerRoutes);       // Scheduler health & control (admin only)
 app.use('/tracking', require('./routes/tracking')); // Theo dõi đối tượng
 app.use('/tracking/comments', require('./routes/commentCrawler')); // FB Comment Crawler (tính năng riêng)
+app.use('/tiktok-tracker', require('./routes/tiktokTracker')); // TikTok Tracker - theo dõi channel + cross-post
+app.use('/douyin-tracker', require('./routes/douyinTracker')); // Douyin Tracker - theo dõi channel + cross-post
+app.use('/api/dubbing', require('./routes/videoDubbing')); // Video Dubbing API — Thuyết minh video
+app.use('/video-bugs', require('./routes/videoBug')); // Video Bugging — Embed dấu vết theo dõi
+app.use('/bypass-report', require('./routes/bypassReport')); // Bypass Report — Kiểm tra automation detection
+app.use('/test-instagram', require('./routes/testInstagram')); // Test Instagram Upload
 
 // Route mặc định - Chuyển hướng đến trang đăng nhập
 app.get('/', (req, res) => {
@@ -229,7 +249,7 @@ app.use((req, res) => {
 });
 
 // Start Server with Socket.IO - Xử lý port bận, tự động tìm port khác
-const DEFAULT_PORT = process.env.PORT || 4000;
+const DEFAULT_PORT = parseInt(process.env.PORT, 10) || 4000;
 let PORT = DEFAULT_PORT;
 
 function startServer(port) {
@@ -242,7 +262,7 @@ function startServer(port) {
     server.on('error', (err) => {
         if (err.code === 'EADDRINUSE') {
             console.log(`⚠️ Port ${port} đã được sử dụng, thử port ${port + 1}`);
-            startServer(port + 1);
+            startServer(parseInt(port, 10) + 1);
         } else {
             console.error('❌ Lỗi server:', err);
         }
@@ -281,9 +301,27 @@ function startSchedulers() {
 
     // === KHỞI ĐỘNG SCHEDULER SAU KHI CÓ DB ===
     try { startReelsScheduleRunner(); } catch(e) { console.error('[Startup] Reels schedule runner error:', e.message); }
-    try { startAutoContentRunner(); } catch(e) { console.error('[Startup] Auto content runner error:', e.message); }
-    try { startGroupBackfillWorker(); } catch(e) { console.error('[Startup] Group backfill worker error:', e.message); }
+    // Đã tắt: không tự động quét groups ngầm — chỉ quét khi user bấm nút
+    // try { startGroupBackfillWorker(); } catch(e) { console.error('[Startup] Group backfill worker error:', e.message); }
     try { startFbSessionCleanupCron(); } catch(e) { console.error('[Startup] FB session cleanup cron error:', e.message); }
+
+    // TikTok Tracker runner
+    try {
+        const { startTikTokTrackerRunner } = require('./services/tiktokTrackerService');
+        startTikTokTrackerRunner();
+    } catch(e) { console.error('[Startup] TikTok tracker runner error:', e.message); }
+
+    // Douyin Tracker runner
+    try {
+        const { startDouyinTrackerRunner } = require('./services/douyinTrackerService');
+        startDouyinTrackerRunner();
+    } catch(e) { console.error('[Startup] Douyin tracker runner error:', e.message); }
+
+    // Video Dubbing - load jobs from disk
+    try {
+        const { loadJobsFromDisk } = require('./services/videoDubbing/jobManager');
+        loadJobsFromDisk();
+    } catch(e) { console.error('[Startup] Video dubbing job loader error:', e.message); }
 
     // AI Scan scheduler
     schedulerIntervals.push(setInterval(() => {
@@ -321,87 +359,6 @@ function startSchedulers() {
     }, 30 * 1000));
     console.log('[CommentPlay Scheduler] Đã khởi động scheduler (kiểm tra mỗi 30 giây)');
 
-    // AI Content Creator scheduler - tạo bài viết theo lịch
-    let isAiContentProcessing = false;
-    schedulerIntervals.push(setInterval(() => {
-        if (!global.mongoConnected || isAiContentProcessing) return;
-        try {
-            const aiContentService = require('./services/aiContentService');
-            const apiKey = process.env.OPENAI_API_KEY;
-            if (!apiKey) return;
-            isAiContentProcessing = true;
-            aiContentService.processActiveSchedules(apiKey).then(count => {
-                if (count > 0) {
-                    console.log(`✅ [AI Content Scheduler] Đã tạo ${count} bài viết mới`);
-                }
-            }).catch(err => {
-                console.error('[AI Content Scheduler] Error:', err.message);
-            }).finally(() => {
-                isAiContentProcessing = false;
-            });
-        } catch(e) {
-            console.error('[AI Content Scheduler] Error:', e.message);
-            isAiContentProcessing = false;
-        }
-    }, 60 * 1000));
-    console.log('[AI Content Scheduler] Đã khởi động scheduler (kiểm tra mỗi 60 giây)');
-
-    // AI Content Auto-Retrain - train lại văn phong từ bài viết tốt nhất
-    let isRetrainProcessing = false;
-    schedulerIntervals.push(setInterval(() => {
-        if (!global.mongoConnected || isRetrainProcessing) return;
-        try {
-            const aiContentService = require('./services/aiContentService');
-            const apiKey = process.env.OPENAI_API_KEY;
-            if (!apiKey) return;
-            isRetrainProcessing = true;
-            aiContentService.autoRetrainLoop(apiKey).then(count => {
-                if (count > 0) {
-                    console.log(`🧠 [AI Auto-Retrain] Đã train lại ${count} văn phong`);
-                }
-            }).catch(err => {
-                console.error('[AI Auto-Retrain] Error:', err.message);
-            }).finally(() => {
-                isRetrainProcessing = false;
-            });
-        } catch(e) {
-            console.error('[AI Auto-Retrain] Error:', e.message);
-            isRetrainProcessing = false;
-        }
-    }, 30 * 60 * 1000)); // Kiểm tra mỗi 30 phút
-    console.log('[AI Auto-Retrain] Đã khởi động scheduler (kiểm tra mỗi 30 phút)');
 }
 
-mongoose.connect(DB_URI, {
-    serverSelectionTimeoutMS: 5000,
-    connectTimeoutMS: 5000
-})
-.then(() => {
-    global.mongoConnected = true;
-    console.log('✅ Đã kết nối thành công tới MongoDB');
-    startSchedulers();
-    // Khởi động Telegram bot (nếu có token trong Settings)
-    const { startTelegramBot } = require('./services/telegramBotService');
-    startTelegramBot().catch(err => console.error('[TG Bot] Start error:', err.message));
-})
-.catch(err => {
-    console.error('❌ Lỗi kết nối MongoDB:', err.message);
-    console.error('⚠️ App sẽ chạy nhưng không có database - một số tính năng sẽ không hoạt động');
-    // global.mongoConnected vẫn là false, scheduler sẽ không khởi động
-});
 
-// Monitor MongoDB connection events and cleanup/re-create schedulers
-const db = mongoose.connection;
-db.on('disconnected', () => {
-    global.mongoConnected = false;
-    console.log('⚠️ MongoDB mất kết nối - dừng tất cả schedulers');
-    clearAllSchedulers();
-});
-db.on('reconnected', () => {
-    global.mongoConnected = true;
-    console.log('✅ MongoDB đã kết nối lại - khởi động lại schedulers');
-    startSchedulers();
-});
-db.on('error', (err) => {
-    console.error('❌ MongoDB connection error:', err.message);
-});

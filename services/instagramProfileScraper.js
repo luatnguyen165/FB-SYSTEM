@@ -15,7 +15,7 @@ const { getOrOpenSocialContext } = require('./socialPlaywrightService');
  * @param {string} opts.existingSessionDir - Thư mục session hiện có
  * @returns {Object} { avatarUrl, username, fullName, profileUrl, bio, followers, following, posts }
  */
-async function scrapeInstagramProfile({ userId, accountName, accountType = 'Personal', targetUrl, headless = false, existingSessionDir = '' }) {
+async function scrapeInstagramProfile({ userId, accountName, accountType = 'Personal', targetUrl, headless = true, existingSessionDir = '' }) {
     console.log(`[IG Profile] ===== BẮT ĐẦU scrape: ${targetUrl} =====`);
 
     if (!userId || !accountName) throw new Error('Thiếu userId hoặc accountName');
@@ -261,7 +261,7 @@ async function scrapeInstagramProfile({ userId, accountName, accountType = 'Pers
  * Scrape Instagram profile bằng Playwright locators (XPath thuần)
  * Dùng khi cần lấy thêm data từ DOM phức tạp
  */
-async function scrapeInstagramProfileByXPath({ userId, accountName, accountType = 'Personal', targetUrl, headless = false, existingSessionDir = '' }) {
+async function scrapeInstagramProfileByXPath({ userId, accountName, accountType = 'Personal', targetUrl, headless = true, existingSessionDir = '' }) {
     console.log(`[IG Profile XPath] ===== BẮT ĐẦU: ${targetUrl} =====`);
 
     if (!userId || !accountName) throw new Error('Thiếu userId hoặc accountName');

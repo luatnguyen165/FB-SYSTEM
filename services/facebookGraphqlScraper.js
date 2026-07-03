@@ -140,19 +140,42 @@ function downloadImage(url, postId, idx = 1, saveDir = 'group_post') {
 
 async function extractMedia(node, postId, saveDir) {
     const media = { photos: [], videos: [] };
-    let idx = 0, lastId = null;
+    let idx = 0;
+    const downloadPromises = [];
+
     for (const att of (node.attachments||[])) {
         const m = att.media || {};
         if (m.__typename === 'Photo') {
             const pd = (((att.styles||{}).attachment||{}).media||{});
-            if (pd.photo_image) { idx++; lastId = m.id; const u = pd.photo_image.uri; const f = await downloadImage(u, postId, idx, saveDir); media.photos.push({id:m.id,url:u,width:pd.photo_image.width,height:pd.photo_image.height,saved_as:f}); }
+            if (pd.photo_image) {
+                idx++;
+                const u = pd.photo_image.uri;
+                downloadPromises.push(
+                    downloadImage(u, postId, idx, saveDir).then(f => {
+                        media.photos.push({id:m.id,url:u,width:pd.photo_image.width,height:pd.photo_image.height,saved_as:f});
+                    })
+                );
+            }
         }
         for (const sub of ((att.all_subattachments||{}).nodes||[])) {
             const sm = sub.media||{};
-            if (sm.__typename === 'Photo') { idx++; lastId = sm.id; if (sm.image) { const u = sm.image.uri; const f = await downloadImage(u, postId, idx, saveDir); media.photos.push({id:sm.id,url:u,width:sm.image.width,height:sm.image.height,saved_as:f}); } }
+            if (sm.__typename === 'Photo' && sm.image) {
+                idx++;
+                const u = sm.image.uri;
+                downloadPromises.push(
+                    downloadImage(u, postId, idx, saveDir).then(f => {
+                        media.photos.push({id:sm.id,url:u,width:sm.image.width,height:sm.image.height,saved_as:f});
+                    })
+                );
+            }
         }
-        if (m.__typename === 'Video') { media.videos.push({id:m.id,url:m.playable_url,thumbnail:((m.preferred_thumbnail||{}).image||{}).uri}); }
+        if (m.__typename === 'Video') {
+            media.videos.push({id:m.id,url:m.playable_url,thumbnail:((m.preferred_thumbnail||{}).image||{}).uri});
+        }
     }
+
+    // Download tất cả ảnh song song
+    await Promise.allSettled(downloadPromises);
     return media;
 }
 
@@ -183,7 +206,7 @@ async function fetchGroupPosts({ groupId, cookies = {}, fbDtsg = '', limit = 10,
     while (allPosts.length < limit) {
         console.log(`\nFetching page ${pageNum}...`);
 
-        const variables = { count: 3, cursor, feedLocation: 'GROUP', feedType: 'DISCUSSION', feedbackSource: 0, filterTopicId: null, focusCommentID: null, privacySelectorRenderLocation: 'COMET_STREAM', renderLocation: 'group', scale: 2, stream_initial_count: 1, useDefaultActor: false, id: groupId };
+        const variables = { count: 15, cursor, feedLocation: 'GROUP', feedType: 'DISCUSSION', feedbackSource: 0, filterTopicId: null, focusCommentID: null, privacySelectorRenderLocation: 'COMET_STREAM', renderLocation: 'group', scale: 2, stream_initial_count: 1, useDefaultActor: false, id: groupId };
         const payload = new URLSearchParams({ av: cookies.c_user||'0', __user: cookies.c_user||'0', __a: '1', fb_dtsg: fbDtsg||'', doc_id: DOC_ID, variables: JSON.stringify(variables) });
 
         let r;
@@ -221,7 +244,7 @@ async function fetchGroupPosts({ groupId, cookies = {}, fbDtsg = '', limit = 10,
         if (!nextCursor || allPosts.length >= limit) break;
         cursor = nextCursor;
         pageNum++;
-        await wait(2000);
+        await wait(500);
     }
 
     console.log(`[GraphQL Scraper] Total: ${allPosts.length} posts`);

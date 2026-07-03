@@ -1,4 +1,4 @@
-<nav class="top-nav" data-lang="<%= lang || 'vi' %>">
+<nav class="top-nav">
     <div class="nav-left">
         <button class="menu-toggle" id="menuToggle" aria-label="Mở menu"><i class="fa-solid fa-bars"></i></button>
 
@@ -50,39 +50,6 @@
             <i class="fa-solid fa-sun theme-toggle__icon theme-toggle__sun" aria-hidden="true"></i>
             <i class="fa-solid fa-moon theme-toggle__icon theme-toggle__moon" aria-hidden="true"></i>
         </button>
-
-        <!-- Language Switcher -->
-        <div class="language-switcher" id="languageSwitcher">
-            <button class="language-switcher__btn" id="languageSwitcherBtn" type="button" aria-label="<%= t('header.language') %>">
-                <span class="language-flag" data-lang="<%= lang || 'vi' %>">
-                    <% if ((lang || 'vi') === 'vi') { %>
-                        <span class="flag flag-vn" title="Tiếng Việt"></span>
-                    <% } else { %>
-                        <span class="flag flag-us" title="English"></span>
-                    <% } %>
-                </span>
-                <span class="language-code"><%= ((lang || 'vi') === 'vi') ? 'VI' : 'EN' %></span>
-                <i class="fa-solid fa-chevron-down language-chevron"></i>
-            </button>
-            <div class="language-switcher__menu" id="languageMenu">
-                <button class="language-option <%= (lang || 'vi') === 'vi' ? 'is-active' : '' %>" data-lang="vi" type="button">
-                    <span class="flag flag-vn"></span>
-                    <span class="language-option__info">
-                        <strong>Tiếng Việt</strong>
-                        <small>Vietnamese</small>
-                    </span>
-                    <% if ((lang || 'vi') === 'vi') { %><i class="fa-solid fa-check"></i><% } %>
-                </button>
-                <button class="language-option <%= lang === 'en' ? 'is-active' : '' %>" data-lang="en" type="button">
-                    <span class="flag flag-us"></span>
-                    <span class="language-option__info">
-                        <strong>English</strong>
-                        <small>Tiếng Anh</small>
-                    </span>
-                    <% if (lang === 'en') { %><i class="fa-solid fa-check"></i><% } %>
-                </button>
-            </div>
-        </div>
 
         <div class="nav-profile">
             <div class="profile-dropdown-wrapper">
@@ -231,6 +198,38 @@
         color: #9ca3af;
     }
     .notif-empty i { font-size: 36px; margin-bottom: 8px; }
+
+    /* Dark mode overrides for notification bell */
+    :root.dark-mode .notif-bell-btn,
+    :root[data-theme='dark'] .notif-bell-btn { color: var(--text-muted, #cbd5e1); }
+    :root.dark-mode .notif-bell-btn:hover,
+    :root[data-theme='dark'] .notif-bell-btn:hover { background: var(--bg-hover, #334155); color: var(--primary, #3b82f6); }
+    :root.dark-mode .notif-dropdown,
+    :root[data-theme='dark'] .notif-dropdown { background: var(--bg-card, #1e293b); border-color: var(--border, #334155); box-shadow: 0 10px 40px rgba(0,0,0,.4); }
+    :root.dark-mode .notif-dropdown-header,
+    :root[data-theme='dark'] .notif-dropdown-header { background: var(--bg-card, #1e293b); border-bottom-color: var(--border, #334155); }
+    :root.dark-mode .notif-dropdown-header div div:first-child,
+    :root[data-theme='dark'] .notif-dropdown-header div div:first-child { color: var(--text-main, #f1f5f9) !important; }
+    :root.dark-mode .notif-dropdown-header div div:last-child,
+    :root[data-theme='dark'] .notif-dropdown-header div div:last-child { color: var(--text-muted, #94a3b8) !important; }
+    :root.dark-mode .notif-dropdown-footer,
+    :root[data-theme='dark'] .notif-dropdown-footer { background: var(--bg-hover, #334155); border-top-color: var(--border, #334155); }
+    :root.dark-mode .notif-item,
+    :root[data-theme='dark'] .notif-item { border-bottom-color: var(--border, #334155); }
+    :root.dark-mode .notif-item:hover,
+    :root[data-theme='dark'] .notif-item:hover { background: var(--bg-hover, #334155); }
+    :root.dark-mode .notif-item.unread,
+    :root[data-theme='dark'] .notif-item.unread { background: rgba(37, 99, 235, 0.12); }
+    :root.dark-mode .notif-item.unread:hover,
+    :root[data-theme='dark'] .notif-item.unread:hover { background: rgba(37, 99, 235, 0.2); }
+    :root.dark-mode .notif-item-title,
+    :root[data-theme='dark'] .notif-item-title { color: var(--text-main, #f1f5f9); }
+    :root.dark-mode .notif-item-text,
+    :root[data-theme='dark'] .notif-item-text { color: var(--text-muted, #cbd5e1); }
+    :root.dark-mode .notif-badge,
+    :root[data-theme='dark'] .notif-badge { border-color: var(--bg-card, #1e293b); }
+    :root.dark-mode .notif-empty,
+    :root[data-theme='dark'] .notif-empty { color: var(--text-muted, #64748b); }
 </style>
 <script src="/js/notification-bell.js"></script>
 <!-- Device tracking -->

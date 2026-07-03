@@ -244,13 +244,20 @@ function highlightPostTitleSection() {
  * load groups của account đó. Click A → load A. Click B → load B.
  */
 function onAccountPickerChange() {
-    // Tìm account FB đang được tick (sau khi DOM đã thay đổi)
+    // Find the checked FB account
     const fbChecked = document.querySelector('.account-card.acc-platform-FB input[name="modalAccSelect"]:checked');
     if (fbChecked) {
-        // Ép source = account đang tick → renderFacebookTab sẽ thấy currentGroupSourceChannelId
-        // khác sourceId và load lại groups cho account này
         currentFBTargetSource = fbChecked.value;
-        currentGroupSourceChannelId = ''; // reset để chắc chắn trigger load
+        currentGroupSourceChannelId = ''; // reset to force reload
+
+        // Auto-set fbPostTargetType based on account type
+        const accCard = fbChecked.closest('.account-card');
+        const accountType = (accCard?.getAttribute('data-account-type') || 'cá nhân').trim().toLowerCase();
+        if (accountType === 'fanpage' && window.fbPostTargetType === 'personal') {
+            window.fbPostTargetType = 'fanpage';
+        } else if (accountType === 'cá nhân' && window.fbPostTargetType === 'fanpage') {
+            window.fbPostTargetType = 'group';
+        }
     } else {
         currentFBTargetSource = null;
     }
@@ -270,6 +277,7 @@ function collectSchedulePostTargets() {
         accounts,
         targetGroupIds: window.selectedGroupKeys || [],
         targetGroupSourceChannelId: currentFBTargetSource || getCheckedAccountsByPlatform('FB')[0] || '',
+        postTargetType: window.fbPostTargetType || 'group',
         platformTargets: {
             FB: { accounts: getCheckedAccountsByPlatform('FB'), groups: window.selectedGroupKeys || [] },
             IG: { accounts: getCheckedAccountsByPlatform('IG'), options: collectInstagramOptions() },
@@ -286,6 +294,9 @@ function collectSchedulePostTargets() {
  */
 function prefillTargetTabsFromSchedule(schedule) {
     if (!schedule) return;
+    if (schedule.postTargetType) {
+        window.fbPostTargetType = schedule.postTargetType;
+    }
     if (Array.isArray(schedule.targetGroupIds) && schedule.targetGroupIds.length) {
         window.selectedGroupKeys = [...schedule.targetGroupIds];
     }

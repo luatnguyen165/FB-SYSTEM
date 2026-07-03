@@ -16,7 +16,7 @@ const register = async (req, res) => {
                 req.session.flash = { type: 'error', message: 'Vui lòng điền đủ thông tin!' };
                 req.session.save();
             }
-            return res.redirect('/auth/register');
+            return res.redirect('/register');
         }
 
         const response = await fetch(`${SERVER_ADMIN_URL}/api/auth/register`, {
@@ -33,7 +33,7 @@ const register = async (req, res) => {
                 req.session.flash = { type: 'error', message: data.message || 'Đăng ký thất bại!' };
                 req.session.save();
             }
-            return res.redirect('/auth/register');
+            return res.redirect('/register');
         }
 
         console.log('User registered successfully via ServerAdmin');
@@ -41,14 +41,14 @@ const register = async (req, res) => {
             req.session.flash = { type: 'success', message: 'Đăng ký thành công! Hãy đăng nhập.' };
             req.session.save();
         }
-        res.redirect('/auth/login');
+        res.redirect('/login');
     } catch (error) {
         console.error('--- [Register Error] ---', error);
         if (req.session) {
             req.session.flash = { type: 'error', message: 'Lỗi kết nối ServerAdmin: ' + error.message };
             req.session.save();
         }
-        res.redirect('/auth/register');
+        res.redirect('/register');
     }
 };
 
@@ -72,7 +72,7 @@ const login = async (req, res) => {
                 req.session.flash = { type: 'error', message: data.message || 'Đăng nhập thất bại!' };
                 req.session.save();
             }
-            return res.redirect('/auth/login');
+            return res.redirect('/login');
         }
 
         console.log('Login successful via ServerAdmin for ID:', data.user._id);
@@ -98,7 +98,7 @@ const login = async (req, res) => {
             req.session.flash = { type: 'error', message: 'Lỗi kết nối ServerAdmin: ' + error.message };
             req.session.save();
         }
-        res.redirect('/auth/login');
+        res.redirect('/login');
     }
 };
 
@@ -106,12 +106,12 @@ const logout = async (req, res) => {
     try {
         res.clearCookie('remember_token');
         req.session.destroy(() => {
-            res.redirect('/auth/login');
+            res.redirect('/login');
         });
     } catch (error) {
         console.error('Logout error:', error);
         res.clearCookie('remember_token');
-        res.redirect('/auth/login');
+        res.redirect('/login');
     }
 };
 
@@ -133,7 +133,7 @@ const forgotPassword = async (req, res) => {
                 req.session.flash = { type: 'error', message: data.message || 'Lỗi khôi phục mật khẩu!' };
                 req.session.save();
             }
-            return res.redirect('/auth/forgot-password');
+            return res.redirect('/forgot-password');
         }
 
         console.log('Reset URL generated via ServerAdmin:', data.resetUrl);
@@ -141,14 +141,14 @@ const forgotPassword = async (req, res) => {
             req.session.flash = { type: 'success', message: 'Link khôi phục đã được tạo! Hãy kiểm tra email.' };
             req.session.save();
         }
-        res.redirect('/auth/login');
+        res.redirect('/login');
     } catch (error) {
         console.error('--- [Forgot Password Error] ---', error);
         if (req.session) {
             req.session.flash = { type: 'error', message: 'Lỗi kết nối ServerAdmin: ' + error.message };
             req.session.save();
         }
-        res.redirect('/auth/forgot-password');
+        res.redirect('/forgot-password');
     }
 };
 
@@ -171,7 +171,7 @@ const resetPassword = async (req, res) => {
                 req.session.flash = { type: 'error', message: data.message || 'Token hết hạn hoặc không hợp lệ!' };
                 req.session.save();
             }
-            return res.redirect('/auth/forgot-password');
+            return res.redirect('/forgot-password');
         }
 
         console.log('Password reset successfully via ServerAdmin');
@@ -179,14 +179,14 @@ const resetPassword = async (req, res) => {
             req.session.flash = { type: 'success', message: 'Đặt lại mật khẩu thành công!' };
             req.session.save();
         }
-        res.redirect('/auth/login');
+        res.redirect('/login');
     } catch (error) {
         console.error('--- [Reset Password Error] ---', error);
         if (req.session) {
             req.session.flash = { type: 'error', message: 'Lỗi kết nối ServerAdmin: ' + error.message };
             req.session.save();
         }
-        res.redirect('/auth/forgot-password');
+        res.redirect('/forgot-password');
     }
 };
 
@@ -201,7 +201,7 @@ const changePassword = async (req, res) => {
             req.session.flash = { type: 'error', message: 'Mật khẩu mới không khớp!' };
             req.session.save();
         }
-        return res.redirect('/auth/change-password');
+        return res.redirect('/change-password');
     }
     try {
         console.info(`User ${req.session.userId} is attempting to change password.`);
@@ -219,21 +219,21 @@ const changePassword = async (req, res) => {
                 req.session.flash = { type: 'error', message: data.message || 'Đổi mật khẩu thất bại!' };
                 req.session.save();
             }
-            return res.redirect('/auth/change-password');
+            return res.redirect('/change-password');
         }
 
         if (req.session) {
             req.session.flash = { type: 'success', message: 'Đổi mật khẩu thành công!' };
             req.session.save();
         }
-        res.redirect('/auth/profile');
+        res.redirect('/profile');
     } catch (error) {
         console.error('Change Password Error', error);
         if (req.session) {
             req.session.flash = { type: 'error', message: 'Lỗi kết nối ServerAdmin!' };
             req.session.save();
         }
-        res.redirect('/auth/change-password');
+        res.redirect('/change-password');
     }
 };
 
@@ -243,7 +243,7 @@ const showProfile = async (req, res) => {
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-            return res.redirect('/auth/login');
+            return res.redirect('/login');
         }
         res.render('profile', { user: data.user });
     } catch (error) {
@@ -276,21 +276,21 @@ const updateProfile = async (req, res) => {
                 req.session.flash = { type: 'error', message: data.message || 'Cập nhật thất bại!' };
                 req.session.save();
             }
-            return res.redirect('/auth/profile');
+            return res.redirect('/profile');
         }
 
         if (req.session) {
             req.session.flash = { type: 'success', message: 'Cập nhật hồ sơ thành công!' };
             req.session.save();
         }
-        res.redirect('/auth/profile');
+        res.redirect('/profile');
     } catch (error) {
         console.error('Update Profile Error', error);
         if (req.session) {
             req.session.flash = { type: 'error', message: 'Lỗi server!' };
             req.session.save();
         }
-        res.redirect('/auth/profile');
+        res.redirect('/profile');
     }
 };
 

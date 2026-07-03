@@ -2,7 +2,7 @@
 // Re-exports from sub-modules for backward compatibility
 const { showSchedulePost, showScheduleManager, showScheduleReels, createSchedule, updateSchedule, getSchedulesAPI, getScheduleByIdAPI, deleteSchedule, getScheduleByDateAPI } = require('./schedule/crud');
 const { showPublishedArchive, exportPublishedArchive } = require('./schedule/archive');
-const { showScheduleGroups, scanFacebookGroupsAPI, scrapeGroupMembersAPI, scrapeGroupsFromJoinsAPI, getGroupsAPI } = require('./schedule/groups');
+const { showScheduleGroups, scanFacebookGroupsAPI, scrapeGroupMembersAPI, scrapeGroupsFromJoinsAPI, getGroupsAPI, clearAllGroupsAPI, deleteSelectedGroupsAPI } = require('./schedule/groups');
 const { uploadInstantReels, uploadLocalReelsVideo, getReelsRunnerStatusAPI, runReelsRunnerNowAPI, runReelsScheduleByIdNowAPI, runScheduleByIdNowAPI } = require('./schedule/reels');
 
 module.exports = {
@@ -27,5 +27,7 @@ module.exports = {
     scanFacebookGroupsAPI,
     scrapeGroupMembersAPI,
     scrapeGroupsFromJoinsAPI,
-    getGroupsAPI
+    getGroupsAPI,
+    clearAllGroupsAPI,
+    deleteSelectedGroupsAPI
 };

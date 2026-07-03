@@ -5,6 +5,7 @@
 const CommentScrape = require('../models/CommentScrape');
 const Channel = require('../models/Channel');
 const { scrapePostComments, extractPostId } = require('../services/facebook/commentCrawler');
+const socketService = require('../services/socketService');
 
 // ===== Helpers =====
 function safeUserId(req) {
@@ -38,7 +39,7 @@ exports.showCommentCrawler = async (req, res) => {
 
         const stats = {
             totalScrapes: await CommentScrape.countDocuments({ userId }),
-            successScrapes: await CommentScrape.countDocuments({ userId, status: 'success' }),
+            successScrapes: await CommentScrape.countDocuments({ userId, status: { $in: ['success', 'partial', 'stale_failed'] } }),
             totalComments: 0,
             lastScrapedAt: scrapes[0]?.scrapedAt || null
         };
@@ -56,9 +57,8 @@ exports.showCommentCrawler = async (req, res) => {
             scrapes,
             stats,
             features: res.locals.features || {},
-            user: req.session.user || req.user || null
-            // KHÔNG override t() ở đây — để res.locals.t từ i18nMiddleware/authMiddleware hoạt động
-            // Nếu override bằng `(key) => key` thì t('app.name') sẽ trả raw key thay vì 'ReelsFlow AI'
+            user: req.session.user || req.user || null,
+            userId: safeUserId(req)
         });
     } catch (err) {
         console.error('[Comment Crawler] showCommentCrawler error:', err.message);
@@ -235,6 +235,15 @@ exports.startScrape = async (req, res) => {
                     }
                 );
                 emitProgress({ phase: 'success', statusText: 'Xong!', progress: 100, jobId: job._id.toString() });
+
+                // Notification bell + toast
+                const successMsg = 'Scrape ' + (job.postTitle || job.postUrl.substring(0, 60)) + ' — ' + (result.stats?.totalComments || 0) + ' comments';
+                socketService.emitNotif(userId, 'success', {
+                    title: 'Scrape thành công',
+                    message: successMsg,
+                    postUrl: job.postUrl,
+                    source: 'comment-crawler'
+                });
             } else {
                 // FAIL: chỉ update status + error, KHÔNG đụng comments/tree cũ
                 // → Dữ liệu cũ được giữ nguyên, job vẫn xem được
@@ -253,6 +262,14 @@ exports.startScrape = async (req, res) => {
                     updateData
                 );
                 emitProgress({ phase: 'failed', error: result.error, progress: 100, jobId: job._id.toString() });
+
+                // Notification bell for failure
+                socketService.emitNotif(userId, 'error', {
+                    title: 'Scrape thất bại',
+                    message: (job.postTitle || job.postUrl.substring(0, 60)) + ' — ' + (result.error || 'Lỗi không xác định'),
+                    postUrl: job.postUrl,
+                    source: 'comment-crawler'
+                });
             }
         } catch (err) {
             console.error('[Comment Crawler] Background error:', err.message);
@@ -268,6 +285,14 @@ exports.startScrape = async (req, res) => {
                 updateData
             ).catch(() => {});
             emitProgress({ phase: 'failed', error: err.message, progress: 100, jobId: job._id.toString() });
+
+            // Notification bell on catch error
+            socketService.emitNotif(userId, 'error', {
+                title: 'Scrape thất bại',
+                message: (job.postTitle || job.postUrl.substring(0, 60)) + ' — ' + (err.message || 'Lỗi không xác định'),
+                postUrl: job.postUrl,
+                source: 'comment-crawler'
+            });
         }
     } catch (err) {
         console.error('[Comment Crawler] startScrape error:', err.message);

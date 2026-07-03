@@ -3,12 +3,9 @@
 
 .tiktok.com	TRUE	/	TRUE	1814529075	_ttp	3E17K5e0lx65RShXQbVb3RuR7Ls
 .tiktok.com	TRUE	/	TRUE	1784378106	cmpl_token	AgQYAPOF_hfkTtKzB1R9s3wdO_Btwe_rEf-SDmCn4Ac
-.tiktok.com	TRUE	/	TRUE	1781878759	msToken	WV4dM5TFs29_pwaJHp2jAJUt8mchGhepN3M-Dcw581WpMEnPO3rfaYeIvmXjKA_2NgsUT2Ky3BB66BX0397rIYTmbXUa__t4gTY28ucgqPYkni-JE1VcXFCvEhMscJT2Fr66LUiPoGCx0rw=
 .tiktok.com	TRUE	/	TRUE	1784378106	multi_sids	7149951329888027650%3Add3a6cec3f6031c92066d8d2344a71fc
 .tiktok.com	TRUE	/	FALSE	1812533920	odin_tt	74a3d4facd28a3b4540ffe1233e23bfaa383830578cc1622e6d3cf5835814a057eadfb30761959f11441eebf3b8e76cc74ff749c6bb1f497e0dc22f3c55977a370b5c1b009bd5ae9ab158c431dd399cb
 .tiktok.com	TRUE	/	FALSE	1812127575	oec_lucifer	AQEBAM6YLKsg9oFj0BdaxgAeaReTtREMkGBP4TdXt0oNgRE7SJu3f4vMFToU2Kgw8HIHI2wXnpjCo1HRHVMtJrTmjPRhCpbZvw==
-.tiktok.com	TRUE	/	FALSE	1781786106	passport_auth_status	37d56e7cd45da188a7345139891699c1%2C
-.tiktok.com	TRUE	/	TRUE	1781786106	passport_auth_status_ss	37d56e7cd45da188a7345139891699c1%2C
 .tiktok.com	TRUE	/	TRUE	0	s_v_web_id	verify_mq6g6dvh_iQt9Cv2Q_ZMLh_4vs1_BaXJ_95prZfJAroNI
 .tiktok.com	TRUE	/	TRUE	1794746106	sessionid	dd3a6cec3f6031c92066d8d2344a71fc
 .tiktok.com	TRUE	/	TRUE	1794746106	sessionid_ss	dd3a6cec3f6031c92066d8d2344a71fc
@@ -28,16 +25,12 @@
 .tiktok.com	TRUE	/	TRUE	1812533920	ttwid	1%7CpIlEZQlIwubH1VC6G4YUn_EdTdckSVR1aixmNpM7Bmc%7C1780997919%7Cc5ccafee61a2f5268d0d7d762fda0b22177913cbcaf71050e67caafd698aeff1
 .tiktok.com	TRUE	/	TRUE	1794746106	uid_tt	99d93e58e10ff1df1e3856cc1dae191d9215f822dd3baa06e308d5ee4663e919
 .tiktok.com	TRUE	/	TRUE	1794746106	uid_tt_ss	99d93e58e10ff1df1e3856cc1dae191d9215f822dd3baa06e308d5ee4663e919
-.www.tiktok.com	TRUE	/	FALSE	1781195709	_tea_utm_cache_1988	{%22utm_source%22:%22copy%22%2C%22utm_campaign%22:%22client_share%22}
-.www.tiktok.com	TRUE	/	FALSE	1781195709	_tea_utm_cache_345918	{%22utm_source%22:%22copy%22%2C%22utm_campaign%22:%22client_share%22}
 .www.tiktok.com	TRUE	/	TRUE	1805114090	delay_guest_mode_vid	5
 .www.tiktok.com	TRUE	/	FALSE	0	passport_fe_beating_status	true
-.www.tiktok.com	TRUE	/	TRUE	1781602722	perf_feed_cache	{%22expireTimestamp%22:1781600400000%2C%22itemIds%22:[%227649317453188582677%22%2C%227648971682522205447%22%2C%227648095940485631253%22]}
 .www.tiktok.com	TRUE	/	TRUE	1806917917	tiktok_webapp_theme	light
 .www.tiktok.com	TRUE	/	TRUE	1806917917	tiktok_webapp_theme_source	auto
 www.tiktok.com	FALSE	/	FALSE	1796530240	g_state	{"i_l":0,"i_ll":1780978240192,"i_b":"Ei5ujvaVy1kKZpasQuUTHyXItfKYxPTyXn+ZTz2y2vk","i_e":{"enable_itp_optimization":0},"i_et":1779194094103}
 www.tiktok.com	FALSE	/	FALSE	1786970106	last_login_method	google
 www.tiktok.com	FALSE	/	FALSE	1812514593	living_user_id	929432878540
 www.tiktok.com	FALSE	/	FALSE	1788773922	msToken	jgByGJdpxXcVHgKaQL1Zb_YQad69cMkjOFshv5DrtXsyGAnrfLpaHMKeGvTa7Asw5TcpvjSl4CAxbRpT0ejXVDHUSHGxCjtIa7ub4nCF2BHxa22jRbLn67_Epf6r7UMgMM_0wAzHblC8QqY=
-www.tiktok.com	FALSE	/	FALSE	1781063429	tt_ticket_guard_has_set_public_key	1
 www.tiktok.com	FALSE	/	TRUE	1812126910	ttwid	1%7CpIlEZQlIwubH1VC6G4YUn_EdTdckSVR1aixmNpM7Bmc%7C1780549186%7C74a270596ff2beb3acd9e7d43ffd85c3a340a0c0bdd923775ef3982f68f903b0

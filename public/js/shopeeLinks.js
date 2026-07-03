@@ -311,7 +311,7 @@ function renderTable() {
         const meta = PLATFORM_META[link.platform] || PLATFORM_META.shopee;
         return `
         <tr class="table-row-item" data-id="${link._id}" data-title="${link.title}" data-status="${link.status}" data-platform="${link.platform}">
-            <td class="col-thumb"><img class="img-thumb" src="${link.imageUrl || 'https://via.placeholder.com/46'}" alt="prod"></td>
+            <td class="col-thumb"><img class="img-thumb" src="${link.imageUrl || ''}" alt="prod" onerror="if(!this.dataset.fallback){this.dataset.fallback='1';this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2246%22 height=%2246%22><rect fill=%22%23ddd%22 width=%2246%22 height=%2246%22 rx=%224%22/><text x=%2223%22 y=%2228%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2214%22>?</text></svg>'}"></td>
             <td class="col-title">${link.title}</td>
             <td class="col-platform">
                 <span class="platform-badge" style="background:${meta.color}20;color:${meta.color};">

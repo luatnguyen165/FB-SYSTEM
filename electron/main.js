@@ -1,3 +1,9 @@
+// ============================================================
+// REBROWSER-PATCHES: Fix CDP Runtime.Enable leak
+// PHẢI set TRƯỚC KHI require playwright ở bất kỳ đâu
+// ============================================================
+process.env.REBROWSER_PATCHES_RUNTIME_FIX_MODE = 'addBinding';
+
 const { app, BrowserWindow, Tray, Menu, nativeImage, Notification, ipcMain, dialog } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');

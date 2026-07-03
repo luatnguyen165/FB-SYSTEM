@@ -15,6 +15,39 @@ const path = require('path');
 const { getOrOpenSocialContext } = require('./socialPlaywrightService');
 
 /**
+ * Patch Chrome profile language to Vietnamese
+ */
+function patchChromeLanguage(sessionDir) {
+    try {
+        const defaultDir = path.join(sessionDir, 'Default');
+        if (!fs.existsSync(defaultDir)) fs.mkdirSync(defaultDir, { recursive: true });
+        const VI_LANG = 'vi-VN,vi,en-US,en';
+
+        const prefsPath = path.join(defaultDir, 'Preferences');
+        let prefs = {};
+        if (fs.existsSync(prefsPath)) { try { prefs = JSON.parse(fs.readFileSync(prefsPath, 'utf8')); } catch (e) {} }
+        if (!prefs.intl) prefs.intl = {};
+        prefs.intl.selected_languages = VI_LANG;
+        prefs.intl.accept_languages = VI_LANG;
+        if (!prefs.browser) prefs.browser = {};
+        prefs.browser.language = 'vi-VN';
+        fs.writeFileSync(prefsPath, JSON.stringify(prefs));
+
+        const secPrefsPath = path.join(defaultDir, 'Secure Preferences');
+        if (fs.existsSync(secPrefsPath)) {
+            try { const sp = JSON.parse(fs.readFileSync(secPrefsPath, 'utf8')); if (!sp.browser) sp.browser = {}; sp.browser.language = 'vi-VN'; fs.writeFileSync(secPrefsPath, JSON.stringify(sp)); } catch (e) {}
+        }
+
+        const localStatePath = path.join(sessionDir, 'Local State');
+        if (fs.existsSync(localStatePath)) {
+            try { const ls = JSON.parse(fs.readFileSync(localStatePath, 'utf8')); if (!ls.intl) ls.intl = {}; ls.intl.selected_languages = VI_LANG; ls.intl.accept_languages = VI_LANG; fs.writeFileSync(localStatePath, JSON.stringify(ls)); } catch (e) {}
+        }
+    } catch (e) {
+        console.warn(`[YouTube Short] Failed to patch Chrome language: ${e.message}`);
+    }
+}
+
+/**
  * Resolve local file path
  */
 function resolveFilePath(filePath = '') {
@@ -68,7 +101,7 @@ function buildYoutubeShortUrl(videoId) {
  * @param {string} [opts.existingSessionDir='']
  * @returns {Promise<{success: boolean, publishedUrl: string, message: string}>}
  */
-async function uploadVideoToYouTubeShort({ userId, accountName, accountType = 'Personal', videoPath, title = '', caption = '', tags = '', headless = false, existingSessionDir = '' }) {
+async function uploadVideoToYouTubeShort({ userId, accountName, accountType = 'Personal', videoPath, title = '', caption = '', tags = '', headless = true, existingSessionDir = '' }) {
     console.log(`[YouTube Short] ===== BẮT ĐẦU (YASGU-style) =====`);
     console.log(`[YouTube Short] STEP 0 - account=${accountName} video=${videoPath} title=${(title || '').substring(0, 50)}... caption=${(caption || '').substring(0, 50)}...`);
 
@@ -88,7 +121,42 @@ async function uploadVideoToYouTubeShort({ userId, accountName, accountType = 'P
 
     try {
         console.log(`[YouTube Short] STEP 0 - Mở context...`);
-        const { context } = await getOrOpenSocialContext(userId, accountName, accountType, 'YT', { headless, existingSessionDir });
+        // YouTube luôn dùng Playwright persistent context (bypass CDP Chrome bị crash)
+        const pw = require('playwright');
+        const userSessionDir = existingSessionDir || path.join(process.env.USERPROFILE || '', 'AppData', 'Roaming', 'Electron', 'FB-SYSTEM', 'chrome-profiles', `${userId}_luatnguyen_yt`);
+        console.log(`[YouTube Short] STEP 0 - sessionDir=${userSessionDir} headless=${headless}`);
+        // Patch Chrome profile language to Vietnamese
+        patchChromeLanguage(userSessionDir);
+        const context = await pw.chromium.launchPersistentContext(userSessionDir, {
+            headless: headless,
+            channel: 'chrome',
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
+            viewport: null,
+            args: [
+                '--lang=vi-VN',
+                '--start-maximized',
+                '--disable-blink-features=AutomationControlled',
+                '--no-first-run',
+                '--disable-sync',
+                '--disable-background-networking'
+            ],
+            ignoreDefaultArgs: ['--enable-automation', '--enable-logging', '--no-sandbox']
+        });
+
+        // Load cookies từ storage-state.json
+        const ssPath = path.join(userSessionDir, 'storage-state.json');
+        if (fs.existsSync(ssPath)) {
+            try {
+                const ss = JSON.parse(fs.readFileSync(ssPath, 'utf8'));
+                if (ss.cookies?.length > 0) {
+                    await context.addCookies(ss.cookies);
+                    console.log(`[YouTube Short] STEP 0 - Loaded ${ss.cookies.length} cookies`);
+                }
+            } catch (e) {
+                console.log(`[YouTube Short] STEP 0 - Cookie load error: ${e.message}`);
+            }
+        }
+
         const pages = context.pages();
         let page = pages.length > 0 ? pages[0] : await context.newPage();
         activePage = page;
@@ -106,9 +174,9 @@ async function uploadVideoToYouTubeShort({ userId, accountName, accountType = 'P
         //   8. Fallback: lấy URL video mới nhất từ studio/.../videos/short
         // ============================================================
 
-        // STEP 1: Mở thẳng youtube.com/upload (giống YASGU)
-        console.log(`[YouTube Short] STEP 1 - Mở youtube.com/upload...`);
-        await page.goto('https://www.youtube.com/upload', {
+        // STEP 1: Mở youtube studio upload
+        console.log(`[YouTube Short] STEP 1 - Mở youtube studio...`);
+        await page.goto('https://studio.youtube.com', {
             waitUntil: 'domcontentloaded',
             timeout: 60000
         });
@@ -117,46 +185,94 @@ async function uploadVideoToYouTubeShort({ userId, accountName, accountType = 'P
         if (page.url().includes('accounts.google.com') || page.url().includes('signin')) {
             throw new Error('Chưa đăng nhập YouTube');
         }
-        console.log(`[YouTube Short] STEP 1 - OK → URL: ${page.url()}`);
+        console.log(`[YouTube Short] STEP 1 - OK -> URL: ${page.url()}`);
+
+        // Navigate to upload page — thử youtube.com/upload trước, fallback studio
+        console.log(`[YouTube Short] STEP 1 - Navigate to upload...`);
+        await page.goto('https://www.youtube.com/upload', {
+            waitUntil: 'domcontentloaded',
+            timeout: 30000
+        }).catch(() => {});
+        await page.waitForTimeout(8000);
+        let uploadUrl = page.url();
+        console.log(`[YouTube Short] STEP 1 - After youtube.com/upload: ${uploadUrl}`);
+
+        // Nếu redirect sang studio upload thì OK, nếu chưa thì thử studio trực tiếp
+        if (!uploadUrl.includes('studio.youtube.com')) {
+            console.log(`[YouTube Short] STEP 1 - Trying studio upload directly...`);
+            await page.goto('https://studio.youtube.com/video/upload', {
+                waitUntil: 'domcontentloaded',
+                timeout: 30000
+            }).catch(() => {});
+            await page.waitForTimeout(8000);
+            uploadUrl = page.url();
+            console.log(`[YouTube Short] STEP 1 - After studio upload: ${uploadUrl}`);
+        }
 
         // Upload page (sau khi goto) — dùng page này cho các bước tiếp theo
         const uploadPage = page;
         page = uploadPage;
         activePage = uploadPage;
 
-        // STEP 2: Upload video bằng selector chính xác từ YASGU
-        // YASGU: FILE_PICKER_TAG = "ytcp-uploads-file-picker"; file_input = file_picker.find_element(TAG_NAME="input")
-        console.log(`[YouTube Short] STEP 2 - Upload video qua ytcp-uploads-file-picker...`);
+        // STEP 2: Upload video — moi YouTube Studio UI
+        console.log(`[YouTube Short] STEP 2 - Upload video...`);
 
         const waitForFilePicker = async (timeoutMs = 30000) => {
             const start = Date.now();
             while (Date.now() - start < timeoutMs) {
-                // Selector chính xác từ YASGU
+                // Selector chinh xac tu YASGU
                 const picker = uploadPage.locator('ytcp-uploads-file-picker').first();
                 if (await picker.count() > 0) {
-                    return picker;
+                    return { element: picker, type: 'picker' };
                 }
-                // Fallback: bất kỳ input[type="file"] nào
-                const fallbackInput = uploadPage.locator('input[type="file"]').first();
-                if (await fallbackInput.count() > 0) {
-                    return fallbackInput;
+                // Fallback: input[type="file"] tren page
+                const fileInput = uploadPage.locator('input[type="file"]').first();
+                if (await fileInput.count() > 0) {
+                    return { element: fileInput, type: 'input' };
+                }
+                // Fallback: click "Select files" button
+                const selectBtn = uploadPage.locator('button:has-text("Select files"), button:has-text("Chọn tệp"), ytcp-button:has-text("Select files"), [aria-label*="Upload"], [aria-label*="Tải lên"]').first();
+                if (await selectBtn.isVisible().catch(() => false)) {
+                    return { element: selectBtn, type: 'button' };
+                }
+                // Fallback: click any upload-like button
+                const uploadBtn = uploadPage.locator('ytcp-button:has-text("Upload"), button:has-text("Upload video"), button:has-text("Tải lên video")').first();
+                if (await uploadBtn.isVisible().catch(() => false)) {
+                    return { element: uploadBtn, type: 'button' };
                 }
                 await uploadPage.waitForTimeout(1000);
             }
+            // Last resort: dump page info for debugging
+            const allInputs = await uploadPage.locator('input').count().catch(() => 0);
+            const allButtons = await uploadPage.locator('button').count().catch(() => 0);
+            console.log(`[YouTube Short] STEP 2 - DEBUG: ${allInputs} inputs, ${allButtons} buttons on page`);
             return null;
         };
 
         const filePicker = await waitForFilePicker(30000);
         if (!filePicker) {
-            throw new Error('Không tìm thấy ytcp-uploads-file-picker hoặc input[type="file"] sau 30s');
+            throw new Error('Không tìm thấy file input/button sau 30s');
         }
-        console.log(`[YouTube Short] STEP 2 - OK Đã tìm thấy file picker`);
+        console.log(`[YouTube Short] STEP 2 - OK Tim thay file picker type=${filePicker.type}`);
 
-        // Lấy input[type="file"] trong picker (giống YASGU: file_picker.find_element(TAG_NAME="input"))
-        const fileInput = filePicker.locator('input[type="file"]').first();
-        await fileInput.setInputFiles([resolvedVideo], { timeout: 60000 });
-        console.log(`[YouTube Short] STEP 2 - OK Video đã chọn, đợi xử lý...`);
-        await uploadPage.waitForTimeout(20000); // Video cần thời gian upload + xử lý
+        if (filePicker.type === 'button') {
+            // Click button to open file dialog, then use fileChooser
+            const [fileChooser] = await Promise.all([
+                uploadPage.waitForEvent('filechooser', { timeout: 15000 }),
+                filePicker.element.click()
+            ]);
+            await fileChooser.setFiles([resolvedVideo]);
+            console.log(`[YouTube Short] STEP 2 - OK Video chon qua file chooser`);
+        } else if (filePicker.type === 'picker') {
+            const fileInput = filePicker.element.locator('input[type="file"]').first();
+            await fileInput.setInputFiles([resolvedVideo], { timeout: 60000 });
+            console.log(`[YouTube Short] STEP 2 - OK Video chon qua picker input`);
+        } else {
+            await filePicker.element.setInputFiles([resolvedVideo], { timeout: 60000 });
+            console.log(`[YouTube Short] STEP 2 - OK Video chon qua direct input`);
+        }
+        console.log(`[YouTube Short] STEP 2 - Dang xu ly video...`);
+        await uploadPage.waitForTimeout(15000);
 
         // STEP 3: Nhập title — YASGU dùng ID="textbox"
         // textbox là contenteditable có thể có nhiều (title + description) → textboxes[0] = title

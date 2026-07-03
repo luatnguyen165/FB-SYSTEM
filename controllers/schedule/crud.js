@@ -104,7 +104,7 @@ const createSchedule = async (req, res) => {
             platforms = [];
         }
 
-        const { type, caption, postTitle, scheduledAt, accounts, videoId, videoPath, videoTitle, videoSize, shopeeLinks, targetGroupId, targetGroupIds, targetGroupSourceChannelId } = req.body;
+        const { type, caption, postTitle, scheduledAt, accounts, videoId, videoPath, videoTitle, videoSize, shopeeLinks, targetGroupId, targetGroupIds, targetGroupSourceChannelId, postTargetType } = req.body;
         if (!scheduledAt) {
             return res.status(400).json({ success: false, message: 'Vui lòng chọn thời gian đăng' });
         }
@@ -202,58 +202,83 @@ const createSchedule = async (req, res) => {
         let selectedSourceChannel = null;
 
         if (nextType === 'post') {
-            let targetGroupIdsArray = [];
-            if (targetGroupIds) {
-                try {
-                    targetGroupIdsArray = typeof targetGroupIds === 'string' ? JSON.parse(targetGroupIds) : targetGroupIds;
-                } catch (e) {
-                    targetGroupIdsArray = [];
-                }
-            }
+            const effectiveTargetType = postTargetType || 'group';
 
-            if (targetGroupIdsArray.length === 0 && targetGroupId) {
-                targetGroupIdsArray = [targetGroupId];
-            }
-
-            const hasTargetGroupSelection = targetGroupIdsArray.length > 0 || targetGroupSourceChannelId;
-
-            if (hasTargetGroupSelection) {
-                if (!targetGroupSourceChannelId) {
-                    return res.status(400).json({ success: false, message: 'Vui lòng chọn tài khoản Facebook nguồn' });
-                }
-
-                if (targetGroupIdsArray.length === 0) {
-                    return res.status(400).json({ success: false, message: 'Vui lòng chọn ít nhất một group để đăng bài' });
-                }
-
-                selectedSourceChannel = await Channel.findOne({
-                    _id: targetGroupSourceChannelId,
-                    userId: req.user._id,
-                    platform: 'FB',
-                    isEnabled: true
-                }).select('_id accountName accountType').lean();
-
-                if (!selectedSourceChannel) {
-                    return res.status(404).json({ success: false, message: 'Tài khoản Facebook nguồn không tồn tại hoặc đã bị tắt' });
-                }
-
-                const { groups: joinedGroups } = await getJoinedFacebookGroupsCached(
-                    req.user._id,
-                    selectedSourceChannel._id
-                );
-
-                for (const groupKey of targetGroupIdsArray) {
-                    const foundGroup = joinedGroups.find(group =>
-                        String(group.groupId) === String(groupKey) ||
-                        String(group.groupUrl) === String(groupKey)
-                    );
-                    if (foundGroup) {
-                        selectedTargetGroups.push(foundGroup);
+            // Only validate groups if target type is 'group'
+            if (effectiveTargetType === 'group') {
+                let targetGroupIdsArray = [];
+                if (targetGroupIds) {
+                    try {
+                        targetGroupIdsArray = typeof targetGroupIds === 'string' ? JSON.parse(targetGroupIds) : targetGroupIds;
+                    } catch (e) {
+                        targetGroupIdsArray = [];
                     }
                 }
 
-                if (selectedTargetGroups.length === 0) {
-                    return res.status(404).json({ success: false, message: 'Không tìm thấy group nào trong danh sách đã chọn' });
+                if (targetGroupIdsArray.length === 0 && targetGroupId) {
+                    targetGroupIdsArray = [targetGroupId];
+                }
+
+                const hasTargetGroupSelection = targetGroupIdsArray.length > 0 || targetGroupSourceChannelId;
+
+                if (hasTargetGroupSelection) {
+                    if (!targetGroupSourceChannelId) {
+                        return res.status(400).json({ success: false, message: 'Vui lòng chọn tài khoản Facebook nguồn' });
+                    }
+
+                    if (targetGroupIdsArray.length === 0) {
+                        return res.status(400).json({ success: false, message: 'Vui lòng chọn ít nhất một group để đăng bài' });
+                    }
+
+                    selectedSourceChannel = await Channel.findOne({
+                        _id: targetGroupSourceChannelId,
+                        userId: req.user._id,
+                        platform: 'FB',
+                        isEnabled: true
+                    }).select('_id accountName accountType').lean();
+
+                    if (!selectedSourceChannel) {
+                        return res.status(404).json({ success: false, message: 'Tài khoản Facebook nguồn không tồn tại hoặc đã bị tắt' });
+                    }
+
+                    const { groups: joinedGroups } = await getJoinedFacebookGroupsCached(
+                        req.user._id,
+                        selectedSourceChannel._id
+                    );
+
+                    for (const groupKey of targetGroupIdsArray) {
+                        const foundGroup = joinedGroups.find(group =>
+                            String(group.groupId) === String(groupKey) ||
+                            String(group.groupUrl) === String(groupKey)
+                        );
+                        if (foundGroup) {
+                            selectedTargetGroups.push(foundGroup);
+                        }
+                    }
+
+                    if (selectedTargetGroups.length === 0) {
+                        return res.status(404).json({ success: false, message: 'Không tìm thấy group nào trong danh sách đã chọn' });
+                    }
+                }
+            } else {
+                // For personal/fanpage targets, use targetGroupSourceChannelId or first FB account
+                if (targetGroupSourceChannelId) {
+                    selectedSourceChannel = await Channel.findOne({
+                        _id: targetGroupSourceChannelId,
+                        userId: req.user._id,
+                        platform: 'FB',
+                        isEnabled: true
+                    }).select('_id accountName accountType').lean();
+                } else if (normalizedAccounts.length > 0) {
+                    selectedSourceChannel = await Channel.findOne({
+                        _id: normalizedAccounts[0],
+                        userId: req.user._id,
+                        platform: 'FB',
+                        isEnabled: true
+                    }).select('_id accountName accountType').lean();
+                }
+                if (!selectedSourceChannel) {
+                    return res.status(400).json({ success: false, message: 'Vui lòng chọn tài khoản Facebook nguồn' });
                 }
             }
         }
@@ -274,7 +299,9 @@ const createSchedule = async (req, res) => {
             videoSize: nextType === 'reels' ? String(videoSize || '').trim() : '',
             shopeeLinks: ownedShopeeLinkIds,
             targetGroupSourceChannelId: selectedSourceChannel?._id,
+            postTargetType: postTargetType || 'group',
             targetGroupIds: selectedTargetGroups.map(g => g.groupUrl || g.groupId),
+            targetGroupNames: selectedTargetGroups.map(g => g.groupName || ''),
             targetGroupId: selectedTargetGroups[0]?.groupId || '',
             targetGroupName: selectedTargetGroups[0]?.groupName || '',
             targetGroupUrl: selectedTargetGroups[0]?.groupUrl || '',
@@ -319,7 +346,7 @@ const updateSchedule = async (req, res) => {
             platforms = [];
         }
 
-        const { scheduleId, type, status, caption, scheduledAt, accounts, videoId, videoPath, videoTitle, videoSize, shopeeLinks, targetGroupSourceChannelId } = req.body;
+        const { scheduleId, type, status, caption, scheduledAt, accounts, videoId, videoPath, videoTitle, videoSize, shopeeLinks, targetGroupSourceChannelId, postTargetType: reqPostTargetType } = req.body;
         const targetGroupIds = req.body.targetGroupIds || req.body.targetGroupId || [];
         if (!scheduleId) {
             return res.status(400).json({ success: false, message: 'Thiếu scheduleId' });
@@ -444,8 +471,9 @@ const updateSchedule = async (req, res) => {
 
         let selectedTargetGroups = [];
         let selectedSourceChannel = null;
-        // Chỉ yêu cầu group FB khi post có chọn platform FB
-        const hasTargetGroupSelection = nextType === 'post' && platforms.includes('FB');
+        const effectivePostTargetType = reqPostTargetType || schedule.postTargetType || 'group';
+        // Chỉ yêu cầu group FB khi post có chọn platform FB và target type là 'group'
+        const hasTargetGroupSelection = nextType === 'post' && platforms.includes('FB') && effectivePostTargetType === 'group';
 
         if (hasTargetGroupSelection) {
             if (!targetGroupSourceChannelId || !targetGroupIds) {
@@ -479,6 +507,26 @@ const updateSchedule = async (req, res) => {
             if (!selectedTargetGroups.length) {
                 return res.status(404).json({ success: false, message: 'Group được chọn không thuộc danh sách group mà tài khoản này đã tham gia' });
             }
+        } else if (nextType === 'post' && platforms.includes('FB') && effectivePostTargetType !== 'group') {
+            // For personal/fanpage targets, use targetGroupSourceChannelId or first FB account
+            if (targetGroupSourceChannelId) {
+                selectedSourceChannel = await Channel.findOne({
+                    _id: targetGroupSourceChannelId,
+                    userId: req.user._id,
+                    platform: 'FB',
+                    isEnabled: true
+                }).select('_id accountName accountType').lean();
+            } else if (normalizedAccounts.length > 0) {
+                selectedSourceChannel = await Channel.findOne({
+                    _id: normalizedAccounts[0],
+                    userId: req.user._id,
+                    platform: 'FB',
+                    isEnabled: true
+                }).select('_id accountName accountType').lean();
+            }
+            if (!selectedSourceChannel) {
+                return res.status(400).json({ success: false, message: 'Vui lòng chọn tài khoản Facebook nguồn' });
+            }
         }
 
         schedule.type = nextType;
@@ -493,7 +541,9 @@ const updateSchedule = async (req, res) => {
         schedule.platforms = platforms || [];
         schedule.accounts = normalizedAccounts;
         schedule.targetGroupSourceChannelId = selectedSourceChannel?._id;
+        schedule.postTargetType = effectivePostTargetType;
         schedule.targetGroupIds = selectedTargetGroups.map(g => g.groupUrl || g.groupId);
+        schedule.targetGroupNames = selectedTargetGroups.map(g => g.groupName || '');
         schedule.targetGroupId = selectedTargetGroups[0]?.groupId || '';
         schedule.targetGroupName = selectedTargetGroups[0]?.groupName || '';
         schedule.targetGroupUrl = selectedTargetGroups[0]?.groupUrl || '';

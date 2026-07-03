@@ -214,6 +214,17 @@ function emitStatsUpdate(userId, stats) {
     io.to(room).emit('scan:stats-update', { stats });
 }
 
+/**
+ * Emit scan queue status update to frontend
+ * @param {string} userId
+ * @param {Object} queueStatus - { pending[], running[], completed[], totalPending, totalRunning }
+ */
+function emitQueueUpdate(userId, queueStatus) {
+    if (!io) return;
+    const room = `user:${userId}`;
+    io.to(room).emit('scan:queue-update', queueStatus);
+}
+
 function emitScheduleUpdate(userId, data) {
     if (!io) return;
     const room = `user:${userId}`;
@@ -264,10 +275,10 @@ module.exports = (socketIoInstance) => {
  * @param {Array} newGroups - Newly discovered groups in this batch
  * @param {Object} progress - Progress info { found, round, maxRounds, phase }
  */
-function emitGroupsBatch(userId, allGroups, newGroups, progress) {
+function emitGroupsBatch(userId, allGroups, newGroups, progress, channelId) {
     if (!io) return;
     const room = `user:${userId}`;
-    io.to(room).emit('groups:batch', { allGroups, newGroups, progress });
+    io.to(room).emit('groups:batch', { allGroups, newGroups, progress, channelId });
     console.log(`[Socket.IO] Emitted groups:batch to ${room}: +${newGroups.length} new, total: ${allGroups.length}`);
 }
 
@@ -276,10 +287,10 @@ function emitGroupsBatch(userId, allGroups, newGroups, progress) {
  * @param {string} userId - User ID
  * @param {Object} progress - { phase, message, found, round, maxRounds }
  */
-function emitGroupsProgress(userId, progress) {
+function emitGroupsProgress(userId, progress, channelId) {
     if (!io) return;
     const room = `user:${userId}`;
-    io.to(room).emit('groups:progress', progress);
+    io.to(room).emit('groups:progress', { ...progress, channelId });
 }
 
 /**
@@ -295,12 +306,14 @@ function emitGroupsComplete(userId, data) {
 }
 
 module.exports.emitScheduleUpdate = emitScheduleUpdate;
+module.exports.emitNotif = emitNotif;
 module.exports.requestAiAnalysis = requestAiAnalysis;
 module.exports.emitScanProgress = emitScanProgress;
 module.exports.emitScanComplete = emitScanComplete;
 module.exports.emitNewResults = emitNewResults;
 module.exports.emitAnalysisResult = emitAnalysisResult;
 module.exports.emitStatsUpdate = emitStatsUpdate;
+module.exports.emitQueueUpdate = emitQueueUpdate;
 module.exports.emitGroupsBatch = emitGroupsBatch;
 module.exports.emitGroupsProgress = emitGroupsProgress;
 module.exports.emitGroupsComplete = emitGroupsComplete;

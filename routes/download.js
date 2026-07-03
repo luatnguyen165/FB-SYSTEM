@@ -45,7 +45,7 @@ async function getCookiesPathForAccount(tiktokAccount) {
                             const includeSub = domain.startsWith('.') ? 'TRUE' : 'FALSE';
                             const path_c = c.path || '/';
                             const secure = c.secure ? 'TRUE' : 'FALSE';
-                            const expiry = c.expires || 0;
+                            const expiry = (typeof c.expires === 'number' && c.expires > 0) ? Math.floor(c.expires) : 0;
                             const name = c.name || '';
                             const value = c.value || '';
                             return `${domain}\t${includeSub}\t${path_c}\t${secure}\t${expiry}\t${name}\t${value}`;

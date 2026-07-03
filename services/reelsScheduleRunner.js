@@ -3,7 +3,7 @@ const path = require('path');
 const SchedulePost = require('../models/SchedulePost');
 const Channel = require('../models/Channel');
 const { runBotUploadInstantWithAccount } = require('./facebook/reels');
-const { runBotPostGroupInstantWithAccount } = require('./facebookPostGroupService');
+const { runBotPostGroupInstantWithAccount, runBotPostPersonalTimelineWithAccount, runBotPostFanpageWithAccount } = require('./facebookPostGroupService');
 const { uploadVideoToTikTok } = require('./tiktokPlaywrightService');
 const { uploadVideoToInstagram, uploadImagesToInstagram } = require('./instagramPlaywrightService');
 const { postImagesToThreads, uploadVideoToThreads } = require('./threadsPlaywrightService');
@@ -246,9 +246,10 @@ async function buildPostUploadPayload(schedule, platform = 'FB') {
         if (groupId) groupIds = [groupId];
     }
 
-    // Chỉ Facebook Post mới bắt buộc có group đích.
+    // Chỉ Facebook Post mới bắt buộc có group đích (trừ personal/fanpage).
     // Threads/Pinterest/Instagram Post đăng lên feed/board của tài khoản, không cần group.
-    if (platform === 'FB' && groupUrls.length === 0 && groupIds.length === 0) {
+    const postTargetType = schedule.postTargetType || 'group';
+    if (platform === 'FB' && postTargetType === 'group' && groupUrls.length === 0 && groupIds.length === 0) {
         throw new Error('Thiếu group đích cho lịch Post');
     }
 
@@ -665,6 +666,65 @@ async function executeSinglePostPlatform(schedule, platform) {
             if (!account?.accountName) {
                 throw new Error('Không tìm thấy tài khoản Facebook để đăng Post');
             }
+            const postTargetType = schedule.postTargetType || 'group';
+            let sessionDir = '';
+            try {
+                sessionDir = account.storageStatePath ? path.dirname(normalizeEncryptedValue(account.storageStatePath)) : '';
+            } catch (e) {
+                console.error(`[Schedule Runner] Failed to resolve storageStatePath:`, e.message);
+                sessionDir = '';
+            }
+            console.log(`[Schedule Runner] account=${account.accountName} storageStatePath=${(account.storageStatePath || '').substring(0, 80)}... sessionDir=${sessionDir}`);
+
+            // Personal timeline or Fanpage — single post, no groups loop
+            if (postTargetType === 'personal' || postTargetType === 'fanpage') {
+                const label = postTargetType === 'personal' ? 'Timeline cá nhân' : 'Fanpage';
+                console.log(`[Schedule Runner] Processing POST-FB schedule ${schedule._id} → ${label} via ${account.accountName}`);
+
+                emitScheduleUpdate(schedule.userId, {
+                    _id: schedule._id,
+                    status: 'processing',
+                    progress: { phase: 'post_fb_start', message: `Đang đăng lên ${label} với tài khoản ${account.accountName}...`, current: 0, total: 1 }
+                });
+
+                let result;
+                try {
+                    if (postTargetType === 'personal') {
+                        result = await runBotPostPersonalTimelineWithAccount({
+                            userId: schedule.userId,
+                            accountName: account.accountName,
+                            accountType: account.accountType || 'Cá nhân',
+                            existingSessionDir: sessionDir,
+                            post: { profileUrl: account.profileUrl || '', content: post.content, images: post.images },
+                            headless: false
+                        });
+                    } else {
+                        result = await runBotPostFanpageWithAccount({
+                            userId: schedule.userId,
+                            accountName: account.accountName,
+                            accountType: account.accountType || 'Fanpage',
+                            existingSessionDir: sessionDir,
+                            post: { pageUrl: account.profileUrl || '', content: post.content, images: post.images },
+                            headless: false
+                        });
+                    }
+                } catch (err) {
+                    console.error(`[Schedule Runner] Failed FB ${label}:`, err.message);
+                    result = { success: false, error: err.message };
+                }
+
+                emitScheduleUpdate(schedule.userId, {
+                    _id: schedule._id,
+                    platform: 'FB',
+                    status: result?.success ? 'posted' : 'failed',
+                    publishedUrl: result?.publishedUrl || '',
+                    progress: { phase: 'post_fb_complete', message: result?.success ? `Đã đăng lên ${label} thành công` : `Đăng lên ${label} thất bại`, current: 1, total: 1 }
+                });
+
+                return { success: result?.success || false, publishedUrl: result?.publishedUrl || '', groupResults: [] };
+            }
+
+            // Group posting — original flow
             console.log(`[Schedule Runner] Processing POST-FB schedule ${schedule._id} using ${account.accountName}, ${post.groups.length} groups`);
 
             emitScheduleUpdate(schedule.userId, {
@@ -677,9 +737,36 @@ async function executeSinglePostPlatform(schedule, platform) {
             let firstSuccessUrl = '';
             let allSuccess = true;
 
+            // Dedup: check groupResults from DB in real-time (not stale copy)
+            const buildPostedGroupIds = async () => {
+                const fresh = await SchedulePost.findOne({ _id: schedule._id }).select('groupResults').lean();
+                const results = Array.isArray(fresh?.groupResults) ? fresh.groupResults : [];
+                return new Set(
+                    results
+                        .filter(r => r.success && !r.skipped)
+                        .map(r => r.groupId || r.groupUrl)
+                        .filter(Boolean)
+                );
+            };
+            let postedGroupIds = await buildPostedGroupIds();
+
             for (let i = 0; i < post.groups.length; i++) {
                 const group = post.groups[i];
+                const groupKey = group.groupId || group.groupUrl || '';
                 console.log(`[Schedule Runner] Post FB group ${i + 1}/${post.groups.length}: ${group.groupUrl || group.groupId}`);
+
+                // Check duplicate: skip if this group was already posted successfully
+                if (postedGroupIds.has(groupKey)) {
+                    console.log(`[Schedule Runner] ⏭ SKIP group ${groupKey} — already posted successfully`);
+                    fbResults.push({ group, success: true, publishedUrl: '', skipped: true, skipReason: 'already_posted' });
+
+                    emitScheduleUpdate(schedule.userId, {
+                        _id: schedule._id,
+                        status: 'processing',
+                        progress: { phase: 'post_fb_group', message: `Bỏ qua nhóm ${i + 1}/${post.groups.length}: đã đăng rồi`, current: i + 1, total: post.groups.length }
+                    });
+                    continue;
+                }
 
                 emitScheduleUpdate(schedule.userId, {
                     _id: schedule._id,
@@ -692,7 +779,7 @@ async function executeSinglePostPlatform(schedule, platform) {
                         userId: schedule.userId,
                         accountName: account.accountName,
                         accountType: account.accountType || 'Cá nhân',
-                        existingSessionDir: account.storageStatePath ? path.dirname(normalizeEncryptedValue(account.storageStatePath)) : '',
+                        existingSessionDir: sessionDir,
                         post: {
                             groupUrl: group.groupUrl,
                             groupId: group.groupId,
@@ -703,15 +790,78 @@ async function executeSinglePostPlatform(schedule, platform) {
                         headless: false
                     });
 
-                    fbResults.push({ group, success: groupResult?.success || false, publishedUrl: groupResult?.publishedUrl || '' });
+                    const entry = { group, success: groupResult?.success || false, publishedUrl: groupResult?.publishedUrl || '', error: groupResult?.success ? '' : (groupResult?.message || 'Post failed') };
+                    fbResults.push(entry);
                     if (groupResult?.success && !firstSuccessUrl) firstSuccessUrl = groupResult.publishedUrl || '';
                     if (!groupResult?.success) allSuccess = false;
+
+                    // Save groupResult to DB immediately
+                    try {
+                        await SchedulePost.updateOne(
+                            { _id: schedule._id },
+                            {
+                                $push: {
+                                    groupResults: {
+                                        groupId: group.groupId || '',
+                                        groupUrl: group.groupUrl || '',
+                                        groupName: group.groupName || '',
+                                        success: groupResult?.success || false,
+                                        publishedUrl: groupResult?.publishedUrl || '',
+                                        error: groupResult?.success ? '' : (groupResult?.message || 'Post failed'),
+                                        postedAt: new Date(),
+                                        skipped: false,
+                                        skipReason: ''
+                                    }
+                                }
+                            }
+                        );
+                        console.log(`[Schedule Runner] Logged group result: ${group.groupId || group.groupUrl} → ${groupResult?.success ? 'SUCCESS' : 'FAILED'}`);
+                    } catch (logErr) {
+                        console.error(`[Schedule Runner] Failed to log group result:`, logErr.message);
+                    }
+                    // Refresh dedup set from DB after each group post
+                    postedGroupIds = await buildPostedGroupIds();
                 } catch (err) {
                     console.error(`[Schedule Runner] Failed FB group ${group.groupUrl}:`, err.message);
                     fbResults.push({ group, success: false, error: err.message });
                     allSuccess = false;
+
+                    // Save error result to DB
+                    try {
+                        await SchedulePost.updateOne(
+                            { _id: schedule._id },
+                            {
+                                $push: {
+                                    groupResults: {
+                                        groupId: group.groupId || '',
+                                        groupUrl: group.groupUrl || '',
+                                        groupName: group.groupName || '',
+                                        success: false,
+                                        publishedUrl: '',
+                                        error: err.message,
+                                        postedAt: new Date(),
+                                        skipped: false,
+                                        skipReason: ''
+                                    }
+                                }
+                            }
+                        );
+                    } catch (logErr) {}
                 }
             }
+
+            // Summary log
+            const successCount = fbResults.filter(r => r.success && !r.skipped).length;
+            const skipCount = fbResults.filter(r => r.skipped).length;
+            const failCount = fbResults.filter(r => !r.success && !r.skipped).length;
+            console.log(`[Schedule Runner] ===== GROUP POST SUMMARY =====`);
+            console.log(`[Schedule Runner] Total: ${post.groups.length} | Success: ${successCount} | Skipped: ${skipCount} | Failed: ${failCount}`);
+            fbResults.forEach((r, i) => {
+                const status = r.skipped ? '⏭ SKIP' : (r.success ? '✅ OK' : '❌ FAIL');
+                const detail = r.skipped ? r.skipReason : (r.publishedUrl || r.error || '');
+                console.log(`[Schedule Runner]   ${i + 1}. ${status} ${r.group?.groupId || r.group?.groupUrl || '?'} ${detail}`);
+            });
+            console.log(`[Schedule Runner] ================================`);
 
             emitScheduleUpdate(schedule.userId, {
                 _id: schedule._id,
@@ -1016,12 +1166,28 @@ async function processDueSchedules() {
         lastCheckedCount = dueSchedules.length;
         console.log(`[Schedule Runner] Found ${dueSchedules.length} due schedule(s)`);
 
-        for (const schedule of dueSchedules) {
+        for (let i = 0; i < dueSchedules.length; i++) {
+            const schedule = dueSchedules[i];
             console.log(`[Schedule Runner] Inspect schedule ${schedule._id} type=${schedule.type} scheduledAt=${schedule.scheduledAt?.toISOString?.() || schedule.scheduledAt}`);
-            const fresh = await SchedulePost.findOne({ _id: schedule._id, status: 'pending' }).lean();
+            const fresh = await SchedulePost.findOneAndUpdate(
+                { _id: schedule._id, status: 'pending' },
+                { $set: { status: 'processing' } },
+                { new: true }
+            ).lean();
             if (!fresh) {
                 console.log(`[Schedule Runner] Skip ${schedule._id} because status changed`);
                 continue;
+            }
+
+            // Facebook Auto-Report Bypass: Random delay between posts
+            if (i > 0) {
+                try {
+                    const { randomDelay } = require('./facebookBypassService');
+                    await randomDelay('betweenPosts');
+                    console.log(`[Schedule Runner] Delayed ${i + 1}/${dueSchedules.length} schedules processed`);
+                } catch (err) {
+                    console.warn(`[Schedule Runner] Delay failed: ${err.message}`);
+                }
             }
 
             try {
@@ -1137,19 +1303,35 @@ async function runReelsScheduleByIdNow(scheduleId, { persistStatus = true, markA
         throw new Error('Thiếu scheduleId');
     }
 
-    const schedule = await SchedulePost.findOne({ _id: scheduleId, type: { $in: ['reels', 'post', 'tiktok'] } })
-        .populate('videoId', 'title filePath thumbnailUrl')
-        .populate('targetGroupSourceChannelId', 'accountName accountType platform profileUrl')
-        .populate('shopeeLinks', 'title shopeeUrl imageUrl')
-        .lean();
-
-    if (!schedule) {
-        throw new Error('Không tìm thấy lịch đăng bài');
+    // Guard #1: Check if runner is already processing
+    if (isProcessing) {
+        console.log(`[Schedule Runner] runReelsScheduleByIdNow blocked — runner isProcessing`);
+        throw new Error('Schedule runner đang bận, vui lòng thử lại sau.');
     }
+
+    // Guard #2: Atomically claim this schedule — prevent concurrent runs
+    const claimed = await SchedulePost.findOneAndUpdate(
+        { _id: scheduleId, status: 'pending', type: { $in: ['reels', 'post', 'tiktok'] } },
+        { $set: { status: 'processing' } },
+        { new: true }
+    ).populate('videoId', 'title filePath thumbnailUrl')
+     .populate('targetGroupSourceChannelId', 'accountName accountType platform profileUrl')
+     .populate('shopeeLinks', 'title shopeeUrl imageUrl');
+
+    if (!claimed) {
+        // Check what status it is now
+        const current = await SchedulePost.findOne({ _id: scheduleId }).lean();
+        const currentStatus = current?.status || 'unknown';
+        console.log(`[Schedule Runner] runReelsScheduleByIdNow blocked — schedule status=${currentStatus}`);
+        throw new Error(`Schedule đang ở trạng thái "${currentStatus}", không thể chạy lại.`);
+    }
+
+    const schedule = claimed.toObject ? claimed.toObject() : claimed;
 
     console.log(`[Schedule Runner] runReelsScheduleByIdNow schedule=${scheduleId} type=${schedule.type} title=${schedule.videoId?.title || schedule.videoTitle || schedule.caption || ''}`);
 
-    const { result } = await executeSchedule(schedule, { persistStatus, markAsPosted });
+    const { result } = await executeSchedule(schedule, { persistStatus: false, markAsPosted });
+    // persistStatus=false vì đã set processing ở trên, executeSchedule sẽ set posted/failed ở cuối
 
     console.log(`[Schedule Runner] runReelsScheduleByIdNow done schedule=${scheduleId} success=${Boolean(result?.success)} publishedUrl=${result?.publishedUrl || ''}`);
 

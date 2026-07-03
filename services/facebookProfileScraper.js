@@ -586,7 +586,10 @@ async function scrapeFromHtml(profileUrl, cookies, proxy, limit = 10) {
                     if (posts.length >= limit) break;
                     const postId = story.post_id;
                     const text = story?.comet_sections?.content?.story?.message?.text || '';
-                    const permalink = story?.attachments?.[0]?.styles?.attachment?.url || '';
+                    const permalink = story?.attachments?.[0]?.styles?.attachment?.url
+                        || story?.comet_sections?.timestamp?.story?.url
+                        || story?.comet_sections?.content?.story?.url
+                        || (postId ? `https://www.facebook.com/${postId}` : '');
                     const images = extractImagesFromStory(story);
                     const commentCount = story?.feedback?.comment_rendering_instance?.comments?.total_count || 0;
                     let publishedAt = null;
@@ -645,6 +648,84 @@ function findStoryNodes(obj) {
 // ==================== MAIN SCRAPER ====================
 
 /**
+ * Gọi GraphQL từ browser context qua page.evaluate() — F12 DevTools approach
+ * Cookies/session tự động đúng vì request chạy từ trong browser
+ */
+async function callGraphQlViaBrowser(page, numericId, cursor, docId) {
+    const result = await page.evaluate(async ({ docId, numericId, cursor }) => {
+        // Lấy fb_dtsg từ page
+        let fbDtsg = '';
+        try {
+            const scripts = document.querySelectorAll('script');
+            for (const s of scripts) {
+                const text = s.textContent || '';
+                const match = text.match(/"DTSGInitialData".*?"token"\s*:\s*"([^"]+)"/);
+                if (match) { fbDtsg = match[1]; break; }
+            }
+        } catch {}
+        if (!fbDtsg) {
+            try {
+                const html = document.documentElement.innerHTML;
+                const m = html.match(/"fb_dtsg"\s*:\s*"([^"]+)"/);
+                if (m) fbDtsg = m[1];
+            } catch {}
+        }
+
+        const variables = {
+            count: 3, cursor, id: numericId,
+            feedLocation: 'TIMELINE', renderLocation: 'timeline',
+            scale: 2, useDefaultActor: false,
+        };
+
+        const body = new URLSearchParams();
+        body.append('__a', '1');
+        body.append('fb_dtsg', fbDtsg);
+        body.append('doc_id', docId);
+        body.append('variables', JSON.stringify(variables));
+
+        const resp = await fetch('https://www.facebook.com/api/graphql/', {
+            method: 'POST',
+            headers: { 'content-type': 'application/x-www-form-urlencoded' },
+            body: body.toString(),
+            credentials: 'include',
+        });
+
+        const text = await resp.text();
+        return { status: resp.status, text, length: text.length, fbDtsg: fbDtsg ? 'yes' : 'no' };
+    }, { docId, numericId, cursor });
+
+    return result;
+}
+
+/**
+ * Lấy fbDtsg từ browser page
+ */
+async function getFbDtsgFromBrowser(page) {
+    return await page.evaluate(() => {
+        // Method 1: meta tag
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta) return meta.getAttribute('content');
+        // Method 2: DTSGInitialData
+        const scripts = document.querySelectorAll('script');
+        for (const s of scripts) {
+            const text = s.textContent || '';
+            const match = text.match(/"DTSGInitialData".*?"token"\s*:\s*"([^"]+)"/);
+            if (match) return match[1];
+        }
+        // Method 3: input hidden
+        const input = document.querySelector('input[name="fb_dtsg"]');
+        if (input) return input.value;
+        // Method 4: from global JS variable
+        try {
+            const html = document.documentElement.innerHTML;
+            const m = html.match(/"fb_dtsg"\s*:\s*"([^"]+)"/);
+            if (m) return m[1];
+        } catch {}
+        return '';
+    });
+}
+
+/**
  * Scrape bài viết từ Facebook profile
  * @param {Object} options
  * @param {string} options.profileId - Facebook profile ID hoặc username
@@ -653,10 +734,11 @@ function findStoryNodes(obj) {
  * @param {number} options.limit - Số bài tối đa
  * @param {string} options.proxy - Proxy URL (optional)
  * @param {string} options.saveDir - Thư mục lưu ảnh
+ * @param {Object} options.page - Playwright page (optional, để gọi GraphQL từ browser context)
  * @returns {Array} Danh sách bài viết
  */
-async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, proxy = null, saveDir = 'uploads/tracking' }) {
-    console.log(`[Profile Scraper] === START === profileId="${profileId}", limit=${limit}, c_user=${cookies.c_user || 'null'}, fb_dtsg=${fbDtsg ? 'yes' : 'no'}`);
+async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, proxy = null, saveDir = 'uploads/tracking', page = null }) {
+    console.log(`[Profile Scraper] === START === profileId="${profileId}", limit=${limit}, c_user=${cookies.c_user || 'null'}, fb_dtsg=${fbDtsg ? 'yes' : 'no'}, page=${page ? 'yes' : 'no'}`);
 
     // Resolve username → numeric ID + lấy fb_dtsg
     let numericId;
@@ -673,6 +755,36 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
         return [];
     }
 
+    // Nếu có page, lấy fbDtsg từ browser (chính xác hơn)
+    if (page && !fbDtsg) {
+        try {
+            fbDtsg = await getFbDtsgFromBrowser(page);
+            console.log(`[Profile Scraper] fbDtsg from browser: ${fbDtsg ? 'yes' : 'no'}`);
+        } catch (e) {
+            console.log(`[Profile Scraper] Cannot get fbDtsg from browser: ${e.message?.substring(0, 60)}`);
+        }
+    }
+
+    // Navigate to profile page if page is available
+    if (page) {
+        try {
+            const profileUrl = `https://www.facebook.com/profile.php?id=${numericId}`;
+            const currentUrl = page.url();
+            if (!currentUrl.includes(numericId)) {
+                console.log(`[Profile Scraper] Navigating to profile: ${profileUrl}`);
+                await page.goto(profileUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                await sleep(3000);
+            }
+            // Lấy fbDtsg từ browser
+            if (!fbDtsg) {
+                fbDtsg = await getFbDtsgFromBrowser(page);
+                console.log(`[Profile Scraper] Got fb_dtsg from browser: ${fbDtsg ? 'yes' : 'no'}`);
+            }
+        } catch (e) {
+            console.log(`[Profile Scraper] Browser navigation error: ${e.message?.substring(0, 60)}`);
+        }
+    }
+
     // Thử GraphQL trước
     const allPosts = [];
     let cursor = null;
@@ -680,54 +792,76 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
 
     while (allPosts.length < limit) {
         pageNum++;
-        const variables = {
-            count: 3, cursor, id: numericId,
-            feedLocation: 'TIMELINE', renderLocation: 'timeline',
-            scale: 2, useDefaultActor: false,
-        };
-        const payload = {
-            av: cookies.c_user || '0', __user: cookies.c_user || '0',
-            __a: '1', fb_dtsg: fbDtsg || '',
-            doc_id: DOC_ID, variables: JSON.stringify(variables),
-        };
-
         console.log(`[Profile Scraper] Page ${pageNum}: calling GraphQL with id=${numericId}, cursor=${cursor || 'null'}`);
 
-        // Build cookie header
-        const cookieHeader = Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ');
+        let rawText = '';
+        let rawLength = 0;
 
-        let cleanedData = [];
-        for (let retry = 0; retry < 3; retry++) {
+        if (page) {
+            // === BROWSER APPROACH (F12 DevTools) ===
             try {
-                const r = await axios.post(GRAPHQL_URL, new URLSearchParams(payload).toString(), {
-                    headers: {
-                        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                        'content-type': 'application/x-www-form-urlencoded',
-                        'origin': 'https://www.facebook.com',
-                        'referer': `https://www.facebook.com/profile.php?id=${numericId}`,
-                        'cookie': cookieHeader,
-                    },
-                    timeout: 30000, httpsAgent: getHttpsAgent(proxy),
-                });
-                console.log(`[Profile Scraper] GraphQL response: status=${r.status}, length=${(r.data || '').length}`);
-                if (r.data && typeof r.data === 'string') {
-                    console.log(`[Profile Scraper] Response preview: ${r.data.substring(0, 200)}`);
+                const result = await callGraphQlViaBrowser(page, numericId, cursor, DOC_ID);
+                rawText = result.text;
+                rawLength = result.length;
+                console.log(`[Profile Scraper] Browser GraphQL: status=${result.status}, length=${rawLength}`);
+                if (rawLength > 0) {
+                    console.log(`[Profile Scraper] Response preview: ${rawText.substring(0, 200)}`);
                 }
-                cleanedData = parseFbResponse(r.data);
-                console.log(`[Profile Scraper] Parsed ${cleanedData.length} data blocks`);
-                if (cleanedData.length > 0) break;
-                else console.log(`[Profile Scraper] Empty response, retry ${retry + 1}/3`);
             } catch (e) {
-                console.error(`[Profile Scraper] GraphQL error retry ${retry + 1}/3: ${e.message}`);
-                if (e.response) {
-                    console.error(`[Profile Scraper] Response status: ${e.response.status}, data: ${JSON.stringify(e.response.data).substring(0, 200)}`);
-                }
-                await sleep(2000);
+                console.error(`[Profile Scraper] Browser GraphQL error: ${e.message?.substring(0, 100)}`);
             }
         }
 
-        if (cleanedData.length === 0) {
+        // Fallback to axios if browser failed or no page
+        if (!rawText || rawLength === 0) {
+            const variables = {
+                count: 3, cursor, id: numericId,
+                feedLocation: 'TIMELINE', renderLocation: 'timeline',
+                scale: 2, useDefaultActor: false,
+            };
+            const payload = {
+                av: cookies.c_user || '0', __user: cookies.c_user || '0',
+                __a: '1', fb_dtsg: fbDtsg || '',
+                doc_id: DOC_ID, variables: JSON.stringify(variables),
+            };
+            const cookieHeader = Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ');
+
+            for (let retry = 0; retry < 3; retry++) {
+                try {
+                    const r = await axios.post(GRAPHQL_URL, new URLSearchParams(payload).toString(), {
+                        headers: {
+                            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                            'content-type': 'application/x-www-form-urlencoded',
+                            'origin': 'https://www.facebook.com',
+                            'referer': `https://www.facebook.com/profile.php?id=${numericId}`,
+                            'cookie': cookieHeader,
+                        },
+                        timeout: 30000, httpsAgent: getHttpsAgent(proxy),
+                    });
+                    rawText = r.data || '';
+                    rawLength = (rawText || '').length;
+                    console.log(`[Profile Scraper] Axios GraphQL: status=${r.status}, length=${rawLength}`);
+                    if (rawLength > 0) {
+                        console.log(`[Profile Scraper] Response preview: ${rawText.substring(0, 200)}`);
+                    }
+                    if (rawLength > 0) break;
+                    else console.log(`[Profile Scraper] Empty response, retry ${retry + 1}/3`);
+                } catch (e) {
+                    console.error(`[Profile Scraper] Axios GraphQL error retry ${retry + 1}/3: ${e.message?.substring(0, 100)}`);
+                    await sleep(2000);
+                }
+            }
+        }
+
+        if (!rawText || rawLength === 0) {
             console.log('[Profile Scraper] Không có data, dừng');
+            break;
+        }
+
+        const cleanedData = parseFbResponse(rawText);
+        console.log(`[Profile Scraper] Parsed ${cleanedData.length} data blocks`);
+        if (cleanedData.length === 0) {
+            console.log('[Profile Scraper] Không parse được data, dừng');
             break;
         }
 
@@ -761,7 +895,10 @@ async function scrapeProfilePosts({ profileId, cookies, fbDtsg, limit = 10, prox
             if (!postId) continue;
 
             const text = node?.comet_sections?.content?.story?.message?.text || '';
-            const permalink = node?.attachments?.[0]?.styles?.attachment?.url || '';
+            const permalink = node?.attachments?.[0]?.styles?.attachment?.url
+                || node?.comet_sections?.timestamp?.story?.url
+                || node?.comet_sections?.content?.story?.url
+                || (postId ? `https://www.facebook.com/${postId}` : '');
             const commentCount = extractCommentCount(node);
             const authorName = extractPageName(node) || '';
 

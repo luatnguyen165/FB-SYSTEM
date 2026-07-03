@@ -25,6 +25,10 @@ function fillScheduleForm(schedule) {
 
     const captionInput = document.getElementById('modalCaptionInput');
     if (captionInput) captionInput.value = schedule.caption || '';
+    if (typeof window.initCaptionEditor === 'function') window.initCaptionEditor();
+    if (window.captionEditorAPI) {
+        window.captionEditorAPI.setText(schedule.caption || '');
+    }
     const titleInput = document.getElementById('modalPostTitleInput');
     if (titleInput) titleInput.value = schedule.postTitle || schedule.title || '';
     setScheduleTimeInputValue(schedule.scheduledAt);
@@ -112,6 +116,7 @@ function resetScheduleForm() {
     const imageInput = document.getElementById('actualImageInput');
 
     if (captionInput) captionInput.value = '';
+    if (window.captionEditorAPI) window.captionEditorAPI.setText('');
     const titleInput = document.getElementById('modalPostTitleInput');
     if (titleInput) titleInput.value = '';
     if (imageInput) imageInput.value = '';
@@ -162,6 +167,8 @@ function openCreatePostModal(dayNumber) {
     const timeInput = document.getElementById('modalTimeInput');
     if (timeInput) timeInput.title = `Thời gian hiện tại: ${formatReadableDateTime(now)}`;
     document.getElementById('createPostModal')?.classList.add('open');
+    // Init Quill khi modal visible
+    if (typeof window.initCaptionEditor === 'function') window.initCaptionEditor();
 }
 
 function closeCreatePostModal() {
@@ -199,6 +206,13 @@ async function submitPostSchedule() {
 
     console.log('[schedule-submit] platforms:', platforms);
     console.log('[schedule-submit] postTitle:', postTitle);
+
+    // Giới hạn 1000 ký tự cho tất cả nền tảng (Threads tự truncate xuống 500 bên backend)
+    if (caption.length > 1000) {
+        showToast(`Nội dung vượt quá 1000 ký tự (${caption.length}/1000). Vui lòng rút ngắn!`, 'warning');
+        document.getElementById('modalCaptionInput')?.focus();
+        return;
+    }
 
     // Pinterest yêu cầu bắt buộc có tiêu đề
     const hasPI = platforms.includes('PI');
@@ -246,10 +260,14 @@ async function submitPostSchedule() {
     formData.append('scheduledAt', parseDateInputToIso(dateInput, timeValue) || scheduledAt);
 
     if (platforms.includes('FB')) {
-        if (targetGroupIds.length === 0) { showToast('Vui lòng chọn ít nhất một group Facebook để đăng bài!', 'warning'); return; }
-        if (!currentGroupSourceChannelId) { showToast('Vui lòng chọn tài khoản Facebook nguồn!', 'warning'); return; }
-        formData.append('targetGroupSourceChannelId', currentGroupSourceChannelId);
-        formData.append('targetGroupIds', JSON.stringify(targetGroupIds));
+        const postTargetType = window.fbPostTargetType || 'group';
+        if (postTargetType === 'group') {
+            if (targetGroupIds.length === 0) { showToast('Vui lòng chọn ít nhất một group Facebook để đăng bài!', 'warning'); return; }
+            if (!currentGroupSourceChannelId) { showToast('Vui lòng chọn tài khoản Facebook nguồn!', 'warning'); return; }
+            formData.append('targetGroupSourceChannelId', currentGroupSourceChannelId);
+            formData.append('targetGroupIds', JSON.stringify(targetGroupIds));
+        }
+        formData.append('postTargetType', postTargetType);
     }
 
     platforms.forEach(p => formData.append('platforms', p));

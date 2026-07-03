@@ -4,10 +4,14 @@ const TrackingPost = require('../models/TrackingPost');
 const Channel = require('../models/Channel');
 const { scrapeProfilePosts, imageDownloadQueue } = require('../services/facebookProfileScraper');
 const { scrapeGroupPosts, downloadGroupVideo, videoDownloadQueue } = require('../services/facebookGroupScraper');
+const { getOrOpenFacebookContext } = require('../services/facebook/session');
+const { normalizeEncryptedValue } = require('../utils/cryptoVault');
+const { normalizeVideos } = require('../utils/videoNormalizer');
 const autoRepostService = require('../services/autoRepostService');
 const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
+const { t: i18nT, getLang } = require('../locales/i18n');
 
 /**
  * Parse Facebook ID từ URL (profile, page, group)
@@ -54,10 +58,18 @@ exports.showTracking = async (req, res) => {
             filter.sourcePlatform = req.query.platform;
         }
 
+        // Pagination
+        const perPage = 12;
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const totalItems = await Tracking.countDocuments(filter);
+        const totalPages = Math.ceil(totalItems / perPage);
+
         const trackings = await Tracking.find(filter)
             .populate('sourceAccountId', 'accountName platform accountType')
             .populate('targetPlatforms.accountId', 'accountName platform')
             .sort({ createdAt: -1 })
+            .skip((page - 1) * perPage)
+            .limit(perPage)
             .lean();
 
         // Lấy danh sách tài khoản channels để chọn trong modal
@@ -75,10 +87,13 @@ exports.showTracking = async (req, res) => {
 
         // currentPage cho sidebar active
         const pageMap = { profile: 'tracking-profile', page: 'tracking-page', group: 'tracking-group' };
-        const currentPage = pageMap[trackingType] || 'tracking-profile';
+        const sidebarPage = pageMap[trackingType] || 'tracking-profile';
+
+        // Lấy ngôn ngữ người dùng
+        const lang = getLang(req);
 
         res.render('tracking', {
-            currentPage,
+            currentPage: sidebarPage,
             trackings,
             channels,
             stats,
@@ -87,7 +102,15 @@ exports.showTracking = async (req, res) => {
             features: res.locals.features || {},
             user: req.session.user || req.user || null,
             flash: req.flash ? { success: req.flash('success'), error: req.flash('error') } : null,
-            t: (key) => key
+            lang,
+            t: (key, fallback) => i18nT(key, lang, fallback),
+            pagination: {
+                currentPage: page,
+                totalPages,
+                totalItems,
+                baseUrl: '/tracking',
+                queryParams: { type: trackingType, platform: req.query.platform || '' }
+            }
         });
     } catch (err) {
         console.error('[Tracking] Error loading page:', err.message);
@@ -163,7 +186,25 @@ exports.createTracking = async (req, res) => {
                     if (profileId) {
                         const saveDir = path.join(global.USER_DATA_DIR || path.join(__dirname, '..'), 'uploads', 'scraper');
                         console.log(`[Tracking] Auto-scrape: starting scrape, saveDir=${saveDir}`);
-                        const posts = await scrapeProfilePosts({ profileId, cookies, fbDtsg, limit: 10, saveDir });
+
+                        // Mở browser session để scrape profile/page
+                        let browserCtx = null;
+                        let browserPage = null;
+                        try {
+                            const existingSessionDir = channel.storageStatePath ? path.dirname(normalizeEncryptedValue(channel.storageStatePath)) : '';
+                            const ctx = await getOrOpenFacebookContext(channel.userId, channel.accountName, channel.accountType, 'FB', {
+                                headless: false,
+                                existingSessionDir,
+                            });
+                            browserCtx = ctx.context;
+                            browserPage = browserCtx.pages()[0] || await browserCtx.newPage();
+                            console.log(`[Tracking] Auto-scrape: browser session ready`);
+                        } catch (e) {
+                            console.log(`[Tracking] Auto-scrape: cannot open browser: ${e.message?.substring(0, 60)}`);
+                        }
+
+                        try {
+                            const posts = await scrapeProfilePosts({ profileId, cookies, fbDtsg, limit: 10, saveDir, page: browserPage });
                         console.log(`[Tracking] Auto-scrape: scraped ${posts.length} posts`);
 
                         let saved = 0;
@@ -187,8 +228,7 @@ exports.createTracking = async (req, res) => {
                                 }
 
                                 // Videos đã download sẵn từ scraper
-                                const downloadedVideos = (post.videos || []).map(v => {
-                                    if (!v) return null;
+                                const downloadedVideos = normalizeVideos(post.videos).map(v => {
                                     if (v.startsWith('/uploads/')) return v;
                                     // Convert absolute path → relative URL
                                     const normalized = v.replace(/\\/g, '/');
@@ -211,11 +251,18 @@ exports.createTracking = async (req, res) => {
                         });
 
                         scrapeResult = { scraped: saved };
+                        } catch (e) {
+                            console.error('[Tracking] Auto-scrape inner error:', e.message);
+                        }
                     }
                 }
             }
         } catch (e) {
             console.error('[Tracking] Auto-scrape error:', e.message);
+        } finally {
+            if (browserCtx) {
+                try { await browserCtx.close(); } catch (_) {}
+            }
         }
 
         // Auto-repost cho các bài vừa lưu (fire-and-forget)
@@ -452,6 +499,9 @@ exports.scrapeTracking = async (req, res) => {
 
         // Scrape theo type
         let posts = [];
+        let browserContext = null;
+        let browserPage = null;
+
         if (trackingType === 'group') {
             posts = await scrapeGroupPosts({
                 groupId: targetId, cookies, fbDtsg,
@@ -459,11 +509,37 @@ exports.scrapeTracking = async (req, res) => {
                 saveDir,
             });
         } else {
-            posts = await scrapeProfilePosts({
-                profileId: targetId, cookies, fbDtsg,
-                limit: scrapeLimit + existingPostIds.size,
-                saveDir,
-            });
+            // Profile/Page: mở browser session để GraphQL call từ F12 approach
+            try {
+                console.log(`[Scrape] Opening browser session for profile/page scrape...`);
+                const existingSessionDir = channel.storageStatePath ? path.dirname(normalizeEncryptedValue(channel.storageStatePath)) : '';
+                const ctx = await getOrOpenFacebookContext(channel.userId, channel.accountName, channel.accountType, 'FB', {
+                    headless: false,
+                    existingSessionDir,
+                });
+                browserContext = ctx.context;
+                browserPage = browserContext.pages()[0] || await browserContext.newPage();
+                console.log(`[Scrape] Browser session ready, page=${browserPage.url()}`);
+            } catch (e) {
+                console.log(`[Scrape] Cannot open browser session: ${e.message?.substring(0, 80)}, falling back to axios`);
+            }
+
+            try {
+                posts = await scrapeProfilePosts({
+                    profileId: targetId, cookies, fbDtsg,
+                    limit: scrapeLimit + existingPostIds.size,
+                    saveDir,
+                    page: browserPage,
+                });
+            } finally {
+                // Đóng browser context sau khi scrape xong
+                if (browserContext) {
+                    try {
+                        await browserContext.close();
+                        console.log(`[Scrape] Browser session closed`);
+                    } catch (_) {}
+                }
+            }
         }
         console.log(`[Scrape] Scrape xong: ${posts.length} posts`);
 
@@ -581,8 +657,9 @@ exports.scrapeTracking = async (req, res) => {
                     }
                 } else {
                     // Profile/Page: video đã download sẵn từ scraper
-                    for (let v = 0; v < (post.videos || []).length; v++) {
-                        const videoUrl = post.videos[v];
+                    const normVideos = normalizeVideos(post.videos);
+                    for (let v = 0; v < normVideos.length; v++) {
+                        const videoUrl = normVideos[v];
                         if (!videoUrl) continue;
 
                         // Đã download rồi → dùng luôn
@@ -596,7 +673,7 @@ exports.scrapeTracking = async (req, res) => {
                             const videoName = `${post.postId}_video_${v + 1}.mp4`;
                             console.log(`[Download] Fallback video ${v + 1}: ${videoUrl.substring(0, 80)}...`);
                             const savedPath = await videoDownloadQueue.add(
-                                () => downloadGroupVideo(videoUrl, postDir, videoName),
+                                () => downloadGroupVideo(videoUrl, postDir, videoName, cookies),
                                 `${post.postId}_video_${v + 1}`
                             );
                             if (savedPath) {
@@ -808,8 +885,7 @@ exports.fixVideoPaths = async (req, res) => {
         let fixed = 0;
 
         for (const post of posts) {
-            const newVideos = post.videos.map(v => {
-                if (!v) return v;
+            const newVideos = normalizeVideos(post.videos).map(v => {
                 // Convert absolute Windows path → relative URL
                 if (v.includes('\\') || (v.includes(':') && v.includes('uploads'))) {
                     const normalized = v.replace(/\\/g, '/');
@@ -817,7 +893,7 @@ exports.fixVideoPaths = async (req, res) => {
                     if (idx >= 0) return normalized.substring(idx);
                 }
                 return v;
-            });
+            }).filter(Boolean);
 
             const changed = newVideos.some((v, i) => v !== post.videos[i]);
             if (changed) {

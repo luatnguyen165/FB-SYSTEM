@@ -121,6 +121,12 @@
                 }
             });
 
+            // Listen for queue status updates
+            socket.on('scan:queue-update', function (data) {
+                console.log('[AI Scan] Queue update:', data);
+                updateQueueStatus(data);
+            });
+
             // Listen for individual analysis results
             socket.on('scan:analysis-done', function (data) {
                 const { result } = data;
@@ -166,6 +172,37 @@
         if (bar && total > 0) {
             var pct = Math.round((current / total) * 100);
             bar.style.width = pct + '%';
+        }
+    }
+
+    // ============================================================
+    // QUEUE STATUS UI
+    // ============================================================
+    function updateQueueStatus(data) {
+        var panel = document.getElementById('scanProgressPanel');
+        var info = document.getElementById('scanProgressInfo');
+        if (!panel || !info) return;
+
+        var pending = data.pending || [];
+        var running = data.running || [];
+        var completed = data.completed || [];
+
+        if (running.length > 0) {
+            panel.style.display = 'block';
+            var msg = 'Đang quét: ' + running.map(function(r) { return r.name || r.configId; }).join(', ');
+            if (pending.length > 0) msg += ' (' + pending.length + ' đang chờ)';
+            info.textContent = msg;
+        } else if (pending.length > 0) {
+            panel.style.display = 'block';
+            info.textContent = 'Hàng đợi: ' + pending.length + ' cấu hình đang chờ quét...';
+        } else if (completed.length > 0) {
+            var last = completed[completed.length - 1];
+            if (last.success) {
+                info.textContent = '✓ Đã quét xong: ' + last.name;
+                setTimeout(function() { panel.style.display = 'none'; }, 3000);
+            } else {
+                info.textContent = '✕ Lỗi quét: ' + last.name + (last.error ? ' - ' + last.error : '');
+            }
         }
     }
 

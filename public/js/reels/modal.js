@@ -139,6 +139,8 @@ function fillReelsForm(schedule) {
     const videoPlayer = document.getElementById('phoneMockupVideoTag');
 
     if (captionInput) captionInput.value = schedule.caption || '';
+    if (typeof window.initCaptionEditor === 'function') window.initCaptionEditor();
+    if (window.captionEditorAPI) window.captionEditorAPI.setText(schedule.caption || '');
     updateLiveMobilePreview();
     const timeInput = document.getElementById('modalTimeInput');
     if (schedule.scheduledAt) {
@@ -196,6 +198,7 @@ function resetReelsForm() {
     const posterEl = document.getElementById('phoneMockupPosterTag');
 
     if (captionInput) captionInput.value = '';
+    if (window.captionEditorAPI) window.captionEditorAPI.setText('');
     const titleInput = document.getElementById('modalVideoTitleInput');
     if (titleInput) titleInput.value = '';
     updateLiveMobilePreview();
@@ -281,14 +284,16 @@ function openCreatePostModal(dayNumber) {
     }
     logReelsUiStep('open-modal', `currentSchedule=${currentEditingReels?._id || 'new'}`);
     document.getElementById('createPostModal')?.classList.add('open');
+    // Init Quill khi modal visible
+    if (typeof window.initCaptionEditor === 'function') window.initCaptionEditor();
     updateReelsRunNowButtonState();
     updateReelsSubmitButtonState();
 }
 
 function refreshReelsModalUI() {
     const preview = document.getElementById('livePreviewCaption');
-    const caption = document.getElementById('modalCaptionInput')?.value || '';
-    if (preview) preview.textContent = caption.trim() || 'Nội dung Reels sẽ hiển thị tại đây.';
+    const caption = window.captionEditorAPI ? window.captionEditorAPI.getText() : (document.getElementById('modalCaptionInput')?.value || '');
+    if (preview) preview.textContent = caption || 'Nội dung Reels sẽ hiển thị tại đây.';
 }
 
 function closeCreatePostModal() {
@@ -427,6 +432,14 @@ async function submitReelsSchedule() {
     logReelsUiStep('submit-schedule-start');
     const caption = document.getElementById('modalCaptionInput')?.value || '';
     syncReelsScheduleTimeInput();
+
+    // Giới hạn 1000 ký tự cho tất cả nền tảng (Threads tự truncate xuống 500 bên backend)
+    if (caption.length > 1000) {
+        showToast(`Nội dung vượt quá 1000 ký tự (${caption.length}/1000). Vui lòng rút ngắn!`, 'warning');
+        document.getElementById('modalCaptionInput')?.focus();
+        return false;
+    }
+
     const scheduledAt = document.getElementById('modalTimeInput')?.value;
     const platforms = Array.from(document.querySelectorAll('.platform-check:checked')).map(cb => cb.value);
     const accounts = Array.from(document.querySelectorAll('input[name="modalAccSelect"]:checked')).map(cb => cb.value);

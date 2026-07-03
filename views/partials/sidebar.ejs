@@ -36,12 +36,12 @@
                 chsByPlatform[ch.platform].push(ch);
             });
         %>
-        <li class="sidebar-group accounts-group" data-sidebar-group-id="accounts">
+        <li class="sidebar-group accounts-group<%= currentPage === 'channels' ? ' is-open' : '' %>" data-sidebar-group-id="accounts">
             <button
                 type="button"
                 class="sidebar-group-toggle account-group-toggle"
                 data-sidebar-group-toggle="accounts"
-                aria-expanded="false"
+                aria-expanded="<%= currentPage === 'channels' ? 'true' : 'false' %>"
             >
                 <span class="sidebar-group-toggle__label">
                     <i class="fa-solid fa-plug"></i>
@@ -76,22 +76,21 @@
         <% } %>
 
         <!-- ✍️ AI VIẾT BÀI -->
-        <% if (feat['ai-content'] !== false) { %>
-        <li class="menu-item <%= currentPage === 'ai-content' ? 'active' : '' %>">
-            <a href="/ai-content"><i class="fa-solid fa-wand-magic-sparkles"></i>AI Viết Bài Tự Động</a>
-        </li>
-        <% } %>
 
         <!-- 📅 LÊN LỊCH ĐĂNG BÀI -->
         <li class="menu-section-title"><i class="fa-solid fa-calendar-check"></i>Lên Lịch & Đăng Bài</li>
 
         <% if (feat['schedule-manager'] !== false || feat['schedule-post'] !== false || feat['schedule-reels'] !== false || feat['schedule-archive'] !== false) { %>
-        <li class="sidebar-group" data-sidebar-group-id="schedule">
+        <%
+            const schedulePages = ['schedule-manager', 'schedule-post', 'schedule-reels', 'schedule-archive'];
+            const isScheduleOpen = schedulePages.includes(currentPage);
+        %>
+        <li class="sidebar-group<%= isScheduleOpen ? ' is-open' : '' %>" data-sidebar-group-id="schedule">
             <button
                 type="button"
                 class="sidebar-group-toggle"
                 data-sidebar-group-toggle="schedule"
-                aria-expanded="false"
+                aria-expanded="<%= isScheduleOpen ? 'true' : 'false' %>"
             >
                 <span class="sidebar-group-toggle__label">
                     <i class="fa-solid fa-calendar-days"></i>
@@ -128,12 +127,16 @@
         <li class="menu-section-title"><i class="fa-solid fa-robot"></i>AI Marketing Tự Động</li>
 
         <% if (feat['ai-scan'] !== false || feat['ai-comments'] !== false || feat['comment-play'] !== false || feat['schedule-groups'] !== false) { %>
-        <li class="sidebar-group" data-sidebar-group-id="ai-marketing">
+        <%
+            const aiMarketingPages = ['ai-scan', 'ai-comments', 'comment-play', 'schedule-groups'];
+            const isAiMarketingOpen = aiMarketingPages.includes(currentPage);
+        %>
+        <li class="sidebar-group<%= isAiMarketingOpen ? ' is-open' : '' %>" data-sidebar-group-id="ai-marketing">
             <button
                 type="button"
                 class="sidebar-group-toggle"
                 data-sidebar-group-toggle="ai-marketing"
-                aria-expanded="false"
+                aria-expanded="<%= isAiMarketingOpen ? 'true' : 'false' %>"
             >
                 <span class="sidebar-group-toggle__label">
                     <i class="fa-solid fa-bullseye"></i>
@@ -168,12 +171,16 @@
 
         <!-- 🎯 NGHIÊN CỨU ĐỐI THỦ -->
         <% if (feat.tracking !== false) { %>
-        <li class="sidebar-group" data-sidebar-group-id="tracking">
+        <%
+            const trackingPages = ['tracking-profile', 'tracking-page', 'tracking-group'];
+            const isTrackingOpen = trackingPages.includes(currentPage);
+        %>
+        <li class="sidebar-group<%= isTrackingOpen ? ' is-open' : '' %>" data-sidebar-group-id="tracking">
             <button
                 type="button"
                 class="sidebar-group-toggle"
                 data-sidebar-group-toggle="tracking"
-                aria-expanded="false"
+                aria-expanded="<%= isTrackingOpen ? 'true' : 'false' %>"
             >
                 <span class="sidebar-group-toggle__label">
                     <i class="fa-solid fa-binoculars"></i>
@@ -196,12 +203,17 @@
         <% } %>
 
         <!-- 📊 THU THẬP DỮ LIỆU -->
-        <li class="sidebar-group" data-sidebar-group-id="data-collection">
+        <% if (feat['comment-crawler'] !== false) { %>
+        <%
+            const dataCollectionPages = ['comment-crawler', 'tiktok-tracker', 'douyin-tracker'];
+            const isDataCollectionOpen = dataCollectionPages.includes(currentPage);
+        %>
+        <li class="sidebar-group<%= isDataCollectionOpen ? ' is-open' : '' %>" data-sidebar-group-id="data-collection">
             <button
                 type="button"
                 class="sidebar-group-toggle"
                 data-sidebar-group-toggle="data-collection"
-                aria-expanded="false"
+                aria-expanded="<%= isDataCollectionOpen ? 'true' : 'false' %>"
             >
                 <span class="sidebar-group-toggle__label">
                     <i class="fa-solid fa-database"></i>
@@ -213,7 +225,31 @@
                 <li class="menu-item <%= currentPage === 'comment-crawler' ? 'active' : '' %>">
                     <a href="/tracking/comments"><i class="fa-brands fa-facebook-messenger"></i>FB Comment Crawler</a>
                 </li>
+                <li class="menu-item <%= currentPage === 'tiktok-tracker' ? 'active' : '' %>">
+                    <a href="/tiktok-tracker"><i class="fa-brands fa-tiktok"></i>TikTok Tracker</a>
+                </li>
+                <li class="menu-item <%= currentPage === 'douyin-tracker' ? 'active' : '' %>">
+                    <a href="/douyin-tracker"><i class="fa-solid fa-music"></i>Douyin Tracker</a>
+                </li>
             </ul>
+        </li>
+        <% } %>
+
+        <!-- 🎬 VIDEO DUBBING -->
+        <% if (feat['video-dubbing'] !== false) { %>
+        <li class="menu-item <%= currentPage === 'video-dubbing' ? 'active' : '' %>">
+            <a href="/video-dubbing"><i class="fa-solid fa-language"></i>Video Dubbing</a>
+        </li>
+        <% } %>
+
+        <!-- 🐛 VIDEO BUGGING -->
+        <li class="menu-item <%= currentPage === 'video-bugs' ? 'active' : '' %>">
+            <a href="/video-bugs"><i class="fa-solid fa-bug"></i>Video Bugging</a>
+        </li>
+
+        <!-- 🛡️ BYPASS REPORT -->
+        <li class="menu-item <%= currentPage === 'bypass-report' ? 'active' : '' %>">
+            <a href="/bypass-report"><i class="fa-solid fa-shield-halved"></i>Bypass Report</a>
         </li>
 
         <!-- 💬 HỖ TRỢ -->

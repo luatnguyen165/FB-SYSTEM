@@ -51,20 +51,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // ---- Target platform checkbox toggle ----
-    document.querySelectorAll('.target-cb').forEach(function (cb) {
-        cb.addEventListener('change', function () {
-            const row = this.closest('.target-platform-row');
-            const body = row.querySelector('.target-platform-body');
-            const select = row.querySelector('.target-account-select');
-            select.disabled = !this.checked;
-            body.style.display = this.checked ? 'block' : 'none';
-            if (this.checked && select.options.length <= 1) {
-                loadChannelOptions(select, this.value);
-            }
-        });
-    });
-
     // ---- Submit form ----
     form.addEventListener('submit', async function (e) {
         e.preventDefault();
@@ -72,31 +58,34 @@ document.addEventListener('DOMContentLoaded', function () {
         const url = isEdit ? '/tracking/api/update/' + trackingIdInput.value : '/tracking/api/create';
         const method = isEdit ? 'PUT' : 'POST';
 
-        // Collect target platforms
+                // Collect target platforms from chip row + account grid
         const targetPlatforms = [];
-        document.querySelectorAll('.target-cb:checked').forEach(function (cb) {
-            const row = cb.closest('.target-platform-row');
-            const select = row.querySelector('.target-account-select');
-            const titleInput = row.querySelector('.target-mapping-title');
-            const captionInput = row.querySelector('.target-mapping-caption');
-            const hashtagsInput = row.querySelector('.target-mapping-hashtags');
-            const tagsInput = row.querySelector('.target-mapping-tags');
-            const accountId = select.value;
-            if (accountId) {
-                const mapping = {
-                    title: titleInput ? titleInput.value.trim() : '',
-                    caption: captionInput ? captionInput.value.trim() : '',
-                    hashtags: parseHashtagCsv(hashtagsInput ? hashtagsInput.value : ''),
-                    tags: parseCsv(tagsInput ? tagsInput.value : '')
-                };
+        const activeChips = document.querySelectorAll('.platform-chip-new.active:not(.disabled)');
+        const checkedAccounts = document.querySelectorAll('#accountGrid .account-item input[type="checkbox"]:checked');
+        for (const chip of activeChips) {
+            const platform = chip.dataset.platform;
+            const platformAccounts = [];
+            for (const cb of checkedAccounts) {
+                if (cb.dataset.platform === platform) {
+                    platformAccounts.push(cb);
+                }
+            }
+            // Nếu platform được chọn nhưng không có account nào được check, bỏ qua
+            if (platformAccounts.length === 0) continue;
+            for (const accountCb of platformAccounts) {
                 targetPlatforms.push({
-                    platform: cb.value,
-                    accountId: accountId,
+                    platform: platform.toLowerCase(),
+                    accountId: accountCb.value,
                     enabled: true,
-                    mapping: mapping
+                    mapping: {
+                        title: '',
+                        caption: '{{text}}',
+                        hashtags: [],
+                        tags: []
+                    }
                 });
             }
-        });
+        }
 
         const body = {
             name: nameInput.value.trim(),
@@ -201,13 +190,12 @@ function openAddModal() {
     document.getElementById('trackingId').value = '';
     document.getElementById('trackingForm').reset();
     document.getElementById('modalSubmitBtn').innerHTML = '<i class="fa-solid fa-plus"></i> Thêm';
-    // Reset target selects
-    document.querySelectorAll('.target-account-select').forEach(function (sel) {
-        sel.disabled = true;
-        sel.innerHTML = '<option value="">Chọn tài khoản</option>';
+    // Reset chips và account grid
+    document.querySelectorAll('.platform-chip-new').forEach(function(el) {
+        el.classList.remove('active');
     });
-    document.querySelectorAll('.target-platform-body').forEach(function (body) { body.style.display = 'none'; });
-    document.querySelectorAll('.target-cb').forEach(function (cb) { cb.checked = false; });
+    var grid = document.getElementById('accountGrid');
+    if (grid) { grid.innerHTML = ''; grid.style.display = 'none'; }
     var cookiesGroup = document.getElementById('cookiesUploadGroup');
     if (cookiesGroup) cookiesGroup.style.display = 'none';
     document.getElementById('trackingModal').style.display = 'flex';
@@ -242,32 +230,28 @@ function editTracking(id) {
                 document.getElementById('sourceAccountId').value = item.sourceAccountId._id || item.sourceAccountId;
             }
 
-            // Set target platforms
+                        // Set target platforms - activate chips + populate grid + check accounts
             if (item.targetPlatforms && item.targetPlatforms.length > 0) {
-                item.targetPlatforms.forEach(function (tp) {
-                    var cb = document.querySelector('.target-cb[value="' + tp.platform + '"]');
-                    if (cb) {
-                        cb.checked = true;
-                        var row = cb.closest('.target-platform-row');
-                        var body = row.querySelector('.target-platform-body');
-                        var select = row.querySelector('.target-account-select');
-                        var titleInput = row.querySelector('.target-mapping-title');
-                        var captionInput = row.querySelector('.target-mapping-caption');
-                        var hashtagsInput = row.querySelector('.target-mapping-hashtags');
-                        var tagsInput = row.querySelector('.target-mapping-tags');
-                        select.disabled = false;
-                        if (body) body.style.display = 'block';
-                        // Load accounts then set
-                        loadChannelOptions(select, tp.platform, function () {
-                            select.value = tp.accountId._id || tp.accountId;
-                        });
-                        // Fill mapping
-                        var mapping = tp.mapping || {};
-                        if (titleInput) titleInput.value = mapping.title || '';
-                        if (captionInput) captionInput.value = mapping.caption || '';
-                        if (hashtagsInput) hashtagsInput.value = (mapping.hashtags || []).join(' ');
-                        if (tagsInput) tagsInput.value = (mapping.tags || []).join(', ');
-                    }
+                // First reset all
+                document.querySelectorAll('.platform-chip-new').forEach(el => el.classList.remove('active'));
+
+                // Collect unique platforms
+                const uniquePlatforms = [...new Set(item.targetPlatforms.map(tp => tp.platform.toUpperCase()))];
+
+                // Activate chips
+                uniquePlatforms.forEach(code => {
+                    const chip = document.querySelector('.platform-chip-new[data-platform="' + code + '"]');
+                    if (chip) chip.classList.add('active');
+                });
+
+                // Render account grid with current selection
+                renderAccountGrid();
+
+                // Then check the saved accounts
+                item.targetPlatforms.forEach(tp => {
+                    const accountId = String(tp.accountId._id || tp.accountId);
+                    const cb = document.querySelector('#accountGrid .account-item input[type="checkbox"][value="' + accountId + '"]');
+                    if (cb) cb.checked = true;
                 });
             }
 
@@ -341,6 +325,78 @@ function loadChannelOptions(select, platform, callback) {
         });
 }
 
+
+// ---- Chip click handler + Account Grid render ----
+function initPlatformChips() {
+    document.querySelectorAll('.platform-chip-new:not(.disabled)').forEach(function(chip) {
+        chip.addEventListener('click', function() {
+            this.classList.toggle('active');
+            renderAccountGrid();
+        });
+    });
+}
+
+function renderAccountGrid() {
+    var grid = document.getElementById('accountGrid');
+    if (!grid) return;
+    var accounts = window.__platformAccounts || {};
+    var activePlatforms = [];
+    document.querySelectorAll('.platform-chip-new.active').forEach(function(chip) {
+        activePlatforms.push(chip.dataset.platform);
+    });
+
+    if (activePlatforms.length === 0) {
+        grid.innerHTML = '';
+        grid.style.display = 'none';
+        return;
+    }
+
+    grid.style.display = 'grid';
+    var html = '';
+    var platformIcons = {
+        FB: 'fa-brands fa-facebook', IG: 'fa-brands fa-instagram',
+        TT: 'fa-brands fa-tiktok', YT: 'fa-brands fa-youtube',
+        PI: 'fa-brands fa-pinterest', TH: 'fa-brands fa-threads'
+    };
+    var platformColors = {
+        FB: '#1877F2', IG: '#E4405F', TT: '#000000',
+        YT: '#FF0000', PI: '#E60023', TH: '#000000'
+    };
+    var typeClassMap = {
+        'Fanpage': 'fanpage', 'Creator': 'creator', 'Cá nhân': 'personal'
+    };
+
+    activePlatforms.forEach(function(code) {
+        var platformAccounts = accounts[code] || [];
+        if (platformAccounts.length === 0) return;
+        platformAccounts.forEach(function(ch) {
+            var typeClass = typeClassMap[ch.accountType] || 'personal';
+            html += '<label class="account-item">';
+            html += '<input type="checkbox" value="' + ch._id + '" data-platform="' + code + '">';
+            html += '<i class="' + (platformIcons[code] || 'fa-solid fa-globe') + '" style="color:' + (platformColors[code] || '#666') + ';font-size:0.9rem;"></i>';
+            html += '<div class="account-item-info">';
+            html += '<span class="account-item-name">' + escapeHtml(ch.accountName) + '</span>';
+            html += '<span class="account-type-pill account-type-pill--' + typeClass + '">' + (ch.accountType || 'Cá nhân') + '</span>';
+            html += '</div></label>';
+        });
+    });
+
+    grid.innerHTML = html || '<div style="grid-column:1/-1;padding:16px;text-align:center;color:var(--text-muted);font-size:13px;">Không có tài khoản nào cho nền tảng đã chọn</div>';
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Init chips when modal opens
+document.addEventListener('click', function(e) {
+    var chip = e.target.closest('.platform-chip-new:not(.disabled)');
+    if (chip) {
+        chip.classList.toggle('active');
+        renderAccountGrid();
+    }
+});
 // ---- Toast notification ----
 function showToast(type, message) {
     // Remove existing toasts

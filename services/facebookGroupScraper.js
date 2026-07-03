@@ -113,18 +113,22 @@ function extractMedia(node, rawText) {
     };
 
     const addVideo = (m, postPermalink) => {
-        // Ưu tiên permalink_url cho download
+        // Ưu tiên direct CDN URLs từ GraphQL response
+        const directUrl = m.playable_url || m.playable_url_quality_hd || m.browser_native_hd_url || m.browser_native_sd_url || '';
+        if (directUrl) {
+            videos.push({ url: directUrl, reelUrl: directUrl });
+            return;
+        }
+        // Fallback: permalink_url
         if (m.permalink_url) {
             videos.push({ url: m.permalink_url, reelUrl: m.permalink_url });
-        } else {
-            const url = m.playable_url || m.playable_url_quality_hd || m.browser_native_hd_url || '';
-            if (url) {
-                videos.push({ url, reelUrl: url });
-            } else if (m.id) {
-                // Không có direct URL → dùng video ID tạo URL
-                const videoByIdUrl = `https://www.facebook.com/watch/?v=${m.id}`;
-                videos.push({ url: videoByIdUrl, reelUrl: videoByIdUrl });
-            }
+            return;
+        }
+        // Fallback: video ID → Graph API URL
+        if (m.id) {
+            const videoId = m.id;
+            // Use graph.facebook.com to get direct video URL
+            videos.push({ url: `https://www.facebook.com/watch/?v=${videoId}`, reelUrl: `https://www.facebook.com/watch/?v=${videoId}`, videoId });
         }
     };
 
@@ -265,15 +269,12 @@ async function fetchCdnUrlFromGraphApi(videoId, cookies) {
     try {
         const cookieHeader = Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ');
 
-        // Fetch fb_dtsg từ video page
-        const videoPageUrl = `https://www.facebook.com/watch/?v=${videoId}`;
-        const homeR = await axios.get(videoPageUrl, {
-            headers: { 'user-agent': 'Mozilla/5.0', 'cookie': cookieHeader },
-            timeout: 15000, responseType: 'text',
-        });
-        const html = String(homeR.data);
-        const dtsgMatch = html.match(/"token":"([A-Za-z0-9:_-]{20,})"/);
-        const fbDtsg = dtsgMatch ? dtsgMatch[1] : '';
+        // Get fb_dtsg from home page (same method as fetchFbDtsg)
+        const fbDtsg = await fetchFbDtsg(cookies);
+        if (!fbDtsg) {
+            console.log(`[Graph API] No fb_dtsg, cannot query video`);
+            return null;
+        }
 
         // Query video info via GraphQL
         const payload = {
@@ -289,7 +290,7 @@ async function fetchCdnUrlFromGraphApi(videoId, cookies) {
             headers: {
                 'user-agent': 'Mozilla/5.0',
                 'content-type': 'application/x-www-form-urlencoded',
-                'origin': 'https://www.facebook.com',
+                origin: 'https://www.facebook.com',
                 'cookie': cookieHeader,
             },
             timeout: 15000,
@@ -319,57 +320,140 @@ async function fetchCdnUrlFromGraphApi(videoId, cookies) {
     return null;
 }
 
-// ==================== DOWNLOAD VIDEO (facebook-video-download-api.py) ====================
+// ==================== DOWNLOAD VIDEO (yt-dlp + Playwright fallback) ====================
 async function downloadGroupVideo(videoUrl, saveDir, filename = '', cookies = {}) {
     if (!videoUrl) return null;
     if (!filename) {
-        const id = videoUrl.match(/videos?\/(\d+)/)?.[1] || Date.now();
+        const id = videoUrl.match(/videos?\/(\d+)/)?.[1] || videoUrl.match(/v=(\d+)/)?.[1] || Date.now();
         filename = `video_${id}.mp4`;
     }
     const filepath = path.join(saveDir, filename);
     fs.mkdirSync(saveDir, { recursive: true });
 
-    const pythonScript = path.join(__dirname, '..', 'utils', 'facebook-video-download-api.py');
-
-    for (let attempt = 1; attempt <= 2; attempt++) {
+    // Method 1: yt-dlp (fast, works for most videos)
+    if (cookies && Object.keys(cookies).length > 0) {
+        const cookieFile = path.join(saveDir, '.fb_cookies.txt');
         try {
-            if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
-
-            console.log(`[Video] Attempt ${attempt}: ${videoUrl.substring(0, 80)}...`);
-            const result = execSync(`python "${pythonScript}" "${videoUrl}"`, {
-                timeout: 60000,
-                stdio: 'pipe'
-            }).toString();
-
-            // Parse HD hoặc SD URL từ output
-            let videoDownloadUrl = '';
-            const hdMatch = result.match(/HD Link:\s*(https?:\/\/\S+)/);
-            const sdMatch = result.match(/SD Link:\s*(https?:\/\/\S+)/);
-            if (hdMatch) videoDownloadUrl = hdMatch[1].trim();
-            else if (sdMatch) videoDownloadUrl = sdMatch[1].trim();
-
-            if (!videoDownloadUrl) {
-                console.log(`[Video] No video URL found`);
-                continue;
+            const lines = ['# Netscape HTTP Cookie File'];
+            for (const [k, v] of Object.entries(cookies)) {
+                lines.push(`.facebook.com\tTRUE\t/\tTRUE\t0\t${k}\t${v}`);
             }
+            fs.writeFileSync(cookieFile, lines.join('\n'));
 
-            // Download bằng axios
-            console.log(`[Video] Downloading: ${videoDownloadUrl.substring(0, 80)}...`);
-            const res = await axios.get(videoDownloadUrl, {
-                responseType: 'arraybuffer',
-                timeout: 300000,
-                headers: { 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-                maxRedirects: 5,
-            });
+            console.log(`[Video] yt-dlp: ${videoUrl.substring(0, 80)}...`);
+            execSync(
+                `yt-dlp --cookies "${cookieFile}" -o "${filepath}" "${videoUrl}" --no-warnings --quiet`,
+                { timeout: 120000, stdio: 'pipe', env: process.env }
+            );
 
-            if (res.data && res.data.length > 10000) {
-                fs.writeFileSync(filepath, Buffer.from(res.data));
-                console.log(`[Video] ✓ ${filename} (${(res.data.length / 1024 / 1024).toFixed(1)}MB)`);
-                return filepath;
+            if (fs.existsSync(filepath)) {
+                const stat = fs.statSync(filepath);
+                if (stat.size > 10000) {
+                    console.log(`[Video] ✓ ${filename} (${(stat.size / 1024 / 1024).toFixed(1)}MB) via yt-dlp`);
+                    return filepath;
+                }
             }
         } catch (e) {
-            console.log(`[Video] Attempt ${attempt} failed: ${e.message?.substring(0, 100)}`);
-            if (attempt < 2) await new Promise(r => setTimeout(r, 2000));
+            console.log(`[Video] yt-dlp failed: ${e.message?.substring(0, 80)}`);
+        } finally {
+            try { if (fs.existsSync(cookieFile)) fs.unlinkSync(cookieFile); } catch (_) {}
+        }
+    }
+
+    // Method 2: Playwright - navigate to video page, capture response bodies for video CDN
+    if (cookies && Object.keys(cookies).length > 0) {
+        let context = null;
+        try {
+            console.log(`[Video] Playwright fallback: ${videoUrl.substring(0, 80)}...`);
+            const { getOrOpenFacebookContext } = require('./facebook/session');
+            const { normalizeEncryptedValue } = require('../utils/cryptoVault');
+            const Channel = require('../models/Channel');
+
+            const userId = cookies.c_user || '';
+            const channel = await Channel.findOne({ userId: { $exists: true }, accountType: 'Cá nhân', platform: 'FB' }).lean();
+            if (!channel) { console.log(`[Video] No channel found`); return null; }
+
+            const existingSessionDir = channel.storageStatePath ? path.dirname(normalizeEncryptedValue(channel.storageStatePath)) : '';
+            const ctx = await getOrOpenFacebookContext(channel.userId, channel.accountName, channel.accountType, 'FB', { headless: false, existingSessionDir });
+            context = ctx.context;
+
+            const page = context.pages()[0] || await context.newPage();
+
+            // Capture ALL video response bodies as they load
+            const videoData = new Map(); // cdnBase -> { chunks: Buffer[], totalSize: number }
+            page.on('response', async (response) => {
+                try {
+                    const url = response.url();
+                    const ct = response.headers()['content-type'] || '';
+                    const isVideo = ct.includes('video') || (url.includes('.mp4') && (url.includes('fbcdn') || url.includes('scontent')));
+                    if (!isVideo) return;
+
+                    const body = await response.body();
+                    if (!body || body.length === 0) return;
+
+                    // Group by CDN base URL (strip query params for grouping)
+                    const baseUrl = url.split('?')[0];
+                    if (!videoData.has(baseUrl)) {
+                        videoData.set(baseUrl, { chunks: [], totalSize: 0, url });
+                        console.log(`[Video] New stream: ${url.substring(0, 70)}...`);
+                    }
+                    const entry = videoData.get(baseUrl);
+                    entry.chunks.push(body);
+                    entry.totalSize += body.length;
+
+                    if (entry.totalSize > 500000) {
+                        console.log(`[Video] Stream: ${(entry.totalSize / 1024 / 1024).toFixed(1)}MB`);
+                    }
+                } catch (_) {}
+            });
+
+            await page.goto(videoUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
+
+            // Wait for JS to render and video to start loading
+            await page.waitForTimeout(8000);
+
+            // Force play
+            await page.evaluate(() => {
+                const video = document.querySelector('video');
+                if (video) { video.scrollIntoView(); video.play().catch(() => {}); }
+            }).catch(() => {});
+            try {
+                const playBtn = await page.$('button[aria-label*="play"], button[aria-label*="Play"], [data-testid="play"]');
+                if (playBtn) await playBtn.click();
+            } catch (_) {}
+
+            // Wait until no new data for 5s or max 40s
+            let lastIncrease = Date.now();
+            let prevSize = 0;
+            for (let i = 0; i < 40; i++) {
+                await page.waitForTimeout(1000);
+                let currentSize = 0;
+                for (const [, entry] of videoData) currentSize += entry.totalSize;
+                if (currentSize > prevSize) {
+                    prevSize = currentSize;
+                    lastIncrease = Date.now();
+                }
+                if (currentSize > 10000 && (Date.now() - lastIncrease) > 5000) break;
+            }
+
+            // Pick the stream with most data
+            let best = null;
+            for (const [, entry] of videoData) {
+                if (!best || entry.totalSize > best.totalSize) best = entry;
+            }
+
+            if (best && best.totalSize > 10000) {
+                const data = Buffer.concat(best.chunks);
+                fs.writeFileSync(filepath, data);
+                console.log(`[Video] ✓ ${filename} (${(data.length / 1024 / 1024).toFixed(1)}MB) via Playwright`);
+                return filepath;
+            }
+
+            console.log(`[Video] Playwright no video data captured`);
+        } catch (e) {
+            console.log(`[Video] Playwright failed: ${e.message?.substring(0, 80)}`);
+        } finally {
+            try { await context?.close(); } catch (_) {}
         }
     }
 
@@ -585,4 +669,4 @@ async function scrapeGroupPosts({ groupId, cookies, fbDtsg, limit = 10, proxy = 
 }
 
 // ==================== EXPORTS ====================
-module.exports = { scrapeGroupPosts, downloadGroupVideo, downloadImage, extractGroupName, videoDownloadQueue };
+module.exports = { scrapeGroupPosts, downloadGroupVideo, fetchCdnUrlFromGraphApi, downloadImage, extractGroupName, videoDownloadQueue };

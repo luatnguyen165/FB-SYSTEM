@@ -12,37 +12,214 @@ const { analyzeDbResult } = require('./aiAnalysis');
 const { savePostsToDb, crawlGroupPosts } = require('./crawler');
 const { commentOnPostLegacy } = require('./comments');
 
-// ===== RE-ENTRANT GUARD =====
-let isProcessing = false;
+// ===== SCAN QUEUE =====
+// Hàng đợi quét với per-config locking, retry, và status tracking
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 5000;
 
-function isScanSchedulerProcessing() { return isProcessing; }
+const queue = [];          // Array<{ configId, userId, config, priority, enqueuedAt }>
+const running = new Map(); // configId → { status, startedAt, retries, error }
+const completed = [];      // Array<{ configId, name, success, error?, startedAt, finishedAt }> (giữ 50 bản ghi gần nhất)
+let isProcessingLoop = false;
 
-async function emitRealtimeResults(userId, configId) {
+function getQueueStatus() {
+    return {
+        pending: queue.map(j => ({ configId: j.configId, name: j.config.name, enqueuedAt: j.enqueuedAt })),
+        running: Array.from(running.entries()).map(([configId, state]) => ({ configId, ...state })),
+        completed: completed.slice(-20),
+        totalPending: queue.length,
+        totalRunning: running.size
+    };
+}
+
+function isScanSchedulerProcessing() {
+    return isProcessingLoop || queue.length > 0 || running.size > 0;
+}
+
+function emitQueueStatus(userId) {
+    const status = getQueueStatus();
+    socketService.emitQueueUpdate(userId, status);
+}
+
+function emitRealtimeResults(userId, configId) {
     try {
-        const [totalScanned, totalMatched, totalCommented] = await Promise.all([
+        const statsPromise = Promise.all([
             AiScanResult.countDocuments({ userId }),
             AiScanResult.countDocuments({ userId, isMatching: true }),
             AiScanResult.countDocuments({ userId, commentSent: true })
         ]);
-        
-        socketService.emitStatsUpdate(userId, {
-            totalScanned,
-            totalMatched,
-            totalCommented
-        });
-        
-        const latestResults = await AiScanResult.find({ userId, configId })
+
+        statsPromise.then(([totalScanned, totalMatched, totalCommented]) => {
+            socketService.emitStatsUpdate(userId, { totalScanned, totalMatched, totalCommented });
+        }).catch(() => {});
+
+        AiScanResult.find({ userId, configId })
             .sort({ scannedAt: -1 })
             .limit(5)
-            .lean();
-        
-        if (latestResults.length > 0) {
-            socketService.emitNewResults(userId, latestResults);
-        }
+            .lean()
+            .then(latestResults => {
+                if (latestResults.length > 0) {
+                    socketService.emitNewResults(userId, latestResults);
+                }
+            })
+            .catch(() => {});
     } catch (e) {
         console.error('[Realtime] Error emitting results:', e.message);
     }
 }
+
+// ===== QUEUE OPERATIONS =====
+
+/**
+ * Thêm config vào hàng đợi quét
+ * @param {Object} config - AiScanConfig document (plain object)
+ * @param {Object} opts - { priority: 'high'|'normal', userId }
+ */
+function enqueueScan(config, opts = {}) {
+    const configId = String(config._id);
+
+    // Không enqueue nếu config đang chạy
+    if (running.has(configId)) {
+        console.log(`[Queue] Config "${config.name}" đang chạy, bỏ qua`);
+        return false;
+    }
+
+    // Không enqueue trùng lặp trong hàng đợi
+    const existsInQueue = queue.some(j => String(j.configId) === configId);
+    if (existsInQueue) {
+        console.log(`[Queue] Config "${config.name}" đã có trong hàng đợi, bỏ qua`);
+        return false;
+    }
+
+    const job = {
+        configId,
+        userId: config.userId || opts.userId,
+        config: { ...config, maxPostsPerScan: config.maxPostsPerScan || 10 },
+        priority: opts.priority || 'normal',
+        enqueuedAt: new Date()
+    };
+
+    if (job.priority === 'high') {
+        queue.unshift(job); // Ưu tiên lên đầu
+    } else {
+        queue.push(job);
+    }
+
+    console.log(`[Queue] Đã thêm "${config.name}" vào hàng đợi (${queue.length} pending)`);
+    emitQueueStatus(job.userId);
+
+    // Trigger processing loop nếu chưa chạy
+    if (!isProcessingLoop) {
+        processQueue().catch(err => console.error('[Queue] Loop error:', err.message));
+    }
+
+    return true;
+}
+
+/**
+ * Xử lý hàng đợi - chạy tuần tự từng config
+ * Mỗi config được lock riêng, không block config khác
+ */
+async function processQueue() {
+    if (isProcessingLoop) return;
+    isProcessingLoop = true;
+
+    try {
+        while (queue.length > 0) {
+            const job = queue.shift();
+            const configId = String(job.configId);
+
+            // Double-check không chạy trùng
+            if (running.has(configId)) {
+                console.log(`[Queue] Config "${job.config.name}" đang chạy, skip`);
+                continue;
+            }
+
+            // Lock config này
+            const runState = {
+                status: 'running',
+                name: job.config.name,
+                startedAt: new Date(),
+                retries: 0,
+                error: null
+            };
+            running.set(configId, runState);
+            emitQueueStatus(job.userId);
+
+            let success = false;
+            let lastError = null;
+
+            for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+                try {
+                    runState.retries = attempt;
+                    runState.error = null;
+                    if (attempt > 0) {
+                        console.log(`[Queue] Retry ${attempt}/${MAX_RETRIES} cho "${job.config.name}"...`);
+                        await wait(RETRY_DELAY_MS);
+                    }
+
+                    const result = await runAiScan(job.config);
+                    success = true;
+                    console.log(`[Queue] ✓ "${job.config.name}" xong: crawl ${result.totalCrawled}, match ${result.matchingPosts}`);
+
+                    // Cập nhật lastScanAt + nextScanAt
+                    const now = new Date();
+                    await AiScanConfig.updateOne({ _id: configId }, {
+                        $set: {
+                            lastScanAt: now,
+                            nextScanAt: new Date(now.getTime() + (job.config.scanIntervalMinutes || 60) * 60000),
+                            updatedAt: now
+                        }
+                    });
+                    break;
+                } catch (err) {
+                    lastError = err;
+                    runState.error = err.message;
+                    console.error(`[Queue] ✗ "${job.config.name}" attempt ${attempt + 1} failed:`, err.message);
+                }
+            }
+
+            // Unlock
+            running.delete(configId);
+
+            // Lưu completed history
+            completed.push({
+                configId,
+                name: job.config.name,
+                userId: job.userId,
+                success,
+                error: lastError ? lastError.message : null,
+                startedAt: runState.startedAt,
+                finishedAt: new Date()
+            });
+            if (completed.length > 50) completed.splice(0, completed.length - 50);
+
+            emitQueueStatus(job.userId);
+
+            // Gửi notification bell khi xong
+            try {
+                const { emitNotif } = require('../socketService');
+                if (!success) {
+                    emitNotif(job.userId, 'error', {
+                        id: 'ai-scan:' + configId + ':error-' + Date.now(),
+                        title: '❌ AI Scan lỗi: ' + job.config.name,
+                        message: (lastError?.message || 'Lỗi không xác định').substring(0, 200),
+                        source: 'ai-scan'
+                    });
+                }
+            } catch (ne) { /* ignore */ }
+
+            // Delay giữa các config
+            if (queue.length > 0) {
+                await wait(randomInt(2000, 5000));
+            }
+        }
+    } finally {
+        isProcessingLoop = false;
+    }
+}
+
+// ===== CORE SCAN FUNCTIONS (giữ nguyên logic) =====
 
 async function extractFbSessionFromPlaywright(channel) {
     console.log(`[Crawl] Opening Playwright to extract session cookies + fb_dtsg...`);
@@ -125,7 +302,7 @@ async function crawlPhase(config) {
     console.log(`[Crawl] Config: ${config.name} (ID: ${config._id})`);
 
     const channel = await Channel.findById(config.channelId).lean();
-    if (!channel) { console.error(`[Crawl] ❌ Channel not found: ${config.channelId}`); throw new Error('Tài khoản Facebook không tồnatable'); }
+    if (!channel) { console.error(`[Crawl] ❌ Channel not found: ${config.channelId}`); throw new Error('Tài khoản Facebook không tồn tại'); }
 
     let fbSession;
     try {
@@ -140,36 +317,41 @@ async function crawlPhase(config) {
 
     try {
         const groupKeys = config.groupKeys || [];
-        console.log(`[Crawl] Will scan ${groupKeys.length} groups via GraphQL API`);
+        console.log(`[Crawl] Will scan ${groupKeys.length} groups via GraphQL API (concurrency: 5)`);
 
-        for (const groupKey of groupKeys) {
-            try {
+        // Chạy song song 5 groups mỗi batch thay vì tuần tự
+        const CONCURRENT = 5;
+        for (let i = 0; i < groupKeys.length; i += CONCURRENT) {
+            const batch = groupKeys.slice(i, i + CONCURRENT);
+            const batchNum = Math.floor(i / CONCURRENT) + 1;
+            const totalBatches = Math.ceil(groupKeys.length / CONCURRENT);
+            console.log(`[Crawl] Batch ${batchNum}/${totalBatches}: ${batch.length} groups`);
+
+            const batchResults = await Promise.allSettled(batch.map(async (groupKey) => {
                 let groupId = groupKey;
                 const urlMatch = String(groupKey).match(/\/groups\/([^/?&]+)/);
                 if (urlMatch) groupId = urlMatch[1];
 
                 const groupUrl = groupKey.startsWith('http') ? groupKey : `https://www.facebook.com/groups/${groupId}`;
-                console.log(`\n[Crawl] --- Crawling group: ${groupUrl} (ID: ${groupId}) ---`);
+                console.log(`[Crawl] --- Crawling group: ${groupUrl} (ID: ${groupId}) ---`);
 
-                let rawPosts = [];
-                try {
-                    rawPosts = await fetchGroupPosts({
-                        groupId,
-                        cookies: fbSession.cookies,
-                        fbDtsg: fbSession.fbDtsg,
-                        limit: config.maxPostsPerScan || 10,
-                        minComments: 0,
-                        maxRetries: 5
-                    });
-                } catch (fetchErr) {
-                    console.error(`[Crawl] ❌ fetchGroupPosts threw error:`, fetchErr.message);
-                }
+                const rawPosts = await fetchGroupPosts({
+                    groupId,
+                    cookies: fbSession.cookies,
+                    fbDtsg: fbSession.fbDtsg,
+                    limit: config.maxPostsPerScan || 10,
+                    minComments: 0,
+                    maxRetries: 5
+                });
 
-                console.log(`[Crawl] Got ${rawPosts.length} posts from GraphQL API`);
+                console.log(`[Crawl] Got ${rawPosts.length} posts from group ${groupId}`);
                 const saved = await savePostsToDb(rawPosts, config, groupUrl);
-                totalCrawled += saved;
-            } catch (e) {
-                console.error(`[Crawl] ❌ Error crawling group:`, e.message);
+                return saved;
+            }));
+
+            for (const r of batchResults) {
+                if (r.status === 'fulfilled') totalCrawled += r.value;
+                else console.error(`[Crawl] ❌ Group error:`, r.reason?.message);
             }
         }
 
@@ -177,7 +359,7 @@ async function crawlPhase(config) {
         console.log(`\n[Crawl] ===== CRAWL COMPLETE: ${totalCrawled} total posts =====\n`);
         
         if (totalCrawled > 0) {
-            try { await emitRealtimeResults(config.userId, config._id); } catch (e) { console.error('[Crawl] Error emitting:', e.message); }
+            emitRealtimeResults(config.userId, config._id);
         }
         
         return { success: true, totalCrawled };
@@ -193,7 +375,6 @@ async function crawlPhase(config) {
 async function aiAnalyzePhase(config) {
     const settings = await Settings.findOne({ userId: config.userId }).lean();
     
-    // Determine provider & API key from config or settings
     const provider = config.aiProvider || settings?.aiProvider || 'openai';
     let apiKey = '';
     if (provider === 'openai') {
@@ -204,7 +385,6 @@ async function aiAnalyzePhase(config) {
         apiKey = config.anthropicApiKey || settings?.anthropicApiKey || process.env.ANTHROPIC_API_KEY || '';
     }
     
-    // Ensure config has the correct provider fields for analyzeDbResult to use
     if (provider !== 'openai') {
         if (provider === 'openai-compatible') {
             if (!config.openaiCompatibleApiKey) config.openaiCompatibleApiKey = apiKey;
@@ -246,7 +426,7 @@ async function aiAnalyzePhase(config) {
     console.log(`[AI] Done. Analyzed: ${allResults.length}, Matched: ${matchingResults.length}`);
 
     if (allResults.length > 0) {
-        try { await emitRealtimeResults(config.userId, config._id); } catch (e) { console.error('[AI] Error emitting:', e.message); }
+        emitRealtimeResults(config.userId, config._id);
     }
 
     return {
@@ -265,12 +445,10 @@ async function runAiScan(config) {
     const crawlResult = await crawlPhase(config);
     console.log(`[Full Scan] Crawl done: ${crawlResult.totalCrawled} posts`);
 
-    // ===== BỎ QUA AI PHASE NẾU TẮT =====
     let aiResult = { totalAnalyzed: 0, matchingPosts: 0, commentedPosts: 0 };
 
     if (!useAiDetection) {
         console.log(`[Full Scan] ⏭ Skipping AI analysis phase (useAiDetection=false). Posts already matched by keyword.`);
-        // Đếm số bài match đã được set trong crawl phase
         const matchedCount = await AiScanResult.countDocuments({
             configId: config._id,
             isMatching: true
@@ -285,7 +463,6 @@ async function runAiScan(config) {
 
     const settings = await Settings.findOne({ userId: config.userId }).lean();
 
-    // Detect provider and get appropriate API key
     const provider = config.aiProvider || settings?.aiProvider || 'openai';
     let hasKey = false;
     if (provider === 'openai') {
@@ -305,7 +482,6 @@ async function runAiScan(config) {
         }
     } else {
         console.log(`[Full Scan] ⏭ Skipping AI analysis (no API key).`);
-        // Fallback: nếu không có key, dùng keyword filter
         console.log(`[Full Scan] ↪ Falling back to keyword-based matching...`);
         const matchedCount = await AiScanResult.countDocuments({
             configId: config._id,
@@ -314,7 +490,7 @@ async function runAiScan(config) {
         aiResult = { totalAnalyzed: 0, matchingPosts: matchedCount, commentedPosts: 0 };
     }
 
-    // Terminal state → thông báo bell (CHỈ khi chạy xong, không thông báo running)
+    // Terminal state → thông báo bell
     try {
         const { emitNotif } = require('../socketService');
         const totalScanned = (crawlResult && crawlResult.totalCrawled) || 0;
@@ -339,6 +515,8 @@ async function runAiScan(config) {
     return { ...crawlResult, ...aiResult };
 }
 
+// ===== SCHEDULER (push vào queue thay vì chạy trực tiếp) =====
+
 function isInTimeRange(config) {
     const now = new Date();
     const hour = now.getHours();
@@ -356,15 +534,11 @@ function isInTimeRange(config) {
     return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
 }
 
+/**
+ * Kiểm tra configs đủ điều kiện → enqueue vào hàng đợi
+ * Được gọi mỗi 30 giây từ app.js
+ */
 async function runScheduledScans() {
-    // Re-entrant guard: skip nếu tick trước còn đang chạy
-    if (isProcessing) {
-        console.log('[AI Scan Scheduler] Skipped - previous tick still running');
-        return [];
-    }
-    isProcessing = true;
-    const startedAt = Date.now();
-
     try {
         const now = new Date();
         const configs = await AiScanConfig.find({
@@ -372,53 +546,27 @@ async function runScheduledScans() {
             scheduleEnabled: true
         }).lean();
     
-    const toRun = configs.filter(c => {
-        if (!isInTimeRange(c)) return false;
-        if (c.lastScanAt) {
-            const elapsed = (now - new Date(c.lastScanAt)) / 60000;
-            if (elapsed < (c.scanIntervalMinutes || 60)) return false;
+        const toRun = configs.filter(c => {
+            if (!isInTimeRange(c)) return false;
+            if (c.lastScanAt) {
+                const elapsed = (now - new Date(c.lastScanAt)) / 60000;
+                if (elapsed < (c.scanIntervalMinutes || 60)) return false;
+            }
+            if (c.nextScanAt && new Date(c.nextScanAt) > now) return false;
+            return true;
+        });
+        
+        if (toRun.length > 0) {
+            console.log(`[Scheduler] Enqueuing ${toRun.length} configs`);
+            for (const cfg of toRun) {
+                enqueueScan(cfg, { priority: 'normal', userId: cfg.userId });
+            }
         }
-        if (c.nextScanAt && new Date(c.nextScanAt) > now) return false;
-        return true;
-    });
-    
-    console.log(`[Scheduler] Running ${toRun.length} configs`);
-    const results = [];
-    for (const cfg of toRun) {
-        try {
-            const scanConfig = { ...cfg, maxPostsPerScan: cfg.maxPostsPerScan || 10 };
-            await runAiScan(scanConfig);
-            await AiScanConfig.updateOne({ _id: cfg._id }, {
-                $set: {
-                    lastScanAt: new Date(),
-                    nextScanAt: new Date(now.getTime() + (cfg.scanIntervalMinutes || 60) * 60000),
-                    updatedAt: new Date()
-                }
-            });
-            results.push({ configId: cfg._id, name: cfg.name, success: true });
-        } catch (e) {
-            console.error(`[Scheduler] Error ${cfg.name}:`, e.message);
-            // Thông báo bell khi config fail (terminal state)
-            try {
-                const { emitNotif } = require('../socketService');
-                emitNotif(cfg.userId, 'error', {
-                    id: 'ai-scan:' + cfg._id + ':error-' + Date.now(),
-                    title: '❌ AI Scan lỗi: ' + cfg.name,
-                    message: (e.message || 'Lỗi không xác định').substring(0, 200),
-                    source: 'ai-scan'
-                });
-            } catch (ne) { /* ignore */ }
-            results.push({ configId: cfg._id, name: cfg.name, success: false, error: e.message });
-        }
-        await wait(randomInt(3000, 8000));
-    }
-    return results;
-    } finally {
-        isProcessing = false;
-        const elapsed = Math.round((Date.now() - startedAt) / 1000);
-        if (elapsed > 5) {
-            console.log(`[AI Scan Scheduler] Tick xong trong ${elapsed}s`);
-        }
+
+        return toRun.map(c => ({ configId: c._id, name: c.name, enqueued: true }));
+    } catch (err) {
+        console.error('[Scheduler] Error:', err.message);
+        return [];
     }
 }
 
@@ -435,5 +583,9 @@ module.exports = {
     runAiScan,
     isInTimeRange,
     runScheduledScans,
-    playCommentForResult
+    playCommentForResult,
+    // Queue API
+    enqueueScan,
+    getQueueStatus,
+    processQueue
 };

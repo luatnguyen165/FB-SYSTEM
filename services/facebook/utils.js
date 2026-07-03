@@ -1,4 +1,5 @@
 // services/facebook/utils.js
+const { humanLikeTyping } = require('../humanBehaviorService');
 
 function normalizeFacebookProfileUrl(url = '') {
     const raw = String(url || '').trim();
@@ -306,7 +307,7 @@ async function writeTextIntoLocator(page, locator, text, label = 'field') {
                 await target.focus().catch(() => {});
                 await target.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A').catch(() => {});
                 await target.press('Backspace').catch(() => {});
-                await target.type(trimmed, { delay: 20 });
+                await humanLikeTyping(page, trimmed);
             }
 
             await page.waitForTimeout(500);
@@ -318,7 +319,7 @@ async function writeTextIntoLocator(page, locator, text, label = 'field') {
         await target.click({ force: true }).catch(() => {});
         const typed = await writeTextToActiveElement(page, trimmed, `${label}-active`).catch(() => false);
         if (typed) return true;
-        await page.keyboard.type(trimmed, { delay: 20 }).catch(() => {});
+        await humanLikeTyping(page, trimmed);
         return true;
     } catch (err) {
         console.log(`[Reels Upload] ${label}: write failed -> ${err.message || err}`);
@@ -340,10 +341,10 @@ async function writeTextToActiveElement(page, text, label = 'active-element') {
             } else {
                 await active.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A').catch(() => {});
                 await active.press('Backspace').catch(() => {});
-                await active.type(trimmed, { delay: 20 }).catch(() => {});
+                await humanLikeTyping(page, trimmed);
             }
         } else {
-            await page.keyboard.type(trimmed, { delay: 20 }).catch(() => {});
+            await humanLikeTyping(page, trimmed);
         }
 
         await page.waitForTimeout(300);

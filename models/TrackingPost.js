@@ -13,7 +13,7 @@ const TrackingPostSchema = new mongoose.Schema({
 
     // Media
     images: [{ type: String }], // URLs ảnh đã download
-    videos: [{ type: String }], // URLs video đã download
+    videos: [{ type: String }], // URLs video đã download (chuẩn hóa từ object → string URL)
 
     // Metadata
     authorName: { type: String, default: '' },
@@ -34,6 +34,20 @@ const TrackingPostSchema = new mongoose.Schema({
     }],
     repostEnqueuedAt: { type: Date } // Marker idempotency - lần cuối enqueue
 }, { timestamps: true });
+
+// Pre-validate: normalize video objects → URL strings
+TrackingPostSchema.pre('validate', function(next) {
+    if (this.videos && Array.isArray(this.videos)) {
+        this.videos = this.videos.map(v => {
+            if (!v) return null;
+            if (typeof v === 'object') {
+                return v.reelUrl || v.url || v.videoUrl || v.filepath || null;
+            }
+            return String(v);
+        }).filter(Boolean);
+    }
+    next();
+});
 
 TrackingPostSchema.index({ userId: 1, trackingId: 1 });
 TrackingPostSchema.index({ trackingId: 1, postId: 1 }, { unique: true });

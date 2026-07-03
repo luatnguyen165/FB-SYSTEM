@@ -9,16 +9,16 @@ let editGroupNamesMap = {}; // key -> groupName (stored from payload for display
 function setEditGroupNamesFromPayload(payload) {
     editGroupNamesMap = {};
     if (!payload) return;
-    const keys = Array.isArray(payload.targetGroupId)
-        ? payload.targetGroupId
-        : (payload.targetGroupId ? [payload.targetGroupId] : []);
-    const name = payload.targetGroupName || '';
-    // Map each key to the group name (if multiple keys share the same name, store individually)
-    keys.forEach((key, idx) => {
-        // If we have a groupUrl in payload, prefer it as key
-        const actualKey = key;
-        // For backward compat, check if payload has group URL mapping
-        editGroupNamesMap[actualKey] = name;
+    // Use targetGroupIds (array) if available, fallback to targetGroupId
+    const keys = Array.isArray(payload.targetGroupIds) && payload.targetGroupIds.length > 0
+        ? payload.targetGroupIds
+        : (Array.isArray(payload.targetGroupId) ? payload.targetGroupId : (payload.targetGroupId ? [payload.targetGroupId] : []));
+    // Use targetGroupNames (array) if available, fallback to single targetGroupName
+    const names = Array.isArray(payload.targetGroupNames) && payload.targetGroupNames.length > 0
+        ? payload.targetGroupNames
+        : (payload.targetGroupName ? keys.map(() => payload.targetGroupName) : []);
+    keys.forEach((key, i) => {
+        if (key) editGroupNamesMap[key] = names[i] || key;
     });
 }
 
@@ -44,7 +44,7 @@ async function loadEditFacebookGroups(sourceChannelId, preferredGroupKeys = '') 
         return;
     }
 
-    if (dropdown) dropdown.classList.add('open');
+    // KHÔNG tự mở dropdown — chỉ mở khi user click input
     if (loading) loading.style.display = 'block';
     if (empty) empty.style.display = 'none';
     if (list) list.innerHTML = '';
@@ -155,6 +155,37 @@ function renderEditSelectedGroupTags() {
 document.addEventListener('click', function(e) {
     const removeBtn = e.target.closest('.selected-tag__remove[data-action="remove-edit-group"]');
     if (removeBtn) removeEditSelectedGroup(removeBtn.dataset.key);
+
+    // Click vào input wrapper → toggle dropdown + load groups nếu chưa load
+    const inputWrapper = e.target.closest('#editComboboxInputWrapper');
+    if (inputWrapper) {
+        const dropdown = document.getElementById('editGroupComboboxDropdown');
+        const isOpen = dropdown && dropdown.classList.contains('open');
+        if (dropdown) dropdown.classList.toggle('open');
+        // Load groups nếu chưa có data và dropdown đang mở
+        if (!isOpen && editFacebookGroups.length === 0) {
+            const sourceSelect = document.getElementById('editScheduleSourceChannelId');
+            const sourceChannelId = sourceSelect ? sourceSelect.value : '';
+            if (sourceChannelId) {
+                loadEditFacebookGroups(sourceChannelId, editSelectedGroupKeys);
+            }
+        }
+        // Focus input để có thể gõ tìm kiếm ngay
+        const searchInput = document.getElementById('editGroupSearchInput');
+        if (searchInput) setTimeout(() => searchInput.focus(), 50);
+        return;
+    }
+
+    // Click vào group item → chọn/xóa group, giữ dropdown mở
+    const groupItem = e.target.closest('.combobox-item');
+    if (groupItem) return;
+
+    // Click ra ngoài combobox → đóng dropdown
+    const combobox = e.target.closest('#editGroupCombobox');
+    if (!combobox) {
+        const dropdown = document.getElementById('editGroupComboboxDropdown');
+        if (dropdown) dropdown.classList.remove('open');
+    }
 });
 
 function removeEditSelectedGroup(key) {

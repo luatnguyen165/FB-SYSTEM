@@ -132,7 +132,119 @@ async function sendTelegramMessage(botToken, chatId, message) {
     return data;
 }
 
+// ============================================================
+// TELEGRAM REVIEW HELPERS
+// ============================================================
+
+/**
+ * Lấy Telegram config (botToken, chatId) cho user
+ * @param {string} userId
+ * @param {string} overrideChatId - chat ID từ tracking config (optional)
+ * @returns {{ botToken: string, chatId: string } | null}
+ */
+async function getTelegramConfig(userId, overrideChatId) {
+    try {
+        const settings = await Settings.findOne({ userId }).lean();
+        if (!settings) return null;
+        const botToken = normalizeEncryptedValue(settings.telegramBotToken || '');
+        let chatId = overrideChatId ? normalizeEncryptedValue(overrideChatId) : '';
+        if (!chatId) chatId = normalizeEncryptedValue(settings.telegramChatId || '');
+        if (!botToken || !chatId) return null;
+        return { botToken, chatId };
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Gửi video lên Telegram để user duyệt (approve/reject)
+ * @returns {{ ok: boolean, messageId?: number }}
+ */
+async function sendVideoForReview(botToken, chatId, videoDoc, source) {
+    const title = videoDoc.title || videoDoc.description || '(Không tiêu đề)';
+    const author = videoDoc.author || '';
+    const views = videoDoc.viewCount ? videoDoc.viewCount.toLocaleString() : '—';
+    const sourceLabel = source === 'tiktok' ? '🎵 TikTok' : '🎶 Douyin';
+    const url = videoDoc.tiktokUrl || videoDoc.douyinUrl || '';
+
+    const caption = [
+        `📹 *VIDEO MỚI - DUYỆT CROSS-POST*`,
+        ``,
+        `*Nguồn:* ${sourceLabel}`,
+        author ? `*Tác giả:* ${author}` : '',
+        `*Tiêu đề:* ${title.substring(0, 100)}${title.length > 100 ? '...' : ''}`,
+        `*Lượt xem:* ${views}`,
+        url ? `*Link:* ${url}` : '',
+        ``,
+        `👉 Duyệt bên dưới để cross-post`,
+    ].filter(Boolean).join('\n');
+
+    // Send video with inline keyboard
+    const url_api = `https://api.telegram.org/bot${botToken}/sendVideo`;
+    const formData = new FormData();
+    formData.append('chat_id', chatId);
+    formData.append('caption', caption);
+    formData.append('parse_mode', 'Markdown');
+
+    // Read video file
+    const fs = require('fs');
+    const videoPath = videoDoc.downloadPath;
+    if (videoPath && fs.existsSync(videoPath)) {
+        const videoBuffer = fs.readFileSync(videoPath);
+        formData.append('video', new Blob([videoBuffer]), 'video.mp4');
+    } else {
+        return { ok: false, error: 'Video file not found' };
+    }
+
+    // Inline keyboard: Approve / Reject
+    const keyboard = JSON.stringify({
+        inline_keyboard: [
+            [
+                { text: '✅ Duyệt & Đăng', callback_data: `trk_approve:${videoDoc._id}` },
+                { text: '❌ Bỏ qua', callback_data: `trk_reject:${videoDoc._id}` },
+            ]
+        ]
+    });
+    formData.append('reply_markup', keyboard);
+
+    const response = await fetch(url_api, { method: 'POST', body: formData });
+    const data = await response.json();
+
+    if (data.ok) {
+        console.log(`[Telegram] Sent video for review: ${title.substring(0, 40)} (msg_id=${data.result.message_id})`);
+        return { ok: true, messageId: data.result.message_id };
+    } else {
+        console.error(`[Telegram] Failed to send video: ${data.description}`);
+        return { ok: false, error: data.description };
+    }
+}
+
+/**
+ * Send raw video to Telegram (no inline keyboard)
+ */
+async function sendTelegramVideo(botToken, chatId, videoPath, caption) {
+    const fs = require('fs');
+    const url_api = `https://api.telegram.org/bot${botToken}/sendVideo`;
+    const formData = new FormData();
+    formData.append('chat_id', chatId);
+    formData.append('caption', caption || '');
+    if (caption) formData.append('parse_mode', 'Markdown');
+
+    if (videoPath && fs.existsSync(videoPath)) {
+        const videoBuffer = fs.readFileSync(videoPath);
+        formData.append('video', new Blob([videoBuffer]), 'video.mp4');
+    } else {
+        return { ok: false, error: 'Video file not found' };
+    }
+
+    const response = await fetch(url_api, { method: 'POST', body: formData });
+    return await response.json();
+}
+
 module.exports = {
     sendTelegramNotification,
-    NOTIFICATION_TYPES
+    NOTIFICATION_TYPES,
+    getTelegramConfig,
+    sendVideoForReview,
+    sendTelegramVideo,
 };

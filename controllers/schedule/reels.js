@@ -48,7 +48,7 @@ const uploadInstantReels = async (req, res) => {
                 shopeeLinks,
                 profileUrl: facebookChannel.profileUrl || ''
             },
-            headless: false
+            headless: true
         });
 
         sendTelegramNotification(req.user._id, NOTIFICATION_TYPES.SUCCESS, {

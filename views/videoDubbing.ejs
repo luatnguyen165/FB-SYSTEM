@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Dubbing - ReelsFlow AI</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .dubbing-page { max-width: 960px; margin: 0 auto; padding: 20px; }
+
+        .dubbing-card {
+            background: var(--card-bg, #fff);
+            border: 1px solid var(--border-color, #e5e7eb);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .dubbing-card h2 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-primary, #1f2937);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .form-row.full { grid-template-columns: 1fr; }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary, #6b7280);
+            margin-bottom: 6px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color, #d1d5db);
+            border-radius: 8px;
+            font-size: 14px;
+            background: var(--input-bg, #f9fafb);
+            color: var(--text-primary, #1f2937);
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary-color, #6366f1);
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+        }
+
+        .form-group input::placeholder { color: #9ca3af; }
+
+        .range-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .range-row input[type="range"] { flex: 1; }
+
+        .range-row .range-value {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary, #6b7280);
+            min-width: 36px;
+            text-align: right;
+        }
+
+        .switch-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+        }
+
+        .switch-row label { margin-bottom: 0; }
+
+        .btn-start {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 28px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-start:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(99,102,241,0.3); }
+        .btn-start:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        /* Progress */
+        .progress-section { display: none; }
+        .progress-section.active { display: block; }
+
+        .progress-bar-wrapper {
+            background: var(--border-color, #e5e7eb);
+            border-radius: 8px;
+            height: 10px;
+            overflow: hidden;
+            margin: 12px 0;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6, #a78bfa);
+            border-radius: 8px;
+            transition: width 0.5s ease;
+            width: 0%;
+        }
+
+        .progress-status {
+            font-size: 14px;
+            color: var(--text-secondary, #6b7280);
+            margin-bottom: 4px;
+        }
+
+        .progress-percent {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary-color, #6366f1);
+        }
+
+        .progress-detail {
+            font-size: 13px;
+            color: var(--text-tertiary, #9ca3af);
+            margin-top: 4px;
+        }
+
+        /* Result */
+        .result-section { display: none; margin-top: 16px; }
+        .result-section.active { display: block; }
+
+        .result-video {
+            width: 100%;
+            max-height: 400px;
+            border-radius: 8px;
+            background: #000;
+            margin-bottom: 12px;
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn-download {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 20px;
+            background: #10b981;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+
+        .btn-download:hover { background: #059669; }
+
+        .btn-outline {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 20px;
+            background: transparent;
+            color: var(--text-secondary, #6b7280);
+            border: 1px solid var(--border-color, #d1d5db);
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .btn-outline:hover { border-color: var(--primary-color, #6366f1); color: var(--primary-color, #6366f1); }
+
+        /* Jobs list */
+        .jobs-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .jobs-header h2 { margin-bottom: 0; }
+
+        .job-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 16px;
+            border: 1px solid var(--border-color, #e5e7eb);
+            border-radius: 10px;
+            margin-bottom: 8px;
+            transition: background 0.15s;
+        }
+
+        .job-item:hover { background: var(--hover-bg, #f9fafb); }
+
+        .job-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .job-icon.completed { background: #d1fae5; color: #059669; }
+        .job-icon.failed { background: #fee2e2; color: #dc2626; }
+        .job-icon.running { background: #e0e7ff; color: #6366f1; }
+        .job-icon.pending { background: #f3f4f6; color: #9ca3af; }
+
+        .job-info { flex: 1; min-width: 0; }
+
+        .job-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary, #1f2937);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .job-meta {
+            font-size: 12px;
+            color: var(--text-tertiary, #9ca3af);
+            margin-top: 2px;
+        }
+
+        .job-actions {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .btn-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color, #e5e7eb);
+            background: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            color: var(--text-secondary, #6b7280);
+            transition: all 0.15s;
+        }
+
+        .btn-icon:hover { border-color: var(--primary-color, #6366f1); color: var(--primary-color, #6366f1); }
+        .btn-icon.danger:hover { border-color: #dc2626; color: #dc2626; }
+
+        .status-badge {
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .status-badge.completed { background: #d1fae5; color: #059669; }
+        .status-badge.failed { background: #fee2e2; color: #dc2626; }
+        .status-badge.running { background: #e0e7ff; color: #6366f1; }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-tertiary, #9ca3af);
+        }
+
+        .empty-state i { font-size: 40px; margin-bottom: 12px; display: block; }
+
+        .error-msg {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: #dc2626;
+            font-size: 13px;
+            margin-top: 12px;
+            display: none;
+        }
+
+        .error-msg.show { display: flex; align-items: flex-start; gap: 8px; }
+
+        /* Subtitle preview */
+        .subtitle-preview {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color, #e5e7eb);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 12px;
+            font-size: 13px;
+            background: var(--input-bg, #f9fafb);
+        }
+
+        .subtitle-line {
+            padding: 4px 0;
+            border-bottom: 1px solid var(--border-color, #f3f4f6);
+        }
+
+        .subtitle-line:last-child { border-bottom: none; }
+
+        .subtitle-time {
+            font-size: 11px;
+            color: #9ca3af;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+<%- include('partials/sidebar', { currentPage: 'video-dubbing' }) %>
+
+<div class="main-content">
+    <%- include('partials/header') %>
+
+    <div class="content-body">
+        <div class="dubbing-page">
+
+            <!-- Header -->
+            <div style="margin-bottom: 20px;">
+                <h1 style="font-size: 22px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 10px;">
+                    <i class="fa-solid fa-language" style="color: #6366f1;"></i>
+                    Video Dubbing
+                </h1>
+                <p style="font-size: 14px; color: var(--text-secondary, #6b7280);">
+                    Tải video Trung Quốc → Nhận diện giọng nói → Dịch nội dung → Tạo giọng đọc mới → Ghép thành video
+                </p>
+            </div>
+
+            <% if (!hasApiKey) { %>
+            <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
+                <i class="fa-solid fa-triangle-exclamation" style="color: #f59e0b;"></i>
+                <span style="font-size: 13px; color: #92400e;">Chưa cấu hình API Key AI. <a href="/settings" style="font-weight: 600;">Cấu hình ngay</a></span>
+            </div>
+            <% } %>
+
+            <!-- Input Form -->
+            <div class="dubbing-card" id="inputCard">
+                <h2><i class="fa-solid fa-link"></i> Video Input</h2>
+
+                <div class="form-row full">
+                    <div class="form-group">
+                        <label>URL Video (YouTube, Bilibili, Douyin, TikTok...)</label>
+                        <input type="text" id="videoUrl" placeholder="Dán link video vào đây..." autocomplete="off">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Ngôn ngữ đích</label>
+                        <select id="targetLang">
+                            <% targetLanguages.forEach(function(lang) { %>
+                            <option value="<%= lang.code %>" <%= lang.code === 'vi' ? 'selected' : '' %>><%= lang.name %></option>
+                            <% }); %>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Giọng đọc (TTS)</label>
+                        <select id="targetVoice">
+                            <option value="">Đang tải...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>STT Engine (Speech-to-Text)</label>
+                        <select id="sttEngine">
+                            <option value="whisper-cli">Whisper CLI (whisper.cpp / faster-whisper)</option>
+                            <option value="openai-api">OpenAI Whisper API</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>TTS Engine (Text-to-Speech)</label>
+                        <select id="ttsEngine">
+                            <option value="edge-tts">edge-tts (Microsoft, miễn phí)</option>
+                            <option value="gtts">gTTS (Google TTS)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Volume audio gốc</label>
+                        <div class="range-row">
+                            <input type="range" id="originalVolume" min="0" max="100" value="30">
+                            <span class="range-value" id="volumeValue">30%</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="switch-row" style="margin-top: 22px;">
+                            <label style="font-size: 13px; font-weight: 500; color: var(--text-secondary, #6b7280);">Giữ audio gốc (mix)</label>
+                            <label class="switch-toggle">
+                                <input type="checkbox" id="keepOriginal" checked>
+                                <span class="slider-round"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="error-msg" id="errorMsg">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <span id="errorText"></span>
+                </div>
+
+                <button class="btn-start" id="btnStart" onclick="startDubbing()">
+                    <i class="fa-solid fa-play"></i> Bắt đầu Dubbing
+                </button>
+            </div>
+
+            <!-- Progress Section -->
+            <div class="dubbing-card progress-section" id="progressSection">
+                <h2><i class="fa-solid fa-spinner fa-spin"></i> Đang xử lý</h2>
+                <div style="display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px;">
+                    <span class="progress-percent" id="progressPercent">0%</span>
+                    <span class="progress-status" id="progressStatus">Đang chờ...</span>
+                </div>
+                <div class="progress-bar-wrapper">
+                    <div class="progress-bar-fill" id="progressBar"></div>
+                </div>
+                <div class="progress-detail" id="progressDetail">Video: <span id="progressTitle">—</span></div>
+
+                <!-- Result -->
+                <div class="result-section" id="resultSection">
+                    <video class="result-video" id="resultVideo" controls></video>
+                    <div class="result-actions">
+                        <a class="btn-download" id="btnDownload" href="#">
+                            <i class="fa-solid fa-download"></i> Tải video
+                        </a>
+                        <a class="btn-outline" id="btnDownloadSrt" href="#">
+                            <i class="fa-solid fa-closed-captioning"></i> Tải SRT
+                        </a>
+                        <button class="btn-outline" onclick="resetForm()">
+                            <i class="fa-solid fa-rotate-left"></i> Dubbing mới
+                        </button>
+                    </div>
+
+                    <!-- Subtitle Preview -->
+                    <div class="subtitle-preview" id="subtitlePreview" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- Jobs History -->
+            <div class="dubbing-card">
+                <div class="jobs-header">
+                    <h2 style="margin-bottom: 0;"><i class="fa-solid fa-clock-rotate-left"></i> Lịch sử</h2>
+                </div>
+
+                <% if (jobs.length === 0) { %>
+                <div class="empty-state">
+                    <i class="fa-solid fa-film"></i>
+                    <p>Chưa có video nào được dubbing</p>
+                </div>
+                <% } else { %>
+                <div id="jobsList">
+                    <% jobs.forEach(function(job) { %>
+                    <div class="job-item" data-job-id="<%= job.id %>">
+                        <div class="job-icon <%= job.status === 'completed' ? 'completed' : job.status === 'failed' ? 'failed' : ['pending','downloading','extracting','transcribing','translating','tts','merging'].includes(job.status) ? 'running' : 'pending' %>">
+                            <% if (job.status === 'completed') { %>
+                                <i class="fa-solid fa-check"></i>
+                            <% } else if (job.status === 'failed') { %>
+                                <i class="fa-solid fa-xmark"></i>
+                            <% } else { %>
+                                <i class="fa-solid fa-spinner fa-spin"></i>
+                            <% } %>
+                        </div>
+                        <div class="job-info">
+                            <div class="job-title"><%= job.originalTitle || job.url %></div>
+                            <div class="job-meta">
+                                <%= job.targetLang ? job.targetLang.toUpperCase() : '—' %> · 
+                                <%= job.createdAt ? new Date(job.createdAt).toLocaleString('vi-VN') : '—' %>
+                            </div>
+                        </div>
+                        <% if (job.status === 'completed') { %>
+                        <span class="status-badge completed">OK</span>
+                        <% } else if (job.status === 'failed') { %>
+                        <span class="status-badge failed">Lỗi</span>
+                        <% } else { %>
+                        <span class="status-badge running">Đang chạy</span>
+                        <% } %>
+                        <div class="job-actions">
+                            <% if (job.status === 'completed' && job.resultPath) { %>
+                            <a class="btn-icon" href="/video-dubbing/download/<%= job.id %>" title="Tải video">
+                                <i class="fa-solid fa-download"></i>
+                            </a>
+                            <% } %>
+                            <button class="btn-icon danger" onclick="deleteJob('<%= job.id %>')" title="Xóa">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <% }); %>
+                </div>
+                <% } %>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+// ===== Load voices for selected language =====
+const langSelect = document.getElementById('targetLang');
+const voiceSelect = document.getElementById('targetVoice');
+const volumeSlider = document.getElementById('originalVolume');
+const volumeValue = document.getElementById('volumeValue');
+
+async function loadVoices(lang) {
+    try {
+        const res = await fetch(`/video-dubbing/voices/${lang}`);
+        const data = await res.json();
+        voiceSelect.innerHTML = '';
+        (data.voices || []).forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v.id;
+            opt.textContent = `${v.name}`;
+            voiceSelect.appendChild(opt);
+        });
+    } catch (e) {
+        voiceSelect.innerHTML = '<option value="">Không thể tải giọng</option>';
+    }
+}
+
+langSelect.addEventListener('change', () => loadVoices(langSelect.value));
+loadVoices(langSelect.value);
+
+volumeSlider.addEventListener('input', () => {
+    volumeValue.textContent = volumeSlider.value + '%';
+});
+
+// ===== Start dubbing =====
+let currentJobId = null;
+let eventSource = null;
+
+async function startDubbing() {
+    const url = document.getElementById('videoUrl').value.trim();
+    if (!url) {
+        showError('Vui lòng nhập URL video');
+        return;
+    }
+
+    const btn = document.getElementById('btnStart');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang khởi tạo...';
+    hideError();
+
+    try {
+        const res = await fetch('/video-dubbing/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                url,
+                targetLang: langSelect.value,
+                targetVoice: voiceSelect.value,
+                sttEngine: document.getElementById('sttEngine').value,
+                ttsEngine: document.getElementById('ttsEngine').value,
+                keepOriginalAudio: document.getElementById('keepOriginal').checked,
+                originalVolume: volumeSlider.value / 100,
+            }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Lỗi không xác định');
+
+        currentJobId = data.jobId;
+
+        // Show progress section
+        document.getElementById('progressSection').classList.add('active');
+        document.getElementById('resultSection').classList.remove('active');
+        document.getElementById('progressTitle').textContent = url;
+
+        // Start SSE
+        startSSE(currentJobId);
+
+    } catch (err) {
+        showError(err.message);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-play"></i> Bắt đầu Dubbing';
+    }
+}
+
+function startSSE(jobId) {
+    if (eventSource) eventSource.close();
+
+    eventSource = new EventSource(`/video-dubbing/progress/${jobId}`);
+
+    eventSource.onmessage = function(e) {
+        try {
+            const data = JSON.parse(e.data);
+            updateProgress(data);
+
+            if (data.status === 'completed' || data.status === 'failed') {
+                eventSource.close();
+                eventSource = null;
+
+                const btn = document.getElementById('btnStart');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-play"></i> Bắt đầu Dubbing';
+
+                if (data.status === 'completed') {
+                    showResult(data);
+                }
+            }
+        } catch (err) {}
+    };
+
+    eventSource.onerror = function() {
+        eventSource.close();
+        eventSource = null;
+    };
+}
+
+function updateProgress(data) {
+    document.getElementById('progressPercent').textContent = data.progress + '%';
+    document.getElementById('progressBar').style.width = data.progress + '%';
+    document.getElementById('progressStatus').textContent = data.statusText || '...';
+
+    if (data.originalTitle) {
+        document.getElementById('progressTitle').textContent = data.originalTitle;
+    }
+
+    if (data.error) {
+        showError(data.error);
+    }
+}
+
+function showResult(data) {
+    document.getElementById('resultSection').classList.add('active');
+
+    const video = document.getElementById('resultVideo');
+    video.src = `/video-dubbing/download/${data.id}`;
+
+    document.getElementById('btnDownload').href = `/video-dubbing/download/${data.id}`;
+    document.getElementById('btnDownloadSrt').href = `/video-dubbing/srt/${data.id}`;
+
+    // Show subtitle preview
+    if (data.subtitles && data.subtitles.length > 0) {
+        const preview = document.getElementById('subtitlePreview');
+        preview.style.display = 'block';
+        preview.innerHTML = '<div style="font-weight:600;margin-bottom:8px;font-size:13px;"><i class="fa-solid fa-closed-captioning"></i> Subtitle Preview</div>' +
+            data.subtitles.slice(0, 20).map(s =>
+                `<div class="subtitle-line"><span class="subtitle-time">${s.start} → ${s.end}</span><br>${s.text}</div>`
+            ).join('') +
+            (data.subtitles.length > 20 ? `<div class="subtitle-line" style="color:#9ca3af;">... và ${data.subtitles.length - 20} dòng nữa</div>` : '');
+    }
+}
+
+function resetForm() {
+    document.getElementById('progressSection').classList.remove('active');
+    document.getElementById('resultSection').classList.remove('active');
+    document.getElementById('videoUrl').value = '';
+    document.getElementById('videoUrl').focus();
+    hideError();
+}
+
+function showError(msg) {
+    document.getElementById('errorText').textContent = msg;
+    document.getElementById('errorMsg').classList.add('show');
+}
+
+function hideError() {
+    document.getElementById('errorMsg').classList.remove('show');
+}
+
+async function deleteJob(jobId) {
+    if (!confirm('Xóa job này?')) return;
+
+    try {
+        await fetch(`/video-dubbing/job/${jobId}`, { method: 'DELETE' });
+        const el = document.querySelector(`[data-job-id="${jobId}"]`);
+        if (el) el.remove();
+    } catch (e) {}
+}
+</script>
+</body>
+</html>

@@ -32,8 +32,14 @@ class FacebookDownloader:
             "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
         }
         
-        default_cookie = f"sb={generate_random_cookie_value()}; datr={generate_random_cookie_value()};"
-        self.headers['cookie'] = cookie or default_cookie
+        # Use real cookies from env if available, otherwise generate random ones
+        import os
+        real_cookie = os.environ.get('FB_COOKIES', '')
+        if real_cookie:
+            self.headers['cookie'] = real_cookie
+        else:
+            default_cookie = f"sb={generate_random_cookie_value()}; datr={generate_random_cookie_value()};"
+            self.headers['cookie'] = cookie or default_cookie
 
     def _parse_string(self, string: str) -> str:
         try:

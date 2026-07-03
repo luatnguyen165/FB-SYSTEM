@@ -2,12 +2,7 @@
 // Health & status endpoint cho tất cả cron/scheduler đang chạy trong app.
 // Chỉ admin mới truy cập được.
 
-const { isProcessing: isAutoContentProcessing } = (() => {
-    try {
-        const ac = require('../services/autoContentRunner');
-        return { isProcessing: typeof ac.processActivePipelines === 'function' ? false : false };
-    } catch (_) { return { isProcessing: false }; }
-})();
+const isAutoContentProcessing = false;
 
 /**
  * GET /admin/scheduler/api/status
@@ -18,16 +13,8 @@ exports.getSchedulerStatus = async (req, res) => {
         // Memory usage
         const memUsage = process.memoryUsage();
 
-        // Auto content runner status (nếu module export)
-        let autoContentStatus = { started: false, processing: false };
-        try {
-            const ac = require('../services/autoContentRunner');
-            autoContentStatus = {
-                started: !!ac.isWorkerStarted,
-                processing: ac.isProcessing || false,
-                lastError: ac.lastError || null
-            };
-        } catch (_) {}
+        // Auto content runner status (đã xóa module)
+        const autoContentStatus = { started: false, processing: false };
 
         // Reels schedule runner status
         let reelsStatus = { started: false, processing: false };

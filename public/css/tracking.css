@@ -753,6 +753,158 @@
     transform: translateY(-1px);
 }
 
+/* ===== Target Platform Selector - Chip Row + Account Grid ===== */
+.platform-chips-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 0;
+}
+
+.platform-chip-new {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    user-select: none;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    position: relative;
+}
+
+.platform-chip-new:hover:not(.disabled) {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.platform-chip-new.active {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    color: var(--primary);
+    font-weight: 600;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
+.platform-chip-new.active .chip-check {
+    display: flex;
+}
+
+.platform-chip-new.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.platform-chip-new .chip-check {
+    display: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-size: 8px;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.platform-chip-new i {
+    font-size: 1rem;
+}
+
+/* Account Grid - hiện khi có chip được chọn */
+.account-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 6px;
+    margin-top: 12px;
+    padding: 12px;
+    background: var(--bg-main);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    min-height: 0;
+    transition: all 0.2s;
+}
+
+.account-grid:empty {
+    display: none;
+}
+
+.account-grid .account-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background 0.15s;
+    border: 1px solid transparent;
+}
+
+.account-grid .account-item:hover {
+    background: var(--bg-card);
+    border-color: var(--border);
+}
+
+.account-grid .account-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.account-grid .account-item .account-item-icon {
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.account-grid .account-item .account-item-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.account-grid .account-item .account-item-name {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-main);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.account-grid .account-item .account-type-pill {
+    font-size: 0.62rem;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: var(--radius-full);
+    display: inline-block;
+    width: fit-content;
+}
+
+.account-type-pill--personal {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+}
+
+.account-type-pill--fanpage {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.account-type-pill--creator {
+    background: rgba(139, 92, 246, 0.1);
+    color: #8b5cf6;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 992px) {
     .tracking-stats {
@@ -843,6 +995,164 @@
     .tracking-card-name { max-width:100% }
     .tracking-card-url { max-width:100% }
 }
+/* ===== Platform Source Card (nền tảng theo dõi) ===== */
+.platform-source-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.platform-source-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.platform-source-card input { display: none; }
+
+.platform-source-card:hover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.platform-source-card.active {
+    border-color: var(--primary);
+    background: rgba(24, 119, 242, 0.06);
+    box-shadow: 0 0 0 3px rgba(24, 119, 242, 0.1);
+}
+
+.platform-source-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: var(--radius-sm);
+    background: rgba(24, 119, 242, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: #1877f2;
+    flex-shrink: 0;
+}
+
+.platform-source-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.platform-source-name {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.platform-source-desc {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.platform-source-check {
+    font-size: 1.1rem;
+    color: var(--border);
+    transition: color 0.2s;
+}
+
+.platform-source-card.active .platform-source-check {
+    color: var(--primary);
+}
+
+/* ===== Account Selector (tài khoản lấy dữ liệu) ===== */
+.account-selector-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.account-selector-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 8px;
+}
+
+.account-selector-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.account-selector-card:hover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.account-selector-card.selected {
+    border-color: var(--primary);
+    background: rgba(24, 119, 242, 0.06);
+    box-shadow: 0 0 0 3px rgba(24, 119, 242, 0.1);
+}
+
+.account-selector-card input { display: none; }
+
+.account-selector-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.account-selector-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.account-selector-name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-main);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.account-selector-type {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.account-selector-check {
+    font-size: 1rem;
+    color: var(--border);
+    transition: color 0.2s;
+}
+
+.account-selector-card.selected .account-selector-check {
+    color: var(--primary);
+}
+
 /* ===== Data Table ===== */
 .data-table { width:100%; border-collapse:collapse; background:var(--bg-card); border-radius:var(--radius-lg); overflow:hidden; border:1px solid var(--border); table-layout:fixed }
 .data-table th, .data-table td { padding:10px 12px; text-align:left; border-bottom:1px solid var(--border); font-size:13px; overflow:hidden; text-overflow:ellipsis; max-width:0 }

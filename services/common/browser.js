@@ -13,17 +13,20 @@ const SESSION_ROOT = path.join(global.USER_DATA_DIR || path.join(__dirname, '..'
  */
 function disableChromeAutomationInfobar() {
     if (process.platform !== 'win32') return false;
-    try {
-        const { execSync } = require('child_process');
-        execSync('reg delete "HKEY_CURRENT_USER\\Software\\Google\\Chrome" /v SuppressInfobarEnabled /f 2>nul', { stdio: 'ignore' });
-        execSync('reg add "HKEY_CURRENT_USER\\Software\\Google\\Chrome" /v SuppressInfobarEnabled /t REG_DWORD /d 1 /f', { stdio: 'ignore' });
-        execSync('reg add "HKEY_CURRENT_USER\\Software\\Policies\\Google\\Chrome" /v SuppressInfobarEnabled /t REG_DWORD /d 1 /f 2>nul', { stdio: 'ignore' });
-        console.log('[Anti-Detection] Đã set Windows Registry để ẩn Chrome automation infobar');
-        return true;
-    } catch (e) {
-        console.warn('[Anti-Detection] Không thể set registry:', e.message);
-        return false;
+    const { execSync } = require('child_process');
+    const cmds = [
+        'reg delete "HKEY_CURRENT_USER\\Software\\Google\\Chrome" /v SuppressInfobarEnabled /f',
+        'reg add "HKEY_CURRENT_USER\\Software\\Google\\Chrome" /v SuppressInfobarEnabled /t REG_DWORD /d 1 /f',
+        'reg add "HKEY_CURRENT_USER\\Software\\Policies\\Google\\Chrome" /v SuppressInfobarEnabled /t REG_DWORD /d 1 /f',
+    ];
+    let ok = true;
+    for (const cmd of cmds) {
+        try { execSync(cmd, { stdio: 'pipe' }); } catch (_) { ok = false; }
     }
+    if (ok) {
+        console.log('[Anti-Detection] Đã set Windows Registry để ẩn Chrome automation infobar');
+    }
+    return ok;
 }
 
 /**

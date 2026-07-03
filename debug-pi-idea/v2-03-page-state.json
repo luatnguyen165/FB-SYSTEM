@@ -1,0 +1,345 @@
+{
+  "url": "https://www.pinterest.com/pin-creation-tool/",
+  "title": "(59) Pinterest",
+  "fileInputs": [
+    {
+      "accept": "image/bmp,image/gif,image/jpeg,image/png,image/tiff,image/webp,video/mp4,video/x-m4v,video/quicktime",
+      "id": "storyboard-upload-input"
+    }
+  ],
+  "buttons": [
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": "header-accounts-options-button",
+      "disabled": false
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": "create-tab",
+      "disabled": false
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": "notifications-button",
+      "disabled": false
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": "vertical-nav-settings-button",
+      "disabled": false
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": "collapse-drafts-sidebar-button",
+      "disabled": false
+    },
+    {
+      "text": "Tạo mới",
+      "id": "",
+      "data-test-id": null,
+      "disabled": true
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false
+    },
+    {
+      "text": "Thêm sản phẩm",
+      "id": "",
+      "data-test-id": "add-product-tags-button",
+      "disabled": true
+    }
+  ],
+  "inputs": [
+    {
+      "type": "text",
+      "id": "search-input",
+      "placeholder": "Tìm kiếm",
+      "aria-label": "Tìm kiếm"
+    },
+    {
+      "type": "checkbox",
+      "id": "storyboard-drafts-sidebar-bulk-select-checkbox",
+      "placeholder": "",
+      "aria-label": null
+    },
+    {
+      "type": "checkbox",
+      "id": "storyboard-draft-checkbox-3596065991631995008",
+      "placeholder": "",
+      "aria-label": null
+    },
+    {
+      "type": "checkbox",
+      "id": "storyboard-draft-checkbox-3596941666306532352",
+      "placeholder": "",
+      "aria-label": null
+    },
+    {
+      "type": "checkbox",
+      "id": "storyboard-draft-checkbox-3610366014578782528",
+      "placeholder": "",
+      "aria-label": null
+    },
+    {
+      "type": "checkbox",
+      "id": "storyboard-draft-checkbox-3610547351217213888",
+      "placeholder": "",
+      "aria-label": null
+    },
+    {
+      "type": "checkbox",
+      "id": "storyboard-draft-checkbox-3610561875220410496",
+      "placeholder": "",
+      "aria-label": null
+    },
+    {
+      "type": "checkbox",
+      "id": "storyboard-draft-checkbox-3610575349773579712",
+      "placeholder": "",
+      "aria-label": null
+    },
+    {
+      "type": "checkbox",
+      "id": "storyboard-draft-checkbox-3610585720340770560",
+      "placeholder": "",
+      "aria-label": null
+    },
+    {
+      "type": "checkbox",
+      "id": "storyboard-draft-checkbox-3610592061122798272",
+      "placeholder": "",
+      "aria-label": null
+    },
+    {
+      "type": "checkbox",
+      "id": "storyboard-draft-checkbox-3610601724397340480",
+      "placeholder": "",
+      "aria-label": null
+    },
+    {
+      "type": "checkbox",
+      "id": "storyboard-draft-checkbox-3610606285952826048",
+      "placeholder": "",
+      "aria-label": null
+    },
+    {
+      "type": "checkbox",
+      "id": "storyboard-draft-checkbox-3610607450594603968",
+      "placeholder": "",
+      "aria-label": null
+    },
+    {
+      "type": "checkbox",
+      "id": "storyboard-draft-checkbox-3610612528587860224",
+      "placeholder": "",
+      "aria-label": null
+    },
+    {
+      "type": "checkbox",
+      "id": "storyboard-draft-checkbox-3610618191334519360",
+      "placeholder": "",
+      "aria-label": null
+    },
+    {
+      "type": "checkbox",
+      "id": "storyboard-draft-checkbox-3610623053540242048",
+      "placeholder": "",
+      "aria-label": null
+    },
+    {
+      "type": "checkbox",
+      "id": "storyboard-draft-checkbox-3610636640667858880",
+      "placeholder": "",
+      "aria-label": null
+    },
+    {
+      "type": "checkbox",
+      "id": "storyboard-draft-checkbox-3610654477298438336",
+      "placeholder": "",
+      "aria-label": null
+    },
+    {
+      "type": "checkbox",
+      "id": "storyboard-draft-checkbox-3610664255262178240",
+      "placeholder": "",
+      "aria-label": null
+    },
+    {
+      "type": "checkbox",
+      "id": "storyboard-draft-checkbox-3610672307385296640",
+      "placeholder": "",
+      "aria-label": null
+    },
+    {
+      "type": "checkbox",
+      "id": "storyboard-draft-checkbox-3636181819969682240",
+      "placeholder": "",
+      "aria-label": null
+    },
+    {
+      "type": "checkbox",
+      "id": "storyboard-draft-checkbox-3636220132455193536",
+      "placeholder": "",
+      "aria-label": null
+    },
+    {
+      "type": "text",
+      "id": "storyboard-selector-title",
+      "placeholder": "Cho mọi người biết Ghim của bạn giới thiệu điều gì",
+      "aria-label": null
+    },
+    {
+      "type": "url",
+      "id": "WebsiteField",
+      "placeholder": "Thêm liên kết",
+      "aria-label": null
+    },
+    {
+      "type": "text",
+      "id": "combobox-storyboard-interest-tags",
+      "placeholder": "Tìm kiếm thẻ",
+      "aria-label": null
+    },
+    {
+      "type": "checkbox",
+      "id": "pin-draft-ai-disclosure-aa8da5e7-5b68-4501-b7eb-980b42eadbf0",
+      "placeholder": "",
+      "aria-label": null
+    },
+    {
+      "type": "checkbox",
+      "id": "pin-draft-ai-disclosure-aa8da5e7-5b68-4501-b7eb-980b42eadbf0-synthetic-performer",
+      "placeholder": "",
+      "aria-label": null
+    }
+  ],
+  "bodyText": "Đi đến nội dung\nJ\nBản nháp Ghim (20)\nTạo mới\nChọn tất cả\n\n3:48\n17 ngày đến khi hết hạn\n,17, ngày đến khi hết hạn\n\nxin chào\n17 ngày đến khi hết hạn\nxin chào ,17, ngày đến khi hết hạn\n\ntest print\n22 ngày đến khi hết hạn\ntest print ,22, ngày đến khi hết hạn\n\n22 ngày đến khi hết hạn\n,22, ngày đến khi hết hạn\n\n22 ngày đến khi hết hạn\n,22, ngày đến khi hết hạn\n\nprinterest\n22 ngày đến khi hết hạn\nprinterest ,22, ngày đến khi hết hạn\n\nprinterest\n22 ngày đến khi hết hạn\nprinterest ,22, ngày đến khi hết hạn\n\nprinterest\n22 ngày đến khi hết hạn\nprinterest ,22, ngày đến khi hết hạn\n\nprinterest\n22 ngày đến khi hết hạn\nprinterest ,22, ngày đến khi hết hạn\n\nprinterest\n22 ngày đến khi hết hạn\nprinterest ,22, ngày đến khi hết hạn\n\nprinterest\n22 ngày đến khi hết hạn\nprinterest ,22, ngày đến khi hết hạn\n\nprinterest\n22 ngày đến khi hết hạn\nprinterest ,22, ngày đến khi hết hạn\n\nprinterest\n22 ngày đến khi hết hạn\nprinterest ,22, ngày đến khi hết hạn\n\nxinn chao22222222222222222222222222222222222\n22 ngày đến"
+}

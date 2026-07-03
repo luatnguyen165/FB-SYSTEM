@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Douyin Tracker - ReelsFlow</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/tracking.css">
+    <link rel="stylesheet" href="/css/tiktok-tracker.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        .dy-hero-icon { background: linear-gradient(135deg, #000 0%, #ff0050 100%); }
+    </style>
+</head>
+<body>
+<%- include('partials/sidebar', { currentPage: 'douyin-tracker' }) %>
+<div class="main-content">
+    <%- include('partials/header') %>
+    <main class="content-body tracking-page">
+        <%
+            const platformIcons = { FB: 'fa-facebook', FR: 'fa-facebook', IG: 'fa-instagram', TH: 'fa-threads', PI: 'fa-pinterest', TT: 'fa-tiktok', YT: 'fa-youtube', YS: 'fa-youtube' };
+            const platformColors = { FB: '#1877f2', FR: '#1877f2', IG: '#e1306c', TH: '#000', PI: '#e60023', TT: '#000', YT: '#ff0000', YS: '#ff0000' };
+        %>
+
+        <!-- Hero -->
+        <div class="tt-hero">
+            <div class="tt-hero-content">
+                <div class="tt-hero-left">
+                    <div class="tt-hero-title">
+                        <div class="tt-hero-icon dy-hero-icon"><i class="fa-solid fa-music"></i></div>
+                        <div>
+                            <h1>Douyin Tracker</h1>
+                            <p class="tt-hero-subtitle">Theo dõi channel Douyin • Tự động download video mới • Cross-post đa nền tảng (FB Reels, IG, TH, PI)</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="tt-runner-bar">
+                    <span class="tt-runner-dot <%= runnerStatus.running ? 'on' : 'off' %>"></span>
+                    Runner: <strong><%= runnerStatus.running ? 'Đang chạy' : 'Dừng' %></strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="tt-stats">
+            <div class="tt-stat-card">
+                <div class="stat-icon" style="background: rgba(255, 0, 80, 0.1); color: #ff0050;">
+                    <i class="fa-solid fa-satellite-dish"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value"><%= stats.activeTrackings %></span>
+                    <span class="stat-label">Đang theo dõi</span>
+                </div>
+            </div>
+            <div class="tt-stat-card">
+                <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                    <i class="fa-solid fa-download"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value"><%= stats.totalDownloaded %></span>
+                    <span class="stat-label">Video đã tải</span>
+                </div>
+            </div>
+            <div class="tt-stat-card">
+                <div class="stat-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+                    <i class="fa-solid fa-share-nodes"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value"><%= stats.totalCrossPosted %></span>
+                    <span class="stat-label">Đã cross-post</span>
+                </div>
+            </div>
+            <div class="tt-stat-card">
+                <div class="stat-icon" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">
+                    <i class="fa-solid fa-clock"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value"><%= stats.totalTrackings %></span>
+                    <span class="stat-label">Tổng channel</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tracking-tabs">
+            <button class="tracking-tab active" onclick="showTab('channels')">
+                <i class="fa-solid fa-satellite-dish"></i> Channels
+            </button>
+            <button class="tracking-tab" onclick="showTab('videos')">
+                <i class="fa-solid fa-video"></i> Video đã tải
+            </button>
+            <button class="tracking-tab" onclick="showTab('test')">
+                <i class="fa-solid fa-flask"></i> Test Download
+            </button>
+        </div>
+
+        <!-- Tab: Thêm channel + Danh sách channel -->
+        <div class="tt-tab-content" id="tab-channels">
+
+            <!-- Form thêm channel -->
+            <div class="tt-section">
+                <div class="tt-section-header">
+                    <div class="tt-section-title"><i class="fa-solid fa-plus-circle"></i> Thêm channel Douyin mới</div>
+                </div>
+                <div class="tt-form-row">
+                    <input type="text" class="tt-input" id="dyChannelUrl" placeholder="Dán link Douyin: https://www.douyin.com/user/MS4wLjABAAAA...">
+                    <select class="tt-select" id="dyCheckInterval" style="width:140px;flex:none;">
+                        <option value="5">Mỗi 5 phút</option>
+                        <option value="15" selected>Mỗi 15 phút</option>
+                        <option value="30">Mỗi 30 phút</option>
+                        <option value="60">Mỗi 1 giờ</option>
+                        <option value="1440">Mỗi 1 ngày</option>
+                    </select>
+                    <button class="tt-btn tt-btn-primary" id="btnAddTracking">
+                        <i class="fa-solid fa-plus"></i> Theo dõi
+                    </button>
+                </div>
+
+                <!-- Cookies file (optional) -->
+                <div style="margin-top:12px;">
+                    <label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Cookies Douyin (bắt buộc nếu chưa đăng nhập):</label>
+                    <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+                        <label class="tt-btn tt-btn-sm tt-btn-outline" style="cursor:pointer;white-space:nowrap;">
+                            <i class="fa-solid fa-upload"></i> Chọn file cookies
+                            <input type="file" id="dyCookiesFile" accept=".txt,.cookie,.cookies,.json" style="display:none;">
+                        </label>
+                        <span id="dyCookiesFileName" style="font-size:12px;color:var(--text-light);">Chưa chọn file</span>
+                        <input type="hidden" id="dyCookiesPath" value="">
+                        <input type="hidden" id="dyCookiesExpiresAt" value="">
+                    </div>
+                    <div style="font-size:10px;color:var(--text-light);margin-top:6px;line-height:1.6;">
+                        <i class="fa-solid fa-info-circle"></i>
+                        Douyin bắt buộc cookies. Đăng nhập Douyin trên Chrome → Dùng extension
+                        <a href="https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc" target="_blank" style="color:var(--primary);">Get cookies.txt LOCALLY</a>
+                        → Export file .txt → Upload ở đây.
+                    </div>
+                </div>
+
+                <!-- Cross-post config -->
+                <div style="margin-top:14px;">
+                    <label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Cross-post sang:</label>
+                    <div class="tt-chips" id="dyPlatformChips">
+                        <span class="tt-chip" data-val="FR" data-match="FB"><i class="fa-brands fa-facebook"></i> Facebook Reels</span>
+                        <span class="tt-chip" data-val="IG" data-match="IG"><i class="fa-brands fa-instagram"></i> Instagram</span>
+                        <span class="tt-chip" data-val="TH" data-match="TH"><i class="fa-brands fa-threads"></i> Threads</span>
+                        <span class="tt-chip" data-val="PI" data-match="PI"><i class="fa-brands fa-pinterest"></i> Pinterest</span>
+                        <span class="tt-chip" data-val="TT" data-match="TT"><i class="fa-brands fa-tiktok"></i> TikTok</span>
+                        <span class="tt-chip" data-val="YT" data-match="YT"><i class="fa-brands fa-youtube"></i> YouTube Shorts</span>
+                    </div>
+                </div>
+
+                <div style="margin-top:14px;" id="dyAccountSection" class="tt-hidden">
+                    <label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">
+                        Tài khoản đăng bài: <span id="dyAccountHint" style="font-weight:400;text-transform:none;letter-spacing:0;"></span>
+                    </label>
+                    <div class="tt-account-grid" id="dyAccountPicker">
+                        <% if (channels.length === 0) { %>
+                            <span style="font-size:12px;color:var(--text-light);">Chưa có tài khoản nào. Vào <a href="/channels" style="color:var(--primary);">Channels</a> kết nối trước.</span>
+                        <% } else { %>
+                            <% channels.forEach(function(ch) { %>
+                            <label class="tt-account-item" data-platform="<%= ch.platform %>" title="<%= ch.accountName || ch._id %>" style="display:none;">
+                                <input type="checkbox" value="<%= ch._id %>" class="dy-account-cb" data-platform="<%= ch.platform %>">
+                                <i class="fa-brands <%= platformIcons[ch.platform] || 'fa-globe' %>" style="color:<%= platformColors[ch.platform] || '#666' %>;font-size:12px;"></i>
+                                <span><%= (ch.accountName || ch.username || 'Account').substring(0, 18) %></span>
+                            </label>
+                            <% }); %>
+                        <% } %>
+                        <div id="dyNoAccountForPlatform" style="display:none;width:100%;font-size:12px;color:var(--text-light);padding:6px 0;">
+                            Không có tài khoản nào cho nền tảng này. <a href="/channels" style="color:var(--primary);">Kết nối thêm</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Telegram Review (optional) -->
+                <div style="margin-top:14px;padding:12px;border:1px dashed var(--border);border-radius:var(--radius-sm);">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-muted);">
+                        <input type="checkbox" id="dyTelegramReview" style="width:16px;height:16px;">
+                        <i class="fa-brands fa-telegram" style="color:#0088cc;"></i>
+                        Duyệt qua Telegram trước khi đăng
+                    </label>
+                    <div id="dyTelegramConfig" style="display:none;margin-top:8px;">
+                        <div style="font-size:11px;color:var(--text-light);margin-top:4px;">
+                            Video sẽ được gửi lên Telegram để bạn duyệt. Nhấn ✅ để cross-post, ❌ để bỏ qua.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="tt-section">
+                <div class="tt-section-header">
+                    <div class="tt-section-title"><i class="fa-solid fa-satellite-dish"></i> Channel đang theo dõi (<%= trackings.length %>)</div>
+                </div>
+                <% if (trackings.length === 0) { %>
+                    <div class="tt-empty">
+                        <div class="tt-empty-icon"><i class="fa-solid fa-music"></i></div>
+                        <h3>Chưa theo dõi channel nào</h3>
+                        <p>Nhập link Douyin ở trên để bắt đầu theo dõi</p>
+                    </div>
+                <% } else { %>
+                    <div class="tt-tracking-list">
+                        <% trackings.forEach(function(t) { %>
+                        <div class="tt-tracking-item" data-id="<%= t._id %>">
+                            <% if (t.channelAvatar) { %>
+                            <img class="tt-tracking-avatar" src="<%= t.channelAvatar %>" alt="">
+                            <% } else { %>
+                            <div class="tt-tracking-avatar-placeholder"><i class="fa-solid fa-music"></i></div>
+                            <% } %>
+                            <div class="tt-tracking-info">
+                                <div class="tt-tracking-name"><%= t.channelName || 'Channel' %></div>
+                                <div class="tt-tracking-url"><%= t.channelUrl %></div>
+                                <div class="tt-tracking-meta">
+                                    <span class="tt-badge tt-badge-<%= t.status %>"><%= t.status %></span>
+                                    <span><i class="fa-solid fa-download"></i> <%= t.totalDownloaded || 0 %> video</span>
+                                    <span><i class="fa-solid fa-share-nodes"></i> <%= t.totalCrossPosted || 0 %> cross-post</span>
+                                    <span><i class="fa-solid fa-clock"></i> Mỗi <%= t.checkIntervalMinutes || 15 %> phút</span>
+                                    <% if (t.lastCheckedAt) { %>
+                                    <span><i class="fa-solid fa-history"></i> <%= new Date(t.lastCheckedAt).toLocaleString('vi-VN') %></span>
+                                    <% } %>
+                                </div>
+                            </div>
+                            <div class="tt-tracking-actions">
+                                <button class="tt-btn-icon" onclick="checkTracking('<%= t._id %>')" title="Check ngay">
+                                    <i class="fa-solid fa-rotate"></i>
+                                </button>
+                                <button class="tt-btn-icon" onclick="editTracking('<%= JSON.stringify({ id: t._id, crossPostPlatforms: t.crossPostPlatforms, crossPostAccounts: t.crossPostAccounts, checkIntervalMinutes: t.checkIntervalMinutes, cookiesPath: t.cookiesPath || '', telegramReview: t.telegramReview }) %>')" title="Chỉnh sửa">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                                <button class="tt-btn-icon" onclick="toggleTracking('<%= t._id %>', '<%= t.status === 'active' ? 'paused' : 'active' %>')" title="<%= t.status === 'active' ? 'Tạm dừng' : 'Bật lại' %>">
+                                    <i class="fa-solid <%= t.status === 'active' ? 'fa-pause' : 'fa-play' %>"></i>
+                                </button>
+                                <button class="tt-btn-icon" onclick="deleteTracking('<%= t._id %>')" title="Xóa" style="border-color:var(--danger-light);color:var(--danger);">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <% }); %>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Tab: Videos đã tải -->
+        <div class="tt-tab-content" id="tab-videos" style="display:none;">
+            <div class="tt-section">
+                <div class="tt-section-header">
+                    <div class="tt-section-title"><i class="fa-solid fa-video"></i> Video đã tải (<%= videos.length %>)</div>
+                </div>
+                <% if (videos.length === 0) { %>
+                    <div class="tt-empty">
+                        <div class="tt-empty-icon"><i class="fa-solid fa-video-slash"></i></div>
+                        <h3>Chưa có video nào</h3>
+                        <p>Video sẽ xuất hiện khi hệ thống phát hiện video mới từ channel đang theo dõi</p>
+                    </div>
+                <% } else { %>
+                    <div class="tt-video-grid">
+                        <% videos.forEach(function(v) { %>
+                        <div class="tt-video-card" data-id="<%= v._id %>">
+                            <% if (v.thumbnail) { %>
+                            <div class="tt-video-thumb-wrap">
+                                <img class="tt-video-thumb" src="<%= v.thumbnail %>" alt="" loading="lazy">
+                                <% if (v.status === 'downloaded') { %>
+                                <button class="tt-video-play-btn" onclick="previewVideo('<%= v._id %>')"><i class="fa-solid fa-play"></i></button>
+                                <% } %>
+                            </div>
+                            <% } else { %>
+                            <div class="tt-video-thumb-placeholder"><i class="fa-solid fa-film"></i></div>
+                            <% } %>
+                            <div class="tt-video-info">
+                                <div class="tt-video-title"><%= v.title || v.description || '(Không tiêu đề)' %></div>
+                                <div class="tt-video-meta">
+                                    <% if (v.trackingId?.channelName) { %>
+                                    <span><i class="fa-solid fa-music"></i> <%= v.trackingId.channelName %></span>
+                                    <% } %>
+                                    <% if (v.viewCount) { %>
+                                    <span><i class="fa-solid fa-eye"></i> <%= v.viewCount.toLocaleString() %></span>
+                                    <% } %>
+                                </div>
+                                <div class="tt-video-meta">
+                                    <span class="tt-badge tt-badge-<%= v.status %>"><%= v.status %></span>
+                                    <% if (v.downloadSize) { %><span><%= v.downloadSize %></span><% } %>
+                                    <% if (v.downloadMethod) { %><span><i class="fa-solid fa-wrench"></i> <%= v.downloadMethod %></span><% } %>
+                                </div>
+                                <div class="tt-video-actions">
+                                    <a href="<%= v.douyinUrl %>" target="_blank" class="tt-btn tt-btn-sm tt-btn-outline">
+                                        <i class="fa-solid fa-external-link"></i> Douyin
+                                    </a>
+                                <% if (v.status === 'downloaded' || v.status === 'pending_review' || v.status === 'cross_posting' || v.status === 'done') { %>
+                                    <button class="tt-btn tt-btn-sm tt-btn-primary" onclick="crossPostVideo('<%= v._id %>')">
+                                        <i class="fa-solid fa-share-nodes"></i> Cross-post
+                                    </button>
+                                    <% } %>
+                                    <% if (v.status === 'failed' || v.status === 'skipped') { %>
+                                    <button class="tt-btn tt-btn-sm tt-btn-primary" onclick="retryDownload('<%= v._id %>')">
+                                        <i class="fa-solid fa-rotate-right"></i> Tải lại
+                                    </button>
+                                    <% } %>
+                                    <button class="tt-btn tt-btn-sm tt-btn-danger" onclick="deleteVideo('<%= v._id %>')">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <% }); %>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Tab: Test Download -->
+        <div class="tt-tab-content" id="tab-test" style="display:none;">
+            <div class="tt-section">
+                <div class="tt-section-header">
+                    <div class="tt-section-title"><i class="fa-solid fa-flask"></i> Test Download Video</div>
+                </div>
+                <div style="padding:4px 0;">
+                    <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.7;">
+                        Nhập link Douyin (video hoặc channel) để test download. Chrome sẽ mở ra và tải video trực tiếp.
+                        <br><strong>Video URL:</strong> <code style="background:var(--bg-secondary);padding:2px 6px;border-radius:4px;font-size:12px;">https://www.douyin.com/video/1234567890123456789</code>
+                        <br><strong>Channel URL:</strong> <code style="background:var(--bg-secondary);padding:2px 6px;border-radius:4px;font-size:12px;">https://www.douyin.com/user/MS4wLjABAAAA...</code>
+                    </div>
+
+                    <div class="tt-form-row">
+                        <input type="text" class="tt-input" id="dyTestUrl" placeholder="Dán link Douyin video hoặc channel..." style="flex:1;">
+                        <button class="tt-btn tt-btn-primary" id="btnTestDownload" onclick="testDownload()">
+                            <i class="fa-solid fa-download"></i> Test Download
+                        </button>
+                    </div>
+
+                    <div style="margin-top:12px;">
+                        <label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Hoặc paste link nhanh:</label>
+                        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+                            <button class="tt-btn tt-btn-sm tt-btn-outline" onclick="fillTestUrl('https://www.douyin.com/video/7654896841502264585')" style="font-size:11px;">
+                                <i class="fa-solid fa-video"></i> Video example
+                            </button>
+                            <button class="tt-btn tt-btn-sm tt-btn-outline" onclick="fillTestUrl('https://www.douyin.com/user/MS4wLjABAAAAvGr5ijz3rf65y77OXWzUZx_AurgfYiRu5qFzHC7FoJI')" style="font-size:11px;">
+                                <i class="fa-solid fa-music"></i> Channel 大耳垂宝宝
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Log output -->
+                    <div id="dyTestLog" style="margin-top:16px;display:none;">
+                        <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px;">
+                            <i class="fa-solid fa-terminal"></i> Log
+                        </div>
+                        <div id="dyTestLogContent" style="background:#1a1a2e;color:#a5f3c4;padding:12px 16px;border-radius:var(--radius-sm);font-family:'Fira Code',monospace;font-size:12px;max-height:300px;overflow-y:auto;line-height:1.8;white-space:pre-wrap;"></div>
+                    </div>
+
+                    <div id="dyTestStatus" style="margin-top:12px;display:none;padding:12px 16px;border-radius:var(--radius-sm);font-size:13px;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script src="/js/base.js"></script>
+<script>
+function showTab(name) {
+    document.querySelectorAll('.tt-tab-content').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.tracking-tab').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-' + name).style.display = 'block';
+    event.currentTarget.classList.add('active');
+}
+
+// ===== TEST DOWNLOAD =====
+function fillTestUrl(url) {
+    document.getElementById('dyTestUrl').value = url;
+}
+
+async function testDownload() {
+    const url = document.getElementById('dyTestUrl').value.trim();
+    if (!url) { document.getElementById('dyTestUrl').focus(); return; }
+
+    const btn = document.getElementById('btnTestDownload');
+    const logEl = document.getElementById('dyTestLog');
+    const logContent = document.getElementById('dyTestLogContent');
+    const statusEl = document.getElementById('dyTestStatus');
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang test...';
+    logEl.style.display = 'block';
+    logContent.textContent = '';
+    statusEl.style.display = 'block';
+    statusEl.style.background = 'rgba(102, 126, 234, 0.1)';
+    statusEl.style.color = 'var(--primary)';
+    statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang gửi request...';
+
+    // Determine type
+    const type = url.includes('/video/') ? 'video' : 'channel';
+
+    try {
+        const result = await api('/douyin-tracker/api/test-download', {
+            method: 'POST',
+            body: JSON.stringify({ url, type }),
+        });
+
+        statusEl.style.background = 'rgba(16, 185, 129, 0.1)';
+        statusEl.style.color = 'var(--success)';
+        statusEl.innerHTML = '<i class="fa-solid fa-check-circle"></i> ' + (result.message || 'Đang chạy! Mở Chrome để xem.');
+
+        logContent.textContent += `[${new Date().toLocaleTimeString()}] Request sent!\n`;
+        logContent.textContent += `[${new Date().toLocaleTimeString()}] URL: ${url}\n`;
+        logContent.textContent += `[${new Date().toLocaleTimeString()}] Chrome sẽ mở ra để tải video.\n`;
+        logContent.textContent += `[${new Date().toLocaleTimeString()}}] Xem console server để theo dõi progress.\n`;
+        logContent.scrollTop = logContent.scrollHeight;
+
+    } catch (e) {
+        statusEl.style.background = 'rgba(239, 68, 68, 0.1)';
+        statusEl.style.color = 'var(--danger)';
+        statusEl.innerHTML = '<i class="fa-solid fa-exclamation-circle"></i> Lỗi: ' + e.message;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-download"></i> Test Download';
+    }
+}
+
+// ===== PLATFORM CHIPS - FILTER ACCOUNTS =====
+const platformMap = { FR: 'FB', IG: 'IG', TH: 'TH', PI: 'PI', TT: 'TT', YT: 'YT' };
+
+document.querySelectorAll('#dyPlatformChips .tt-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+        chip.classList.toggle('active');
+        updateAccountVisibility();
+    });
+});
+
+function updateAccountVisibility() {
+    const activePlatforms = [...document.querySelectorAll('#dyPlatformChips .tt-chip.active')].map(c => c.dataset.val);
+    const accountSection = document.getElementById('dyAccountSection');
+    const noAccountMsg = document.getElementById('dyNoAccountForPlatform');
+    const hint = document.getElementById('dyAccountHint');
+
+    if (!activePlatforms.length) {
+        accountSection.classList.add('tt-hidden');
+        document.querySelectorAll('#dyAccountPicker .dy-account-cb').forEach(cb => { cb.checked = false; });
+        return;
+    }
+
+    accountSection.classList.remove('tt-hidden');
+    const matchPlatforms = activePlatforms.map(p => platformMap[p]).filter(Boolean);
+    hint.textContent = '(' + activePlatforms.join(', ') + ')';
+
+    let hasVisible = false;
+    document.querySelectorAll('#dyAccountPicker .tt-account-item').forEach(item => {
+        const itemPlatform = item.dataset.platform;
+        const show = matchPlatforms.includes(itemPlatform);
+        item.style.display = show ? '' : 'none';
+        if (show) hasVisible = true;
+        if (!show) item.querySelector('input').checked = false;
+    });
+    noAccountMsg.style.display = hasVisible ? 'none' : '';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('#dyPlatformChips .tt-chip').forEach(c => c.classList.remove('active'));
+    updateAccountVisibility();
+});
+
+async function api(url, opts = {}) {
+    const res = await fetch(url, {
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
+        ...opts,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Lỗi server');
+    return data;
+}
+
+// ===== COOKIES FILE UPLOAD =====
+document.getElementById('dyCookiesFile').addEventListener('change', async function () {
+    const file = this.files[0];
+    if (!file) return;
+    const nameEl = document.getElementById('dyCookiesFileName');
+    const pathEl = document.getElementById('dyCookiesPath');
+    nameEl.textContent = 'Đang tải...';
+    try {
+        const fd = new FormData();
+        fd.append('cookiesFile', file);
+        const res = await fetch('/douyin-tracker/api/upload-cookies', { method: 'POST', body: fd, credentials: 'same-origin' });
+        const data = await res.json();
+        if (data.success) {
+            pathEl.value = data.cookiesPath;
+            nameEl.textContent = file.name + ' (' + (data.size / 1024).toFixed(1) + 'KB)';
+            nameEl.style.color = 'var(--success)';
+        } else {
+            nameEl.textContent = 'Lỗi: ' + (data.error || 'Upload failed');
+            nameEl.style.color = 'var(--danger)';
+        }
+    } catch (e) {
+        nameEl.textContent = 'Lỗi upload: ' + e.message;
+        nameEl.style.color = 'var(--danger)';
+    }
+});
+
+// ===== TELEGRAM REVIEW TOGGLE =====
+document.getElementById('dyTelegramReview').addEventListener('change', function () {
+    document.getElementById('dyTelegramConfig').style.display = this.checked ? '' : 'none';
+});
+
+// ===== TOAST =====
+function dyNotify(msg, type) {
+    type = type || 'info';
+    var c = document.getElementById('dy-toast');
+    if (!c) { c = document.createElement('div'); c.id = 'dy-toast'; c.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;'; document.body.appendChild(c); }
+    var el = document.createElement('div');
+    el.style.cssText = 'padding:12px 20px;margin-bottom:10px;border-radius:8px;color:#fff;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,0.15);max-width:360px;';
+    var colors = { success: '#10b981', error: '#ef4444', warning: '#f59e0b', info: '#667eea' };
+    el.style.background = colors[type] || colors.info;
+    el.textContent = msg;
+    c.appendChild(el);
+    setTimeout(function () { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(function () { el.remove(); }, 300); }, 3000);
+}
+
+document.getElementById('btnAddTracking').addEventListener('click', async () => {
+    const urlInput = document.getElementById('dyChannelUrl');
+    const url = urlInput.value.trim();
+    if (!url) { urlInput.focus(); return; }
+
+    const platforms = [...document.querySelectorAll('.tt-chip.active')].map(c => c.dataset.val);
+    const accounts = [...document.querySelectorAll('.dy-account-cb:checked')].map(cb => cb.value);
+    const interval = parseInt(document.getElementById('dyCheckInterval').value) || 15;
+    const cookiesPath = document.getElementById('dyCookiesPath').value.trim();
+    const telegramReview = document.getElementById('dyTelegramReview').checked;
+
+    if (!platforms.length) { dyNotify('Chọn ít nhất 1 nền tảng cross-post', 'warning'); return; }
+    if (!accounts.length) { dyNotify('Chọn ít nhất 1 tài khoản đăng bài', 'warning'); return; }
+
+    const btn = document.getElementById('btnAddTracking');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang thêm...';
+
+    try {
+        await api('/douyin-tracker/api/trackings', {
+            method: 'POST',
+            body: JSON.stringify({ channelUrl: url, crossPostPlatforms: platforms, crossPostAccounts: accounts, checkIntervalMinutes: interval, cookiesPath, telegramReview }),
+        });
+        location.reload();
+    } catch (e) {
+        dyNotify('Lỗi: ' + e.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-plus"></i> Theo dõi';
+    }
+});
+
+async function checkTracking(id) {
+    const btn = event.currentTarget;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    try {
+        const result = await api(`/douyin-tracker/api/trackings/${id}/check`, { method: 'POST' });
+        if (result.downloadCount > 0) {
+            location.reload();
+        } else {
+            dyNotify('Không có video mới.', 'info');
+        }
+    } catch (e) { dyNotify('Lỗi: ' + e.message, 'error'); }
+    finally { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate"></i>'; }
+}
+
+async function toggleTracking(id, status) {
+    try {
+        await api(`/douyin-tracker/api/trackings/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ status }),
+        });
+        location.reload();
+    } catch (e) { dyNotify('Lỗi: ' + e.message, 'error'); }
+}
+
+async function deleteTracking(id) {
+    try {
+        await api(`/douyin-tracker/api/trackings/${id}`, { method: 'DELETE' });
+        location.reload();
+    } catch (e) { dyNotify('Lỗi: ' + e.message, 'error'); }
+}
+
+async function retryDownload(id) {
+    const btn = event.currentTarget;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    try {
+        await api(`/douyin-tracker/api/videos/${id}/retry`, { method: 'POST' });
+        location.reload();
+    } catch (e) { dyNotify('Lỗi: ' + e.message, 'error'); }
+    finally { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Tải lại'; }
+}
+
+async function crossPostVideo(id) {
+    const btn = event.currentTarget;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    try {
+        const result = await api(`/douyin-tracker/api/videos/${id}/crosspost`, { method: 'POST' });
+        dyNotify(result.message || 'Đã tạo lịch đăng!', 'success');
+        location.reload();
+    } catch (e) { dyNotify('Lỗi: ' + e.message, 'error'); }
+    finally { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-share-nodes"></i> Cross-post'; }
+}
+
+// ===== EDIT TRACKING =====
+let dyEditData = null;
+const dyEditPlatformMap = { FR: 'FB', IG: 'IG', TH: 'TH', PI: 'PI', TT: 'TT', YT: 'YT' };
+
+function dyEditUpdateAccounts() {
+    const activePlatforms = [...document.querySelectorAll('#dyEditPlatforms .tt-chip.active')].map(c => c.dataset.val);
+    const matchPlatforms = activePlatforms.map(p => dyEditPlatformMap[p]).filter(Boolean);
+    const section = document.getElementById('dyEditAccountSection');
+    const hint = document.getElementById('dyEditAccountHint');
+    const noAcc = document.getElementById('dyEditNoAccount');
+    if (!activePlatforms.length) {
+        section.classList.add('tt-hidden');
+        document.querySelectorAll('#dyEditAccounts .tt-account-cb').forEach(cb => { cb.checked = false; });
+        document.querySelectorAll('#dyEditAccounts .tt-account-item').forEach(i => { i.style.display = 'none'; });
+        return;
+    }
+    section.classList.remove('tt-hidden');
+    hint.textContent = '(' + activePlatforms.join(', ') + ')';
+    let has = false;
+    document.querySelectorAll('#dyEditAccounts .tt-account-item').forEach(item => {
+        const show = matchPlatforms.includes(item.dataset.platform);
+        item.style.display = show ? '' : 'none';
+        if (show) has = true;
+        if (!show) item.querySelector('input').checked = false;
+    });
+    noAcc.style.display = has ? 'none' : '';
+}
+
+function editTracking(json) {
+    dyEditData = typeof json === 'string' ? JSON.parse(json) : json;
+    document.getElementById('dyEditInterval').value = dyEditData.checkIntervalMinutes || 15;
+    document.getElementById('dyEditCookiesPath').value = dyEditData.cookiesPath || '';
+    document.getElementById('dyEditCookiesFileName').textContent = dyEditData.cookiesPath ? dyEditData.cookiesPath.split(/[/\\]/).pop() : 'Chưa có file';
+    document.getElementById('dyEditTelegramReview').checked = !!dyEditData.telegramReview;
+    document.querySelectorAll('#dyEditPlatforms .tt-chip').forEach(c => {
+        c.classList.toggle('active', (dyEditData.crossPostPlatforms || []).includes(c.dataset.val));
+    });
+    document.querySelectorAll('#dyEditAccounts .tt-account-cb').forEach(cb => { cb.checked = false; });
+    dyEditUpdateAccounts();
+    document.querySelectorAll('#dyEditAccounts .tt-account-item').forEach(item => {
+        if (item.style.display !== 'none' && (dyEditData.crossPostAccounts || []).includes(item.querySelector('input').value)) {
+            item.querySelector('input').checked = true;
+        }
+    });
+    document.getElementById('dyEditModal').style.display = 'flex';
+}
+
+async function deleteVideo(id) {
+    try {
+        await api(`/douyin-tracker/api/videos/${id}`, { method: 'DELETE' });
+        location.reload();
+    } catch (e) { dyNotify('Lỗi: ' + e.message, 'error'); }
+}
+
+// ===== VIDEO PREVIEW =====
+function previewVideo(id) {
+    const modal = document.getElementById('dyPreviewModal');
+    const player = document.getElementById('dyPreviewPlayer');
+    player.src = '/douyin-tracker/api/videos/' + id + '/preview';
+    modal.style.display = 'flex';
+    player.play();
+}
+document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('dyPreviewClose').addEventListener('click', function () {
+        const modal = document.getElementById('dyPreviewModal');
+        const player = document.getElementById('dyPreviewPlayer');
+        player.pause();
+        player.src = '';
+        modal.style.display = 'none';
+    });
+    document.getElementById('dyPreviewModal').addEventListener('click', function (e) {
+        if (e.target === this) document.getElementById('dyPreviewClose').click();
+    });
+    // Edit modal
+    document.querySelectorAll('#dyEditPlatforms .tt-chip').forEach(chip => {
+        chip.addEventListener('click', () => { chip.classList.toggle('active'); dyEditUpdateAccounts(); });
+    });
+    document.getElementById('dyEditClose').addEventListener('click', () => {
+        document.getElementById('dyEditModal').style.display = 'none';
+    });
+    document.getElementById('dyEditModal').addEventListener('click', function (e) {
+        if (e.target === this) this.style.display = 'none';
+    });
+    document.getElementById('dyEditSave').addEventListener('click', async () => {
+        if (!dyEditData) return;
+        const platforms = [...document.querySelectorAll('#dyEditPlatforms .tt-chip.active')].map(c => c.dataset.val);
+        const accounts = [...document.querySelectorAll('#dyEditAccounts .tt-account-cb:checked')].map(cb => cb.value);
+        const interval = parseInt(document.getElementById('dyEditInterval').value) || 15;
+        const cookiesPath = document.getElementById('dyEditCookiesPath').value;
+        const telegramReview = document.getElementById('dyEditTelegramReview').checked;
+        if (!platforms.length) { dyNotify('Chọn ít nhất 1 nền tảng', 'warning'); return; }
+        if (!accounts.length) { dyNotify('Chọn ít nhất 1 tài khoản', 'warning'); return; }
+        const btn = document.getElementById('dyEditSave');
+        btn.disabled = true;
+        try {
+            await api('/douyin-tracker/api/trackings/' + dyEditData.id, {
+                method: 'PUT',
+                body: JSON.stringify({ crossPostPlatforms: platforms, crossPostAccounts: accounts, checkIntervalMinutes: interval, cookiesPath, telegramReview }),
+            });
+            location.reload();
+        } catch (e) { dyNotify('Lỗi: ' + e.message, 'error'); }
+        finally { btn.disabled = false; }
+    });
+    document.getElementById('dyEditCookiesFile').addEventListener('change', async function () {
+        const file = this.files[0]; if (!file) return;
+        const nameEl = document.getElementById('dyEditCookiesFileName');
+        const pathEl = document.getElementById('dyEditCookiesPath');
+        nameEl.textContent = 'Đang tải...';
+        try {
+            const fd = new FormData(); fd.append('cookiesFile', file);
+            const res = await fetch('/douyin-tracker/api/upload-cookies', { method: 'POST', body: fd, credentials: 'same-origin' });
+            const data = await res.json();
+            if (data.success) { pathEl.value = data.cookiesPath; nameEl.textContent = file.name; nameEl.style.color = 'var(--success)'; }
+            else { nameEl.textContent = 'Lỗi: ' + (data.error || 'Upload failed'); nameEl.style.color = 'var(--danger)'; }
+        } catch (e) { nameEl.textContent = 'Lỗi: ' + e.message; nameEl.style.color = 'var(--danger)'; }
+    });
+});
+</script>
+
+<!-- Edit Tracking Modal -->
+<div id="dyEditModal" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.6);justify-content:center;align-items:center;">
+<div style="background:var(--bg-card);border-radius:var(--radius);padding:28px;max-width:540px;width:92vw;max-height:88vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.3);position:relative;">
+    <button id="dyEditClose" style="position:absolute;top:14px;right:14px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-light);"><i class="fa-solid fa-xmark"></i></button>
+    <h3 style="margin:0 0 20px;font-size:16px;color:var(--text-main);"><i class="fa-solid fa-pen"></i> Chỉnh sửa tracking</h3>
+
+    <div style="margin-bottom:18px;">
+        <label style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;display:block;">Cross-post sang:</label>
+        <div class="tt-chips" id="dyEditPlatforms">
+            <span class="tt-chip" data-val="FR"><i class="fa-brands fa-facebook"></i> Facebook Reels</span>
+            <span class="tt-chip" data-val="IG"><i class="fa-brands fa-instagram"></i> Instagram</span>
+            <span class="tt-chip" data-val="TH"><i class="fa-brands fa-threads"></i> Threads</span>
+            <span class="tt-chip" data-val="PI"><i class="fa-brands fa-pinterest"></i> Pinterest</span>
+            <span class="tt-chip" data-val="TT"><i class="fa-brands fa-tiktok"></i> TikTok</span>
+            <span class="tt-chip" data-val="YT"><i class="fa-brands fa-youtube"></i> YouTube Shorts</span>
+        </div>
+    </div>
+
+    <div style="margin-bottom:18px;" id="dyEditAccountSection" class="tt-hidden">
+        <label style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;display:block;">
+            Tài khoản đăng bài: <span id="dyEditAccountHint" style="font-weight:400;text-transform:none;letter-spacing:0;"></span>
+        </label>
+        <div class="tt-account-grid" id="dyEditAccounts">
+            <% if (channels.length > 0) { %>
+                <% channels.forEach(function(ch) { %>
+                <label class="tt-account-item" data-platform="<%= ch.platform %>" style="display:none;">
+                    <input type="checkbox" value="<%= ch._id %>" class="tt-account-cb" data-platform="<%= ch.platform %>">
+                    <i class="fa-brands <%= platformIcons[ch.platform] || 'fa-globe' %>" style="color:<%= platformColors[ch.platform] || '#666' %>;font-size:12px;"></i>
+                    <span><%= (ch.accountName || ch.username || 'Account').substring(0, 18) %></span>
+                </label>
+                <% }); %>
+            <% } %>
+            <div id="dyEditNoAccount" style="display:none;width:100%;font-size:12px;color:var(--text-light);padding:6px 0;">
+                Không có tài khoản nào cho nền tảng này. <a href="/channels" style="color:var(--primary);">Kết nối thêm</a>
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-bottom:18px;">
+        <label style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;display:block;">Kiểm tra mỗi:</label>
+        <select id="dyEditInterval" class="tt-select">
+            <option value="5">5 phút</option><option value="10">10 phút</option><option value="15">15 phút</option>
+            <option value="30">30 phút</option><option value="60">1 giờ</option><option value="360">6 giờ</option><option value="1440">24 giờ</option>
+        </select>
+    </div>
+
+    <div style="margin-bottom:18px;">
+        <label style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;display:block;">Cookies Douyin:</label>
+        <div style="display:flex;align-items:center;gap:8px;">
+            <label class="tt-btn tt-btn-sm tt-btn-outline" style="cursor:pointer;white-space:nowrap;">
+                <i class="fa-solid fa-upload"></i> Chọn file
+                <input type="file" id="dyEditCookiesFile" accept=".txt,.cookie,.cookies,.json" style="display:none;">
+            </label>
+            <span id="dyEditCookiesFileName" style="font-size:12px;color:var(--text-light);">Chưa có file</span>
+            <input type="hidden" id="dyEditCookiesPath" value="">
+        </div>
+    </div>
+
+    <div style="margin-bottom:20px;padding:12px;border:1px dashed var(--border);border-radius:var(--radius-sm);">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-muted);">
+            <input type="checkbox" id="dyEditTelegramReview" style="width:16px;height:16px;">
+            <i class="fa-brands fa-telegram" style="color:#0088cc;"></i> Duyệt qua Telegram trước khi đăng
+        </label>
+    </div>
+
+    <button id="dyEditSave" class="tt-btn tt-btn-primary" style="width:100%;"><i class="fa-solid fa-check"></i> Lưu thay đổi</button>
+</div>
+</div>
+
+<!-- Preview Modal -->
+<div id="dyPreviewModal" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.85);justify-content:center;align-items:center;">
+    <button id="dyPreviewClose" style="position:absolute;top:16px;right:16px;background:none;border:none;color:#fff;font-size:28px;cursor:pointer;z-index:9999;"><i class="fa-solid fa-xmark"></i></button>
+    <video id="dyPreviewPlayer" controls style="max-width:90vw;max-height:85vh;border-radius:8px;"></video>
+</div>
+</body>
+</html>

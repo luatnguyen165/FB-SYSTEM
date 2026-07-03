@@ -164,7 +164,7 @@
                             <button class="btn-icon-card" title="Xem bài viết" onclick="viewPosts('<%= t._id %>')">
                                 <i class="fa-solid fa-list"></i>
                             </button>
-                            <button class="btn-icon-card <%= t.repostPaused ? 'btn-icon-warning' : '' %>" title="<%= t.repostPaused ? 'Bật lại auto-repost' : 'Tạm dừng auto-repost' %>" onclick="toggleRepostPause('<%= t._id %>', <%= t.repostPaused ? 'true' : 'false' %>)">
+                            <button class="btn-icon-card <%= t.repostPaused ? 'btn-icon-warning' : '' %>" title="<%= t.repostPaused ? 'Bật lại auto-repost' : 'Tạm dừng auto-repost' %>" data-repost-paused="<%= t.repostPaused ? '1' : '0' %>" onclick="toggleRepostPause('<%= t._id %>', this.dataset.repostPaused === '1')">
                                 <i class="fa-solid <%= t.repostPaused ? 'fa-hand' : 'fa-share-from-square' %>"></i>
                             </button>
                             <button class="btn-icon-card" title="Bật/Tắt" onclick="toggleTracking('<%= t._id %>')">
@@ -185,6 +185,19 @@
                 <% }); %>
                 <% } %>
             </div>
+
+            <!-- Pagination -->
+            <% if (typeof pagination !== 'undefined' && pagination.totalPages > 1) { %>
+            <%- include('partials/pagination', {
+                currentPage: pagination.currentPage,
+                totalPages: pagination.totalPages,
+                totalItems: pagination.totalItems,
+                baseUrl: pagination.baseUrl,
+                queryParams: pagination.queryParams,
+                mode: 'server',
+                pageParam: 'page'
+            }) %>
+            <% } %>
 
             <!-- Posts Table -->
             <div id="postsSection" style="display:none; margin-top:24px;">
@@ -256,62 +269,68 @@
 
                     <!-- Tài khoản lấy dữ liệu -->
                     <div class="form-group">
-                        <label class="form-label">Tài khoản lấy dữ liệu</label>
-                        <select class="form-input" id="sourceAccountId">
-                            <option value="">-- Chọn tài khoản --</option>
-                            <% channels.forEach(function(ch) { %>
-                            <option value="<%= ch._id %>" data-platform="<%= ch.platform %>">
-                                <%= ch.accountName %> (<%= ch.platform %> - <%= ch.accountType || '' %>)
+                        <label class="form-label">Tài khoản lấy dữ liệu <span class="required">*</span></label>
+                        <select class="form-input" id="sourceAccountId" required>
+                            <option value="">-- Chọn tài khoản Facebook --</option>
+                            <% 
+                                var fbChannels = channels.filter(function(ch) { 
+                                    return ch.platform === 'FB' || ch.platform === 'Facebook'; 
+                                });
+                                fbChannels.forEach(function(ch) { 
+                            %>
+                            <option value="<%= ch._id %>">
+                                <%= ch.accountName %> (<%= ch.accountType || 'Cá nhân' %>)
                             </option>
                             <% }); %>
                         </select>
+                        <div class="form-section__hint">
+                            <i class="fa-solid fa-circle-info"></i> Chỉ sử dụng tài khoản Facebook để scrape dữ liệu.
+                        </div>
                     </div>
 
-                    <!-- Nền tảng đăng - Auto-repost -->
+                    <!-- Tự động đăng lại -->
                     <div class="form-group">
                         <label class="form-label">
-                            <i class="fa-solid fa-share-from-square"></i> Auto đăng lại (chọn nhiều)
+                            <i class="fa-solid fa-share-from-square"></i> Tự động đăng lại
                         </label>
                         <div class="form-section__hint" style="margin-bottom:12px;">
-                            <i class="fa-solid fa-circle-info"></i> Mỗi bài scrape về sẽ tự động đăng lên các nền tảng đã chọn.
-                            <br>• Có ảnh+video: đăng tất cả. Chỉ có ảnh: bỏ qua TikTok/YouTube.
+                            <i class="fa-solid fa-circle-info"></i> Mỗi bài scrape về sẽ tự động đăng lên các tài khoản đã chọn.
+                            <br>• Nội dung và hình ảnh được lấy tự động từ bài gốc, không cần chỉnh sửa.
                         </div>
-                        <div class="target-platforms-selector" id="targetPlatformsContainer">
+                        <div class="platform-chips-row" id="platformChipsRow">
                             <%
-                                const platformList = [
-                                    { key: 'facebook',  label: 'Facebook',  icon: 'fa-brands fa-facebook', color: '#1877f2', hasGroup: true },
-                                    { key: 'instagram', label: 'Instagram', icon: 'fa-brands fa-instagram', color: '#e1306c' },
-                                    { key: 'tiktok',    label: 'TikTok',    icon: 'fa-brands fa-tiktok', color: '#000' },
-                                    { key: 'youtube',   label: 'YouTube',   icon: 'fa-brands fa-youtube', color: '#ff0000' },
-                                    { key: 'threads',   label: 'Threads',   icon: 'fa-brands fa-threads', color: '#000' },
-                                    { key: 'pinterest', label: 'Pinterest', icon: 'fa-brands fa-pinterest', color: '#bd081c' }
+                                var platformChipData = [
+                                    { code: 'FB', label: 'Facebook', icon: 'fa-brands fa-facebook', color: '#1877F2' },
+                                    { code: 'IG', label: 'Instagram', icon: 'fa-brands fa-instagram', color: '#E4405F' },
+                                    { code: 'TT', label: 'TikTok', icon: 'fa-brands fa-tiktok', color: '#000000' },
+                                    { code: 'YT', label: 'YouTube', icon: 'fa-brands fa-youtube', color: '#FF0000' },
+                                    { code: 'PI', label: 'Pinterest', icon: 'fa-brands fa-pinterest', color: '#E60023' },
+                                    { code: 'TH', label: 'Threads', icon: 'fa-brands fa-threads', color: '#000000' }
                                 ];
+                                var platformGroups = {};
+                                channels.forEach(function(ch) {
+                                    if (!platformGroups[ch.platform]) platformGroups[ch.platform] = [];
+                                    platformGroups[ch.platform].push(ch);
+                                });
                             %>
-                            <% platformList.forEach(function(p) { %>
-                            <div class="target-platform-row" data-platform="<%= p.key %>" style="border:1px solid var(--border-soft);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--bg-soft);">
-                                <label class="target-platform-header" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:600;">
-                                    <input type="checkbox" class="target-cb" value="<%= p.key %>">
-                                    <i class="<%= p.icon %>" style="color:<%= p.color %>;"></i>
-                                    <span><%= p.label %></span>
-                                </label>
-                                <div class="target-platform-body" style="margin-top:10px;padding-left:24px;display:none;">
-                                    <select class="form-input target-account-select" disabled style="margin-bottom:8px;">
-                                        <option value="">-- Chọn tài khoản --</option>
-                                    </select>
-                                    <input type="text" class="form-input target-mapping-title" placeholder="Title (Pinterest/YouTube). VD: {{text|first_100_chars}}" style="margin-bottom:6px;font-size:12px;">
-                                    <textarea class="form-input target-mapping-caption" rows="2" placeholder="Caption. VD: {{text}}" style="margin-bottom:6px;font-size:12px;"></textarea>
-                                    <input type="text" class="form-input target-mapping-hashtags" placeholder="Hashtags (TikTok/Threads). VD: #fyp #viral" style="margin-bottom:6px;font-size:12px;">
-                                    <input type="text" class="form-input target-mapping-tags" placeholder="Tags (YouTube). VD: shorts, viral" style="font-size:12px;">
-                                    <% if (p.hasGroup) { %>
-                                    <div class="form-section__hint" style="margin-top:6px;color:#f59e0b;">
-                                        <i class="fa-solid fa-triangle-exclamation"></i> Facebook Post ảnh cần group đích (chưa hỗ trợ qua form này).
-                                    </div>
-                                    <% } %>
-                                </div>
+                            <% platformChipData.forEach(function(p) {
+                                var hasAccounts = platformGroups[p.code] && platformGroups[p.code].length > 0;
+                            %>
+                            <div class="platform-chip-new <%= hasAccounts ? '' : 'disabled' %>" data-platform="<%= p.code %>" data-has-accounts="<%= hasAccounts ? '1' : '0' %>">
+                                <i class="<%= p.icon %>" style="color: <%= p.color %>;"></i>
+                                <span><%= p.label %></span>
+                                <span class="chip-check"><i class="fa-solid fa-check"></i></span>
                             </div>
                             <% }); %>
                         </div>
-                    </div>
+                        <script>
+window.__platformAccounts = <%- JSON.stringify(platformGroups) %>;
+console.log('[Platform] __platformAccounts loaded:', Object.keys(window.__platformAccounts || {}));
+</script>
+                        <div class="account-grid" id="accountGrid"></div>
+                        <div class="form-section__hint" style="margin-top:12px;">
+                            <i class="fa-solid fa-circle-info"></i> Chọn nền tảng, sau đó chọn tài khoản để tự động đăng lại.
+                        </div>
 
                     <!-- Tạm dừng auto-repost -->
                     <div class="form-group">

@@ -302,6 +302,8 @@
 .btn-header-action:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
 .btn-header-action.primary { background: var(--primary-gradient); border-color: var(--primary); color: white; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
 .btn-header-action.primary:hover { box-shadow: 0 6px 16px rgba(37,99,235,0.4); transform: translateY(-1px); }
+.btn-header-action.danger { border-color: rgba(239,68,68,0.3); color: #ef4444; background: rgba(239,68,68,0.06); }
+.btn-header-action.danger:hover { border-color: #ef4444; background: rgba(239,68,68,0.12); }
 
 /* Table */
 .groups-table-wrapper { overflow-x: auto; }

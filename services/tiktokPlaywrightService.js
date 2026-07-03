@@ -255,6 +255,26 @@ async function uploadVideoToTikTok({
         
         console.log(`[TikTok Upload] STEP 5 - Đã tìm thấy nút Post sẵn sàng, bắt đầu nhập caption...`);
 
+        // Dismiss any modal dialogs blocking the editor
+        console.log('[TikTok Upload] STEP 6 - Dismissing modals...');
+        for (let i = 0; i < 3; i++) {
+            const modalOverlay = page.locator('.TUXModal-overlay, div[role="dialog"], div[data-tux-color-scheme]').first();
+            if (await modalOverlay.isVisible().catch(() => false)) {
+                // Try clicking close button or pressing Escape
+                const closeBtn = page.locator('.TUXModal button[aria-label="Close"], .TUXModal button[aria-label="Đóng"], div[role="dialog"] button[aria-label="Close"]').first();
+                if (await closeBtn.isVisible().catch(() => false)) {
+                    await closeBtn.click().catch(() => {});
+                    console.log(`[TikTok Upload] STEP 6 - Closed modal via button`);
+                } else {
+                    await page.keyboard.press('Escape');
+                    console.log(`[TikTok Upload] STEP 6 - Closed modal via Escape`);
+                }
+                await page.waitForTimeout(1000);
+            } else {
+                break;
+            }
+        }
+
         // Nhập Caption và Hashtags
         console.log('[TikTok Upload] STEP 6 - Nhập caption...');
         const fullCaption = buildCaption(title, hashtags);
@@ -281,7 +301,7 @@ async function uploadVideoToTikTok({
 
                     // Click để focus
                     console.log(`[TikTok Upload] STEP 6 - Click để focus editor...`);
-                    await editor.click();
+                    await editor.click({ force: true });
                     await page.waitForTimeout(500);
 
                     // Select all và xóa nội dung cũ
@@ -315,8 +335,19 @@ async function uploadVideoToTikTok({
         console.log(`[TikTok Upload] STEP 6 - Đã chờ 2s sau khi nhập caption`);
 
         // Click nút Post (đã được tìm thấy ở STEP 5)
+        console.log('[TikTok Upload] STEP 7 - Dismiss modals before Post...');
+        for (let i = 0; i < 3; i++) {
+            const modal = page.locator('.TUXModal-overlay, div[role="dialog"]').first();
+            if (await modal.isVisible().catch(() => false)) {
+                await page.keyboard.press('Escape');
+                await page.waitForTimeout(1000);
+            } else {
+                break;
+            }
+        }
+
         console.log('[TikTok Upload] STEP 7 - Click nút Post...');
-        await postButton.click();
+        await postButton.click({ force: true });
         console.log('[TikTok Upload] STEP 7 - Đã click nút Post');
         
         // Sau khi click Post thành công, mặc định coi là đã đăng thành công
@@ -452,7 +483,7 @@ async function uploadVideoToTikTokNow({
     videoPath,
     title = '',
     hashtags = [],
-    headless = false,
+    headless = true,
     existingSessionDir = ''
 }) {
     return uploadVideoToTikTok({

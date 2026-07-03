@@ -32,7 +32,7 @@ function renderEditAffiliateComboboxList(links, searchTerm = '') {
         const isSelected = editSelectedShopeeLinks.includes(String(link._id));
         return `<div class="combobox-item ${isSelected ? 'selected' : ''}" data-link-id="${link._id}">
             <span class="combobox-item-checkbox">${isSelected ? '✓' : ''}</span>
-            <img class="combobox-item-thumb" src="${link.imageUrl || 'https://via.placeholder.com/40?text=?'}" alt="${link.title || ''}" onerror="this.src='https://via.placeholder.com/40?text=?'">
+            <img class="combobox-item-thumb" src="${link.imageUrl || ''}" alt="${link.title || ''}" onerror="if(!this.dataset.fallback){this.dataset.fallback='1';this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22><rect fill=%22%23ddd%22 width=%2240%22 height=%2240%22 rx=%224%22/><text x=%2220%22 y=%2224%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2214%22>?</text></svg>'}">
             <div class="combobox-item-info">
                 <span class="combobox-item-title">${link.title || '—'}</span>
                 <span class="combobox-item-url">${link.shopeeUrl || '—'}</span>
@@ -81,7 +81,7 @@ function renderEditAffiliateUrls() {
 
     box.innerHTML = selected.map(link => `
         <div class="edit-affiliate-item" data-link-id="${link._id}">
-            <img src="${link.imageUrl || 'https://via.placeholder.com/32?text=?'}" alt="${link.title || ''}" onerror="this.src='https://via.placeholder.com/32?text=?'">
+            <img src="${link.imageUrl || ''}" alt="${link.title || ''}" onerror="if(!this.dataset.fallback){this.dataset.fallback='1';this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2232%22 height=%2232%22><rect fill=%22%23ddd%22 width=%2232%22 height=%2232%22 rx=%224%22/><text x=%2216%22 y=%2220%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2212%22>?</text></svg>'}">
             <div class="edit-affiliate-item__info">
                 <div class="edit-affiliate-item__title">${link.title || '—'}</div>
                 <div class="edit-affiliate-item__url">${link.shopeeUrl || '—'}</div>

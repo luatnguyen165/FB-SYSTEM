@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Instagram Upload - FB-SYSTEM</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f0f0f; color: #e5e5e5; min-height: 100vh; }
+        .container { max-width: 700px; margin: 0 auto; padding: 24px; }
+        h1 { font-size: 1.4rem; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+        h1 i { color: #E4405F; }
+        .subtitle { color: #888; font-size: 0.85rem; margin-bottom: 24px; }
+        .card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 16px; padding: 24px; margin-bottom: 20px; }
+        .card h2 { font-size: 1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .card h2 i { color: #E4405F; font-size: 0.9rem; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 0.82rem; color: #aaa; margin-bottom: 6px; font-weight: 500; }
+        .form-group select, .form-group input, .form-group textarea {
+            width: 100%; padding: 10px 14px; background: #111; border: 1px solid #333;
+            border-radius: 10px; color: #e5e5e5; font-size: 0.9rem; outline: none; transition: border-color 0.2s;
+        }
+        .form-group select:focus, .form-group input:focus, .form-group textarea:focus { border-color: #E4405F; }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+        .file-drop { border: 2px dashed #333; border-radius: 12px; padding: 32px; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; }
+        .file-drop:hover, .file-drop.dragover { border-color: #E4405F; background: rgba(228, 64, 95, 0.05); }
+        .file-drop input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+        .file-drop i { font-size: 2rem; color: #555; margin-bottom: 8px; }
+        .file-drop p { color: #888; font-size: 0.85rem; }
+        .file-drop .filename { color: #E4405F; font-weight: 600; margin-top: 8px; font-size: 0.9rem; }
+        .preview-video { width: 100%; max-height: 300px; border-radius: 10px; margin-top: 12px; background: #000; }
+        .row { display: flex; gap: 12px; }
+        .row .form-group { flex: 1; }
+        .switch-group { display: flex; align-items: center; gap: 10px; }
+        .switch { position: relative; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; inset: 0; background: #333; border-radius: 24px; cursor: pointer; transition: 0.3s; }
+        .slider:before { content: ''; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px; background: #888; border-radius: 50%; transition: 0.3s; }
+        .switch input:checked + .slider { background: #E4405F; }
+        .switch input:checked + .slider:before { transform: translateX(20px); background: #fff; }
+        .btn-test { width: 100%; padding: 14px; background: linear-gradient(135deg, #E4405F, #C13584); color: #fff; border: none; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.2s; }
+        .btn-test:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(228, 64, 95, 0.4); }
+        .btn-test:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+        .btn-test .spinner { display: none; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        .btn-test.loading .spinner { display: block; }
+        .btn-test.loading .btn-text { display: none; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .result { margin-top: 20px; padding: 16px; border-radius: 12px; font-size: 0.85rem; line-height: 1.6; display: none; }
+        .result.success { display: block; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); color: #22c55e; }
+        .result.error { display: block; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; }
+        .result.info { display: block; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); color: #3b82f6; }
+        .result a { color: inherit; text-decoration: underline; }
+        .log-box { margin-top: 20px; background: #111; border: 1px solid #222; border-radius: 12px; padding: 16px; max-height: 300px; overflow-y: auto; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.78rem; line-height: 1.8; color: #888; }
+        .log-box .log-line { white-space: pre-wrap; word-break: break-all; }
+        .log-box .log-line.success { color: #22c55e; }
+        .log-box .log-line.error { color: #ef4444; }
+        .log-box .log-line.info { color: #3b82f6; }
+        .log-box .log-line.warn { color: #f59e0b; }
+        .tab-bar { display: flex; gap: 4px; margin-bottom: 20px; background: #1a1a1a; border-radius: 12px; padding: 4px; border: 1px solid #2a2a2a; }
+        .tab-bar button { flex: 1; padding: 10px; background: transparent; border: none; color: #888; font-size: 0.85rem; border-radius: 10px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .tab-bar button.active { background: #E4405F; color: #fff; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .back-link { display: inline-flex; align-items: center; gap: 6px; color: #888; text-decoration: none; font-size: 0.85rem; margin-bottom: 16px; }
+        .back-link:hover { color: #E4405F; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/schedule/reels" class="back-link"><i class="fa-solid fa-arrow-left"></i> Quay lại</a>
+        <h1><i class="fa-brands fa-instagram"></i> Test Instagram Upload</h1>
+        <p class="subtitle">Test upload video/reels và ảnh lên Instagram trực tiếp</p>
+
+        <div class="tab-bar">
+            <button class="active" onclick="switchTab('video')"><i class="fa-solid fa-video"></i> Video / Reels</button>
+            <button onclick="switchTab('image')"><i class="fa-solid fa-image"></i> Ảnh / Post</button>
+        </div>
+
+        <!-- VIDEO TAB -->
+        <div id="tab-video" class="tab-content active">
+            <div class="card">
+                <h2><i class="fa-solid fa-cog"></i> Cấu hình</h2>
+                <div class="form-group">
+                    <label>Tài khoản Instagram</label>
+                    <select id="igAccount">
+                        <% if (channels && channels.length) { %>
+                            <% channels.forEach(ch => { %>
+                                <option value="<%= ch.accountName %>" data-type="<%= ch.accountType || 'Personal' %>">
+                                    <%= ch.accountName %> (<%= ch.accountType || 'Personal' %>)
+                                </option>
+                            <% }); %>
+                        <% } else { %>
+                            <option value="">Không có tài khoản IG nào</option>
+                        <% } %>
+                    </select>
+                </div>
+                <div class="row">
+                    <div class="form-group">
+                        <label>Account Type</label>
+                        <select id="igAccountType">
+                            <option value="Personal">Personal</option>
+                            <option value="Business">Business</option>
+                            <option value="Creator">Creator</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Headless</label>
+                        <div class="switch-group" style="margin-top: 6px;">
+                            <label class="switch">
+                                <input type="checkbox" id="igHeadless">
+                                <span class="slider"></span>
+                            </label>
+                            <span style="font-size: 0.82rem; color: #888;">Chạy ẩn</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Caption</label>
+                    <textarea id="igCaption" placeholder="Nhập caption cho video...">Test IG Upload - <%= new Date().toLocaleString('vi-VN') %></textarea>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><i class="fa-solid fa-upload"></i> Chọn video</h2>
+                <div class="file-drop" id="videoDropZone">
+                    <input type="file" id="videoInput" accept="video/*">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    <p>Kéo thả video vào đây hoặc <b>nhấn để chọn</b></p>
+                    <p style="font-size: 0.75rem; color: #555; margin-top: 4px;">MP4, MOV, AVI — Tối đa 100MB</p>
+                    <div class="filename" id="videoFileName"></div>
+                </div>
+                <video id="videoPreview" class="preview-video" controls style="display:none;"></video>
+            </div>
+
+            <button class="btn-test" id="btnTestVideo" onclick="testVideoUpload()" <%= (!channels || !channels.length) ? 'disabled' : '' %>>
+                <span class="spinner"></span>
+                <span class="btn-text"><i class="fa-brands fa-instagram"></i> Test Upload Video</span>
+            </button>
+        </div>
+
+        <!-- IMAGE TAB -->
+        <div id="tab-image" class="tab-content">
+            <div class="card">
+                <h2><i class="fa-solid fa-cog"></i> Cấu hình</h2>
+                <div class="form-group">
+                    <label>Tài khoản Instagram</label>
+                    <select id="igAccountImg">
+                        <% if (channels && channels.length) { %>
+                            <% channels.forEach(ch => { %>
+                                <option value="<%= ch.accountName %>" data-type="<%= ch.accountType || 'Personal' %>">
+                                    <%= ch.accountName %> (<%= ch.accountType || 'Personal' %>)
+                                </option>
+                            <% }); %>
+                        <% } else { %>
+                            <option value="">Không có tài khoản IG nào</option>
+                        <% } %>
+                    </select>
+                </div>
+                <div class="row">
+                    <div class="form-group">
+                        <label>Account Type</label>
+                        <select id="igAccountTypeImg">
+                            <option value="Personal">Personal</option>
+                            <option value="Business">Business</option>
+                            <option value="Creator">Creator</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Headless</label>
+                        <div class="switch-group" style="margin-top: 6px;">
+                            <label class="switch">
+                                <input type="checkbox" id="igHeadlessImg">
+                                <span class="slider"></span>
+                            </label>
+                            <span style="font-size: 0.82rem; color: #888;">Chạy ẩn</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Caption</label>
+                    <textarea id="igCaptionImg" placeholder="Nhập caption cho ảnh...">Test IG Post - <%= new Date().toLocaleString('vi-VN') %></textarea>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><i class="fa-solid fa-images"></i> Chọn ảnh</h2>
+                <div class="file-drop" id="imageDropZone">
+                    <input type="file" id="imageInput" accept="image/*" multiple>
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    <p>Kéo thả ảnh vào đây hoặc <b>nhấn để chọn</b></p>
+                    <p style="font-size: 0.75rem; color: #555; margin-top: 4px;">JPG, PNG, WEBP — Tối đa 10 ảnh</p>
+                    <div class="filename" id="imageFileName"></div>
+                </div>
+                <div id="imagePreviewGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; margin-top: 12px;"></div>
+            </div>
+
+            <button class="btn-test" id="btnTestImage" onclick="testImageUpload()" <%= (!channels || !channels.length) ? 'disabled' : '' %>>
+                <span class="spinner"></span>
+                <span class="btn-text"><i class="fa-brands fa-instagram"></i> Test Upload Ảnh</span>
+            </button>
+        </div>
+
+        <div class="result" id="testResult"></div>
+        <div class="log-box" id="logBox"></div>
+    </div>
+
+    <script>
+        // Tab switching
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            event.target.closest('button').classList.add('active');
+            document.getElementById('tab-' + tab).classList.add('active');
+        }
+
+        // Auto-fill account type from select
+        document.getElementById('igAccount')?.addEventListener('change', function() {
+            const opt = this.options[this.selectedIndex];
+            const type = opt?.getAttribute('data-type') || 'Personal';
+            document.getElementById('igAccountType').value = type;
+        });
+        document.getElementById('igAccountImg')?.addEventListener('change', function() {
+            const opt = this.options[this.selectedIndex];
+            const type = opt?.getAttribute('data-type') || 'Personal';
+            document.getElementById('igAccountTypeImg').value = type;
+        });
+
+        // Video file handling
+        const videoInput = document.getElementById('videoInput');
+        const videoDropZone = document.getElementById('videoDropZone');
+        const videoPreview = document.getElementById('videoPreview');
+        const videoFileName = document.getElementById('videoFileName');
+
+        videoInput?.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                videoFileName.textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB)`;
+                videoPreview.src = URL.createObjectURL(file);
+                videoPreview.style.display = 'block';
+            }
+        });
+
+        videoDropZone?.addEventListener('dragover', (e) => { e.preventDefault(); videoDropZone.classList.add('dragover'); });
+        videoDropZone?.addEventListener('dragleave', () => { videoDropZone.classList.remove('dragover'); });
+        videoDropZone?.addEventListener('drop', (e) => {
+            e.preventDefault();
+            videoDropZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('video/')) {
+                videoInput.files = e.dataTransfer.files;
+                videoInput.dispatchEvent(new Event('change'));
+            }
+        });
+
+        // Image file handling
+        const imageInput = document.getElementById('imageInput');
+        const imageDropZone = document.getElementById('imageDropZone');
+        const imagePreviewGrid = document.getElementById('imagePreviewGrid');
+        const imageFileName = document.getElementById('imageFileName');
+
+        imageInput?.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            imageFileName.textContent = `${files.length} ảnh đã chọn`;
+            imagePreviewGrid.innerHTML = '';
+            files.forEach(file => {
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                img.style.cssText = 'width:100%; aspect-ratio:1; object-fit:cover; border-radius:8px;';
+                imagePreviewGrid.appendChild(img);
+            });
+        });
+
+        imageDropZone?.addEventListener('dragover', (e) => { e.preventDefault(); imageDropZone.classList.add('dragover'); });
+        imageDropZone?.addEventListener('dragleave', () => { imageDropZone.classList.remove('dragover'); });
+        imageDropZone?.addEventListener('drop', (e) => {
+            e.preventDefault();
+            imageDropZone.classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+            if (files.length) {
+                const dt = new DataTransfer();
+                files.forEach(f => dt.items.add(f));
+                imageInput.files = dt.files;
+                imageInput.dispatchEvent(new Event('change'));
+            }
+        });
+
+        // Log helper
+        function addLog(msg, type = '') {
+            const box = document.getElementById('logBox');
+            const line = document.createElement('div');
+            line.className = 'log-line ' + type;
+            const time = new Date().toLocaleTimeString('vi-VN');
+            line.textContent = `[${time}] ${msg}`;
+            box.appendChild(line);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function showResult(msg, type) {
+            const el = document.getElementById('testResult');
+            el.className = 'result ' + type;
+            el.innerHTML = msg;
+        }
+
+        // TEST VIDEO UPLOAD
+        async function testVideoUpload() {
+            const file = videoInput.files[0];
+            if (!file) { showResult('Vui lòng chọn file video!', 'error'); return; }
+
+            const accountName = document.getElementById('igAccount').value;
+            if (!accountName) { showResult('Vui lòng chọn tài khoản Instagram!', 'error'); return; }
+
+            const btn = document.getElementById('btnTestVideo');
+            btn.classList.add('loading');
+            btn.disabled = true;
+            document.getElementById('logBox').innerHTML = '';
+            showResult('Đang upload video lên Instagram...', 'info');
+
+            addLog('Bắt đầu test upload video Instagram', 'info');
+            addLog(`Tài khoản: ${accountName}`);
+            addLog(`Video: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB)`);
+            addLog(`Caption: ${document.getElementById('igCaption').value}`);
+            addLog(`Headless: ${document.getElementById('igHeadless').checked}`);
+            addLog('---');
+
+            const formData = new FormData();
+            formData.append('video', file);
+            formData.append('accountName', accountName);
+            formData.append('accountType', document.getElementById('igAccountType').value);
+            formData.append('caption', document.getElementById('igCaption').value);
+            formData.append('headless', document.getElementById('igHeadless').checked);
+
+            try {
+                addLog('Đang gửi request lên server...', 'info');
+                const res = await fetch('/test-instagram/api/test-upload', { method: 'POST', body: formData });
+                const data = await res.json();
+
+                addLog('---');
+                if (data.success) {
+                    addLog(`THÀNH CÔNG! URL: ${data.publishedUrl}`, 'success');
+                    showResult(`<i class="fa-solid fa-circle-check"></i> ${data.message}<br><a href="${data.publishedUrl}" target="_blank">${data.publishedUrl}</a>`, 'success');
+                } else {
+                    addLog(`THẤT BẠI: ${data.message}`, 'error');
+                    showResult(`<i class="fa-solid fa-circle-xmark"></i> ${data.message}`, 'error');
+                }
+            } catch (err) {
+                addLog(`Lỗi kết nối: ${err.message}`, 'error');
+                showResult(`Lỗi kết nối: ${err.message}`, 'error');
+            } finally {
+                btn.classList.remove('loading');
+                btn.disabled = false;
+            }
+        }
+
+        // TEST IMAGE UPLOAD
+        async function testImageUpload() {
+            const files = imageInput.files;
+            if (!files.length) { showResult('Vui lòng chọn file ảnh!', 'error'); return; }
+
+            const accountName = document.getElementById('igAccountImg').value;
+            if (!accountName) { showResult('Vui lòng chọn tài khoản Instagram!', 'error'); return; }
+
+            const btn = document.getElementById('btnTestImage');
+            btn.classList.add('loading');
+            btn.disabled = true;
+            document.getElementById('logBox').innerHTML = '';
+            showResult('Đang upload ảnh lên Instagram...', 'info');
+
+            addLog('Bắt đầu test upload ảnh Instagram', 'info');
+            addLog(`Tài khoản: ${accountName}`);
+            addLog(`Số ảnh: ${files.length}`);
+            addLog(`Caption: ${document.getElementById('igCaptionImg').value}`);
+            addLog(`Headless: ${document.getElementById('igHeadlessImg').checked}`);
+            addLog('---');
+
+            const formData = new FormData();
+            for (const file of files) {
+                formData.append('images', file);
+            }
+            formData.append('accountName', accountName);
+            formData.append('accountType', document.getElementById('igAccountTypeImg').value);
+            formData.append('caption', document.getElementById('igCaptionImg').value);
+            formData.append('headless', document.getElementById('igHeadlessImg').checked);
+
+            try {
+                addLog('Đang gửi request lên server...', 'info');
+                const res = await fetch('/test-instagram/api/test-upload-images', { method: 'POST', body: formData });
+                const data = await res.json();
+
+                addLog('---');
+                if (data.success) {
+                    addLog(`THÀNH CÔNG! URL: ${data.publishedUrl}`, 'success');
+                    showResult(`<i class="fa-solid fa-circle-check"></i> ${data.message}<br><a href="${data.publishedUrl}" target="_blank">${data.publishedUrl}</a>`, 'success');
+                } else {
+                    addLog(`THẤT BẠI: ${data.message}`, 'error');
+                    showResult(`<i class="fa-solid fa-circle-xmark"></i> ${data.message}`, 'error');
+                }
+            } catch (err) {
+                addLog(`Lỗi kết nối: ${err.message}`, 'error');
+                showResult(`Lỗi kết nối: ${err.message}`, 'error');
+            } finally {
+                btn.classList.remove('loading');
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

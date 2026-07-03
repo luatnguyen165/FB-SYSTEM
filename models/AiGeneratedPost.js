@@ -24,6 +24,7 @@ const AiGeneratedPostSchema = new mongoose.Schema({
     // Dữ liệu AI
     aiModel: { type: String, default: 'gpt-4o-mini' },
     aiPrompt: { type: String, default: '' },
+    imagePrompt: { type: String, default: '' },
     generationCost: { type: Number, default: 0 },
 
     // Tham chiếu SchedulePost đã tạo

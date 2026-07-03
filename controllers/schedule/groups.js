@@ -198,21 +198,13 @@ const scrapeGroupMembersAPI = async (req, res) => {
 
         console.log(`[Group Scrape API] Starting scrape from: ${groupUrl}, deep: ${isDeepMode}, maxGroups: ${maxGroups || 'unlimited'}`);
 
-        // Lấy dữ liệu cũ từ DB
-        const existingCache = await FacebookGroupCache.findOne({ userId: req.user._id, channelId: channel._id }).lean();
-        const existingGroupsMap = new Map();
-        if (existingCache?.groups) {
-            existingCache.groups.forEach(g => existingGroupsMap.set(g.groupId, g));
-            console.log(`[Group Scrape API] Co ${existingGroupsMap.size} groups trong DB`);
-        }
-
         // Callback lưu groups vào DB ngay khi có groups mới
+        const scannedGroupsMap = new Map();
         const saveGroupsToDB = async (allGroups, newGroups) => {
             try {
-                // Cập nhật existingGroupsMap với groups mới để tránh duplicate ở lần callback sau
-                allGroups.forEach(g => existingGroupsMap.set(g.groupId, g));
+                allGroups.forEach(g => scannedGroupsMap.set(g.groupId, g));
 
-                const mergedGroups = Array.from(existingGroupsMap.values())
+                const currentGroups = Array.from(scannedGroupsMap.values())
                     .sort((a, b) => a.groupName.localeCompare(b.groupName, 'vi'));
                 
                 await persistFacebookGroupCache({
@@ -220,10 +212,10 @@ const scrapeGroupMembersAPI = async (req, res) => {
                     channelId: channel._id,
                     accountName: safeChannel.accountName,
                     accountType: safeChannel.accountType || 'Cá nhân',
-                    groups: mergedGroups
+                    groups: currentGroups
                 });
                 
-                console.log(`[Group Scrape API] Da luu ${mergedGroups.length} groups vao DB`);
+                console.log(`[Group Scrape API] Da luu ${currentGroups.length} groups vao DB`);
             } catch (e) {
                 console.error(`[Group Scrape API] Loi khi luu vao DB: ${e.message}`);
             }
@@ -240,7 +232,7 @@ const scrapeGroupMembersAPI = async (req, res) => {
                 round: null,
                 maxRounds: maxScrollRounds,
                 phase: 'scraping'
-            });
+            }, String(channel._id));
             lastBatchCount = allGroups.length;
         };
 
@@ -257,15 +249,11 @@ const scrapeGroupMembersAPI = async (req, res) => {
 
         console.log(`[Group Scrape API] Da quet ${newGroups.length} groups moi tu ${groupUrl}`);
 
-        // Merge dữ liệu lần cuối
-        const mergedGroupsMap = new Map(existingGroupsMap);
-        newGroups.forEach(g => mergedGroupsMap.set(g.groupId, g));
-
-        const finalGroups = Array.from(mergedGroupsMap.values())
+        // Lưu groups cuối cùng (ghi đè hoàn toàn dữ liệu cũ)
+        const finalGroups = newGroups
             .filter((group, idx, arr) => arr.findIndex(g => g.groupId === group.groupId) === idx)
             .sort((a, b) => a.groupName.localeCompare(b.groupName, 'vi'));
 
-        // Lưu final data
         const savedCache = await persistFacebookGroupCache({
             userId: req.user._id,
             channelId: channel._id,
@@ -281,7 +269,8 @@ const scrapeGroupMembersAPI = async (req, res) => {
             totalGroups: finalGroups.length,
             source: 'scrape-url',
             updatedAt: savedCache?.updatedAt || new Date(),
-            message: `Hoàn tất! Đã quét ${newGroups.length} group mới, tổng ${finalGroups.length} group`
+            message: `Hoàn tất! Đã quét ${newGroups.length} group mới, tổng ${finalGroups.length} group`,
+            channelId: String(channel._id)
         });
 
         return res.json({
@@ -360,14 +349,6 @@ const scrapeGroupsFromJoinsAPI = async (req, res) => {
         const maxScrollRounds = isDeepMode ? 15 : 5;
         const maxGroups = isDeepMode ? 0 : 500;
 
-        // Lấy dữ liệu cũ từ DB
-        const existingCache = await FacebookGroupCache.findOne({ userId: req.user._id, channelId: channel._id }).lean();
-        const existingGroupsMap = new Map();
-        if (existingCache?.groups) {
-            existingCache.groups.forEach(g => existingGroupsMap.set(g.groupId, g));
-            console.log(`[Group Scrape] Co ${existingGroupsMap.size} groups trong DB`);
-        }
-
         // Callback gửi tiến trình qua socket + console
         let lastFoundCount = 0;
         const sendProgress = (data) => {
@@ -382,28 +363,28 @@ const scrapeGroupsFromJoinsAPI = async (req, res) => {
                 found: data.found,
                 round: data.round || null,
                 maxRounds: data.maxRounds || maxScrollRounds
-            });
+            }, String(channel._id));
         };
 
         // Callback lưu groups vào DB + emit socket batch
+        const scannedGroupsMap = new Map();
         const saveGroupsToDBAndEmit = async (allGroups, newGroups) => {
             try {
-                // Cập nhật existingGroupsMap với groups mới để tránh duplicate ở lần callback sau
-                allGroups.forEach(g => existingGroupsMap.set(g.groupId, g));
+                allGroups.forEach(g => scannedGroupsMap.set(g.groupId, g));
 
-                const mergedGroups = Array.from(existingGroupsMap.values())
+                const currentGroups = Array.from(scannedGroupsMap.values())
                     .sort((a, b) => a.groupName.localeCompare(b.groupName, 'vi'));
                 
-                // Lưu vào DB ngay
+                // Lưu vào DB ngay (ghi đè, không merge với dữ liệu cũ)
                 await persistFacebookGroupCache({
                     userId: req.user._id,
                     channelId: channel._id,
                     accountName: safeChannel.accountName,
                     accountType: safeChannel.accountType || 'Cá nhân',
-                    groups: mergedGroups
+                    groups: currentGroups
                 });
                 
-                console.log(`[Group Scrape] Da luu ${mergedGroups.length} groups vao DB`);
+                console.log(`[Group Scrape] Da luu ${currentGroups.length} groups vao DB`);
 
                 // Emit batch to frontend via socket
                 emitGroupsBatch(req.user._id, allGroups, newGroups, {
@@ -411,7 +392,7 @@ const scrapeGroupsFromJoinsAPI = async (req, res) => {
                     round: null,
                     maxRounds: maxScrollRounds,
                     phase: 'scraping'
-                });
+                }, String(channel._id));
             } catch (e) {
                 console.error(`[Group Scrape] Loi khi luu vao DB: ${e.message}`);
             }
@@ -429,15 +410,11 @@ const scrapeGroupsFromJoinsAPI = async (req, res) => {
 
         console.log(`[Group Scrape Joins API] Da quet ${newGroups.length} groups moi`);
 
-        // Merge dữ liệu lần cuối
-        const mergedGroupsMap = new Map(existingGroupsMap);
-        newGroups.forEach(g => mergedGroupsMap.set(g.groupId, g));
-
-        const finalGroups = Array.from(mergedGroupsMap.values())
+        // Lưu groups cuối cùng (ghi đè hoàn toàn dữ liệu cũ)
+        const finalGroups = newGroups
             .filter((group, idx, arr) => arr.findIndex(g => g.groupId === group.groupId) === idx)
             .sort((a, b) => a.groupName.localeCompare(b.groupName, 'vi'));
 
-        // Lưu final data
         const savedCache = await persistFacebookGroupCache({
             userId: req.user._id,
             channelId: channel._id,
@@ -453,7 +430,8 @@ const scrapeGroupsFromJoinsAPI = async (req, res) => {
             totalGroups: finalGroups.length,
             source: 'scrape-joins',
             updatedAt: savedCache?.updatedAt || new Date(),
-            message: `Hoàn tất! Đã quét ${newGroups.length} group mới, tổng ${finalGroups.length} group`
+            message: `Hoàn tất! Đã quét ${newGroups.length} group mới, tổng ${finalGroups.length} group`,
+            channelId: String(channel._id)
         });
 
         return res.json({
@@ -481,26 +459,80 @@ const getGroupsAPI = async (req, res) => {
         console.log('Get Groups API called with query:', req.query);
         const { channelId } = req.query;
         
-        if (!channelId) {
-            return res.status(400).json({ success: false, message: 'Thiếu channelId' });
-        }
+        let allGroups = [];
 
-        const cache = await FacebookGroupCache.findOne({ 
-            userId: req.user._id, 
-            channelId 
-        }).lean();
-
-        if (!cache || !cache.groups) {
-            return res.json({ success: true, groups: [] });
+        if (channelId) {
+            const cache = await FacebookGroupCache.findOne({ 
+                userId: req.user._id, 
+                channelId 
+            }).lean();
+            if (cache && cache.groups) {
+                allGroups = cache.groups;
+            }
+        } else {
+            const caches = await FacebookGroupCache.find({ 
+                userId: req.user._id 
+            }).lean();
+            for (const cache of caches) {
+                if (cache.groups && cache.groups.length) {
+                    allGroups.push(...cache.groups);
+                }
+            }
         }
 
         return res.json({ 
             success: true, 
-            groups: cache.groups,
-            count: cache.groups.length 
+            groups: allGroups,
+            count: allGroups.length 
         });
     } catch (error) {
         console.error('Get Groups API Error:', error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const clearAllGroupsAPI = async (req, res) => {
+    try {
+        const result = await FacebookGroupCache.updateMany(
+            { userId: req.user._id },
+            { $set: { groups: [], updatedAt: new Date() } }
+        );
+        return res.json({ success: true, message: `Đã xóa ${result.modifiedCount} tài khoản groups`, deletedCount: result.modifiedCount });
+    } catch (error) {
+        console.error('Clear All Groups API Error:', error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const deleteSelectedGroupsAPI = async (req, res) => {
+    try {
+        const { channelId, groupIds } = req.body;
+
+        if (!channelId) {
+            return res.status(400).json({ success: false, message: 'Vui lòng chọn tài khoản Facebook' });
+        }
+
+        if (!groupIds || !Array.isArray(groupIds) || groupIds.length === 0) {
+            return res.status(400).json({ success: false, message: 'Vui lòng chọn group cần xóa' });
+        }
+
+        const result = await FacebookGroupCache.findOneAndUpdate(
+            { userId: req.user._id, channelId },
+            {
+                $pull: { groups: { groupId: { $in: groupIds } } },
+                $set: { updatedAt: new Date() }
+            },
+            { new: true }
+        );
+
+        return res.json({
+            success: true,
+            message: `Đã xóa ${groupIds.length} group`,
+            deletedCount: groupIds.length,
+            remainingCount: result?.groups?.length || 0
+        });
+    } catch (error) {
+        console.error('Delete Selected Groups API Error:', error);
         return res.status(500).json({ success: false, message: error.message });
     }
 };
@@ -510,5 +542,7 @@ module.exports = {
     scanFacebookGroupsAPI,
     scrapeGroupMembersAPI,
     scrapeGroupsFromJoinsAPI,
-    getGroupsAPI
+    getGroupsAPI,
+    clearAllGroupsAPI,
+    deleteSelectedGroupsAPI
 };

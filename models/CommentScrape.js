@@ -46,7 +46,7 @@ const CommentScrapeSchema = new mongoose.Schema({
     postTitle: { type: String, default: '' },     // tiêu đề post nếu lấy được
 
     // Trạng thái job
-    status: { type: String, enum: ['pending', 'running', 'success', 'failed', 'partial'], default: 'pending' },
+    status: { type: String, enum: ['pending', 'running', 'success', 'failed', 'partial', 'stale_failed'], default: 'pending' },
     errorMessage: { type: String, default: '' },
     progress: { type: Number, default: 0 },        // 0-100
 

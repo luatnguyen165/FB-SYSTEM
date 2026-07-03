@@ -22,21 +22,11 @@
 
     <main class="content-body cc-page">
         <!-- Hero -->
-        <section class="cc-hero">
-            <div class="cc-hero__row">
-                <div class="cc-hero__text">
-                    <span class="cc-hero__eyebrow">
-                        <i class="fa-brands fa-facebook-messenger"></i>
-                        Crawler bình luận
-                    </span>
-                    <h1 class="cc-hero__title">FB Comment Crawler</h1>
-                    <p class="cc-hero__desc">Quét toàn bộ bình luận + reply lồng nhau từ một bài viết Facebook, xuất JSON/CSV. Tận dụng tài khoản FB đã kết nối.</p>
-                </div>
-                <div class="cc-hero__badge">
-                    <i class="fa-solid fa-comments"></i>
-                </div>
-            </div>
-        </section>
+        <%- include('partials/welcome-section', {
+            eyebrow: 'Crawler bình luận',
+            title: 'FB Comment Crawler',
+            description: 'Quét toàn bộ bình luận + reply lồng nhau từ một bài viết Facebook, xuất JSON/CSV. Tận dụng tài khoản FB đã kết nối.'
+        }) %>
 
         <!-- Stats -->
         <section class="cc-stats">
@@ -323,6 +313,7 @@
     window.appAlert = (m, t = 'Thông báo') => showNotify({ type: 'info', title: t, message: m });
     window.appConfirm = (m, t = 'Xác nhận') => showNotify({ type: 'warning', title: t, message: m, showCancel: true, okText: 'Đồng ý' });
     window.appError = (m, t = 'Lỗi') => showNotify({ type: 'error', title: t, message: m, okText: 'Đóng' });
+    window.appWarn = (m, t = 'Cảnh báo') => showNotify({ type: 'warning', title: t, message: m, okText: 'Đóng' });
     window.appSuccess = (m, t = 'Thành công') => showNotify({ type: 'success', title: t, message: m });
     window.appDanger = (m, t = 'Cảnh báo') => showNotify({ type: 'danger', title: t, message: m, showCancel: true, okText: 'Xóa' });
 
@@ -381,6 +372,8 @@
         badge.className = 'cc-badge cc-badge--' + status;
         if (status === 'running') {
             badge.innerHTML = '<span class="cc-badge__spinner"></span>running';
+        } else if (status === 'stale_failed') {
+            badge.innerHTML = 'stale_failed <span class="cc-badge__old">(có dữ liệu cũ)</span>';
         } else {
             badge.textContent = status;
         }
@@ -399,11 +392,12 @@
     }
 
     function buildRowHtml(s) {
+        const isStale = s.status === 'stale_failed';
         return `
             <td>
                 <span class="cc-badge cc-badge--${s.status}" data-job-status="${s._id}">
                     ${s.status === 'running' ? '<span class="cc-badge__spinner"></span>' : ''}
-                    ${s.status}
+                    ${isStale ? 'stale_failed <span class="cc-badge__old">(có dữ liệu cũ)</span>' : s.status}
                 </span>
             </td>
             <td>
@@ -423,8 +417,8 @@
             <td class="cc-table__time">${new Date(s.scrapedAt || s.createdAt).toLocaleString('vi-VN')}</td>
             <td>
                 <div class="cc-table__actions">
-                    <button class="cc-btn cc-btn--ghost btn-view" data-id="${s._id}" title="Xem chi tiết">
-                        <i class="fa-solid fa-eye"></i> Xem
+                    <button class="cc-btn ${isStale ? 'cc-btn--warning' : 'cc-btn--ghost'} btn-view" data-id="${s._id}" title="Xem chi tiết">
+                        <i class="fa-solid fa-eye"></i> ${isStale ? 'Xem dữ liệu cũ' : 'Xem'}
                     </button>
                     <button class="cc-btn cc-btn--ghost btn-rescrape" data-id="${s._id}" data-url="${escapeAttr(s.postUrl)}" data-channel="${s.channelId || ''}" title="Quét lại">
                         <i class="fa-solid fa-rotate"></i>
@@ -499,7 +493,7 @@
             const res = await fetch('/tracking/comments/api/scrape', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ postUrl: url, channelId, maxComments: 0, includeReplies: true, skipPreviousUsers: false, visible: true })
+                body: JSON.stringify({ postUrl: url, channelId, maxComments: 0, includeReplies: true, skipPreviousUsers: false, visible: false })
             });
             const data = await res.json();
             if (!data.success) {
@@ -508,7 +502,8 @@
                 btnEl.disabled = false;
             } else {
                 updateRowStatus(data.jobId, 'running');
-                // Giữ spinner trên nút - sẽ được reset khi reload trang
+                // Bắt đầu polling thay vì chờ socket
+                startPolling(data.jobId);
             }
         } catch (err) {
             appError('Lỗi kết nối: ' + err.message);
@@ -590,49 +585,74 @@
         return html;
     }
 
-    // ====== Socket.IO realtime ======
-    if (window.io) {
-        const socket = io();
-        let reloadTimer = null;
+    // ====== Polling: thay thế socket — cứ 3s check API 1 lần ======
+    let pollTimer = null;
+    let pollCount = 0;
 
-        socket.on('comment-crawler:progress', (data) => {
-            if (!data) return;
-
-            const isFinal = data.phase === 'success' || data.phase === 'failed';
-
-            if (data.jobId) {
-                if (isFinal) {
-                    updateRowStatus(data.jobId, data.phase === 'success' ? 'success' : 'failed', data.stats);
-                } else {
-                    updateRowStatus(data.jobId, 'running');
+    function startPolling(jobId) {
+        if (pollTimer) clearInterval(pollTimer);
+        pollCount = 0;
+        pollTimer = setInterval(async () => {
+            pollCount++;
+            try {
+                const res = await fetch('/tracking/comments/api/job/' + jobId);
+                const data = await res.json();
+                if (!data.success) return;
+                const job = data.job;
+                if (job.status === 'success' || job.status === 'partial') {
+                    clearInterval(pollTimer);
+                    pollTimer = null;
+                    updateRowStatus(jobId, job.status, job.stats);
+                    updateRowStats(jobId, job.stats);
+                    resetButton();
+                    resetAllRescrapeButtons();
+                    console.log('[CommentCrawler] Job done, reloading...');
+                    setTimeout(() => window.location.reload(), 1000);
+                } else if (job.status === 'failed') {
+                    clearInterval(pollTimer);
+                    pollTimer = null;
+                    updateRowStatus(jobId, job.status, job.stats);
+                    resetButton();
+                    resetAllRescrapeButtons();
+                    console.log('[CommentCrawler] Job failed:', job.errorMessage);
+                    appError('Scrape thất bại: ' + (job.errorMessage || 'Lỗi không xác định'));
+                } else if (job.status === 'stale_failed') {
+                    clearInterval(pollTimer);
+                    pollTimer = null;
+                    updateRowStatus(jobId, job.status, job.stats);
+                    resetButton();
+                    resetAllRescrapeButtons();
+                    console.log('[CommentCrawler] Job stale_failed:', job.errorMessage);
+                    appWarn('Scrape lần này thất bại, nhưng dữ liệu cũ vẫn còn. Bạn có thể xem lại dữ liệu cũ hoặc thử quét lại.');
+                } else if (pollCount > 120) {
+                    // Timeout sau 6 phút (120 * 3s)
+                    clearInterval(pollTimer);
+                    pollTimer = null;
+                    updateRowStatus(jobId, 'failed');
+                    resetButton();
+                    resetAllRescrapeButtons();
+                    appError('Scrape timeout — quá 6 phút, vui lòng thử lại');
                 }
+            } catch (err) {
+                // Lỗi mạng — vẫn tiếp tục poll
+                console.log('[CommentCrawler] Poll error:', err.message);
             }
+        }, 3000);
+    }
 
-            if (!isFinal) return;
-
-            // Phase cuối: reset nút + auto reload
-            resetButton();
-            resetAllRescrapeButtons();
-
-            if (reloadTimer) clearTimeout(reloadTimer);
-            reloadTimer = setTimeout(() => {
-                console.log('[CommentCrawler] Auto-reload sau khi job hoàn tất');
-                window.location.reload();
-            }, 1500);
-        });
-
-        socket.on('disconnect', () => {
-            console.warn('[CommentCrawler] Socket disconnected, resetting buttons');
-            resetButton();
-            resetAllRescrapeButtons();
-            const hasRunning = document.querySelectorAll('.cc-badge.cc-badge--running').length > 0;
-            if (hasRunning) {
-                setTimeout(() => window.location.reload(), 3000);
+    function updateRowStats(jobId, stats) {
+        const badge = document.querySelector(`.cc-badge[data-job-status="${jobId}"]`);
+        if (!badge) return;
+        const row = badge.closest('tr');
+        if (row && stats) {
+            const cell = row.querySelector('td:nth-child(3)');
+            if (cell) {
+                const total = stats.totalComments != null ? stats.totalComments : 0;
+                const main = stats.mainComments != null ? stats.mainComments : 0;
+                const replies = stats.replies != null ? stats.replies : 0;
+                cell.innerHTML = `<div class="cc-table__comments"><strong>${total}</strong><small>(${main} main / ${replies} reply)</small></div>`;
             }
-        });
-        socket.on('reconnect', () => {
-            console.log('[CommentCrawler] Socket reconnected');
-        });
+        }
     }
 
     // ====== Form submit ======
@@ -653,7 +673,7 @@
             const res = await fetch('/tracking/comments/api/scrape', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ postUrl, channelId, maxComments: 0, includeReplies: true, skipPreviousUsers, visible: true })
+                body: JSON.stringify({ postUrl, channelId, maxComments: 0, includeReplies: true, skipPreviousUsers, visible: false })
             });
             const data = await res.json();
             if (!data.success) {
@@ -663,6 +683,8 @@
             } else if (data.jobId) {
                 // Update row mới nhất sang running ngay
                 updateRowStatus(data.jobId, 'running');
+                // Bắt đầu polling
+                startPolling(data.jobId);
             }
         } catch (err) {
             appError('Lỗi kết nối: ' + err.message);
@@ -682,18 +704,12 @@
         }
     });
 
-    // Fallback: nếu có job running trong DB mà socket không emit final event
-    // → tự động reset UI sau 15 phút (giả định backend bị kẹt)
-    setTimeout(function() {
-        const runningBadges = document.querySelectorAll('.cc-badge.cc-badge--running');
-        if (runningBadges.length > 0 && btn && !btn.disabled) {
-            console.warn('[CommentCrawler] Auto-clearing stuck running badges');
-            runningBadges.forEach(function(badge) {
-                badge.className = 'cc-badge cc-badge--failed';
-                badge.innerHTML = '<i class="fa-solid fa-clock"></i> Timeout';
-            });
-        }
-    }, 15 * 60 * 1000);
+    // Tự động poll các job đang running khi load trang (recover after reload)
+    document.querySelectorAll('.cc-badge.cc-badge--running').forEach(badge => {
+        const jobId = badge.getAttribute('data-job-status');
+        if (jobId) startPolling(jobId);
+    });
+
 })();
 </script>
 </body>

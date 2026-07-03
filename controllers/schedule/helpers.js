@@ -10,7 +10,9 @@ const PLATFORM_LABELS = {
     IG: 'Instagram',
     TT: 'TikTok Video',
     YT: 'YouTube',
-    YS: 'YouTube Short'
+    YS: 'YouTube Short',
+    TH: 'Threads',
+    PI: 'Pinterest'
 };
 
 const buildSchedulePopulateOptions = (userId) => [

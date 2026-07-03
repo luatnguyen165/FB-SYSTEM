@@ -374,6 +374,40 @@ async function startTelegramBot() {
         return ctx.reply('Gõ /help để xem danh sách lệnh.');
     });
 
+    // ============================================================
+    // TRACKER REVIEW CALLBACKS (approve/reject video)
+    // ============================================================
+    bot.action(/^trk_approve:(.+)$/, async (ctx) => {
+        const videoId = ctx.match[1];
+        await ctx.answerCbQuery('Đang xử lý...');
+        try {
+            const videoDoc = await approveTrackedVideo(videoId, ctx.from.id);
+            if (videoDoc) {
+                await ctx.editMessageCaption(
+                    ctx.callbackQuery.message.caption + '\n\n✅ *ĐÃ DUYỆT* - Đang cross-post...'
+                ).catch(() => {});
+            } else {
+                await ctx.reply('❌ Không tìm thấy video hoặc đã xử lý.');
+            }
+        } catch (e) {
+            console.error('[TG Bot] trk_approve error:', e.message);
+            await ctx.reply('❌ Lỗi xử lý: ' + e.message);
+        }
+    });
+
+    bot.action(/^trk_reject:(.+)$/, async (ctx) => {
+        const videoId = ctx.match[1];
+        await ctx.answerCbQuery('Đã bỏ qua');
+        try {
+            await rejectTrackedVideo(videoId, ctx.from.id);
+            await ctx.editMessageCaption(
+                ctx.callbackQuery.message.caption + '\n\n❌ *ĐÃ BỎ QUA*'
+            ).catch(() => {});
+        } catch (e) {
+            console.error('[TG Bot] trk_reject error:', e.message);
+        }
+    });
+
     try {
         await bot.launch();
         console.log('[TG Bot] Started. Token hash=' + lastTokenHash.substring(0, 8));
@@ -395,6 +429,75 @@ function hashToken(t) {
 
 function getBot() {
     return botInstance;
+}
+
+// ============================================================
+// TRACKER VIDEO APPROVE/REJECT
+// ============================================================
+
+async function approveTrackedVideo(videoId, telegramUserId) {
+    // Try TikTokVideo first, then DouyinVideo
+    let videoDoc = null;
+    let source = null;
+    try {
+        const TikTokVideo = require('../models/TikTokVideo');
+        videoDoc = await TikTokVideo.findById(videoId);
+        if (videoDoc) source = 'tiktok';
+    } catch {}
+    if (!videoDoc) {
+        try {
+            const DouyinVideo = require('../models/DouyinVideo');
+            videoDoc = await DouyinVideo.findById(videoId);
+            if (videoDoc) source = 'douyin';
+        } catch {}
+    }
+    if (!videoDoc || videoDoc.telegramReviewStatus === 'approved') return videoDoc;
+
+    videoDoc.telegramReviewStatus = 'approved';
+    await videoDoc.save();
+
+    // Trigger cross-post
+    try {
+        if (source === 'tiktok') {
+            const TikTokTracking = require('../models/TikTokTracking');
+            const tiktokTrackerService = require('./tiktokTrackerService');
+            const tracking = await TikTokTracking.findById(videoDoc.trackingId);
+            if (tracking) {
+                await tiktokTrackerService.createCrossPostSchedule(videoDoc, tracking);
+                console.log(`[TG Bot] Approved TikTok video → cross-post triggered: ${videoDoc.title || videoDoc.tiktokVideoId}`);
+            }
+        } else {
+            const DouyinTracking = require('../models/DouyinTracking');
+            const douyinTrackerService = require('./douyinTrackerService');
+            const tracking = await DouyinTracking.findById(videoDoc.trackingId);
+            if (tracking) {
+                await douyinTrackerService.createCrossPostSchedule(videoDoc, tracking);
+                console.log(`[TG Bot] Approved Douyin video → cross-post triggered: ${videoDoc.title || videoDoc.douyinVideoId}`);
+            }
+        }
+    } catch (e) {
+        console.error(`[TG Bot] Error triggering cross-post: ${e.message}`);
+    }
+
+    return videoDoc;
+}
+
+async function rejectTrackedVideo(videoId, telegramUserId) {
+    let videoDoc = null;
+    try {
+        const TikTokVideo = require('../models/TikTokVideo');
+        videoDoc = await TikTokVideo.findById(videoId);
+    } catch {}
+    if (!videoDoc) {
+        try {
+            const DouyinVideo = require('../models/DouyinVideo');
+            videoDoc = await DouyinVideo.findById(videoId);
+        } catch {}
+    }
+    if (!videoDoc) return;
+    videoDoc.telegramReviewStatus = 'rejected';
+    await videoDoc.save();
+    console.log(`[TG Bot] Rejected video: ${videoDoc.title || videoDoc.tiktokVideoId || videoDoc.douyinVideoId}`);
 }
 
 module.exports = {

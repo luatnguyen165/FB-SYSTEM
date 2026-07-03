@@ -194,10 +194,25 @@
                             <i class="fa-solid fa-pencil"></i>
                             <span>Mô tả & hashtag</span>
                         </div>
-                        <textarea class="input-text" id="modalCaptionInput" rows="4" placeholder="Nhập mô tả bài viết..."></textarea>
-                        <div class="form-section__hint">
-                            <i class="fa-solid fa-info-circle"></i>
-                            Mô tả chi tiết cho Reels. Có thể kèm hashtag để tăng tương tác.
+                        <div class="caption-editor-wrap">
+                            <div class="caption-editor-toolbar">
+                                <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
+                                <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
+                                <button type="button" data-cmd="underline" title="Underline"><u>U</u></button>
+                                <button type="button" data-cmd="strike" title="Strike"><s>S</s></button>
+                                <span class="toolbar-sep"></span>
+                                <button type="button" data-cmd="insertUnorderedList" title="Bullet list"><i class="fa-solid fa-list-ul"></i></button>
+                                <button type="button" data-cmd="insertOrderedList" title="Number list"><i class="fa-solid fa-list-ol"></i></button>
+                                <span class="toolbar-sep"></span>
+                                <button type="button" data-cmd="createLink" title="Link"><i class="fa-solid fa-link"></i></button>
+                                <button type="button" data-cmd="removeFormat" title="Xóa格式"><i class="fa-solid fa-eraser"></i></button>
+                            </div>
+                            <div id="modalCaptionEditor" class="caption-editor" contenteditable="true" data-placeholder="Nhập mô tả bài viết..."></div>
+                        </div>
+                        <input type="hidden" id="modalCaptionInput" value="">
+                        <div class="form-section__hint" style="display:flex;justify-content:space-between;align-items:center;">
+                            <span><i class="fa-solid fa-info-circle"></i> Mô tả cho Reels.</span>
+                            <span id="captionCharCount" style="font-size:12px;color:#9ca3af;">0/1000</span>
                         </div>
                     </div>
 
@@ -461,6 +476,52 @@
     <script src="/js/toast.js"></script>
     <script>
         window.__CURRENT_USER_ID = '<%= user._id %>';
+        (function() {
+            function initCaptionEditor() {
+                const editor = document.getElementById('modalCaptionEditor');
+                const hidden = document.getElementById('modalCaptionInput');
+                if (!editor || editor._initialized) return;
+                editor._initialized = true;
+
+                editor.closest('.caption-editor-wrap')?.querySelectorAll('[data-cmd]').forEach(btn => {
+                    btn.addEventListener('mousedown', (e) => {
+                        e.preventDefault();
+                        const cmd = btn.dataset.cmd;
+                        if (cmd === 'createLink') {
+                            const url = prompt('Nhập URL:', 'https://');
+                            if (url) document.execCommand(cmd, false, url);
+                        } else {
+                            document.execCommand(cmd, false, null);
+                        }
+                        syncEditorToHidden();
+                    });
+                });
+
+                function syncEditorToHidden() {
+                    const text = editor.innerText.trim();
+                    if (hidden) hidden.value = text;
+                    const counter = document.getElementById('captionCharCount');
+                    if (counter) {
+                        counter.textContent = text.length + '/1000';
+                        counter.style.color = text.length > 1000 ? '#dc2626' : text.length > 900 ? '#f59e0b' : '#9ca3af';
+                    }
+                }
+
+                editor.addEventListener('input', syncEditorToHidden);
+                editor.addEventListener('keyup', syncEditorToHidden);
+                editor.addEventListener('focus', () => { if (editor.innerText.trim() === '') editor.innerHTML = ''; });
+                editor.addEventListener('blur', () => { if (editor.innerText.trim() === '') editor.innerHTML = ''; syncEditorToHidden(); });
+
+                window.captionEditorAPI = {
+                    getText: () => editor.innerText.trim(),
+                    setText: (txt) => { editor.innerText = txt || ''; syncEditorToHidden(); },
+                    getHTML: () => editor.innerHTML,
+                    focus: () => editor.focus(),
+                };
+            }
+            window.initCaptionEditor = initCaptionEditor;
+            if (document.getElementById('modalCaptionEditor')) initCaptionEditor();
+        })();
     </script>
     <script src="/js/base.js"></script>
     <script src="/js/utils.js"></script>

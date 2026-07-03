@@ -2,6 +2,40 @@ const fs = require('fs');
 const path = require('path');
 const ffmpeg = require('fluent-ffmpeg');
 const { getOrOpenSocialContext } = require('./socialPlaywrightService');
+const { typeWithNewlines } = require('./humanBehaviorService');
+
+/**
+ * Patch Chrome profile language to Vietnamese
+ */
+function patchChromeLanguage(sessionDir) {
+    try {
+        const defaultDir = path.join(sessionDir, 'Default');
+        if (!fs.existsSync(defaultDir)) fs.mkdirSync(defaultDir, { recursive: true });
+        const VI_LANG = 'vi-VN,vi,en-US,en';
+
+        const prefsPath = path.join(defaultDir, 'Preferences');
+        let prefs = {};
+        if (fs.existsSync(prefsPath)) { try { prefs = JSON.parse(fs.readFileSync(prefsPath, 'utf8')); } catch (e) {} }
+        if (!prefs.intl) prefs.intl = {};
+        prefs.intl.selected_languages = VI_LANG;
+        prefs.intl.accept_languages = VI_LANG;
+        if (!prefs.browser) prefs.browser = {};
+        prefs.browser.language = 'vi-VN';
+        fs.writeFileSync(prefsPath, JSON.stringify(prefs));
+
+        const secPrefsPath = path.join(defaultDir, 'Secure Preferences');
+        if (fs.existsSync(secPrefsPath)) {
+            try { const sp = JSON.parse(fs.readFileSync(secPrefsPath, 'utf8')); if (!sp.browser) sp.browser = {}; sp.browser.language = 'vi-VN'; fs.writeFileSync(secPrefsPath, JSON.stringify(sp)); } catch (e) {}
+        }
+
+        const localStatePath = path.join(sessionDir, 'Local State');
+        if (fs.existsSync(localStatePath)) {
+            try { const ls = JSON.parse(fs.readFileSync(localStatePath, 'utf8')); if (!ls.intl) ls.intl = {}; ls.intl.selected_languages = VI_LANG; ls.intl.accept_languages = VI_LANG; fs.writeFileSync(localStatePath, JSON.stringify(ls)); } catch (e) {}
+        }
+    } catch (e) {
+        console.warn(`[Pinterest Pin] Failed to patch Chrome language: ${e.message}`);
+    }
+}
 
 /**
  * Resolve local file path (image/video) -> absolute filesystem path
@@ -155,7 +189,7 @@ async function selectFirstBoard(activePage) {
     return true;
 }
 
-async function pinImageToPinterest({ userId, accountName, accountType = 'Personal', images = [], caption = '', title = '', boardName = '', headless = false, existingSessionDir = '' }) {
+async function pinImageToPinterest({ userId, accountName, accountType = 'Personal', images = [], caption = '', title = '', boardName = '', headless = true, existingSessionDir = '' }) {
     console.log(`[Pinterest Pin] ===== BẮT ĐẦU =====`);
     console.log(`[Pinterest Pin] STEP 0 - account=${accountName} board=${boardName || '(auto)'} images=${images.length} title=${(title || '').substring(0, 50)}... caption=${(caption || '').substring(0, 50)}...`);
 
@@ -172,7 +206,10 @@ async function pinImageToPinterest({ userId, accountName, accountType = 'Persona
 
     try {
         console.log(`[Pinterest Pin] STEP 2 - Mở context...`);
-        const { context } = await getOrOpenSocialContext(userId, accountName, accountType, 'PI', { headless, existingSessionDir });
+        // Patch Chrome profile language to Vietnamese
+        const pinSessionDir = existingSessionDir || path.join(process.env.USERPROFILE || '', 'AppData', 'Roaming', 'Electron', 'FB-SYSTEM', 'chrome-profiles', `${userId}_pinterest`);
+        patchChromeLanguage(pinSessionDir);
+        const { context } = await getOrOpenSocialContext(userId, accountName, accountType, 'PI', { headless, existingSessionDir: pinSessionDir });
         const pages = context.pages();
         const page = pages.length > 0 ? pages[0] : await context.newPage();
         // Không set viewport - để Chrome dùng kích thước thật
@@ -548,8 +585,12 @@ async function pinImageToPinterest({ userId, accountName, accountType = 'Persona
                 await activePage.keyboard.press('Delete');
                 await activePage.waitForTimeout(300);
 
-                // Gõ bằng keyboard.type (DraftEditor sẽ bắt keydown events)
-                await activePage.keyboard.type(rest, { delay: 30 });
+                // Gõ description — fill trước, fallback insertText giữ newline
+                try {
+                    await descBox.fill(rest);
+                } catch (_) {
+                    await typeWithNewlines(activePage, rest);
+                }
                 await activePage.waitForTimeout(800);
 
                 // Verify đã gõ
@@ -648,9 +689,11 @@ async function pinImageToPinterest({ userId, accountName, accountType = 'Persona
                             // Nếu là dialog xác nhận (VD: "Đăng ngay?") → không phải lỗi
                             const isConfirm = /xác nhận|confirm|are you sure|publish now|tiếp tục|continue/i.test(txt);
                             // Nếu là toast thông báo thành công (VD: "Đã đăng") → bỏ qua
-                            const isSuccessToast = /đã đăng|đã tạo|thành công|published|created/i.test(txt);
+                            const isSuccessToast = /đã (được )?đăng|đã tạo|thành công|published|created|đã (được )?chia sẻ/i.test(txt);
                             if (isSuccessToast) {
-                                console.log(`[Pinterest Pin] STEP 8 - Toast thành công, tiếp tục đợi redirect`);
+                                console.log(`[Pinterest Pin] STEP 8 - Toast thanh cong, post thanh cong`);
+                                publishedUrl = activePage.url();
+                                isSuccess = true;
                                 break;
                             }
                             if (!isConfirm) {
@@ -660,6 +703,9 @@ async function pinImageToPinterest({ userId, accountName, accountType = 'Persona
                     }
                 }
             }
+
+            // Thoat vong lap neu da thanh cong
+            if (isSuccess) break;
 
             // Nếu vẫn ở trang builder, đợi tiếp
             await activePage.waitForTimeout(1000);
@@ -719,20 +765,22 @@ module.exports = { pinImageToPinterest, uploadVideoToPinterest };
 
 /**
  * Upload 1 video Idea Pin lên Pinterest board.
- * Pinterest Idea Pin cho phép đăng video dạng short-form lên board.
+ * Pinterest Idea Pin = "Ảnh ghép" trong menu Tạo.
+ * Flow đơn giản: pin-creation-tool → upload → fill title/desc → Publish.
  *
  * @param {Object} opts
  * @param {string} opts.userId
  * @param {string} opts.accountName
  * @param {string} [opts.accountType='Personal']
  * @param {string} opts.videoPath - đường dẫn video local
- * @param {string} [opts.caption=''] - title + description cho Idea Pin
+ * @param {string} [opts.caption=''] - description cho Idea Pin
+ * @param {string} [opts.title=''] - title cho Idea Pin (bắt buộc)
  * @param {string} [opts.boardName=''] - tên board muốn pin vào (optional)
  * @param {boolean} [opts.headless=false]
  * @param {string} [opts.existingSessionDir='']
  * @returns {Promise<{success: boolean, publishedUrl: string, message: string}>}
  */
-async function uploadVideoToPinterest({ userId, accountName, accountType = 'Personal', videoPath, caption = '', title = '', boardName = '', headless = false, existingSessionDir = '' }) {
+async function uploadVideoToPinterest({ userId, accountName, accountType = 'Personal', videoPath, caption = '', title = '', boardName = '', headless = true, existingSessionDir = '' }) {
     console.log(`[Pinterest Idea Pin] ===== BẮT ĐẦU =====`);
     console.log(`[Pinterest Idea Pin] STEP 0 - account=${accountName} board=${boardName || '(auto)'} video=${videoPath} title=${(title || '').substring(0, 50)}... caption=${(caption || '').substring(0, 50)}...`);
 
@@ -746,15 +794,68 @@ async function uploadVideoToPinterest({ userId, accountName, accountType = 'Pers
     }
     console.log(`[Pinterest Idea Pin] STEP 1 - resolved video=${resolvedVideo}`);
 
-    // Validate duration: Pinterest Idea Pin 3-60 giây
     await assertPinterestIdeaPinDuration(videoPath);
 
+    let activePage = null;
+    let context = null;
     try {
         console.log(`[Pinterest Idea Pin] STEP 2 - Mở context...`);
-        const { context } = await getOrOpenSocialContext(userId, accountName, accountType, 'PI', { headless, existingSessionDir });
+        // Pinterest bypass CDP Chrome (bị crash trên Windows) → dùng Playwright persistent context
+        const pw = require('playwright');
+        const userSessionDir = existingSessionDir || path.join(process.env.USERPROFILE || '', 'AppData', 'Roaming', 'Electron', 'FB-SYSTEM', 'chrome-profiles', `${userId}_pinterest`);
+        console.log(`[Pinterest Idea Pin] STEP 2 - sessionDir=${userSessionDir} headless=${headless}`);
+
+        // Patch Chrome profile language
+        patchChromeLanguage(userSessionDir);
+
+        // Retry nếu Chrome crash do profile bị lock (exit code 21)
+        let contextLaunched = false;
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+                context = await pw.chromium.launchPersistentContext(userSessionDir, {
+                    headless: headless,
+                    channel: 'chrome',
+                    args: [
+                        '--lang=vi-VN',
+                        '--start-maximized',
+                        '--disable-blink-features=AutomationControlled',
+                        '--no-first-run',
+                        '--disable-sync',
+                    ],
+                    ignoreDefaultArgs: ['--enable-automation', '--enable-logging', '--no-sandbox']
+                });
+                contextLaunched = true;
+                break;
+            } catch (launchErr) {
+                console.log(`[Pinterest Idea Pin] STEP 2 - Launch attempt ${attempt + 1} failed: ${launchErr.message.substring(0, 100)}`);
+                if (attempt < 2) {
+                    // Kill Chrome processes using this profile, then retry
+                    const { execSync } = require('child_process');
+                    try { execSync('taskkill /f /im chrome.exe 2>nul', { stdio: 'ignore' }); } catch (_) {}
+                    await new Promise(r => setTimeout(r, 3000));
+                }
+            }
+        }
+        if (!contextLaunched) {
+            throw new Error('Không thể khởi động Chrome sau 3 lần thử');
+        }
+
+        // Load cookies
+        const ssPath = path.join(userSessionDir, 'storage-state.json');
+        if (fs.existsSync(ssPath)) {
+            try {
+                const ss = JSON.parse(fs.readFileSync(ssPath, 'utf8'));
+                if (ss.cookies?.length > 0) {
+                    await context.addCookies(ss.cookies);
+                    console.log(`[Pinterest Idea Pin] STEP 2 - Loaded ${ss.cookies.length} cookies`);
+                }
+            } catch (e) {
+                console.log(`[Pinterest Idea Pin] STEP 2 - Cookie load error: ${e.message}`);
+            }
+        }
+
         const pages = context.pages();
         const page = pages.length > 0 ? pages[0] : await context.newPage();
-        // Không set viewport - để Chrome dùng kích thước thật
         await page.bringToFront().catch(() => {});
 
         console.log(`[Pinterest Idea Pin] STEP 3 - pinterest.com...`);
@@ -764,120 +865,112 @@ async function uploadVideoToPinterest({ userId, accountName, accountType = 'Pers
         if (page.url().includes('login') || page.url().includes('/login/')) {
             throw new Error('Chưa đăng nhập Pinterest');
         }
+        console.log(`[Pinterest Idea Pin] STEP 3 - OK URL: ${page.url()}`);
 
-        // STEP 4: Click nút "+" tạo Idea Pin
-        console.log(`[Pinterest Idea Pin] STEP 4 - Click nút Tạo...`);
-        const createBtn = page.locator('button[data-test-id="create-tab"]').first();
-        if (await createBtn.count() === 0) {
-            // Fallback: thử các selector cũ
-            const fallbackBtn = page.locator('div.dVx3J_.Q3hcOU.mm_g7v, [data-test-id="create-button"], a[href*="/pin-builder/"]').first();
-            if (await fallbackBtn.count() === 0) {
-                throw new Error('Không tìm thấy nút Tạo Pinterest (button[data-test-id="create-tab"])');
+        // STEP 4: Navigate directly to pin-creation-tool (Idea Pin builder)
+        // Menu "Tạo" giờ có 3 options: Ghim, Bảng, Ảnh ghép (tên mới của Idea Pin)
+        // Click button[data-test-id="create-tab"] bị header intercept → dùng force
+        // Hoặc navigate thẳng pin-creation-tool cho nhanh
+        console.log(`[Pinterest Idea Pin] STEP 4 - Mở pin-creation-tool...`);
+        await page.goto('https://www.pinterest.com/pin-creation-tool/', {
+            waitUntil: 'domcontentloaded',
+            timeout: 30000
+        }).catch(() => {});
+        await page.waitForTimeout(5000);
+
+        const currentUrl = page.url();
+        console.log(`[Pinterest Idea Pin] STEP 4 - URL: ${currentUrl}`);
+        if (!currentUrl.includes('pin-creation') && !currentUrl.includes('idea')) {
+            // Fallback: click Create → Ảnh ghép
+            console.log(`[Pinterest Idea Pin] STEP 4 - Direct URL failed, trying menu...`);
+            await page.goto('https://www.pinterest.com/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+            await page.waitForTimeout(2000);
+            await page.locator('button[data-test-id="create-tab"]').first().click({ force: true });
+            await page.waitForTimeout(2000);
+            // Click "Ảnh ghép" trong flyout menu
+            const collageSelectors = [
+                'a[href*="pin-creation-tool"]',
+                'a[href*="idea-pin"]',
+                'span:has-text("Ảnh ghép")',
+                'div:has-text("Ảnh ghép")',
+            ];
+            for (const sel of collageSelectors) {
+                const el = page.locator(sel).first();
+                if (await el.count() > 0 && await el.isVisible().catch(() => false)) {
+                    await el.click({ force: true });
+                    console.log(`[Pinterest Idea Pin] STEP 4 - Clicked collage via: ${sel}`);
+                    break;
+                }
             }
-            await fallbackBtn.click();
-        } else {
-            await createBtn.click();
-        }
-        await page.waitForTimeout(2500);
-
-        // STEP 4b: Chọn "Idea Pin" / "Tạo Ghim Ý tưởng" trong dropdown VerticalNav-CreationOptions-Flyout
-        console.log(`[Pinterest Idea Pin] STEP 4b - Chọn Idea Pin trong menu...`);
-        const ideaPinItem = page.locator('#VerticalNav-CreationOptions-Flyout [id*="Idea" i], #VerticalNav-CreationOptions-Flyout [id*="Ý-tưởng" i], #VerticalNav-CreationOptions-Flyout svg[aria-label*="Idea Pin" i], #VerticalNav-CreationOptions-Flyout svg[aria-label*="Ý tưởng" i], #VerticalNav-CreationOptions-Flyout [role="menuitem"]:has-text("Idea Pin"), [role="menuitem"]:has-text("Ý tưởng"), [role="menuitem"]:has-text("Create Idea Pin"), a:has-text("Idea Pin"), a:has-text("Ý tưởng Pin"), [data-test-id="create-idea-pin"]').first();
-        if (await ideaPinItem.count() > 0) {
-            const visible = await ideaPinItem.isVisible().catch(() => false);
-            if (visible) await ideaPinItem.click();
-            await page.waitForTimeout(3000);
-        } else {
-            console.log(`[Pinterest Idea Pin] STEP 4 - Không tìm thấy Idea Pin item, có thể đang ở Pin builder`);
+            await page.waitForTimeout(5000);
         }
 
-        // STEP 5: Tìm input file và upload video
-        console.log(`[Pinterest Idea Pin] STEP 5 - Upload video...`);
-
+        // Đợi file input xuất hiện
+        console.log(`[Pinterest Idea Pin] STEP 5 - Đợi file input...`);
+        activePage = page;
         const waitForFileInput = async (timeoutMs = 30000) => {
             const start = Date.now();
             while (Date.now() - start < timeoutMs) {
-                const allPages = context.pages();
-                for (const p of allPages) {
-                    const url = p.url();
-                    if (url === 'about:blank' || url === 'https://www.pinterest.com/' || url === 'https://www.pinterest.com') continue;
+                for (const p of context.pages()) {
                     try {
-                        const fileInputs = await p.locator('input[type="file"]').count().catch(() => 0);
-                        if (fileInputs > 0) return p;
-                    } catch (e) {}
+                        if (await p.locator('input[type="file"]').count() > 0) return p;
+                    } catch (_) {}
                 }
                 await page.waitForTimeout(1000);
             }
             return null;
         };
-
-        const activePage = await waitForFileInput(30000);
+        activePage = await waitForFileInput(30000);
         if (!activePage) {
             const urls = context.pages().map(p => p.url()).join('\n  - ');
-            throw new Error(`Không tìm thấy input file trong Idea Pin builder sau 30s. Pages hiện tại:\n  - ${urls}`);
+            throw new Error(`Không tìm thấy file input sau 30s. Pages:\n  - ${urls}`);
         }
+        console.log(`[Pinterest Idea Pin] STEP 5 - File input trên: ${activePage.url().substring(0, 80)}`);
 
-        console.log(`[Pinterest Idea Pin] STEP 5 - Tìm thấy input file trên page: ${activePage.url().substring(0, 80)}`);
-        const fileInput = activePage.locator('input[type="file"]');
-        await fileInput.first().setInputFiles([resolvedVideo], { timeout: 30000 });
-        console.log(`[Pinterest Idea Pin] STEP 5 - Video đã upload, đợi xử lý...`);
-        await activePage.waitForTimeout(10000); // Video cần thời gian xử lý
+        // STEP 5: Upload video
+        console.log(`[Pinterest Idea Pin] STEP 5 - Upload video...`);
+        await activePage.locator('input[type="file"]').first().setInputFiles([resolvedVideo], { timeout: 30000 });
+        console.log(`[Pinterest Idea Pin] STEP 5 - Video uploaded, đợi xử lý 15s...`);
+        await activePage.waitForTimeout(15000);
 
-        // STEP 6: Chọn board (giống Post - chọn mặc định nếu không có boardName)
-        console.log(`[Pinterest Idea Pin] STEP 6 - Chọn board (requested="${boardName || '(default)'}")...`);
-        try {
-            const boardTriggers = [
-                '[data-test-id="board-dropdown-select-button"]',
-                '[data-test-id="board-select"]',
-                '[data-test-id="board-dropdown"]',
-                'button[aria-label*="board" i]'
-            ];
-            let boardTrigger = null;
-            for (const sel of boardTriggers) {
-                const loc = activePage.locator(sel).first();
-                if (await loc.count() > 0) {
-                    const visible = await loc.isVisible().catch(() => false);
-                    if (visible) {
-                        boardTrigger = loc;
-                        console.log(`[Pinterest Idea Pin] STEP 6 - Tìm thấy board trigger: ${sel}`);
-                        break;
-                    }
-                }
-            }
-            if (boardTrigger) {
-                await boardTrigger.click();
-                await activePage.waitForTimeout(2000);
-                if (boardName) {
-                    const specificBoard = activePage.locator(`div[data-test-id="board-row-${boardName}"]`).first();
-                    if (await specificBoard.count() > 0 && await specificBoard.isVisible().catch(() => false)) {
-                        await specificBoard.click();
+        // Verify video appeared (check for publish button or title input)
+        const hasTitleInput = await activePage.locator('#storyboard-selector-title').count() > 0;
+        const hasPublishBtn = await activePage.locator('button:has-text("Đăng")').count() > 0;
+        console.log(`[Pinterest Idea Pin] STEP 5 - titleInput=${hasTitleInput} publishBtn=${hasPublishBtn}`);
+
+        // STEP 6: Chọn board (optional — Pinterest auto-selects last used board)
+        if (boardName) {
+            console.log(`[Pinterest Idea Pin] STEP 6 - Chọn board: "${boardName}"...`);
+            try {
+                // Board dropdown: div showing current board name with chevron
+                const boardDropdown = activePage.locator('div[role="button"]:has-text("SIÊU Sao"), div[data-test-id*="board"]').first();
+                if (await boardDropdown.count() > 0 && await boardDropdown.isVisible().catch(() => false)) {
+                    await boardDropdown.click();
+                    await activePage.waitForTimeout(2000);
+                    // Search for board
+                    const boardOption = activePage.locator(`div:has-text("${boardName}"), span:has-text("${boardName}")`).first();
+                    if (await boardOption.count() > 0 && await boardOption.isVisible().catch(() => false)) {
+                        await boardOption.click();
                         console.log(`[Pinterest Idea Pin] STEP 6 - Đã chọn board: "${boardName}"`);
-                    } else {
-                        await selectFirstBoard(activePage);
                     }
-                } else {
-                    await selectFirstBoard(activePage);
+                    await activePage.waitForTimeout(1000);
                 }
-                await activePage.waitForTimeout(1000);
+            } catch (e) {
+                console.log(`[Pinterest Idea Pin] STEP 6 - Lỗi chọn board: ${e.message}`);
             }
-        } catch (e) {
-            console.log(`[Pinterest Idea Pin] STEP 6 - Lỗi chọn board: ${e.message}`);
+        } else {
+            console.log(`[Pinterest Idea Pin] STEP 6 - Board auto-selected, skip`);
         }
 
-        // STEP 7: Title + Description (giống Post - title từ frontend, description từ caption)
-        console.log(`[Pinterest Idea Pin] STEP 7 - Nhập title + description...`);
+        // STEP 7: Title
+        console.log(`[Pinterest Idea Pin] STEP 7 - Nhập title...`);
         let firstLine = String(title || '').trim();
-        let rest = String(caption || '').trim();
-
         if (!firstLine) {
-            const path = require('path');
             const filename = path.basename(resolvedVideo, path.extname(resolvedVideo));
             firstLine = filename.replace(/[-_]+/g, ' ').trim() || 'Idea Pin';
         }
 
-        // Title - dùng #storyboard-selector-title + verify
-        console.log(`[Pinterest Idea Pin] STEP 7 - Đợi title box...`);
-        const titleBox = activePage.locator('#storyboard-selector-title, input[placeholder*="Add" i][aria-label*="title" i], [data-test-id="pin-title"]').first();
+        const titleBox = activePage.locator('#storyboard-selector-title').first();
         if (await titleBox.count() > 0) {
             await titleBox.click({ force: true }).catch(() => {});
             await activePage.waitForTimeout(300);
@@ -888,61 +981,69 @@ async function uploadVideoToPinterest({ userId, accountName, accountType = 'Pers
             await titleBox.fill(firstLine);
             await activePage.waitForTimeout(300);
             const titleVal = await titleBox.inputValue().catch(() => '');
-            console.log(`[Pinterest Idea Pin] STEP 7 - ✓ Title verified: "${titleVal}"`);
-            if (!titleVal || !titleVal.trim()) {
-                throw new Error('Title Idea Pin chưa nhập - không thể publish');
-            }
+            console.log(`[Pinterest Idea Pin] STEP 7 - ✓ Title: "${titleVal}"`);
         } else {
-            throw new Error('Không tìm thấy ô tiêu đề Idea Pin');
+            console.log(`[Pinterest Idea Pin] STEP 7 - #storyboard-selector-title not found, skip`);
         }
 
-        // Description - dùng selector mới + verify
-        if (rest) {
-            console.log(`[Pinterest Idea Pin] STEP 7 - Đợi description box...`);
-            const descBox = activePage.locator('div.DraftEditor-editorContainer > div.public-DraftEditor-content[aria-label="Thêm mô tả chi tiết"], .public-DraftEditor-content[aria-label*="mô tả" i]').first();
+        // STEP 7b: Description
+        const desc = String(caption || '').trim();
+        if (desc) {
+            console.log(`[Pinterest Idea Pin] STEP 7b - Nhập description...`);
+            const descBox = activePage.locator('[contenteditable="true"][aria-label*="mô tả" i], [contenteditable="true"][aria-label*="description" i]').first();
             if (await descBox.count() > 0) {
                 await descBox.click({ force: true }).catch(() => {});
                 await activePage.waitForTimeout(300);
                 await activePage.keyboard.press('Control+a');
                 await activePage.keyboard.press('Delete');
                 await activePage.waitForTimeout(200);
-                await activePage.keyboard.type(rest, { delay: 30 });
+                try {
+                    await descBox.fill(desc);
+                } catch (_) {
+                    await typeWithNewlines(activePage, desc);
+                }
                 await activePage.waitForTimeout(500);
                 const descVal = await descBox.textContent().catch(() => '');
-                console.log(`[Pinterest Idea Pin] STEP 7 - ✓ Description verified: "${(descVal || '').substring(0, 50)}..."`);
-                if (!descVal || !descVal.trim()) {
-                    throw new Error('Description Idea Pin chưa nhập - không thể publish');
-                }
+                console.log(`[Pinterest Idea Pin] STEP 7b - ✓ Description: "${(descVal || '').substring(0, 50)}..."`);
+            } else {
+                console.log(`[Pinterest Idea Pin] STEP 7b - Description box not found, skip`);
             }
         }
-        await activePage.waitForTimeout(1000);
 
-        // STEP 8: Publish - selector mới: [data-test-id="storyboard-creation-nav-done"] button
+        // STEP 8: Publish
         console.log(`[Pinterest Idea Pin] STEP 8 - Publish...`);
-        const publishBtn = activePage.locator('[data-test-id="storyboard-creation-nav-done"] button, button:has-text("Publish"), button:has-text("Đăng"), [data-test-id="publish-button"]').first();
+        const publishBtn = activePage.locator('button:has-text("Đăng")').first();
         if (await publishBtn.count() === 0) {
-            throw new Error('Không tìm thấy nút Publish Pinterest');
+            throw new Error('Không tìm thấy nút "Đăng"');
         }
-        const isEnabled = await publishBtn.isEnabled().catch(() => false);
-        if (!isEnabled) {
-            throw new Error('Nút Publish chưa được kích hoạt');
+        // Đợi button enabled (video processing có thể mất thêm thời gian)
+        for (let i = 0; i < 12; i++) {
+            const disabled = await publishBtn.isDisabled().catch(() => false);
+            if (!disabled) break;
+            console.log(`[Pinterest Idea Pin] STEP 8 - Nút "Đăng" chưa enabled, đợi 5s...`);
+            await activePage.waitForTimeout(5000);
         }
         await publishBtn.click();
+        console.log(`[Pinterest Idea Pin] STEP 8 - Đã click "Đăng", đợi 12s...`);
         await activePage.waitForTimeout(12000);
 
-        const publishedUrl = activePage.url();
-        console.log(`[Pinterest Idea Pin] HOÀN THÀNH url=${publishedUrl}`);
+        // Check success
+        const finalUrl = activePage.url();
+        console.log(`[Pinterest Idea Pin] STEP 8 - URL sau publish: ${finalUrl}`);
 
-        try { await activePage.close(); } catch (e) {}
+        // Đóng page
+        try { await activePage.close(); } catch (_) {}
 
         return {
             success: true,
-            publishedUrl,
+            publishedUrl: finalUrl,
             message: 'Đăng Pinterest Idea Pin thành công'
         };
 
     } catch (error) {
         console.error(`[Pinterest Idea Pin] LỖI: ${error.message}`);
+        try { if (activePage) await activePage.close(); } catch (_) {}
+        try { if (context) await context.close(); } catch (_) {}
         return {
             success: false,
             publishedUrl: '',

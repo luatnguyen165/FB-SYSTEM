@@ -3,6 +3,43 @@ const path = require('path');
 const ffmpeg = require('fluent-ffmpeg');
 const { getOrOpenSocialContext } = require('./socialPlaywrightService');
 
+const THREADS_MAX_CHARS = 500;
+
+/**
+ * Loại bỏ markdown formatting, giữ lại plain text cho Threads
+ * - Bỏ ##, **, *, ---
+ * - Giữ emoji + line breaks hợp lý
+ * - Không để nhiều \n liên tiếp
+ */
+function sanitizeContentForThreads(text) {
+    if (!text) return '';
+    let s = String(text);
+    // Bỏ horizontal rule: ---, ***, ___
+    s = s.replace(/^\s*[-*_]{3,}\s*$/gm, '');
+    // Bỏ markdown headers: ## Title
+    s = s.replace(/^#{1,6}\s+/gm, '');
+    // Bỏ bold **text** -> text
+    s = s.replace(/\*\*(.+?)\*\*/g, '$1');
+    // Bỏ italic *text* -> text
+    s = s.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '$1');
+    // Bỏ bullet markers: * or - ở đầu dòng (giữ nội dung)
+    s = s.replace(/^\s*[*-]\s+/gm, '');
+    // Bỏ blockquote >
+    s = s.replace(/^>\s*/gm, '');
+    // Bỏ link markdown [text](url) -> text
+    s = s.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+    // Collapses 3+ consecutive newlines -> 2
+    s = s.replace(/\n{3,}/g, '\n\n');
+    // Trim đầu cuối
+    s = s.trim();
+    // Threads limit 500 ký tự — truncate nếu dài hơn
+    if (s.length > THREADS_MAX_CHARS) {
+        s = s.substring(0, THREADS_MAX_CHARS - 3).trim() + '...';
+        console.log(`[Threads] Caption truncated to ${THREADS_MAX_CHARS} chars`);
+    }
+    return s;
+}
+
 /**
  * Resolve local file path (image hoặc video) -> absolute filesystem path
  */
@@ -13,6 +50,34 @@ function resolveFilePath(filePath = '') {
     const cleaned = rawPath.replace(/^\/+/, '');
     const resolved = path.join(global.USER_DATA_DIR || path.join(__dirname, '..'), cleaned);
     return resolved;
+}
+
+/**
+ * Dán text vào contenteditable div — tránh keyboard.type bị lỗi
+ * Dùng fill() + dispatchEvent để Lexical editor nhận đúng
+ */
+async function pasteTextToClipboard(page, text) {
+    if (!text) return;
+    // Dùng fill() — Playwright hỗ trợ cho contenteditable
+    // Nếu fill không work → fallback qua evaluate + input event
+    try {
+        const captionXPath = "//div[@contenteditable='true' and (@aria-label or @data-lexical-editor)]";
+        const box = page.locator(captionXPath).first();
+        await box.fill(text);
+    } catch (_) {
+        // Fallback: dùng evaluate để insert text vào contenteditable
+        await page.evaluate((txt) => {
+            const el = document.querySelector("[contenteditable='true']");
+            if (!el) return;
+            el.focus();
+            // Xóa nội dung cũ
+            document.execCommand('selectAll');
+            document.execCommand('delete');
+            // Chèn text mới giữ nguyên newline
+            document.execCommand('insertText', false, txt);
+        }, text);
+    }
+    await page.waitForTimeout(300);
 }
 
 /**
@@ -126,7 +191,7 @@ async function postImagesToThreads({ userId, accountName, accountType = 'Persona
         console.log(`[Threads Post] STEP 5 - Đã upload ảnh vào composer`);
         await activePage.waitForTimeout(3000);
 
-        // STEP 6: Caption - Threads dùng contenteditable div với aria-label
+        // STEP 6: Caption - Threads dùng contenteditable Lexical editor
         console.log(`[Threads Post] STEP 6 - Nhập caption...`);
         const captionXPath = "//div[@contenteditable='true' and (@aria-label or @data-lexical-editor)]";
         const captionBox = activePage.locator(captionXPath).first();
@@ -136,7 +201,10 @@ async function postImagesToThreads({ userId, accountName, accountType = 'Persona
             // Clear existing content
             await activePage.keyboard.press('Control+a');
             await activePage.keyboard.press('Backspace');
-            await activePage.keyboard.type(caption || '', { delay: 25 });
+            await activePage.waitForTimeout(300);
+            // Paste via clipboard — đáng tin hơn keyboard.type cho contenteditable
+            const cleanCaption = sanitizeContentForThreads(caption);
+            await pasteTextToClipboard(activePage, cleanCaption);
         } else {
             console.log(`[Threads Post] STEP 6 - Không tìm thấy caption box, bỏ qua caption`);
         }
@@ -261,7 +329,7 @@ async function uploadVideoToThreads({ userId, accountName, accountType = 'Person
     // title: lấy từ frontend (giống Post/PI) - optional cho Threads
     // caption: lấy từ frontend - nội dung
     // Threads composer chỉ có 1 ô contenteditable → gộp: title (dòng 1) + 2 dòng + caption
-    const composerText = String(title || '').trim() + (caption ? '\n\n' + String(caption).trim() : '');
+    const composerText = sanitizeContentForThreads(String(title || '').trim() + (caption ? '\n\n' + String(caption).trim() : ''));
 
     try {
         console.log(`[Threads Reels] STEP 2 - Mở context...`);
@@ -332,7 +400,9 @@ async function uploadVideoToThreads({ userId, accountName, accountType = 'Person
             await activePage.waitForTimeout(500);
             await activePage.keyboard.press('Control+a');
             await activePage.keyboard.press('Backspace');
-            await activePage.keyboard.type(composerText, { delay: 25 });
+            await activePage.waitForTimeout(300);
+            // Paste via clipboard — đáng tin hơn keyboard.type cho contenteditable
+            await pasteTextToClipboard(activePage, composerText);
         } else {
             console.log(`[Threads Reels] STEP 6 - Không tìm thấy caption box`);
         }

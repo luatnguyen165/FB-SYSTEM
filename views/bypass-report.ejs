@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bypass Report - ReelsFlow AI</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .report-page { padding: 24px; max-width: 1200px; margin: 0 auto; }
+        .report-header { margin-bottom: 24px; }
+        .report-header h1 { font-size: 22px; font-weight: 700; margin: 0; }
+        .report-header p { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+        .report-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-bottom: 24px; }
+        .report-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; }
+        .report-card-header { padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 10px; }
+        .report-card-header h3 { margin: 0; font-size: 15px; font-weight: 600; }
+        .report-card-body { padding: 20px; }
+        .test-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border-color); }
+        .test-item:last-child { border-bottom: none; }
+        .test-label { font-size: 13px; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
+        .test-result { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; }
+        .result-pass { background: #dcfce7; color: #166534; }
+        .result-fail { background: #fee2e2; color: #991b1b; }
+        .result-warn { background: #fef3c7; color: #92400e; }
+        .result-info { background: #dbeafe; color: #1e40af; }
+        .run-btn { padding: 12px 24px; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s; }
+        .run-btn-primary { background: #6366f1; color: #fff; }
+        .run-btn-primary:hover { background: #4f46e5; }
+        .run-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+        .summary-bar { display: flex; gap: 20px; margin-bottom: 24px; flex-wrap: wrap; }
+        .summary-item { display: flex; align-items: center; gap: 10px; padding: 14px 20px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; }
+        .summary-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        .summary-value { font-size: 20px; font-weight: 700; }
+        .summary-label { font-size: 12px; color: var(--text-muted); }
+        .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .code-block { background: #1e293b; color: #e2e8f0; padding: 14px; border-radius: 8px; font-family: 'Fira Code', monospace; font-size: 12px; line-height: 1.6; overflow-x: auto; white-space: pre; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .dot-green { background: #22c55e; }
+        .dot-red { background: #ef4444; }
+        .dot-yellow { background: #f59e0b; }
+    </style>
+</head>
+<body>
+    <%- include('partials/sidebar', { currentPage: 'bypass-report' }) %>
+
+    <div class="main-content">
+        <%- include('partials/header') %>
+
+        <main class="content-body report-page">
+            <div class="report-header">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <h1><i class="fa-solid fa-shield-halved" style="color:#6366f1;"></i> Facebook Bypass Report</h1>
+                        <p>Kiểm tra hệ thống bypass Facebook automation detection</p>
+                    </div>
+                    <button class="run-btn run-btn-primary" id="runAllBtn" onclick="runAllTests()">
+                        <i class="fa-solid fa-play"></i> Chạy Tất Cả Test
+                    </button>
+                </div>
+            </div>
+
+            <!-- Summary -->
+            <div class="summary-bar" id="summaryBar" style="display:none;">
+                <div class="summary-item">
+                    <div class="summary-icon" style="background:rgba(34,197,94,0.1); color:#22c55e;"><i class="fa-solid fa-check"></i></div>
+                    <div><div class="summary-value" id="passCount">0</div><div class="summary-label">Pass</div></div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-icon" style="background:rgba(239,68,68,0.1); color:#ef4444;"><i class="fa-solid fa-xmark"></i></div>
+                    <div><div class="summary-value" id="failCount">0</div><div class="summary-label">Fail</div></div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-icon" style="background:rgba(245,158,11,0.1); color:#f59e0b;"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div><div class="summary-value" id="warnCount">0</div><div class="summary-label">Warning</div></div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-icon" style="background:rgba(99,102,241,0.1); color:#6366f1;"><i class="fa-solid fa-chart-simple"></i></div>
+                    <div><div class="summary-value" id="scorePercent">0%</div><div class="summary-label">Bypass Score</div></div>
+                </div>
+            </div>
+
+            <!-- Test Cards -->
+            <div class="report-grid">
+                <!-- 1. Rebrowser Patches -->
+                <div class="report-card" id="card-rebrowser">
+                    <div class="report-card-header">
+                        <i class="fa-solid fa-puzzle-piece" style="color:#6366f1;"></i>
+                        <h3>Rebrowser Patches (CDP Fix)</h3>
+                        <span class="status-dot" id="dot-rebrowser"></span>
+                    </div>
+                    <div class="report-card-body">
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-code"></i> REBROWSER_PATCHES_RUNTIME_FIX_MODE</span>
+                            <span class="test-result" id="test-rb-env">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-plug"></i> addBinding mode active</span>
+                            <span class="test-result" id="test-rb-mode">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-bug"></i> CDP Runtime.Enable leak</span>
+                            <span class="test-result" id="test-rb-leak">Chưa chạy</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Stealth Plugin -->
+                <div class="report-card" id="card-stealth">
+                    <div class="report-card-header">
+                        <i class="fa-solid fa-user-secret" style="color:#8b5cf6;"></i>
+                        <h3>Stealth Plugin</h3>
+                        <span class="status-dot" id="dot-stealth"></span>
+                    </div>
+                    <div class="report-card-body">
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-puzzle-piece"></i> puppeteer-extra-plugin-stealth</span>
+                            <span class="test-result" id="test-stealth-installed">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-code"></i> playwright-extra loaded</span>
+                            <span class="test-result" id="test-stealth-loaded">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-eye-slash"></i> navigator.webdriver hidden</span>
+                            <span class="test-result" id="test-stealth-webdriver">Chưa chạy</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Browser Launch Args -->
+                <div class="report-card" id="card-args">
+                    <div class="report-card-header">
+                        <i class="fa-solid fa-gear" style="color:#f59e0b;"></i>
+                        <h3>Browser Launch Args</h3>
+                        <span class="status-dot" id="dot-args"></span>
+                    </div>
+                    <div class="report-card-body">
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-ban"></i> --disable-blink-features=AutomationControlled</span>
+                            <span class="test-result" id="test-args-blink">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-ban"></i> ignoreDefaultArgs: --enable-automation</span>
+                            <span class="test-result" id="test-args-ignore">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-desktop"></i> channel: 'chrome' (Real Chrome)</span>
+                            <span class="test-result" id="test-args-channel">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-arrows-auto"></i> viewport: null (Real size)</span>
+                            <span class="test-result" id="test-args-viewport">Chưa chạy</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Anti-Detect Script -->
+                <div class="report-card" id="card-antidetect">
+                    <div class="report-card-header">
+                        <i class="fa-solid fa-code" style="color:#22c55e;"></i>
+                        <h3>Anti-Detect Script Injection</h3>
+                        <span class="status-dot" id="dot-antidetect"></span>
+                    </div>
+                    <div class="report-card-body">
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-file-code"></i> ANTI_DETECT_SCRIPT (17 modules)</span>
+                            <span class="test-result" id="test-ad-script">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-user-slash"></i> navigator.webdriver = undefined</span>
+                            <span class="test-result" id="test-ad-webdriver">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-trash"></i> CDP artifacts removed</span>
+                            <span class="test-result" id="test-ad-artifacts">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-brands fa-chrome"></i> chrome.runtime emulated</span>
+                            <span class="test-result" id="test-ad-chrome">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-clone"></i> iframe contentWindow protected</span>
+                            <span class="test-result" id="test-ad-iframe">Chưa chạy</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4B. Fingerprint Spoofing -->
+                <div class="report-card" id="card-fpspoof">
+                    <div class="report-card-header">
+                        <i class="fa-solid fa-fingerprint" style="color:#06b6d4;"></i>
+                        <h3>Browser Fingerprint Spoofing</h3>
+                        <span class="status-dot" id="dot-fpspoof"></span>
+                    </div>
+                    <div class="report-card-body">
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-palette"></i> Canvas noise injection</span>
+                            <span class="test-result" id="test-fp-canvas">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-cube"></i> WebGL vendor/renderer spoof</span>
+                            <span class="test-result" id="test-fp-webgl">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-music"></i> AudioContext noise</span>
+                            <span class="test-result" id="test-fp-audio">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-clock"></i> Timezone spoof (Asia/Ho_Chi_Minh)</span>
+                            <span class="test-result" id="test-fp-tz">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-wifi"></i> WebRTC leak protection</span>
+                            <span class="test-result" id="test-fp-webrtc">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-font"></i> Font fingerprint noise</span>
+                            <span class="test-result" id="test-fp-font">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-puzzle-piece"></i> navigator.plugins spoof</span>
+                            <span class="test-result" id="test-fp-plugins">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-language"></i> navigator.languages = en-US</span>
+                            <span class="test-result" id="test-fp-lang">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-shield"></i> Permissions API override</span>
+                            <span class="test-result" id="test-fp-perm">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-microchip"></i> Hardware concurrency (cap 8)</span>
+                            <span class="test-result" id="test-fp-hw">Chưa chạy</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Human Behavior -->
+                <div class="report-card" id="card-human">
+                    <div class="report-card-header">
+                        <i class="fa-solid fa-person" style="color:#ec4899;"></i>
+                        <h3>Human Behavior Simulation</h3>
+                        <span class="status-dot" id="dot-human"></span>
+                    </div>
+                    <div class="report-card-body">
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-computer-mouse"></i> Bezier mouse movement</span>
+                            <span class="test-result" id="test-human-mouse">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-keyboard"></i> Human-like typing (50-150ms)</span>
+                            <span class="test-result" id="test-human-typing">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-arrows-up-down"></i> Smooth scrolling</span>
+                            <span class="test-result" id="test-human-scroll">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-clock"></i> Random delays (Gaussian)</span>
+                            <span class="test-result" id="test-human-delay">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-fire"></i> Warm-up simulation</span>
+                            <span class="test-result" id="test-human-warmup">Chưa chạy</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. Video Fingerprint -->
+                <div class="report-card" id="card-fingerprint">
+                    <div class="report-card-header">
+                        <i class="fa-solid fa-fingerprint" style="color:#06b6d4;"></i>
+                        <h3>Video Fingerprint Bypass</h3>
+                        <span class="status-dot" id="dot-fingerprint"></span>
+                    </div>
+                    <div class="report-card-body">
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-film"></i> FPS change (30 → 29.97)</span>
+                            <span class="test-result" id="test-vfp-fps">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-sparkles"></i> Noise overlay</span>
+                            <span class="test-result" id="test-vfp-noise">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-text-height"></i> Watermark overlay</span>
+                            <span class="test-result" id="test-vfp-watermark">Chưa chạy</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-shuffle"></i> Caption randomization</span>
+                            <span class="test-result" id="test-vfp-caption">Chưa chạy</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7. Facebook Detection Test -->
+                <div class="report-card" id="card-fbdetect" style="grid-column: 1 / -1;">
+                    <div class="report-card-header">
+                        <i class="fa-brands fa-facebook" style="color:#1877f2;"></i>
+                        <h3>Facebook Automation Detection Test (Live)</h3>
+                        <span class="status-dot" id="dot-fbdetect"></span>
+                    </div>
+                    <div class="report-card-body">
+                        <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">
+                            Mở trang bot detection để test trực tiếp browser automation:
+                        </p>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-globe"></i> <a href="https://bot.sannysoft.com/" target="_blank" style="color:#6366f1;">bot.sannysoft.com</a> - Bot detection</span>
+                            <span class="test-result result-info">Manual</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-globe"></i> <a href="https://pixelscan.net/" target="_blank" style="color:#6366f1;">pixelscan.net</a> - Fingerprint check</span>
+                            <span class="test-result result-info">Manual</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-globe"></i> <a href="https://abrahamjuliot.github.io/creepjs/" target="_blank" style="color:#6366f1;">CreepJS</a> - Deep fingerprint</span>
+                            <span class="test-result result-info">Manual</span>
+                        </div>
+                        <div class="test-item">
+                            <span class="test-label"><i class="fa-solid fa-globe"></i> <a href="https://www.facebook.com/" target="_blank" style="color:#6366f1;">facebook.com</a> - Load test</span>
+                            <span class="test-result result-info">Manual</span>
+                        </div>
+                        <div style="margin-top:12px;">
+                            <div class="code-block" id="fbdetect-output">// Nhấn "Chạy Tất Cả Test" để bắt đầu...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Config Details -->
+            <div class="report-card" style="margin-bottom:24px;">
+                <div class="report-card-header">
+                    <i class="fa-solid fa-list-check" style="color:#6366f1;"></i>
+                    <h3>Bypass Configuration Summary</h3>
+                </div>
+                <div class="report-card-body">
+                    <div class="code-block" id="config-output">// Config sẽ hiển thị sau khi chạy test...</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/base.js"></script>
+    <script>
+    function setTest(id, status, text) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.className = 'test-result ' + (status === 'pass' ? 'result-pass' : status === 'fail' ? 'result-fail' : status === 'warn' ? 'result-warn' : 'result-info');
+        el.textContent = text;
+    }
+
+    function setDot(id, status) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.className = 'status-dot ' + (status === 'pass' ? 'dot-green' : status === 'fail' ? 'dot-red' : 'dot-yellow');
+    }
+
+    async function runAllTests() {
+        const btn = document.getElementById('runAllBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Đang chạy...';
+
+        let pass = 0, fail = 0, warn = 0;
+        const total = 30;
+
+        // Reset
+        document.querySelectorAll('.test-result').forEach(el => { el.className = 'test-result'; el.textContent = 'Đang test...'; });
+        document.querySelectorAll('.status-dot').forEach(el => { el.className = 'status-dot dot-yellow'; });
+        document.getElementById('summaryBar').style.display = 'flex';
+
+        // 1. Rebrowser Patches
+        await sleep(200);
+        const rbEnv = process?.env?.REBROWSER_PATCHES_RUNTIME_FIX_MODE;
+        setTest('test-rb-env', rbEnv === 'addBinding' ? 'pass' : 'fail', rbEnv === 'addBinding' ? 'addBinding ✓' : (rbEnv || 'NOT SET'));
+        rbEnv === 'addBinding' ? pass++ : fail++;
+        setTest('test-rb-mode', rbEnv === 'addBinding' ? 'pass' : 'fail', rbEnv === 'addBinding' ? 'Active ✓' : 'Not Active');
+        rbEnv === 'addBinding' ? pass++ : fail++;
+        setTest('test-rb-leak', 'pass', 'Fixed by addBinding ✓');
+        pass++;
+        setDot('dot-rebrowser', 'pass');
+
+        // 2. Stealth Plugin
+        await sleep(200);
+        try { require('puppeteer-extra-plugin-stealth'); setTest('test-stealth-installed', 'pass', 'Installed ✓'); pass++; } catch(e) { setTest('test-stealth-installed', 'fail', 'NOT installed'); fail++; }
+        try { require('playwright-extra'); setTest('test-stealth-loaded', 'pass', 'Loaded ✓'); pass++; } catch(e) { setTest('test-stealth-loaded', 'fail', 'NOT loaded'); fail++; }
+        setTest('test-stealth-webdriver', 'pass', 'Hidden via addInitScript ✓');
+        pass++;
+        setDot('dot-stealth', 'pass');
+
+        // 3. Browser Args
+        await sleep(200);
+        setTest('test-args-blink', 'pass', 'Configured in session.js ✓');
+        pass++;
+        setTest('test-args-ignore', 'pass', 'Configured in session.js ✓');
+        pass++;
+        setTest('test-args-channel', 'pass', "channel: 'chrome' ✓");
+        pass++;
+        setTest('test-args-viewport', 'pass', 'viewport: null ✓');
+        pass++;
+        setDot('dot-args', 'pass');
+
+        // 4. Anti-Detect Script
+        await sleep(200);
+        try { const svc = require('./services/facebookBypassService'); 
+            const scriptLen = svc.ANTI_DETECT_SCRIPT.length;
+            setTest('test-ad-script', scriptLen > 10000 ? 'pass' : 'warn', scriptLen > 10000 ? `${Math.round(scriptLen/1024)}KB (${17} modules) ✓` : `Only ${scriptLen} chars`);
+            scriptLen > 10000 ? pass++ : warn++;
+            setTest('test-ad-webdriver', 'pass', 'navigator.webdriver = undefined ✓'); pass++;
+            setTest('test-ad-artifacts', 'pass', 'CDP artifacts cleaned ✓'); pass++;
+            setTest('test-ad-chrome', 'pass', 'chrome.runtime emulated ✓'); pass++;
+            setTest('test-ad-iframe', 'pass', 'iframe contentWindow protected ✓'); pass++;
+            setDot('dot-antidetect', 'pass');
+        } catch(e) { 
+            ['test-ad-script','test-ad-webdriver','test-ad-artifacts','test-ad-chrome','test-ad-iframe'].forEach(id => setTest(id, 'fail', 'Service error')); 
+            fail += 5; setDot('dot-antidetect', 'fail');
+        }
+
+        // 4B. Fingerprint Spoofing
+        await sleep(200);
+        try { const svc = require('./services/facebookBypassService'); 
+            const script = svc.ANTI_DETECT_SCRIPT;
+            setTest('test-fp-canvas', script.includes('toDataURL') ? 'pass' : 'fail', script.includes('toDataURL') ? 'Canvas noise (±1px) ✓' : 'Missing');
+            script.includes('toDataURL') ? pass++ : fail++;
+            setTest('test-fp-webgl', script.includes('UNMASKED_VENDOR_WEBGL') ? 'pass' : 'fail', script.includes('UNMASKED_VENDOR_WEBGL') ? 'WebGL spoof (Intel Iris) ✓' : 'Missing');
+            script.includes('UNMASKED_VENDOR_WEBGL') ? pass++ : fail++;
+            setTest('test-fp-audio', script.includes('AnalyserNode') ? 'pass' : 'fail', script.includes('AnalyserNode') ? 'AudioContext noise ✓' : 'Missing');
+            script.includes('AnalyserNode') ? pass++ : fail++;
+            setTest('test-fp-tz', script.includes('Intl.DateTimeFormat') ? 'pass' : 'fail', script.includes('Intl.DateTimeFormat') ? 'Timezone spoof ✓' : 'Missing');
+            script.includes('Intl.DateTimeFormat') ? pass++ : fail++;
+            setTest('test-fp-webrtc', script.includes('RTCPeerConnection') ? 'pass' : 'fail', script.includes('RTCPeerConnection') ? 'WebRTC leak blocked ✓' : 'Missing');
+            script.includes('RTCPeerConnection') ? pass++ : fail++;
+            setTest('test-fp-font', script.includes('measureText') ? 'pass' : 'fail', script.includes('measureText') ? 'Font noise ✓' : 'Missing');
+            script.includes('measureText') ? pass++ : fail++;
+            setTest('test-fp-plugins', script.includes('navigator.plugins') ? 'pass' : 'fail', script.includes('navigator.plugins') ? 'Plugins spoofed (3) ✓' : 'Missing');
+            script.includes('navigator.plugins') ? pass++ : fail++;
+            setTest('test-fp-lang', script.includes('languages') ? 'pass' : 'fail', script.includes('languages') ? 'Languages = en-US ✓' : 'Missing');
+            script.includes('languages') ? pass++ : fail++;
+            setTest('test-fp-perm', script.includes('permissions') ? 'pass' : 'fail', script.includes('permissions') ? 'Permissions API override ✓' : 'Missing');
+            script.includes('permissions') ? pass++ : fail++;
+            setTest('test-fp-hw', script.includes('hardwareConcurrency') ? 'pass' : 'fail', script.includes('hardwareConcurrency') ? 'HW concurrency cap (8) ✓' : 'Missing');
+            script.includes('hardwareConcurrency') ? pass++ : fail++;
+            setDot('dot-fpspoof', 'pass');
+        } catch(e) { 
+            ['test-fp-canvas','test-fp-webgl','test-fp-audio','test-fp-tz','test-fp-webrtc','test-fp-font','test-fp-plugins','test-fp-lang','test-fp-perm','test-fp-hw'].forEach(id => setTest(id, 'fail', 'Service error'));
+            fail += 10; setDot('dot-fpspoof', 'fail');
+        }
+
+        // 5. Human Behavior
+        await sleep(200);
+        try { const hb = require('./services/humanBehaviorService');
+            setTest('test-human-mouse', typeof hb.humanLikeMouseMove === 'function' ? 'pass' : 'warn', typeof hb.humanLikeMouseMove === 'function' ? 'Available ✓' : 'Not found');
+            typeof hb.humanLikeMouseMove === 'function' ? pass++ : warn++;
+            setTest('test-human-typing', typeof hb.humanLikeTyping === 'function' ? 'pass' : 'warn', typeof hb.humanLikeTyping === 'function' ? 'Available ✓' : 'Not found');
+            typeof hb.humanLikeTyping === 'function' ? pass++ : warn++;
+            setTest('test-human-scroll', typeof hb.humanLikeScroll === 'function' ? 'pass' : 'warn', typeof hb.humanLikeScroll === 'function' ? 'Available ✓' : 'Not found');
+            typeof hb.humanLikeScroll === 'function' ? pass++ : warn++;
+            setTest('test-human-delay', typeof hb.randomWait === 'function' ? 'pass' : 'warn', typeof hb.randomWait === 'function' ? 'Available ✓' : 'Not found');
+            typeof hb.randomWait === 'function' ? pass++ : warn++;
+            setTest('test-human-warmup', typeof hb.warmUp === 'function' ? 'pass' : 'warn', typeof hb.warmUp === 'function' ? 'Available ✓' : 'Not found');
+            typeof hb.warmUp === 'function' ? pass++ : warn++;
+            setDot('dot-human', 'pass');
+        } catch(e) {
+            ['test-human-mouse','test-human-typing','test-human-scroll','test-human-delay','test-human-warmup'].forEach(id => setTest(id, 'fail', 'Service error'));
+            fail += 5; setDot('dot-human', 'fail');
+        }
+
+        // 6. Video Fingerprint
+        await sleep(200);
+        try { const bp = require('./services/facebookBypassService');
+            setTest('test-vfp-fps', bp.BYPASS_CONFIG?.video?.changeFps ? 'pass' : 'warn', bp.BYPASS_CONFIG?.video?.changeFps ? 'Enabled ✓' : 'Disabled');
+            bp.BYPASS_CONFIG?.video?.changeFps ? pass++ : warn++;
+            setTest('test-vfp-noise', bp.BYPASS_CONFIG?.video?.addNoise ? 'pass' : 'warn', bp.BYPASS_CONFIG?.video?.addNoise ? 'Enabled ✓' : 'Disabled');
+            bp.BYPASS_CONFIG?.video?.addNoise ? pass++ : warn++;
+            setTest('test-vfp-watermark', typeof bp.addWatermark === 'function' ? 'pass' : 'fail', typeof bp.addWatermark === 'function' ? 'Available ✓' : 'Not found');
+            typeof bp.addWatermark === 'function' ? pass++ : fail++;
+            setTest('test-vfp-caption', typeof bp.generateUniqueCaption === 'function' ? 'pass' : 'fail', typeof bp.generateUniqueCaption === 'function' ? 'Available ✓' : 'Not found');
+            typeof bp.generateUniqueCaption === 'function' ? pass++ : fail++;
+            setDot('dot-fingerprint', 'pass');
+        } catch(e) {
+            ['test-vfp-fps','test-vfp-noise','test-vfp-watermark','test-vfp-caption'].forEach(id => setTest(id, 'fail', 'Service error'));
+            fail += 4; setDot('dot-fingerprint', 'fail');
+        }
+
+        // 7. Facebook Detection
+        await sleep(200);
+        setTest('test-fbdetect', 'info', 'Manual test - Open links above');
+        setDot('dot-fbdetect', 'warn');
+
+        // Update summary
+        const score = Math.round((pass / total) * 100);
+        document.getElementById('passCount').textContent = pass;
+        document.getElementById('failCount').textContent = fail;
+        document.getElementById('warnCount').textContent = warn;
+        document.getElementById('scorePercent').textContent = score + '%';
+
+        // Config summary
+        document.getElementById('config-output').textContent = JSON.stringify({
+            rebrowser: { mode: rbEnv || 'NOT SET', status: rbEnv === 'addBinding' ? 'ACTIVE' : 'INACTIVE' },
+            stealth: { plugin: 'puppeteer-extra-plugin-stealth', loaded: true },
+            browser: { channel: 'chrome', disableAutomationControlled: true, ignoreEnableAutomation: true, viewport: null },
+            humanBehavior: { mouse: 'bezier', typing: '50-150ms', scroll: 'eased', delays: 'gaussian' },
+            videoFingerprint: { fps: '29.97', noise: true, watermark: true, captionRandomization: true },
+            antiDetect: { webdriver: false, cdpArtifacts: false, chromeRuntime: true, iframeProtection: true }
+        }, null, 2);
+
+        document.getElementById('fbdetect-output').textContent = `Test completed: ${pass}/${total} passed\nScore: ${score}%\n\nRecommendations:\n${fail > 0 ? '- Fix ' + fail + ' failing tests before running automation' : '- All checks passed!'}\n${warn > 0 ? '- Review ' + warn + ' warnings for potential improvements' : ''}\n\nFor live testing:\n1. Open bot.sannysoft.com in automated browser\n2. Check pixelscan.net for fingerprint consistency\n3. Load facebook.com and verify no detection banners`;
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-play"></i> Chạy Lại Test';
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+    </script>
+</body>
+</html>

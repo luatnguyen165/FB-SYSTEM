@@ -16,12 +16,15 @@ const PLATFORM_META = {
     IG: { label: 'Instagram', icon: 'fa-brands fa-instagram', color: '#e1306c' },
     TT: { label: 'TikTok Video', icon: 'fa-brands fa-tiktok', color: '#000000' },
     YT: { label: 'YouTube Short', icon: 'fa-brands fa-youtube', color: '#ff0000' },
-    FR: { label: 'Facebook Reels', icon: 'fa-brands fa-facebook', color: '#1877f2' }
+    FR: { label: 'Facebook Reels', icon: 'fa-brands fa-facebook', color: '#1877f2' },
+    YS: { label: 'YouTube Short', icon: 'fa-brands fa-youtube', color: '#ff0000' },
+    TH: { label: 'Threads', icon: 'fa-brands fa-threads', color: '#000000' },
+    PI: { label: 'Pinterest', icon: 'fa-brands fa-pinterest', color: '#e60023' }
 };
 
-const POST_PLATFORMS = ['FB', 'IG'];
-const REELS_PLATFORMS = ['FR', 'YS', 'IG', 'TT'];
-const PLATFORM_TO_CHANNEL = { FR: 'FB', YS: 'YT', IG: 'IG', TT: 'TT', FB: 'FB' };
+const POST_PLATFORMS = ['FB', 'IG', 'TH', 'PI'];
+const REELS_PLATFORMS = ['FR', 'YS', 'IG', 'TT', 'TH', 'PI'];
+const PLATFORM_TO_CHANNEL = { FR: 'FB', YS: 'YT', IG: 'IG', TT: 'TT', FB: 'FB', TH: 'TH', PI: 'PI' };
 
 function debounce(fn, delay = 300) {
     let timer;

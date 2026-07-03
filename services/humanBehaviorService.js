@@ -2,6 +2,28 @@ const { platform } = require('os');
 
 // ====== TIỆN ÍCH ======
 
+/**
+ * Dán text vào contenteditable — giống Instagram approach
+ * fill() trước, fallback execCommand('insertText') giữ nguyên newline
+ */
+async function typeWithNewlines(page, text) {
+    if (!text) return;
+    const focused = await page.evaluate(() => {
+        const el = document.activeElement;
+        return el && el.isContentEditable;
+    }).catch(() => false);
+    if (!focused) return;
+    try {
+        await page.keyboard.insertText(text);
+    } catch (_) {
+        await page.evaluate((t) => {
+            document.execCommand('selectAll');
+            document.execCommand('delete');
+            document.execCommand('insertText', false, t);
+        }, text);
+    }
+}
+
 function randomWait(min, max) {
     return new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * (max - min + 1) + min)));
 }
@@ -16,91 +38,54 @@ function gaussianRandom(mean, std, min = 0, max = Infinity) {
 }
 
 /**
- * Gõ text vào element đang được focus - dùng insertText cho nhanh,
- * nếu không được thì fallback về type từng ký tự
- * 
- * ⚠️ LƯU Ý: pressSequentially là locator method, KHÔNG PHẢI keyboard method
- *    page.keyboard.pressSequentially() KHÔNG TỒN TẠI
- *    => Luôn dùng page.keyboard.type() hoặc locator.pressSequentially()
+ * Dán text vào contenteditable — giống Instagram approach
+ * fill() trước, fallback execCommand('insertText') giữ nguyên newline
+ */
+async function typeWithNewlines(page, text) {
+    if (!text) return;
+    const focused = await page.evaluate(() => {
+        const el = document.activeElement;
+        return el && el.isContentEditable;
+    }).catch(() => false);
+    if (!focused) return;
+    try {
+        await page.keyboard.insertText(text);
+    } catch (_) {
+        await page.evaluate((t) => {
+            document.execCommand('selectAll');
+            document.execCommand('delete');
+            document.execCommand('insertText', false, t);
+        }, text);
+    }
+}
+
+/**
+ * Gõ text vào element đang focus — fill trước (nhanh), insertText giữ newline
  */
 async function humanLikeTyping(page, text) {
     if (!text || !text.length) return;
-    
-    console.log(`\n===== [humanLikeTyping] START =====`);
     console.log(`[humanLikeTyping] text length=${text.length}, preview="${text.substring(0, 100)}"`);
-    
-    // Bước 1: Log activeElement trước khi gõ
+
+    // Bước 1: Thử fill trước (nhanh nhất — giống IG)
     try {
-        const info = await page.evaluate(() => {
+        const focused = await page.evaluate(() => {
             const el = document.activeElement;
-            if (!el) return { exists: false, reason: 'No active element' };
-            return {
-                tag: el.tagName,
-                editable: el.isContentEditable || el.getAttribute('contenteditable'),
-                role: el.getAttribute('role') || ''
-            };
+            return el && el.isContentEditable;
         });
-        console.log(`[humanLikeTyping] activeElement BEFORE:`, JSON.stringify(info));
-    } catch (e) {
-        console.log(`[humanLikeTyping] Can't get activeElement:`, e.message);
-    }
-    
-    // Bước 2: Thử insertText trước (nhanh nhất - chèn nguyên text cùng lúc)
+        if (focused) {
+            await page.keyboard.insertText(text);
+            return;
+        }
+    } catch (_) {}
+
+    // Bước 2: Fallback execCommand insertText
     try {
         await page.evaluate((t) => {
-            const el = document.activeElement;
-            if (!el) return;
-            // Dùng document.execCommand('insertText') - Facebook Lexical chấp nhận
-            const sel = window.getSelection();
-            if (sel && el.isContentEditable) {
-                sel.collapse(el, 0);
-                document.execCommand('insertText', false, t);
-            }
+            document.execCommand('selectAll');
+            document.execCommand('delete');
+            document.execCommand('insertText', false, t);
         }, text);
-        console.log(`[humanLikeTyping] insertText done`);
-    } catch (e) {
-        console.log(`[humanLikeTyping] insertText failed:`, e.message);
-    }
-    
-    await page.waitForTimeout(100);
-    
-    // Bước 3: Verify - nếu text đã được nhập thì thôi
-    let typedOk = false;
-    try {
-        const after = await page.evaluate(() => {
-            const el = document.activeElement;
-            if (!el) return '';
-            return (el.textContent || el.innerText || el.value || '');
-        });
-        typedOk = after.includes(text.substring(0, 20));
-        console.log(`[humanLikeTyping] After insertText: length=${after.length}, includes="${text.substring(0,20)}"? ${typedOk}`);
-    } catch (e) {
-        console.log(`[humanLikeTyping] Verify error:`, e.message);
-    }
-    
-    // Bước 4: Nếu insertText không được, fallback type từng ký tự
-    if (!typedOk) {
-        console.log(`[humanLikeTyping] insertText failed, fallback to type()...`);
-        for (let i = 0; i < text.length; i++) {
-            await page.keyboard.type(text[i], { delay: 0 });
-            // Thỉnh thoảng yield cho event loop
-            if (i % 50 === 0) await new Promise(r => setImmediate(r));
-        }
-        console.log(`[humanLikeTyping] Fallback type() done`);
-        
-        await page.waitForTimeout(100);
-        
-        try {
-            const after = await page.evaluate(() => {
-                const el = document.activeElement;
-                if (!el) return '';
-                return (el.textContent || el.innerText || el.value || '').substring(0, 200);
-            });
-            console.log(`[humanLikeTyping] After fallback (first 200): "${after}"`);
-        } catch (e) {}
-    }
-    
-    console.log(`===== [humanLikeTyping] END =====\n`);
+    } catch (_) {}
 }
 
 /**
@@ -370,177 +355,28 @@ async function simulateHumanAfterPost(page, {
 }
 
 /**
- * Enhanced anti-detection init script
+ * Minimal anti-detection init script
+ * Delegates to facebookBypassService.ANTI_DETECT_SCRIPT to avoid conflicts
  */
 function getAntiDetectionScript() {
-    return `
-        // === 1. navigator.webdriver ===
-        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-        delete navigator.__proto__.webdriver;
-
-        // === 2. window.chrome ===
-        if (!window.chrome) window.chrome = {};
-        if (!window.chrome.runtime) {
-            window.chrome.runtime = {
-                connect: function(){},
-                sendMessage: function(){},
-                onMessage: { addListener: function(){}, removeListener: function(){} },
-                id: 'mhjfbmdgcfjbbpaeojofohoefgiehjai',
-                PlatformOs: { MAC: 'mac', WIN: 'win', ANDROID: 'android', CROS: 'cros', LINUX: 'linux', OPENBSD: 'openbsd' },
-                PlatformArch: { ARM: 'arm', X86_32: 'x86-32', X86_64: 'x86-64', MIPS: 'mips', MIPS64: 'mips64' },
-                PlatformNaclArch: { ARM: 'arm', X86_32: 'x86-32', X86_64: 'x86-64', MIPS: 'mips', MIPS64: 'mips64' },
-                RequestUpdateCheckStatus: { THROTTLED: 'throttled', NO_UPDATE: 'no_update', UPDATE_AVAILABLE: 'update_available' },
-                OnInstalledReason: { INSTALL: 'install', UPDATE: 'update', CHROME_UPDATE: 'chrome_update', SHARED_MODULE_UPDATE: 'shared_module_update' },
-                OnRestartRequiredReason: { APP_UPDATE: 'app_update', OS_UPDATE: 'os_update', PERIODIC: 'periodic' }
-            };
-        }
-        if (!window.chrome.csi) window.chrome.csi = function(){ return { onloadT: Date.now(), startE: Date.now(), pageT: Date.now() - performance.timing.navigationStart }; };
-        if (!window.chrome.loadTimes) window.chrome.loadTimes = function(){ return { requestTime: Date.now()/1000 - 1, startLoadTime: Date.now()/1000 - 0.5, commitLoadTime: Date.now()/1000, finishDocumentLoadTime: Date.now()/1000 + 0.5, firstPaintTime: Date.now()/1000 + 0.3, finishLoadTime: Date.now()/1000 + 1, navigationType: 'Other' }; };
-
-        // === 3. plugins ===
-        Object.defineProperty(navigator, 'plugins', {
-            get: function() {
-                var p = [
-                    { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer', description: 'Portable Document Format', length: 1 },
-                    { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai', description: '', length: 1 },
-                    { name: 'Native Client', filename: 'internal-nacl-plugin', description: '', length: 2 }
-                ];
-                p.refresh = function(){};
-                p.item = function(i){ return this[i]; };
-                p.namedItem = function(n){ for(var i=0;i<this.length;i++) if(this[i].name===n) return this[i]; return null; };
-                return p;
-            }
-        });
-
-        // === 4. languages ===
-        Object.defineProperty(navigator, 'languages', { get: () => ['vi-VN', 'vi', 'en-US', 'en'] });
-        Object.defineProperty(navigator, 'language', { get: () => 'vi-VN' });
-
-        // === 5. permissions ===
-        var origQuery = navigator.permissions.query;
-        navigator.permissions.query = function(p) {
-            if (p.name === 'notifications') return Promise.resolve({ state: 'prompt', onchange: null });
-            return origQuery.call(this, p);
-        };
-
-        // === 6. WebGL ===
-        var origGetParam = WebGLRenderingContext.prototype.getParameter;
-        WebGLRenderingContext.prototype.getParameter = function(p) {
-            if (p === 37445) return 'Intel Inc.';
-            if (p === 37446) return 'Intel Iris OpenGL Engine';
-            return origGetParam.call(this, p);
-        };
-        var origGetParam2 = WebGL2RenderingContext.prototype.getParameter;
-        WebGL2RenderingContext.prototype.getParameter = function(p) {
-            if (p === 37445) return 'Intel Inc.';
-            if (p === 37446) return 'Intel Iris OpenGL Engine';
-            return origGetParam2.call(this, p);
-        };
-
-        // === 7. hardwareConcurrency & deviceMemory ===
-        Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 });
-        Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });
-
-        // === 8. platform ===
-        Object.defineProperty(navigator, 'platform', { get: () => 'Win32' });
-
-        // === 9. connection ===
-        if (navigator.connection) {
-            Object.defineProperty(navigator.connection, 'rtt', { get: () => 50 });
-        }
-
-        // === 10. Remove automation markers ===
-        delete window.__playwright;
-        delete window.__pw_manual;
-        delete window.__PW_inspect;
-        delete window.cdc_adoQpoasnfa76pfcZLmcfl_Array;
-        delete window.cdc_adoQpoasnfa76pfcZLmcfl_Promise;
-        delete window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol;
-        delete window.cdc_adoQpoasnfa76pfcZLmcfl_JSON;
-        delete window.cdc_adoQpoasnfa76pfcZLmcfl_Proxy;
-        delete window.cdc_adoQpoasnfa76pfcZLmcfl_Object;
-
-        // === 11. Notification.permission ===
-        if (window.Notification) {
-            Object.defineProperty(Notification, 'permission', { get: () => 'default' });
-        }
-
-        // === 12. MediaDevices ===
-        if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
-            var origEnum = navigator.mediaDevices.enumerateDevices;
-            navigator.mediaDevices.enumerateDevices = function() {
-                return Promise.resolve([
-                    { deviceId: '', groupId: '', kind: 'audioinput', label: '' },
-                    { deviceId: '', groupId: '', kind: 'audiooutput', label: '' },
-                    { deviceId: '', groupId: '', kind: 'videoinput', label: '' }
-                ]);
-            };
-        }
-
-        // === 13. screen properties ===
-        Object.defineProperty(screen, 'colorDepth', { get: () => 24 });
-        Object.defineProperty(screen, 'pixelDepth', { get: () => 24 });
-
-        // === 14. Max touch points ===
-        Object.defineProperty(navigator, 'maxTouchPoints', { get: () => 0 });
-
-        // === 15. vendor ===
-        Object.defineProperty(navigator, 'vendor', { get: () => 'Google Inc.' });
-
-        // === 16. Do Not Track ===
-        Object.defineProperty(navigator, 'doNotTrack', { get: () => null });
-
-        // === 17. cookieEnabled ===
-        Object.defineProperty(navigator, 'cookieEnabled', { get: () => true });
-
-        // === 18. Remove iframe detection ===
-        if (window.frameElement) {
-            Object.defineProperty(window, 'frameElement', { get: () => null });
-        }
-
-        // === 19. Instagram-specific: override toString để tránh bị check ===
-        var origToString = Function.prototype.toString;
-        Function.prototype.toString = function() {
-            if (this === navigator.permissions.query) return 'function query() { [native code] }';
-            if (this === navigator.mediaDevices.enumerateDevices) return 'function enumerateDevices() { [native code] }';
-            return origToString.call(this);
-        };
-
-        // === 20. Override getComputedStyle để không bị detect ===
-        var origGetComputedStyle = window.getComputedStyle;
-        window.getComputedStyle = function(el, pseudo) {
-            var style = origGetComputedStyle.call(this, el, pseudo);
-            // Thêm missing properties mà Instagram check
-            if (!style.fontDisplay) {
-                Object.defineProperty(style, 'fontDisplay', { get: () => 'auto' });
-            }
-            return style;
-        };
-
-        // === 21. Fix Date/timezone一致性 ===
-        var origDate = Date;
-        var dateOffset = 0;
-        Date = function() {
-            return new origDate(origDate.now() + dateOffset);
-        };
-        Date.now = function() { return origDate.now() + dateOffset; };
-        Date.prototype = origDate.prototype;
-        Date.parse = origDate.parse;
-        Date.UTC = origDate.UTC;
-        Date.prototype.constructor = Date;
-
-        // === 22. Override Error.prepareStackTrace để stack trace看起来正常 ===
-        if (Error.prepareStackTrace) {
-            var origPrepareStackTrace = Error.prepareStackTrace;
-            Error.prepareStackTrace = function(error, structuredStackTrace) {
-                var filtered = structuredStackTrace.filter(function(callSite) {
-                    var name = callSite.getFileName() || '';
-                    return !name.includes('playwright') && !name.includes('puppeteer');
-                });
-                return origPrepareStackTrace(error, filtered);
-            };
-        }
-    `;
+    try {
+        const { ANTI_DETECT_SCRIPT } = require('./facebookBypassService');
+        return ANTI_DETECT_SCRIPT;
+    } catch(e) {
+        // Fallback: minimal webdriver + CDP cleanup only
+        return `
+            try { delete Object.getPrototypeOf(navigator).webdriver; } catch(e2) {}
+            Object.defineProperty(navigator, 'webdriver', { get: () => undefined, configurable: true });
+            delete window.__pwInitScripts;
+            delete window.__playwright;
+            delete window.__playwright_evaluation_script__;
+            try { delete window.cdc_adoQpoasnfa76pfcZLmcfl_Array; } catch(e2) {}
+            try { delete window.cdc_adoQpoasnfa76pfcZLmcfl_Promise; } catch(e2) {}
+            try { delete window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol; } catch(e2) {}
+            if (!window.chrome) window.chrome = {};
+            if (!window.chrome.runtime) window.chrome.runtime = { connect: () => {}, sendMessage: () => {} };
+        `;
+    }
 }
 
 /**

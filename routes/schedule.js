@@ -29,6 +29,7 @@ router.get('/api/reels-runner/status', requireAuth, scheduleController.getReelsR
 router.post('/api/reels-runner/run-now', requireAuth, scheduleController.runReelsRunnerNowAPI);
 router.post('/api/reels-runner/run-schedule/:id', requireAuth, scheduleController.runReelsScheduleByIdNowAPI);
 router.post('/api/run-schedule/:id', requireAuth, scheduleController.runScheduleByIdNowAPI);
+router.post('/api/delete-groups', requireAuth, scheduleController.deleteSelectedGroupsAPI);
 router.post('/api/scan-groups', requireAuth, scheduleController.scanFacebookGroupsAPI);
 router.post('/api/scrape-group', requireAuth, scheduleController.scrapeGroupMembersAPI);
 router.post('/api/scrape-joins', requireAuth, scheduleController.scrapeGroupsFromJoinsAPI);
@@ -50,6 +51,7 @@ router.get('/ai-scan/api/config/:configId', requireAuth, aiScanController.getCon
 
 // Scan execution
 router.post('/ai-scan/api/scan-now', requireAuth, aiScanController.runScanNow);
+router.get('/ai-scan/api/queue-status', requireAuth, aiScanController.getQueueStatus);
 
 // Results
 router.get('/ai-scan/api/results', requireAuth, aiScanController.getResults);

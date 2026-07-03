@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Tracker - ReelsFlow</title>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/tracking.css">
+    <link rel="stylesheet" href="/css/tiktok-tracker.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+<%- include('partials/sidebar', { currentPage: 'tiktok-tracker' }) %>
+<div class="main-content">
+    <%- include('partials/header') %>
+    <main class="content-body tracking-page">
+        <%
+            const platformIcons = { FB: 'fa-facebook', FR: 'fa-facebook', IG: 'fa-instagram', TH: 'fa-threads', PI: 'fa-pinterest', TT: 'fa-tiktok', YT: 'fa-youtube', YS: 'fa-youtube' };
+            const platformColors = { FB: '#1877f2', FR: '#1877f2', IG: '#e1306c', TH: '#000', PI: '#e60023', TT: '#000', YT: '#ff0000', YS: '#ff0000' };
+        %>
+
+        <!-- Hero -->
+        <div class="tt-hero">
+            <div class="tt-hero-content">
+                <div class="tt-hero-left">
+                    <div class="tt-hero-title">
+                        <div class="tt-hero-icon"><i class="fa-brands fa-tiktok"></i></div>
+                        <div>
+                            <h1>TikTok Tracker</h1>
+                            <p class="tt-hero-subtitle">Theo dõi channel TikTok • Tự động download video mới • Cross-post đa nền tảng (FB Reels, IG, TH, PI)</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="tt-runner-bar">
+                    <span class="tt-runner-dot <%= runnerStatus.running ? 'on' : 'off' %>"></span>
+                    Runner: <strong><%= runnerStatus.running ? 'Đang chạy' : 'Dừng' %></strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="tt-stats">
+            <div class="tt-stat-card">
+                <div class="stat-icon" style="background: rgba(37, 99, 235, 0.1); color: #2563eb;">
+                    <i class="fa-solid fa-satellite-dish"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value"><%= stats.activeTrackings %></span>
+                    <span class="stat-label">Đang theo dõi</span>
+                </div>
+            </div>
+            <div class="tt-stat-card">
+                <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                    <i class="fa-solid fa-download"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value"><%= stats.totalDownloaded %></span>
+                    <span class="stat-label">Video đã tải</span>
+                </div>
+            </div>
+            <div class="tt-stat-card">
+                <div class="stat-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+                    <i class="fa-solid fa-share-nodes"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value"><%= stats.totalCrossPosted %></span>
+                    <span class="stat-label">Đã cross-post</span>
+                </div>
+            </div>
+            <div class="tt-stat-card">
+                <div class="stat-icon" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">
+                    <i class="fa-solid fa-clock"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value"><%= stats.totalTrackings %></span>
+                    <span class="stat-label">Tổng channel</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tracking-tabs">
+            <button class="tracking-tab active" onclick="showTab('channels')">
+                <i class="fa-solid fa-satellite-dish"></i> Channels
+            </button>
+            <button class="tracking-tab" onclick="showTab('videos')">
+                <i class="fa-solid fa-video"></i> Video đã tải
+            </button>
+        </div>
+
+        <!-- Tab: Thêm channel + Danh sách channel -->
+        <div class="tt-tab-content" id="tab-channels">
+
+            <!-- Form thêm channel -->
+            <div class="tt-section">
+                <div class="tt-section-header">
+                    <div class="tt-section-title"><i class="fa-solid fa-plus-circle"></i> Thêm channel TikTok mới</div>
+                </div>
+                <div class="tt-form-row">
+                    <input type="text" class="tt-input" id="ttChannelUrl" placeholder="Dán link TikTok: https://www.tiktok.com/@username">
+                    <select class="tt-select" id="ttCheckInterval" style="width:140px;flex:none;">
+                        <option value="5">Mỗi 5 phút</option>
+                        <option value="15" selected>Mỗi 15 phút</option>
+                        <option value="30">Mỗi 30 phút</option>
+                        <option value="60">Mỗi 1 giờ</option>
+                        <option value="1440">Mỗi 1 ngày</option>
+                    </select>
+                    <button class="tt-btn tt-btn-primary" id="btnAddTracking">
+                        <i class="fa-solid fa-plus"></i> Theo dõi
+                    </button>
+                </div>
+
+                <!-- Cookies file (optional) -->
+                <div style="margin-top:12px;">
+                    <label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Cookies TikTok:</label>
+                    <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+                        <label class="tt-btn tt-btn-sm tt-btn-outline" style="cursor:pointer;white-space:nowrap;">
+                            <i class="fa-solid fa-upload"></i> Chọn file cookies
+                            <input type="file" id="ttCookiesFile" accept=".txt,.cookie,.cookies,.json" style="display:none;">
+                        </label>
+                        <span id="ttCookiesFileName" style="font-size:12px;color:var(--text-light);">Chưa chọn file</span>
+                        <input type="hidden" id="ttCookiesPath" value="">
+                        <input type="hidden" id="ttCookiesExpiresAt" value="">
+                    </div>
+                    <div style="font-size:10px;color:var(--text-light);margin-top:6px;line-height:1.6;">
+                        <i class="fa-solid fa-info-circle"></i>
+                        Đăng nhập TikTok trên Chrome → Dùng extension
+                        <a href="https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc" target="_blank" style="color:var(--primary);">Get cookies.txt LOCALLY</a>
+                        → Export file .txt → Upload ở đây.
+                    </div>
+                </div>
+
+                <!-- Cross-post config -->
+                <div style="margin-top:14px;">
+                    <label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Cross-post sang:</label>
+                    <div class="tt-chips" id="ttPlatformChips">
+                        <span class="tt-chip" data-val="FR" data-match="FB"><i class="fa-brands fa-facebook"></i> Facebook Reels</span>
+                        <span class="tt-chip" data-val="IG" data-match="IG"><i class="fa-brands fa-instagram"></i> Instagram</span>
+                        <span class="tt-chip" data-val="TH" data-match="TH"><i class="fa-brands fa-threads"></i> Threads</span>
+                        <span class="tt-chip" data-val="PI" data-match="PI"><i class="fa-brands fa-pinterest"></i> Pinterest</span>
+                        <span class="tt-chip" data-val="YT" data-match="YT"><i class="fa-brands fa-youtube"></i> YouTube Shorts</span>
+                    </div>
+                </div>
+
+                <div style="margin-top:14px;" id="ttAccountSection" class="tt-hidden">
+                    <label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">
+                        Tài khoản đăng bài: <span id="ttAccountHint" style="font-weight:400;text-transform:none;letter-spacing:0;"></span>
+                    </label>
+                    <div class="tt-account-grid" id="ttAccountPicker">
+                        <% if (channels.length === 0) { %>
+                            <span style="font-size:12px;color:var(--text-light);">Chưa có tài khoản nào. Vào <a href="/channels" style="color:var(--primary);">Channels</a> kết nối trước.</span>
+                        <% } else { %>
+                            <% channels.forEach(function(ch) { %>
+                            <label class="tt-account-item" data-platform="<%= ch.platform %>" title="<%= ch.accountName || ch._id %>" style="display:none;">
+                                <input type="checkbox" value="<%= ch._id %>" class="tt-account-cb" data-platform="<%= ch.platform %>">
+                                <i class="fa-brands <%= platformIcons[ch.platform] || 'fa-globe' %>" style="color:<%= platformColors[ch.platform] || '#666' %>;font-size:12px;"></i>
+                                <span><%= (ch.accountName || ch.username || 'Account').substring(0, 18) %></span>
+                            </label>
+                            <% }); %>
+                        <% } %>
+                        <div id="ttNoAccountForPlatform" style="display:none;width:100%;font-size:12px;color:var(--text-light);padding:6px 0;">
+                            Không có tài khoản nào cho nền tảng này. <a href="/channels" style="color:var(--primary);">Kết nối thêm</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Telegram Review (optional) -->
+                <div style="margin-top:14px;padding:12px;border:1px dashed var(--border);border-radius:var(--radius-sm);">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-muted);">
+                        <input type="checkbox" id="ttTelegramReview" style="width:16px;height:16px;">
+                        <i class="fa-brands fa-telegram" style="color:#0088cc;"></i>
+                        Duyệt qua Telegram trước khi đăng
+                    </label>
+                    <div id="ttTelegramConfig" style="display:none;margin-top:8px;">
+                        <div style="font-size:11px;color:var(--text-light);margin-top:4px;">
+                            Video sẽ được gửi lên Telegram để bạn duyệt. Nhấn ✅ để cross-post, ❌ để bỏ qua.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Danh sách channels -->
+            <div class="tt-section">
+                <div class="tt-section-header">
+                    <div class="tt-section-title"><i class="fa-solid fa-satellite-dish"></i> Channel đang theo dõi (<%= trackings.length %>)</div>
+                </div>
+                <% if (trackings.length === 0) { %>
+                    <div class="tt-empty">
+                        <div class="tt-empty-icon"><i class="fa-brands fa-tiktok"></i></div>
+                        <h3>Chưa theo dõi channel nào</h3>
+                        <p>Nhập link TikTok ở trên để bắt đầu theo dõi</p>
+                    </div>
+                <% } else { %>
+                    <div class="tt-tracking-list">
+                        <% trackings.forEach(function(t) { %>
+                        <div class="tt-tracking-item" data-id="<%= t._id %>">
+                            <% if (t.channelAvatar) { %>
+                            <img class="tt-tracking-avatar" src="<%= t.channelAvatar %>" alt="">
+                            <% } else { %>
+                            <div class="tt-tracking-avatar-placeholder"><i class="fa-brands fa-tiktok"></i></div>
+                            <% } %>
+                            <div class="tt-tracking-info">
+                                <div class="tt-tracking-name"><%= t.channelName || '@channel' %></div>
+                                <div class="tt-tracking-url"><%= t.channelUrl %></div>
+                                <div class="tt-tracking-meta">
+                                    <span class="tt-badge tt-badge-<%= t.status %>"><%= t.status %></span>
+                                    <span><i class="fa-solid fa-download"></i> <%= t.totalDownloaded || 0 %> video</span>
+                                    <span><i class="fa-solid fa-share-nodes"></i> <%= t.totalCrossPosted || 0 %> cross-post</span>
+                                    <span><i class="fa-solid fa-clock"></i> Mỗi <%= t.checkIntervalMinutes || 15 %> phút</span>
+                                    <% if (t.lastCheckedAt) { %>
+                                    <span><i class="fa-solid fa-history"></i> <%= new Date(t.lastCheckedAt).toLocaleString('vi-VN') %></span>
+                                    <% } %>
+                                </div>
+                            </div>
+                            <div class="tt-tracking-actions">
+                                <button class="tt-btn-icon" onclick="checkTracking('<%= t._id %>')" title="Check ngay">
+                                    <i class="fa-solid fa-rotate"></i>
+                                </button>
+                                <button class="tt-btn-icon" onclick="editTracking('<%= JSON.stringify({ id: t._id, crossPostPlatforms: t.crossPostPlatforms, crossPostAccounts: t.crossPostAccounts, checkIntervalMinutes: t.checkIntervalMinutes, cookiesPath: t.cookiesPath || '', telegramReview: t.telegramReview }) %>')" title="Chỉnh sửa">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                                <button class="tt-btn-icon" onclick="toggleTracking('<%= t._id %>', '<%= t.status === 'active' ? 'paused' : 'active' %>')" title="<%= t.status === 'active' ? 'Tạm dừng' : 'Bật lại' %>">
+                                    <i class="fa-solid <%= t.status === 'active' ? 'fa-pause' : 'fa-play' %>"></i>
+                                </button>
+                                <button class="tt-btn-icon" onclick="deleteTracking('<%= t._id %>')" title="Xóa" style="border-color:var(--danger-light);color:var(--danger);">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <% }); %>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Tab: Videos đã tải -->
+        <div class="tt-tab-content" id="tab-videos" style="display:none;">
+            <div class="tt-section">
+                <div class="tt-section-header">
+                    <div class="tt-section-title"><i class="fa-solid fa-video"></i> Video đã tải (<%= videos.length %>)</div>
+                </div>
+                <% if (videos.length === 0) { %>
+                    <div class="tt-empty">
+                        <div class="tt-empty-icon"><i class="fa-solid fa-video-slash"></i></div>
+                        <h3>Chưa có video nào</h3>
+                        <p>Video sẽ xuất hiện khi hệ thống phát hiện video mới từ channel đang theo dõi</p>
+                    </div>
+                <% } else { %>
+                    <div class="tt-video-grid">
+                        <% videos.forEach(function(v) { %>
+                        <div class="tt-video-card" data-id="<%= v._id %>">
+                            <% if (v.thumbnail) { %>
+                            <div class="tt-video-thumb-wrap">
+                                <img class="tt-video-thumb" src="<%= v.thumbnail %>" alt="" loading="lazy">
+                                <% if (v.status === 'downloaded') { %>
+                                <button class="tt-video-play-btn" onclick="previewVideo('<%= v._id %>')"><i class="fa-solid fa-play"></i></button>
+                                <% } %>
+                            </div>
+                            <% } else { %>
+                            <div class="tt-video-thumb-placeholder"><i class="fa-solid fa-film"></i></div>
+                            <% } %>
+                            <div class="tt-video-info">
+                                <div class="tt-video-title"><%= v.title || v.description || '(Không tiêu đề)' %></div>
+                                <div class="tt-video-meta">
+                                    <% if (v.trackingId?.channelName) { %>
+                                    <span><i class="fa-brands fa-tiktok"></i> <%= v.trackingId.channelName %></span>
+                                    <% } %>
+                                    <% if (v.viewCount) { %>
+                                    <span><i class="fa-solid fa-eye"></i> <%= v.viewCount.toLocaleString() %></span>
+                                    <% } %>
+                                    <% if (v.duration) { %>
+                                    <span><i class="fa-solid fa-clock"></i> <%= Math.floor(v.duration/60) %>:<%= String(v.duration%60).padStart(2,'0') %></span>
+                                    <% } %>
+                                </div>
+                                <div class="tt-video-meta">
+                                    <span class="tt-badge tt-badge-<%= v.status %>"><%= v.status %></span>
+                                    <% if (v.downloadSize) { %><span><%= v.downloadSize %></span><% } %>
+                                    <% if (v.downloadMethod) { %><span><i class="fa-solid fa-wrench"></i> <%= v.downloadMethod %></span><% } %>
+                                </div>
+                                <div class="tt-video-actions">
+                                    <a href="<%= v.tiktokUrl %>" target="_blank" class="tt-btn tt-btn-sm tt-btn-outline">
+                                        <i class="fa-solid fa-external-link"></i> TikTok
+                                    </a>
+                                <% if (v.status === 'downloaded' || v.status === 'pending_review' || v.status === 'cross_posting' || v.status === 'done') { %>
+                                    <button class="tt-btn tt-btn-sm tt-btn-primary" onclick="crossPostVideo('<%= v._id %>')">
+                                        <i class="fa-solid fa-share-nodes"></i> Cross-post
+                                    </button>
+                                    <% } %>
+                                    <% if (v.status === 'failed' || v.status === 'skipped') { %>
+                                    <button class="tt-btn tt-btn-sm tt-btn-primary" onclick="retryDownload('<%= v._id %>')">
+                                        <i class="fa-solid fa-rotate-right"></i> Tải lại
+                                    </button>
+                                    <% } %>
+                                    <button class="tt-btn tt-btn-sm tt-btn-danger" onclick="deleteVideo('<%= v._id %>')">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <% }); %>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script src="/js/base.js"></script>
+<script>
+// ===== TAB SWITCHING =====
+function showTab(name) {
+    document.querySelectorAll('.tt-tab-content').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.tracking-tab').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-' + name).style.display = 'block';
+    event.currentTarget.classList.add('active');
+}
+
+// ===== PLATFORM CHIPS - FILTER ACCOUNTS =====
+const platformMap = { FR: 'FB', IG: 'IG', TH: 'TH', PI: 'PI', TT: 'TT', YT: 'YT' };
+
+document.querySelectorAll('#ttPlatformChips .tt-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+        chip.classList.toggle('active');
+        updateAccountVisibility();
+    });
+});
+
+function updateAccountVisibility() {
+    const activePlatforms = [...document.querySelectorAll('#ttPlatformChips .tt-chip.active')].map(c => c.dataset.val);
+    const accountSection = document.getElementById('ttAccountSection');
+    const noAccountMsg = document.getElementById('ttNoAccountForPlatform');
+    const hint = document.getElementById('ttAccountHint');
+
+    if (!activePlatforms.length) {
+        accountSection.classList.add('tt-hidden');
+        // Uncheck all
+        document.querySelectorAll('#ttAccountPicker .tt-account-cb').forEach(cb => { cb.checked = false; });
+        return;
+    }
+
+    accountSection.classList.remove('tt-hidden');
+    // Map cross-post platform → channel platform
+    const matchPlatforms = activePlatforms.map(p => platformMap[p]).filter(Boolean);
+    hint.textContent = '(' + activePlatforms.join(', ') + ')';
+
+    let hasVisible = false;
+    document.querySelectorAll('#ttAccountPicker .tt-account-item').forEach(item => {
+        const itemPlatform = item.dataset.platform;
+        const show = matchPlatforms.includes(itemPlatform);
+        item.style.display = show ? '' : 'none';
+        if (show) hasVisible = true;
+        // Uncheck if hidden
+        if (!show) item.querySelector('input').checked = false;
+    });
+    noAccountMsg.style.display = hasVisible ? 'none' : '';
+}
+
+// Init: hide accounts since no platform selected initially
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('#ttPlatformChips .tt-chip').forEach(c => c.classList.remove('active'));
+    updateAccountVisibility();
+});
+
+// ===== ACCOUNT CHECKBOX TOGGLE =====
+document.querySelectorAll('.tt-account-item').forEach(item => {
+    const cb = item.querySelector('input[type="checkbox"]');
+    if (!cb) return;
+    cb.addEventListener('change', () => item.classList.toggle('selected', cb.checked));
+});
+
+// ===== API HELPER =====
+async function api(url, opts = {}) {
+    const res = await fetch(url, {
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
+        ...opts,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Lỗi server');
+    return data;
+}
+
+// ===== COOKIES FILE UPLOAD =====
+document.getElementById('ttCookiesFile').addEventListener('change', async function () {
+    const file = this.files[0];
+    if (!file) return;
+    const nameEl = document.getElementById('ttCookiesFileName');
+    const pathEl = document.getElementById('ttCookiesPath');
+    nameEl.textContent = 'Đang tải...';
+    try {
+        const fd = new FormData();
+        fd.append('cookiesFile', file);
+        const res = await fetch('/tiktok-tracker/api/upload-cookies', { method: 'POST', body: fd, credentials: 'same-origin' });
+        const data = await res.json();
+        if (data.success) {
+            pathEl.value = data.cookiesPath;
+            document.getElementById('ttCookiesExpiresAt').value = data.expiresAt || '';
+            const expStr = data.expiresAt ? ' · HSD: ' + new Date(data.expiresAt).toLocaleDateString('vi') : ' · Session cookie';
+            nameEl.textContent = file.name + ' (' + (data.size / 1024).toFixed(1) + 'KB)' + expStr;
+            nameEl.style.color = 'var(--success)';
+        } else {
+            nameEl.textContent = 'Lỗi: ' + (data.error || 'Upload failed');
+            nameEl.style.color = 'var(--danger)';
+        }
+    } catch (e) {
+        nameEl.textContent = 'Lỗi upload: ' + e.message;
+        nameEl.style.color = 'var(--danger)';
+    }
+});
+
+// ===== TELEGRAM REVIEW TOGGLE =====
+document.getElementById('ttTelegramReview').addEventListener('change', function () {
+    document.getElementById('ttTelegramConfig').style.display = this.checked ? '' : 'none';
+});
+
+// ===== TOAST =====
+function ttNotify(msg, type) {
+    type = type || 'info';
+    var c = document.getElementById('tt-toast');
+    if (!c) { c = document.createElement('div'); c.id = 'tt-toast'; c.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;'; document.body.appendChild(c); }
+    var el = document.createElement('div');
+    el.style.cssText = 'padding:12px 20px;margin-bottom:10px;border-radius:8px;color:#fff;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,0.15);max-width:360px;';
+    var colors = { success: '#10b981', error: '#ef4444', warning: '#f59e0b', info: '#667eea' };
+    el.style.background = colors[type] || colors.info;
+    el.textContent = msg;
+    c.appendChild(el);
+    setTimeout(function () { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(function () { el.remove(); }, 300); }, 3000);
+}
+
+// ===== ADD TRACKING =====
+document.getElementById('btnAddTracking').addEventListener('click', async () => {
+    const urlInput = document.getElementById('ttChannelUrl');
+    const url = urlInput.value.trim();
+    if (!url) { urlInput.focus(); return; }
+
+    const platforms = [...document.querySelectorAll('.tt-chip.active')].map(c => c.dataset.val);
+    const accounts = [...document.querySelectorAll('.tt-account-cb:checked')].map(cb => cb.value);
+    const interval = parseInt(document.getElementById('ttCheckInterval').value) || 15;
+    const cookiesPath = document.getElementById('ttCookiesPath').value;
+    const cookiesExpiresAt = document.getElementById('ttCookiesExpiresAt').value;
+    const telegramReview = document.getElementById('ttTelegramReview').checked;
+
+    if (!platforms.length) { ttNotify('Chọn ít nhất 1 nền tảng cross-post', 'warning'); return; }
+    if (!accounts.length) { ttNotify('Chọn ít nhất 1 tài khoản đăng bài', 'warning'); return; }
+
+    const btn = document.getElementById('btnAddTracking');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang thêm...';
+
+    try {
+        await api('/tiktok-tracker/api/trackings', {
+            method: 'POST',
+            body: JSON.stringify({ channelUrl: url, crossPostPlatforms: platforms, crossPostAccounts: accounts, checkIntervalMinutes: interval, cookiesPath, cookiesExpiresAt, telegramReview }),
+        });
+        location.reload();
+    } catch (e) {
+        ttNotify('Lỗi: ' + e.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-plus"></i> Theo dõi';
+    }
+});
+
+// ===== CHECK TRACKING =====
+async function checkTracking(id) {
+    const btn = event.currentTarget;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    try {
+        const result = await api(`/tiktok-tracker/api/trackings/${id}/check`, { method: 'POST' });
+        if (result.downloadCount > 0) {
+            location.reload();
+        } else {
+            ttNotify('Không có video mới.', 'info');
+        }
+    } catch (e) { ttNotify('Lỗi: ' + e.message, 'error'); }
+    finally { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate"></i>'; }
+}
+
+// ===== TOGGLE TRACKING =====
+async function toggleTracking(id, status) {
+    try {
+        await api(`/tiktok-tracker/api/trackings/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ status }),
+        });
+        location.reload();
+    } catch (e) { ttNotify('Lỗi: ' + e.message, 'error'); }
+}
+
+// ===== DELETE TRACKING =====
+async function deleteTracking(id) {
+    try {
+        await api(`/tiktok-tracker/api/trackings/${id}`, { method: 'DELETE' });
+        location.reload();
+    } catch (e) { ttNotify('Lỗi: ' + e.message, 'error'); }
+}
+
+// ===== CROSS-POST VIDEO =====
+async function crossPostVideo(id) {
+    const btn = event.currentTarget;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    try {
+        const result = await api(`/tiktok-tracker/api/videos/${id}/crosspost`, { method: 'POST' });
+        ttNotify(result.message || 'Đã tạo lịch đăng!', 'success');
+        location.reload();
+    } catch (e) { ttNotify('Lỗi: ' + e.message, 'error'); }
+    finally { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-share-nodes"></i> Cross-post'; }
+}
+
+// ===== RETRY DOWNLOAD =====
+async function retryDownload(id) {
+    const btn = event.currentTarget;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    try {
+        await api(`/tiktok-tracker/api/videos/${id}/retry`, { method: 'POST' });
+        location.reload();
+    } catch (e) { ttNotify('Lỗi: ' + e.message, 'error'); }
+    finally { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Tải lại'; }
+}
+
+// ===== DELETE VIDEO =====
+async function deleteVideo(id) {
+    try {
+        await api(`/tiktok-tracker/api/videos/${id}`, { method: 'DELETE' });
+        location.reload();
+    } catch (e) { ttNotify('Lỗi: ' + e.message, 'error'); }
+}
+
+// ===== EDIT TRACKING =====
+let ttEditData = null;
+const ttEditPlatformMap = { FR: 'FB', IG: 'IG', TH: 'TH', PI: 'PI', TT: 'TT', YT: 'YT' };
+
+function ttEditUpdateAccounts() {
+    const activePlatforms = [...document.querySelectorAll('#ttEditPlatforms .tt-chip.active')].map(c => c.dataset.val);
+    const matchPlatforms = activePlatforms.map(p => ttEditPlatformMap[p]).filter(Boolean);
+    const accountSection = document.getElementById('ttEditAccountSection');
+    const hint = document.getElementById('ttEditAccountHint');
+    const noAccount = document.getElementById('ttEditNoAccount');
+
+    if (!activePlatforms.length) {
+        accountSection.classList.add('tt-hidden');
+        document.querySelectorAll('#ttEditAccounts .tt-account-cb').forEach(cb => { cb.checked = false; });
+        document.querySelectorAll('#ttEditAccounts .tt-account-item').forEach(item => { item.style.display = 'none'; });
+        return;
+    }
+    accountSection.classList.remove('tt-hidden');
+    hint.textContent = '(' + activePlatforms.join(', ') + ')';
+    let hasVisible = false;
+    document.querySelectorAll('#ttEditAccounts .tt-account-item').forEach(item => {
+        const show = matchPlatforms.includes(item.dataset.platform);
+        item.style.display = show ? '' : 'none';
+        if (show) hasVisible = true;
+        if (!show) item.querySelector('input').checked = false;
+    });
+    noAccount.style.display = hasVisible ? 'none' : '';
+}
+
+function editTracking(json) {
+    ttEditData = typeof json === 'string' ? JSON.parse(json) : json;
+    // Set interval
+    document.getElementById('ttEditInterval').value = ttEditData.checkIntervalMinutes || 15;
+    // Set cookies
+    document.getElementById('ttEditCookiesPath').value = ttEditData.cookiesPath || '';
+    document.getElementById('ttEditCookiesFileName').textContent = ttEditData.cookiesPath ? ttEditData.cookiesPath.split(/[/\\]/).pop() : 'Chưa có file';
+    // Set telegram
+    document.getElementById('ttEditTelegramReview').checked = !!ttEditData.telegramReview;
+    // Set platforms
+    document.querySelectorAll('#ttEditPlatforms .tt-chip').forEach(c => {
+        c.classList.toggle('active', (ttEditData.crossPostPlatforms || []).includes(c.dataset.val));
+    });
+    // Reset all account checkboxes first
+    document.querySelectorAll('#ttEditAccounts .tt-account-cb').forEach(cb => { cb.checked = false; });
+    // Run filter then check matching accounts
+    ttEditUpdateAccounts();
+    document.querySelectorAll('#ttEditAccounts .tt-account-item').forEach(item => {
+        if (item.style.display !== 'none' && (ttEditData.crossPostAccounts || []).includes(item.querySelector('input').value)) {
+            item.querySelector('input').checked = true;
+        }
+    });
+    document.getElementById('ttEditModal').style.display = 'flex';
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    // Platform chips toggle + account filter
+    document.querySelectorAll('#ttEditPlatforms .tt-chip').forEach(chip => {
+        chip.addEventListener('click', () => { chip.classList.toggle('active'); ttEditUpdateAccounts(); });
+    });
+    // Close
+    document.getElementById('ttEditClose').addEventListener('click', () => {
+        document.getElementById('ttEditModal').style.display = 'none';
+    });
+    document.getElementById('ttEditModal').addEventListener('click', function (e) {
+        if (e.target === this) this.style.display = 'none';
+    });
+    // Save
+    document.getElementById('ttEditSave').addEventListener('click', async () => {
+        if (!ttEditData) return;
+        const platforms = [...document.querySelectorAll('#ttEditPlatforms .tt-chip.active')].map(c => c.dataset.val);
+        const accounts = [...document.querySelectorAll('#ttEditAccounts .tt-account-cb:checked')].map(cb => cb.value);
+        const interval = parseInt(document.getElementById('ttEditInterval').value) || 15;
+        const cookiesPath = document.getElementById('ttEditCookiesPath').value;
+        const telegramReview = document.getElementById('ttEditTelegramReview').checked;
+        if (!platforms.length) { ttNotify('Chọn ít nhất 1 nền tảng', 'warning'); return; }
+        if (!accounts.length) { ttNotify('Chọn ít nhất 1 tài khoản', 'warning'); return; }
+        const btn = document.getElementById('ttEditSave');
+        btn.disabled = true;
+        try {
+            await api('/tiktok-tracker/api/trackings/' + ttEditData.id, {
+                method: 'PUT',
+                body: JSON.stringify({ crossPostPlatforms: platforms, crossPostAccounts: accounts, checkIntervalMinutes: interval, cookiesPath, telegramReview }),
+            });
+            location.reload();
+        } catch (e) { ttNotify('Lỗi: ' + e.message, 'error'); }
+        finally { btn.disabled = false; }
+    });
+    // Upload cookies
+    document.getElementById('ttEditCookiesFile').addEventListener('change', async function () {
+        const file = this.files[0]; if (!file) return;
+        const nameEl = document.getElementById('ttEditCookiesFileName');
+        const pathEl = document.getElementById('ttEditCookiesPath');
+        nameEl.textContent = 'Đang tải...';
+        try {
+            const fd = new FormData(); fd.append('cookiesFile', file);
+            const res = await fetch('/tiktok-tracker/api/upload-cookies', { method: 'POST', body: fd, credentials: 'same-origin' });
+            const data = await res.json();
+            if (data.success) {
+                pathEl.value = data.cookiesPath;
+                nameEl.textContent = file.name;
+                nameEl.style.color = 'var(--success)';
+            } else { nameEl.textContent = 'Lỗi: ' + (data.error || 'Upload failed'); nameEl.style.color = 'var(--danger)'; }
+        } catch (e) { nameEl.textContent = 'Lỗi: ' + e.message; nameEl.style.color = 'var(--danger)'; }
+    });
+});
+
+// ===== VIDEO PREVIEW =====
+function previewVideo(id) {
+    const modal = document.getElementById('ttPreviewModal');
+    const player = document.getElementById('ttPreviewPlayer');
+    player.src = '/tiktok-tracker/api/videos/' + id + '/preview';
+    modal.style.display = 'flex';
+    player.play();
+}
+document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('ttPreviewClose').addEventListener('click', function () {
+        const modal = document.getElementById('ttPreviewModal');
+        const player = document.getElementById('ttPreviewPlayer');
+        player.pause();
+        player.src = '';
+        modal.style.display = 'none';
+    });
+    document.getElementById('ttPreviewModal').addEventListener('click', function (e) {
+        if (e.target === this) document.getElementById('ttPreviewClose').click();
+    });
+});
+</script>
+
+<!-- Edit Tracking Modal -->
+<div id="ttEditModal" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.6);justify-content:center;align-items:center;">
+<div style="background:var(--bg-card);border-radius:var(--radius);padding:28px;max-width:540px;width:92vw;max-height:88vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.3);position:relative;">
+    <button id="ttEditClose" style="position:absolute;top:14px;right:14px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-light);"><i class="fa-solid fa-xmark"></i></button>
+    <h3 style="margin:0 0 20px;font-size:16px;color:var(--text-main);"><i class="fa-solid fa-pen"></i> Chỉnh sửa tracking</h3>
+
+    <!-- Cross-post platforms -->
+    <div style="margin-bottom:18px;">
+        <label style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;display:block;">Cross-post sang:</label>
+        <div class="tt-chips" id="ttEditPlatforms">
+            <span class="tt-chip" data-val="FR"><i class="fa-brands fa-facebook"></i> Facebook Reels</span>
+            <span class="tt-chip" data-val="IG"><i class="fa-brands fa-instagram"></i> Instagram</span>
+            <span class="tt-chip" data-val="TH"><i class="fa-brands fa-threads"></i> Threads</span>
+            <span class="tt-chip" data-val="PI"><i class="fa-brands fa-pinterest"></i> Pinterest</span>
+            <span class="tt-chip" data-val="YT"><i class="fa-brands fa-youtube"></i> YouTube Shorts</span>
+        </div>
+    </div>
+
+    <!-- Accounts (filtered by platform) -->
+    <div style="margin-bottom:18px;" id="ttEditAccountSection" class="tt-hidden">
+        <label style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;display:block;">
+            Tài khoản đăng bài: <span id="ttEditAccountHint" style="font-weight:400;text-transform:none;letter-spacing:0;"></span>
+        </label>
+        <div class="tt-account-grid" id="ttEditAccounts">
+            <% if (channels.length > 0) { %>
+                <% channels.forEach(function(ch) { %>
+                <label class="tt-account-item" data-platform="<%= ch.platform %>" style="display:none;">
+                    <input type="checkbox" value="<%= ch._id %>" class="tt-account-cb" data-platform="<%= ch.platform %>">
+                    <i class="fa-brands <%= platformIcons[ch.platform] || 'fa-globe' %>" style="color:<%= platformColors[ch.platform] || '#666' %>;font-size:12px;"></i>
+                    <span><%= (ch.accountName || ch.username || 'Account').substring(0, 18) %></span>
+                </label>
+                <% }); %>
+            <% } %>
+            <div id="ttEditNoAccount" style="display:none;width:100%;font-size:12px;color:var(--text-light);padding:6px 0;">
+                Không có tài khoản nào cho nền tảng này. <a href="/channels" style="color:var(--primary);">Kết nối thêm</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Check interval -->
+    <div style="margin-bottom:18px;">
+        <label style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;display:block;">Kiểm tra mỗi:</label>
+        <select id="ttEditInterval" class="tt-select">
+            <option value="5">5 phút</option><option value="10">10 phút</option><option value="15">15 phút</option>
+            <option value="30">30 phút</option><option value="60">1 giờ</option><option value="360">6 giờ</option><option value="1440">24 giờ</option>
+        </select>
+    </div>
+
+    <!-- Cookies -->
+    <div style="margin-bottom:18px;">
+        <label style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;display:block;">Cookies TikTok:</label>
+        <div style="display:flex;align-items:center;gap:8px;">
+            <label class="tt-btn tt-btn-sm tt-btn-outline" style="cursor:pointer;white-space:nowrap;">
+                <i class="fa-solid fa-upload"></i> Chọn file
+                <input type="file" id="ttEditCookiesFile" accept=".txt,.cookie,.cookies,.json" style="display:none;">
+            </label>
+            <span id="ttEditCookiesFileName" style="font-size:12px;color:var(--text-light);">Chưa có file</span>
+            <input type="hidden" id="ttEditCookiesPath" value="">
+        </div>
+    </div>
+
+    <!-- Telegram -->
+    <div style="margin-bottom:20px;padding:12px;border:1px dashed var(--border);border-radius:var(--radius-sm);">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-muted);">
+            <input type="checkbox" id="ttEditTelegramReview" style="width:16px;height:16px;">
+            <i class="fa-brands fa-telegram" style="color:#0088cc;"></i> Duyệt qua Telegram trước khi đăng
+        </label>
+    </div>
+
+    <button id="ttEditSave" class="tt-btn tt-btn-primary" style="width:100%;"><i class="fa-solid fa-check"></i> Lưu thay đổi</button>
+</div>
+</div>
+
+<!-- Preview Modal -->
+<div id="ttPreviewModal" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.85);justify-content:center;align-items:center;">
+    <button id="ttPreviewClose" style="position:absolute;top:16px;right:16px;background:none;border:none;color:#fff;font-size:28px;cursor:pointer;z-index:9999;"><i class="fa-solid fa-xmark"></i></button>
+    <video id="ttPreviewPlayer" controls style="max-width:90vw;max-height:85vh;border-radius:8px;"></video>
+</div>
+</body>
+</html>

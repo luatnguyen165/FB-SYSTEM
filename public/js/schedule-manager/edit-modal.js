@@ -162,6 +162,62 @@ function setSummaryBar(payload = {}) {
     if (summaryFields.time) summaryFields.time.textContent = formatReadableTime(payload.publishedAtIso) || '—';
 }
 
+function renderGroupResults(payload) {
+    const section = document.getElementById('editGroupResultsSection');
+    const summary = document.getElementById('editGroupResultsSummary');
+    const tbody = document.getElementById('editGroupResultsBody');
+    if (!section || !tbody) return;
+
+    const groupResults = Array.isArray(payload.groupResults) ? payload.groupResults : [];
+
+    if (groupResults.length === 0) {
+        if (summary) summary.textContent = 'Chưa có kết quả đăng bài.';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;padding:16px;">Chưa có kết quả. Chạy schedule để xem kết quả.</td></tr>';
+        section.style.display = 'none';
+        return;
+    }
+    const successCount = groupResults.filter(r => r.success && !r.skipped).length;
+    const skipCount = groupResults.filter(r => r.skipped).length;
+    const failCount = groupResults.filter(r => !r.success && !r.skipped).length;
+
+    if (summary) {
+        summary.textContent = `${groupResults.length} nhóm — ${successCount} thành công, ${skipCount} bỏ qua, ${failCount} thất bại`;
+    }
+
+    let html = '';
+    groupResults.forEach((r, i) => {
+        let statusBadge, statusText;
+        if (r.skipped) {
+            statusBadge = 'badge-skip';
+            statusText = 'Bỏ qua';
+        } else if (r.success) {
+            statusBadge = 'badge-success';
+            statusText = 'Thành công';
+        } else {
+            statusBadge = 'badge-fail';
+            statusText = 'Thất bại';
+        }
+
+        const groupName = r.groupName || r.groupId || r.groupUrl || `Group ${i + 1}`;
+        const publishedUrl = r.publishedUrl || '';
+        const error = r.error || '';
+        const time = r.postedAt ? new Date(r.postedAt).toLocaleString('vi-VN') : '—';
+
+        html += `<tr>
+            <td style="text-align:center;">${i + 1}</td>
+            <td>
+                <div style="font-weight:500;" title="${safeText(r.groupUrl || r.groupId || '')}">${safeText(groupName)}</div>
+            </td>
+            <td><span class="group-result-badge ${statusBadge}">${statusText}</span></td>
+            <td>${publishedUrl ? `<a href="${safeText(publishedUrl)}" target="_blank" rel="noopener" style="color:#1877f2;font-size:12px;word-break:break-all;">${safeText(publishedUrl)}</a>` : '<span style="color:#999;">—</span>'}</td>
+            <td style="max-width:200px;">${error ? `<span style="color:#dc3545;font-size:12px;word-break:break-all;" title="${safeText(error)}">${safeText(error)}</span>` : '<span style="color:#999;">—</span>'}</td>
+            <td style="font-size:12px;color:#666;white-space:nowrap;">${time}</td>
+        </tr>`;
+    });
+
+    tbody.innerHTML = html;
+}
+
 function openEditModalFromRow(row) {
     const payload = getPayloadFromRow(row);
     if (!payload || !editModal) return;
@@ -187,8 +243,15 @@ function openEditModalFromRow(row) {
     if (type === 'post') {
         const images = Array.isArray(payload.images) ? payload.images : [];
         renderEditPostImages(images);
-        editSelectedGroupKeys = Array.isArray(payload.targetGroupId) ? payload.targetGroupId : (payload.targetGroupId ? [payload.targetGroupId] : []);
+        editSelectedGroupKeys = Array.isArray(payload.targetGroupIds) && payload.targetGroupIds.length > 0
+            ? payload.targetGroupIds
+            : (Array.isArray(payload.targetGroupId) ? payload.targetGroupId : (payload.targetGroupId ? [payload.targetGroupId] : []));
         renderEditSelectedGroupTags();
+        // Load groups ở background (không mở dropdown) để tên đúng ngay
+        const sourceChannelId = payload.sourceChannelId || '';
+        if (sourceChannelId && editSelectedGroupKeys.length > 0) {
+            loadEditFacebookGroups(sourceChannelId, editSelectedGroupKeys);
+        }
         setTimeout(() => onEditPostPlatformChange(), 50);
     } else {
         editAllAffiliateLinks = Array.isArray(managerData.shopeeLinks) ? managerData.shopeeLinks : [];
@@ -209,6 +272,7 @@ function openEditModalFromRow(row) {
         if (payload.publishedUrl) editFields.meta.innerHTML += `<div style="margin-top:8px;"><a href="${safeText(payload.publishedUrl)}" target="_blank">Mở bài đã đăng</a></div>`;
     }
     setSummaryBar(payload);
+    renderGroupResults(payload);
     if (btnSaveEdit) { const isPosted = payload.status === 'posted'; btnSaveEdit.disabled = isPosted; btnSaveEdit.textContent = isPosted ? 'Đã đăng' : 'Lưu thay đổi'; btnSaveEdit.style.opacity = isPosted ? '0.6' : '1'; }
     editModal.classList.add('open'); editModal.setAttribute('aria-hidden', 'false');
 }

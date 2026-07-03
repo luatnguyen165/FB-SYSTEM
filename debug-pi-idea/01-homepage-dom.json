@@ -1,0 +1,164 @@
+{
+  "inputs": [
+    {
+      "type": "text",
+      "name": "searchBoxInput",
+      "id": "search-input",
+      "placeholder": "Search for easy dinners, fashion, etc.",
+      "aria-label": "Search",
+      "visible": true
+    },
+    {
+      "type": "email",
+      "name": "id",
+      "id": "email",
+      "placeholder": "Email",
+      "aria-label": null,
+      "visible": true
+    },
+    {
+      "type": "password",
+      "name": "password",
+      "id": "password",
+      "placeholder": "Create a password",
+      "aria-label": null,
+      "visible": true
+    },
+    {
+      "type": "date",
+      "name": "",
+      "id": "birthdate",
+      "placeholder": "",
+      "aria-label": null,
+      "visible": true
+    }
+  ],
+  "buttons": [
+    {
+      "text": "Log in",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false,
+      "visible": true
+    },
+    {
+      "text": "Sign up",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false,
+      "visible": true
+    },
+    {
+      "text": "Join Pinterest for free",
+      "id": "",
+      "data-test-id": "join-pinterest-button-homepage-redesign-top-module",
+      "disabled": false,
+      "visible": true
+    },
+    {
+      "text": "I already have an account",
+      "id": "",
+      "data-test-id": "login-button-homepage-redesign-top-module",
+      "disabled": false,
+      "visible": true
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false,
+      "visible": true
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false,
+      "visible": true
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false,
+      "visible": true
+    },
+    {
+      "text": "Join Pinterest",
+      "id": "",
+      "data-test-id": "join-pinterest-button-homepage-redesign-signup-flow",
+      "disabled": false,
+      "visible": true
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false,
+      "visible": true
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false,
+      "visible": true
+    },
+    {
+      "text": "Join Pinterest",
+      "id": "",
+      "data-test-id": "join-pinterest-button-homepage-redesign-signup-flow",
+      "disabled": false,
+      "visible": true
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false,
+      "visible": true
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false,
+      "visible": true
+    },
+    {
+      "text": "Join Pinterest",
+      "id": "",
+      "data-test-id": "join-pinterest-button-homepage-redesign-signup-flow",
+      "disabled": false,
+      "visible": true
+    },
+    {
+      "text": "",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false,
+      "visible": true
+    },
+    {
+      "text": "Continue",
+      "id": "",
+      "data-test-id": null,
+      "disabled": false,
+      "visible": true
+    }
+  ],
+  "editables": [],
+  "links": [
+    {
+      "text": "Explore",
+      "href": "https://www.pinterest.com/ideas"
+    },
+    {
+      "text": "Explore",
+      "href": "https://www.pinterest.com/ideas/"
+    }
+  ],
+  "fileInputs": [],
+  "url": "https://www.pinterest.com/",
+  "bodyText": "Skip to content\nExplore\nAbout\n; Opens a new tab\nBusinesses\n; Opens a new tab\nCreate\n; Opens a new tab\nNews\n; Opens a new tab\nLog in\nSign up\nCreate the life you love on Pinterest\nJoin Pinterest for free\nI already have an account\nBring your favorite ideas to life\nWith Pinterest, you can unlock tools that spark your creativity and help you find more inspiration.\nSearch by skin tone\nSearch with skin tone ranges for beauty ideas that represent you\nJoin Pinterest\nCollaborate with group boards\nVisualiz"
+}

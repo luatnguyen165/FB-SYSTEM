@@ -21,7 +21,9 @@ const SchedulePostSchema = new mongoose.Schema({
     videoSize: { type: String, default: '' },
     shopeeLinks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ShopeeLink' }], // Link affiliate gắn cho reels
     targetGroupSourceChannelId: { type: mongoose.Schema.Types.ObjectId, ref: 'Channel' }, // Facebook account dùng để lấy danh sách group
+    postTargetType: { type: String, enum: ['group', 'personal', 'fanpage'], default: 'group' }, // Loại đích đăng FB: group / cá nhân / fanpage
     targetGroupIds: [{ type: String }], // Danh sách nhiều Facebook group IDs/URLs
+    targetGroupNames: [{ type: String }], // Tên tương ứng của từng group
     targetGroupId: { type: String, default: '' }, // Facebook group key/id (legacy - cho tương thích ngược)
     targetGroupName: { type: String, default: '' },
     targetGroupUrl: { type: String, default: '' },
@@ -31,6 +33,17 @@ const SchedulePostSchema = new mongoose.Schema({
     accounts: [{ type: String }], // Tên tài khoản
     status: { type: String, enum: ['pending', 'posted', 'failed'], default: 'pending' },
     platformResults: [PlatformResultSchema], // Kết quả per-platform sau khi chạy schedule
+    groupResults: [{
+        groupId: { type: String, default: '' },
+        groupUrl: { type: String, default: '' },
+        groupName: { type: String, default: '' },
+        success: { type: Boolean, default: false },
+        publishedUrl: { type: String, default: '' },
+        error: { type: String, default: '' },
+        postedAt: { type: Date, default: null },
+        skipped: { type: Boolean, default: false },
+        skipReason: { type: String, default: '' }
+    }], // Kết quả per-group khi đăng bài Facebook group
     sourceTrackingPostId: { type: mongoose.Schema.Types.ObjectId, ref: 'TrackingPost', index: true, sparse: true }, // Link về TrackingPost (nếu được tạo từ auto-repost)
     createdAt: { type: Date, default: Date.now }
 });

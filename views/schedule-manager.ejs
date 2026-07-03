@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/css/base.css">
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/schedule-manager.css">
+    <link rel="stylesheet" href="/css/toast.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <script src="/js/socket.io.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -96,17 +97,18 @@
                                     <% const rowPayload = encodeURIComponent(JSON.stringify({
                                         id: schedule._id,
                                         type: schedule.type,
-                                        status: schedule.status,
+                                        status: schedule.status || 'pending',
                                         caption: schedule.caption || '',
                                         publishedAtIso: schedule.scheduledAt || '',
                                         platforms: schedule.platforms || [],
                                         platformLabel: schedule.platformLabel,
                                         accountsLabel: schedule.accountsLabel,
                                         accounts: schedule.accounts || [],
-                                        status: schedule.status || 'pending',
                                         statusLabel: schedule.statusLabel || '',
                                         targetGroupName: schedule.targetGroupName || '',
+                                        targetGroupNames: schedule.targetGroupNames || [],
                                         targetGroupId: schedule.targetGroupId || '',
+                                        targetGroupIds: schedule.targetGroupIds || [],
                                         targetGroupUrl: schedule.targetGroupUrl || '',
                                         sourceChannelName: schedule.sourceChannelName || '',
                                         sourceChannelId: schedule.sourceChannelId || '',
@@ -116,7 +118,8 @@
                                         videoPath: schedule.videoPath || '',
                                         videoUrl: schedule.videoUrl || '',
                                         shopeeLinkIds: schedule.shopeeLinkIds || [],
-                                        publishedUrl: schedule.publishedUrl || ''
+                                        publishedUrl: schedule.publishedUrl || '',
+                                        groupResults: schedule.groupResults || []
                                     })) %>
                                     <tr
                                         class="schedule-row schedule-row--<%= schedule.status %>"
@@ -150,7 +153,18 @@
                                         <td data-label="Tài khoản/Groups">
                                             <div class="cell-primary"><%= schedule.accountsLabel %></div>
                                             <div class="cell-secondary">
-                                                <% if (schedule.targetGroupName) { %>
+                                                <% const gr = schedule.groupResults || []; %>
+                                                <% if (gr.length > 0) { %>
+                                                    <% const gSuccess = gr.filter(r => r.success && !r.skipped).length; %>
+                                                    <% const gSkip = gr.filter(r => r.skipped).length; %>
+                                                    <% const gFail = gr.filter(r => !r.success && !r.skipped).length; %>
+                                                    <span title="<%= gr.map((r, i) => `${i+1}. ${r.success ? '✅' : r.skipped ? '⏭' : '❌'} ${r.groupName || r.groupId || r.groupUrl}`).join('\n') %>">
+                                                        <%= gr.length %> nhóm:
+                                                        <% if (gSuccess > 0) { %> <span style="color:#28a745;">✅<%= gSuccess %></span> <% } %>
+                                                        <% if (gSkip > 0) { %> <span style="color:#ffc107;">⏭<%= gSkip %></span> <% } %>
+                                                        <% if (gFail > 0) { %> <span style="color:#dc3545;">❌<%= gFail %></span> <% } %>
+                                                    </span>
+                                                <% } else if (schedule.targetGroupName) { %>
                                                     Group: <%= schedule.targetGroupName %>
                                                 <% } else { %>
                                                     Nguồn: <%= schedule.sourceChannelName %>
@@ -179,11 +193,16 @@
                                                 <button class="btn-row-action btn-run-schedule btn-run-schedule--<%= schedule.status %>" type="button" data-schedule-id="<%= schedule._id %>" title="Chạy ngay">
                                                     <i class="fa-solid fa-circle-play"></i>
                                                 </button>
+                                                <button class="btn-row-action btn-group-results" type="button" data-schedule-id="<%= schedule._id %>" title="Kết quả đăng bài nhóm"
+                                                    data-group-results="<%= JSON.stringify(schedule.groupResults || []) %>"
+                                                    data-target-group-ids="<%= JSON.stringify(schedule.targetGroupIds || []) %>">
+                                                    <i class="fa-solid fa-chart-column"></i>
+                                                </button>
                                                 <button class="btn-row-action btn-duplicate-schedule" type="button" data-schedule-id="<%= schedule._id %>" title="Sao chép">
                                                     <i class="fa-regular fa-copy"></i>
                                                 </button>
-                                                <button class="btn-row-action btn-view-schedule" type="button" data-schedule-id="<%= schedule._id %>"><i class="fa-regular fa-eye"></i></button>
-                                                <button class="btn-row-action btn-delete-schedule" type="button" data-schedule-id="<%= schedule._id %>"><i class="fa-regular fa-trash-can"></i></button>
+                                                <button class="btn-row-action btn-view-schedule" type="button" data-schedule-id="<%= schedule._id %>" title="Xem / Chỉnh sửa"><i class="fa-regular fa-eye"></i></button>
+                                                <button class="btn-row-action btn-delete-schedule" type="button" data-schedule-id="<%= schedule._id %>" title="Xóa"><i class="fa-regular fa-trash-can"></i></button>
                                             </div>
                                         </td>
                                     </tr>
@@ -308,7 +327,7 @@
                                             <div class="form-desc">Chọn nhiều nhóm để đăng bài.</div>
                                             <span class="schedule-edit__group-badge" id="editGroupSelectedBadge">0 đã chọn</span>
                                         </div>
-                                        <button type="button" class="btn-mini-refresh" id="btnRefreshScheduleManagerGroups">
+                                        <button type="button" class="btn-mini-refresh" id="btnRefreshScheduleManagerGroups" title="Quét lại danh sách nhóm">
                                             <i class="fa-solid fa-rotate-right"></i> Quét lại
                                         </button>
                                     </div>
@@ -462,6 +481,33 @@
                                 </div>
                             </div>
 
+                            <!-- ===== POST: Group Results Log ===== -->
+                            <div class="form-group full-width schedule-edit-post" id="editGroupResultsSection" style="display:none;">
+                                <div class="schedule-group-card">
+                                    <div class="schedule-group-card__head">
+                                        <div>
+                                            <label>Kết quả đăng bài theo nhóm</label>
+                                            <div class="form-desc" id="editGroupResultsSummary"></div>
+                                        </div>
+                                    </div>
+                                    <div style="overflow-x:auto;">
+                                        <table class="group-results-table" id="editGroupResultsTable">
+                                            <thead>
+                                                <tr>
+                                                    <th style="width:30px;">#</th>
+                                                    <th>Nhóm</th>
+                                                    <th style="width:90px;">Trạng thái</th>
+                                                    <th>Link bài đăng</th>
+                                                    <th>Lỗi</th>
+                                                    <th style="width:140px;">Thời gian</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="editGroupResultsBody"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="form-group full-width">
                                 <div class="schedule-modal__meta" id="editScheduleMeta">—</div>
                             </div>
@@ -489,4 +535,4 @@
     <script src="/js/schedule-manager/edit-modal.js"></script>
     <script src="/js/schedule-manager.js"></script>
 </body>
-</html>    <link rel="stylesheet" href="/css/toast.css">
+</html>

@@ -1,6 +1,115 @@
 const fs = require('fs');
 const path = require('path');
-const { getOrOpenSocialContext } = require('./socialPlaywrightService');
+const { getOrOpenSocialContext, safeCloseBrowser } = require('./socialPlaywrightService');
+
+const IG_MAX_CHARS = 1000;
+
+function sanitizeContentForIG(text) {
+    if (!text) return '';
+    let s = String(text);
+    s = s.replace(/^\s*[-*_]{3,}\s*$/gm, '');
+    s = s.replace(/^#{1,6}\s+/gm, '');
+    s = s.replace(/\*\*(.+?)\*\*/g, '$1');
+    s = s.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '$1');
+    s = s.replace(/^\s*[*-]\s+/gm, '');
+    s = s.replace(/^>\s*/gm, '');
+    s = s.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+    s = s.replace(/\n{3,}/g, '\n\n');
+    s = s.trim();
+    if (s.length > IG_MAX_CHARS) {
+        s = s.substring(0, IG_MAX_CHARS - 3).trim() + '...';
+        console.log(`[IG] Caption truncated to ${IG_MAX_CHARS} chars`);
+    }
+    return s;
+}
+
+async function saveDebugScreenshot(page, stepName, userId) {
+    try {
+        const screenshotDir = path.join(global.USER_DATA_DIR || path.join(__dirname, '..'), 'uploads', 'ig-debug');
+        if (!fs.existsSync(screenshotDir)) fs.mkdirSync(screenshotDir, { recursive: true });
+        const filename = `ig-debug-${userId || 'unknown'}-${stepName}-${Date.now()}.png`;
+        await page.screenshot({ path: path.join(screenshotDir, filename), fullPage: true });
+        console.log(`[IG] Debug screenshot: ${filename}`);
+    } catch (e) {}
+}
+
+async function dismissExistingDialogs(page) {
+    console.log('[IG] Dismissing dialogs...');
+    try {
+        const closeButtons = page.locator('div[role="dialog"] svg[aria-label="Close"], div[role="dialog"] button[aria-label="Close"]');
+        for (let i = 0; i < await closeButtons.count(); i++) {
+            const btn = closeButtons.nth(i);
+            if (await btn.isVisible().catch(() => false)) {
+                await btn.click().catch(() => {});
+                await page.waitForTimeout(1000);
+            }
+        }
+    } catch (_) {}
+    try {
+        if (await page.locator('div[role="dialog"]').count() > 0) {
+            await page.keyboard.press('Escape');
+            await page.waitForTimeout(1000);
+        }
+    } catch (_) {}
+    try {
+        const notNowBtns = page.locator('button:has-text("Not Now"), button:has-text("Not now"), button:has-text("Không"), button:has-text("Allow"), button:has-text("Turn On")');
+        for (let i = 0; i < await notNowBtns.count(); i++) {
+            const btn = notNowBtns.nth(i);
+            if (await btn.isVisible().catch(() => false)) {
+                await btn.click().catch(() => {});
+                await page.waitForTimeout(500);
+            }
+        }
+    } catch (_) {}
+    await page.waitForTimeout(1000);
+    console.log('[IG] Dialogs dismissed');
+}
+
+async function fillCaptionIG(page, text) {
+    if (!text) return;
+
+    const captionSelectors = [
+        "//div[@role='dialog']//div[@role='textbox'][@aria-label='Write a caption...']",
+        "//div[@role='dialog']//div[@role='textbox'][@aria-label='Viết chú thích...']",
+        "//div[@role='dialog']//div[@contenteditable='true'][@role='textbox']",
+        "//div[@role='textbox'][@aria-label='Write a caption...']",
+        "//div[@contenteditable='true'][@role='textbox']",
+    ];
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        let filled = false;
+        for (const sel of captionSelectors) {
+            try {
+                const box = page.locator(`xpath=${sel}`).first();
+                if (await box.count() === 0) continue;
+                if (!(await box.isVisible().catch(() => false))) continue;
+
+                await box.click();
+                await page.waitForTimeout(300);
+                try {
+                    await box.fill(text);
+                } catch (_) {
+                    await page.evaluate((txt) => {
+                        const el = document.querySelector("[contenteditable='true'][role='textbox']")
+                                || document.querySelector("div[contenteditable='true']");
+                        if (!el) return;
+                        el.focus();
+                        document.execCommand('selectAll');
+                        document.execCommand('delete');
+                        document.execCommand('insertText', false, txt);
+                    }, text);
+                }
+                await page.waitForTimeout(500);
+                filled = true;
+                console.log(`[IG] Caption filled`);
+                break;
+            } catch (e) {}
+        }
+        if (filled) break;
+        console.log(`[IG] Caption attempt ${attempt} failed, waiting 3s...`);
+        await page.waitForTimeout(3000);
+    }
+}
 
 function resolveVideoPathToAbsolute(videoPath) {
     if (!videoPath) return '';
@@ -9,294 +118,468 @@ function resolveVideoPathToAbsolute(videoPath) {
     return path.join(global.USER_DATA_DIR || path.join(__dirname, '..'), cleaned);
 }
 
-async function uploadVideoToInstagram({ userId, accountName, accountType = 'Personal', videoPath, caption = '', headless = false, existingSessionDir = '' }) {
-    console.log(`[IG Upload] ===== BẮT ĐẦU =====`);
-    console.log(`[IG Upload] STEP 0 - account=${accountName} video=${videoPath} headless=${headless}`);
-    if (!userId || !accountName || !videoPath) throw new Error('Thiếu userId, accountName hoặc videoPath');
+async function clickCreatePostDropdown(page) {
+    const createBtnSelectors = [
+        'svg[aria-label="Create"]',
+        'svg[aria-label="New post"]',
+        'svg[aria-label="Tạo"]',
+        'svg[aria-label="Bài viết mới"]',
+        'a[href="/create/select/"]',
+        'a[href="/create/select"]',
+        '[data-testid="new-post-button"]',
+    ];
 
-    const resolved = resolveVideoPathToAbsolute(videoPath);
-    console.log(`[IG Upload] STEP 1 - resolved=${resolved} exists=${fs.existsSync(resolved)}`);
-    if (!fs.existsSync(resolved)) throw new Error(`File không tồn tại: ${resolved}`);
-    videoPath = resolved;
-
-    try {
-        console.log(`[IG Upload] STEP 2 - Mở context desktop...`);
-        const { context } = await getOrOpenSocialContext(userId, accountName, accountType, 'IG', { headless, existingSessionDir });
-        const pages = context.pages();
-        const page = pages.length > 0 ? pages[0] : await context.newPage();
-        await page.setViewportSize({ width: 1280, height: 800 });
-        await page.bringToFront().catch(() => {});
-
-        console.log(`[IG Upload] STEP 3 - instagram.com...`);
-        await page.goto('https://www.instagram.com/', { waitUntil: 'domcontentloaded', timeout: 60000 });
-        await page.waitForTimeout(3000);
-        if (page.url().includes('login')) throw new Error('Chưa đăng nhập');
-
-        // STEP 4: Click Create -> tìm dropdown -> click "Post"
-        console.log(`[IG Upload] STEP 4 - Click New post...`);
-        await page.locator('svg[aria-label="New post"]').first().click();
-        await page.waitForTimeout(2000);
-
-        // Debug: xem dropdown hiện ra ở đâu
-        const dropdownHTML = await page.evaluate(() => {
-            const dropdown = document.querySelector('div[role="menu"]') || 
-                             document.querySelector('div[role="listbox"]') ||
-                             document.querySelector('[class*="dropdown"]');
-            if (dropdown) return dropdown.innerHTML?.substring(0, 500) || '';
-            // Tìm element chứa "Post" text trong dropdown, không phải feed
-            const allDivs = document.querySelectorAll('div[role="menuitem"]');
-            return Array.from(allDivs).map(d => d.textContent).join(' | ');
-        });
-        console.log(`[IG Upload] STEP 4 - Dropdown: ${dropdownHTML}`);
-
-        // Click "Post" trong dropdown - tìm element chứa từ "Post"
-        console.log(`[IG Upload] STEP 4 - Click Post trong dropdown...`);
-        // Tìm tất cả element chứa text "Post" và click cái visible đầu tiên
-        const postElements = page.locator(':text("Post")').all();
-        const postEls = await postElements;
-        console.log(`[IG Upload] STEP 4 - Elements containing "Post": ${postEls.length}`);
-        
-        let clicked = false;
-        for (const el of postEls) {
-            const tag = await el.evaluate(e => e.tagName).catch(() => '');
-            const text = (await el.textContent().catch(() => '')).trim();
-            const vis = await el.isVisible().catch(() => false);
-            console.log(`[IG Upload] STEP 4 -   tag="${tag}" text="${text.substring(0,30)}" visible=${vis}`);
-            if (vis && text.toLowerCase() === 'post') {
-                console.log(`[IG Upload] STEP 4 -   Clicking!`);
-                await el.click();
-                clicked = true;
-                break;
-            }
-        }
-        
-        if (!clicked) {
-            // Fallback: click element đầu tiên chứa Post text
-            console.log(`[IG Upload] STEP 4 - Fallback: click element có text Post...`);
-            await page.locator(':text-is("Post")').first().click();
-        }
-        await page.waitForTimeout(3000);
-        console.log(`[IG Upload] STEP 4 - URL=${page.url()}`);
-
-        // STEP 5: Upload file
-        console.log(`[IG Upload] STEP 5 - Upload...`);
-        
-        // Chờ dialog/popup hiện
-        await page.waitForTimeout(3000);
-        
-        // Kiểm tra tất cả các page
-        let activePage = page;
-        const allPages = context.pages();
-        console.log(`[IG Upload] STEP 5 - Total pages: ${allPages.length}`);
-        for (const p of allPages) {
-            await p.bringToFront().catch(() => {});
-            await p.waitForTimeout(1000);
-            const title = await p.title().catch(() => '');
-            const url = p.url();
-            const inputCount = await p.locator('input[type="file"]').count().catch(() => 0);
-            const dialogCount = await p.locator('div[role="dialog"]').count().catch(() => 0);
-            console.log(`[IG Upload] STEP 5 - Page title="${title}" url=${url} inputs=${inputCount} dialogs=${dialogCount}`);
-            
-            if (inputCount > 0) {
-                activePage = p;
-                break;
-            }
-        }
-
-        // Upload file
-        const inputs = activePage.locator('input[type="file"]');
-        const fiCount = await inputs.count();
-        console.log(`[IG Upload] STEP 5 - Active page file inputs: ${fiCount}`);
-
-        if (fiCount > 0) {
-            await inputs.first().setInputFiles(videoPath);
-            console.log(`[IG Upload] STEP 5 - File uploaded!`);
-        } else {
-            // Fallback: chờ dialog
-            const dialog = activePage.locator('div[role="dialog"]');
-            const diCount = await dialog.count();
-            console.log(`[IG Upload] STEP 5 - Dialogs: ${diCount}`);
-            if (diCount > 0) {
-                const fi2 = dialog.locator('input[type="file"]');
-                if (await fi2.count() > 0) {
-                    await fi2.first().setInputFiles(videoPath);
-                    console.log(`[IG Upload] STEP 5 - File uploaded in dialog!`);
+    let clicked = false;
+    for (const sel of createBtnSelectors) {
+        try {
+            const el = page.locator(sel).first();
+            if (await el.count() > 0 && await el.isVisible().catch(() => false)) {
+                const tagName = await el.evaluate(e => e.tagName.toLowerCase()).catch(() => '');
+                if (tagName === 'svg' || tagName === 'img') {
+                    const parent = el.locator('xpath=ancestor::a | ancestor::button | ancestor::div[@role="button"]').first();
+                    if (await parent.count() > 0 && await parent.isVisible().catch(() => false)) {
+                        await parent.click();
+                    } else {
+                        await el.click();
+                    }
                 } else {
-                    throw new Error('Dialog không chứa input file');
+                    await el.click();
                 }
-            } else {
-                throw new Error(`Không tìm thấy input file`);
+                clicked = true;
+                console.log(`[IG] Create button clicked: ${sel}`);
+                break;
             }
+        } catch (_) {}
+    }
+
+    if (!clicked) {
+        throw new Error('Không tìm thấy nút Create/New post trên Instagram');
+    }
+
+    await page.waitForTimeout(2000);
+
+    const modalAppear = await page.locator('div[role="dialog"]').count().catch(() => 0);
+    if (modalAppear > 0) {
+        const modalText = await page.locator('div[role="dialog"]').first().textContent().catch(() => '');
+        if (/select|from computer|chọn|từ máy tính|drag|drop|kéo|thả/i.test(modalText)) {
+            console.log('[IG] Create modal appeared');
+            return;
         }
-        
-        await activePage.waitForTimeout(5000);
+    }
 
-        // STEP 6: Next - Instagram dùng div[role="button"] thay vì <button>
-        console.log(`[IG Upload] STEP 6 - Next...`);
-        // Dùng xpath: tìm div có role="button" chứa text "Next"
-        const nextXPath = "//div[@role='button'][contains(.,'Next') or contains(.,'Tiếp')]";
-        const nextBtn = activePage.locator(nextXPath).first();
-        const nbCount = await nextBtn.count().catch(() => 0);
-        console.log(`[IG Upload] STEP 6 - Next button count: ${nbCount}`);
-        if (nbCount > 0) { await nextBtn.click(); await activePage.waitForTimeout(2000); }
-        // Click lần 2 (filter/crop page)
-        try { if (await nextBtn.isVisible()) { await nextBtn.click(); await activePage.waitForTimeout(2000); } } catch(e) {}
+    const postTextSelectors = [
+        ':text-is("Post")',
+        ':text-is("Bài viết")',
+        'div[role="menuitem"]:has-text("Post")',
+        'div[role="menuitem"]:has-text("Bài viết")',
+    ];
 
-        console.log(`[IG Upload] STEP 8 - Caption...`);
-        // Instagram dùng div contenteditable với role="textbox"
-        const capXPath = "//div[@role='textbox'][@aria-label='Write a caption...']";
-        const captionBox = activePage.locator(capXPath).first();
-        const capCount = await captionBox.count().catch(() => 0);
-        console.log(`[IG Upload] STEP 8 - Caption box count: ${capCount}`);
-        if (capCount > 0) {
-            // Click để focus, sau đó select all + type
-            await captionBox.click();
-            await activePage.waitForTimeout(500);
-            await activePage.keyboard.press('Control+a');
-            await activePage.keyboard.press('Backspace');
-            await activePage.keyboard.type(caption, { delay: 30 });
-            console.log(`[IG Upload] STEP 8 - Đã nhập caption`);
-        } else {
-            // Fallback: textarea
-            const textarea = activePage.locator('textarea').first();
-            if (await textarea.count() > 0) { await textarea.fill(caption); }
+    for (const sel of postTextSelectors) {
+        try {
+            const els = await page.locator(sel).all();
+            for (const el of els) {
+                const text = (await el.textContent().catch(() => '')).trim();
+                const vis = await el.isVisible().catch(() => false);
+                if (vis && /^(post|bài viết)$/i.test(text)) {
+                    await el.click();
+                    console.log(`[IG] Clicked "Post" in dropdown`);
+                    break;
+                }
+            }
+            break;
+        } catch (_) {}
+    }
+
+    await page.waitForSelector('input[type="file"], div[role="dialog"], button:has-text("Select")', { timeout: 10000 }).catch(() => {});
+}
+
+async function uploadFileToInstagram(page, context, filePath, { retries = 3, stepLabel = 'Video' } = {}) {
+    console.log(`[IG] STEP 5 - Waiting for file input... (timeout 30s)`);
+    await page.waitForSelector('input[type="file"]', { timeout: 30000 }).catch(() => console.log(`[IG] STEP 5 - No file input on main page`));
+
+    let activePage = page;
+    console.log(`[IG] STEP 5 - Scanning ${context.pages().length} pages for file input...`);
+    for (const p of context.pages()) {
+        const inputCount = await p.locator('input[type="file"]').count().catch(() => 0);
+        const urlShort = p.url().substring(0, 80);
+        console.log(`[IG] STEP 5 - Page: ${urlShort} fileInputs=${inputCount}`);
+        if (inputCount > 0) {
+            await p.bringToFront().catch(() => {});
+            activePage = p;
+            break;
         }
-        await activePage.waitForTimeout(1000);
+    }
 
-        console.log(`[IG Upload] STEP 9 - Share...`);
-        const shareXPath = "//div[@role='button'][contains(.,'Share') or contains(.,'Chia sẻ')]";
-        // Dùng .last() để lấy nút Share cuối cùng (trong dialog upload, không phải feed)
-        const shareBtn = activePage.locator(shareXPath).last();
-        const sbCount = await activePage.locator(shareXPath).count().catch(() => 0);
-        console.log(`[IG Upload] STEP 9 - Share button count: ${sbCount}`);
-        if (sbCount > 0) { await shareBtn.click(); }
-        console.log(`[IG Upload] STEP 9 - Đã click Share, đợi 15s rồi đóng...`);
-        // Đợi 15-20 giây cho video xử lý
-        await activePage.waitForTimeout(15000);
+    const fileToSend = Array.isArray(filePath) ? filePath[0] : filePath;
 
-        const publishedUrl = (activePage.url().includes('/p/') || activePage.url().includes('/reel/')) ? activePage.url() : '';
-        console.log(`[IG Upload] HOÀN THÀNH url=${publishedUrl}`);
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            const fiCount = await activePage.locator('input[type="file"]').count();
+            console.log(`[IG] STEP 5 (attempt ${attempt}) - activePage=${activePage.url().substring(0, 60)} fileInputs=${fiCount}`);
+            if (fiCount === 0) {
+                if (attempt < retries) {
+                    await new Promise(r => setTimeout(r, 3000));
+                    for (const p of context.pages()) {
+                        const cnt = await p.locator('input[type="file"]').count().catch(() => 0);
+                        console.log(`[IG] STEP 5 - Re-scan: ${p.url().substring(0, 60)} fileInputs=${cnt}`);
+                        if (cnt > 0) {
+                            activePage = p;
+                            break;
+                        }
+                    }
+                }
+                continue;
+            }
 
-        // Đóng page để giải phóng tài nguyên
-        try { await activePage.close(); } catch(e) {}
-       
-        return { success: true, publishedUrl, message: 'Đăng Instagram thành công' };
+            const handle = await activePage.locator('input[type="file"]').first().elementHandle();
+            if (handle) {
+                await handle.setInputFiles(fileToSend);
+                console.log(`[IG] ${stepLabel} uploaded`);
+                handle.dispose().catch(() => {});
+                await new Promise(r => setTimeout(r, 5000));
+                return activePage;
+            }
 
-    } catch (error) {
-        console.error(`[IG Upload] LỖI: ${error.message}`);
-        return { success: false, publishedUrl: '', message: `Instagram: ${error.message}` };
+        } catch (e) {
+            console.log(`[IG] Upload attempt ${attempt} error: ${e.message}`);
+            if (attempt < retries) await new Promise(r => setTimeout(r, 2000));
+        }
+    }
+
+    throw new Error('Không tìm thấy input file để upload');
+}
+
+async function clickNextButton(page, { maxClicks = 2 } = {}) {
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
+    await page.waitForTimeout(1500);
+
+    const nextTexts = ['Next', 'Tiếp', 'Continue'];
+
+    for (let clickRound = 1; clickRound <= maxClicks; clickRound++) {
+        let clicked = false;
+
+        try {
+            const dialog = page.locator('div[role="dialog"]').first();
+            if (await dialog.count() > 0) {
+                for (const text of nextTexts) {
+                    try {
+                        const btn = dialog.locator(`div[role="button"]:has-text("${text}"), button:has-text("${text}")`).first();
+                        if (await btn.count() === 0) continue;
+                        const vis = await btn.isVisible().catch(() => false);
+                        const dis = await btn.isDisabled().catch(() => true);
+                        if (vis && !dis) {
+                            await btn.click();
+                            clicked = true;
+                            console.log(`[IG] Next clicked (dialog) round ${clickRound}`);
+                            await page.waitForTimeout(3000);
+                            break;
+                        }
+                    } catch (_) {}
+                }
+            }
+        } catch (_) {}
+        if (clicked) continue;
+
+        for (const text of nextTexts) {
+            try {
+                const btn = page.locator(`[role="button"]:has-text("${text}"), button:has-text("${text}")`).first();
+                if (await btn.count() === 0) continue;
+                const vis = await btn.isVisible().catch(() => false);
+                const dis = await btn.isDisabled().catch(() => true);
+                if (vis && !dis) {
+                    await btn.click();
+                    clicked = true;
+                    console.log(`[IG] Next clicked (page) round ${clickRound}`);
+                    await page.waitForTimeout(3000);
+                    break;
+                }
+            } catch (_) {}
+        }
+
+        if (!clicked) break;
     }
 }
 
-/**
- * Đăng ảnh lên Instagram (Post, không phải Reels)
- */
+async function clickShareButton(page, { retries = 3 } = {}) {
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
+    await page.waitForTimeout(1000);
+
+    const shareTexts = ['Share', 'Chia sẻ', 'Post', 'Đăng'];
+
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            const dialog = page.locator('div[role="dialog"]').first();
+            if (await dialog.count() > 0) {
+                for (const text of shareTexts) {
+                    try {
+                        const btns = dialog.locator(`div[role="button"]:has-text("${text}"), button:has-text("${text}")`);
+                        for (let i = 0; i < await btns.count().catch(() => 0); i++) {
+                            const btn = btns.nth(i);
+                            const btnText = (await btn.textContent().catch(() => '')).trim();
+                            const vis = await btn.isVisible().catch(() => false);
+                            const dis = await btn.isDisabled().catch(() => true);
+                            if (vis && !dis && /^(share|chia sẻ|post|đăng)$/i.test(btnText)) {
+                                await btn.click({ force: true }).catch(() => btn.click());
+                                await page.waitForTimeout(2000);
+                                console.log(`[IG] Share clicked`);
+                                return true;
+                            }
+                        }
+                    } catch (_) {}
+                }
+            }
+        } catch (_) {}
+
+        for (const text of shareTexts) {
+            try {
+                const btns = page.locator(`div[role="button"]:has-text("${text}"), button:has-text("${text}")`);
+                for (let i = 0; i < await btns.count().catch(() => 0); i++) {
+                    const btn = btns.nth(i);
+                    const btnText = (await btn.textContent().catch(() => '')).trim();
+                    const vis = await btn.isVisible().catch(() => false);
+                    const dis = await btn.isDisabled().catch(() => true);
+                    if (vis && !dis && /^(share|chia sẻ|post|đăng)$/i.test(btnText)) {
+                        await btn.click({ force: true }).catch(() => btn.click());
+                        await page.waitForTimeout(2000);
+                        console.log(`[IG] Share clicked (page)`);
+                        return true;
+                    }
+                }
+            } catch (_) {}
+        }
+
+        if (attempt < retries) {
+            console.log(`[IG] Share not found, retrying...`);
+            await page.waitForTimeout(3000);
+        }
+    }
+
+    console.log(`[IG] WARNING: Share button not found!`);
+    return false;
+}
+
+async function waitForIGSuccess(activePage, { maxWaitMs = 180000, regex } = {}) {
+    const startTime = Date.now();
+    const checkRegex = regex || /reel shared|your reel has been shared|post shared|your post has been shared|đã chia sẻ|chia sẻ thành công/i;
+    const delay = (ms) => new Promise(r => setTimeout(r, ms));
+
+    while (Date.now() - startTime < maxWaitMs) {
+        await activePage.waitForTimeout(3000).catch(() => delay(3000));
+        const elapsed = Math.round((Date.now() - startTime) / 1000);
+
+        let currentUrl = '';
+        try { currentUrl = activePage.url(); } catch (_) { break; }
+
+        if (currentUrl.includes('/p/') || currentUrl.includes('/reel/') || currentUrl.includes('/reels/') || currentUrl.includes('/tv/')) {
+            console.log(`[IG] SUCCESS (URL) after ${elapsed}s: ${currentUrl}`);
+            return currentUrl;
+        }
+
+        try {
+            const dialog = activePage.locator('div[role="dialog"]').first();
+            if (await dialog.count() > 0) {
+                const dialogText = await dialog.textContent().catch(() => '');
+                if (checkRegex.test(dialogText)) {
+                    console.log(`[IG] SUCCESS DIALOG after ${elapsed}s`);
+
+                    let url = '';
+                    try {
+                        const href = await dialog.locator('a[href*="/reel/"], a[href*="/p/"], a[href*="/tv/"]').first().getAttribute('href').catch(() => '');
+                        if (href) url = href.startsWith('http') ? href : `https://www.instagram.com${href}`;
+                    } catch (_) {}
+
+                    try {
+                        const doneBtn = dialog.locator('div[role="button"]:has-text("Done"), button:has-text("Done"), div[role="button"]:has-text("Xong"), button:has-text("Xong")').first();
+                        if (await doneBtn.count() > 0 && await doneBtn.isVisible().catch(() => false)) {
+                            await doneBtn.click().catch(() => {});
+                            await activePage.waitForTimeout(3000);
+                        }
+                    } catch (_) {}
+
+                    if (!url) {
+                        try {
+                            const afterUrl = activePage.url();
+                            if (afterUrl.includes('/p/') || afterUrl.includes('/reel/') || afterUrl.includes('/reels/') || afterUrl.includes('/tv/')) {
+                                url = afterUrl;
+                            }
+                        } catch (_) {}
+                    }
+
+                    if (!url) {
+                        try {
+                            const href = await activePage.locator('a[href*="/reel/"], a[href*="/p/"]').first().getAttribute('href').catch(() => '');
+                            if (href) url = href.startsWith('http') ? href : `https://www.instagram.com${href}`;
+                        } catch (_) {}
+                    }
+
+                    return url;
+                }
+            }
+        } catch (_) {}
+
+        console.log(`[IG] Processing... ${elapsed}s/${maxWaitMs / 1000}s`);
+    }
+
+    try {
+        const finalUrl = activePage.url();
+        if (finalUrl.includes('/p/') || finalUrl.includes('/reel/') || finalUrl.includes('/reels/') || finalUrl.includes('/tv/')) {
+            return finalUrl;
+        }
+    } catch (_) {}
+    return '';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAIN: Upload video to Instagram (Reels)
+// ═══════════════════════════════════════════════════════════════════════════════
+async function uploadVideoToInstagram({ userId, accountName, accountType = 'Personal', videoPath, caption = '', headless = false, existingSessionDir = '' }) {
+    console.log(`[IG Upload] ===== START =====`);
+    console.log(`[IG Upload] account=${accountName} video=${videoPath} headless=${headless}`);
+    if (!userId || !accountName || !videoPath) throw new Error('Thiếu userId, accountName hoặc videoPath');
+
+    const resolved = resolveVideoPathToAbsolute(videoPath);
+    if (!fs.existsSync(resolved)) throw new Error(`File không tồn tại: ${resolved}`);
+    videoPath = resolved;
+
+    let activePage = null;
+    let browserContext = null;
+    let chromeProc = null;
+
+    try {
+        const result = await getOrOpenSocialContext(userId, accountName, accountType, 'IG', { headless, existingSessionDir });
+        browserContext = result.context;
+        chromeProc = result.chromeProc;
+        const pages = browserContext.pages();
+        const page = pages.length > 0 ? pages[0] : await browserContext.newPage();
+        await page.setViewportSize({ width: 1280, height: 800 });
+        await page.bringToFront().catch(() => {});
+
+        await page.goto('https://www.instagram.com/', { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await page.waitForLoadState('networkidle').catch(() => {});
+        if (page.url().includes('login')) {
+            await saveDebugScreenshot(page, 'login-required', userId);
+            throw new Error('Chưa đăng nhập Instagram');
+        }
+
+        await dismissExistingDialogs(page);
+        await page.waitForTimeout(1000);
+
+        console.log(`[IG Upload] STEP 4 - Click Create -> Post...`);
+        await clickCreatePostDropdown(page);
+
+        console.log(`[IG Upload] STEP 5 - Upload video...`);
+        activePage = await uploadFileToInstagram(page, browserContext, videoPath, { retries: 3, stepLabel: 'Video' });
+
+        console.log(`[IG Upload] STEP 6 - Next...`);
+        await clickNextButton(activePage, { maxClicks: 2 });
+
+        console.log(`[IG Upload] STEP 8 - Caption...`);
+        await fillCaptionIG(activePage, sanitizeContentForIG(caption));
+
+        console.log(`[IG Upload] STEP 9 - Share...`);
+        const shareSuccess = await clickShareButton(activePage, { retries: 3 });
+
+        console.log(`[IG Upload] STEP 10 - Waiting for confirmation...`);
+        const publishedUrl = await waitForIGSuccess(activePage, { maxWaitMs: 180000 });
+
+        if (publishedUrl) {
+            return { success: true, publishedUrl, message: 'Đăng Instagram Reels thành công' };
+        }
+        if (shareSuccess) {
+            return { success: false, publishedUrl: '', message: 'Instagram: Đã Share nhưng chưa xác nhận video được đăng' };
+        }
+        return { success: false, publishedUrl: '', message: 'Instagram: Không tìm thấy nút Share' };
+
+    } catch (error) {
+        console.error(`[IG Upload] ERROR: ${error.message}`);
+        return { success: false, publishedUrl: '', message: `Instagram: ${error.message}` };
+    } finally {
+        console.log(`[IG Upload] Đóng Chrome...`);
+        safeCloseBrowser({ page: activePage, context: browserContext, chromeProc });
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAIN: Upload images to Instagram (Post)
+// ═══════════════════════════════════════════════════════════════════════════════
 async function uploadImagesToInstagram({ userId, accountName, accountType = 'Personal', images = [], caption = '', headless = false, existingSessionDir = '' }) {
-    console.log(`[IG Post] ===== BẮT ĐẦU =====`);
-    console.log(`[IG Post] STEP 0 - account=${accountName} images=${images.length} caption=${caption}`);
+    console.log(`[IG Post] ===== START =====`);
+    console.log(`[IG Post] account=${accountName} images=${images.length} caption=${caption}`);
 
     if (!images.length) throw new Error('Thiếu ảnh để đăng Instagram');
     if (!accountName) throw new Error('Thiếu tài khoản Instagram');
 
-    // Resolve image paths
     const resolvedImages = images.map(img => {
-        const cleaned = img.replace(/^\/+/, '');
-        const resolved = path.join(global.USER_DATA_DIR || path.join(__dirname, '..'), cleaned);
-        if (!fs.existsSync(resolved)) {
-            console.log(`[IG Post] Warning: ảnh không tồn tại: ${resolved}`);
-        }
-        return resolved;
-    }).filter(fs.existsSync);
+        if (path.isAbsolute(img) && /^[A-Za-z]:[/\\]/.test(img)) return img;
+        return path.join(global.USER_DATA_DIR || path.join(__dirname, '..'), img.replace(/^\/+/, ''));
+    }).filter(p => {
+        const exists = fs.existsSync(p);
+        if (!exists) console.log(`[IG Post] Warning: ảnh không tồn tại: ${p}`);
+        return exists;
+    });
 
     if (!resolvedImages.length) throw new Error('Không tìm thấy file ảnh nào');
 
+    let activePage = null;
+    let browserContext = null;
+    let chromeProc = null;
+
     try {
-        console.log(`[IG Post] STEP 2 - Mở context desktop...`);
-        const { context } = await getOrOpenSocialContext(userId, accountName, accountType, 'IG', { headless, existingSessionDir });
-        const pages = context.pages();
-        const page = pages.length > 0 ? pages[0] : await context.newPage();
+        const result = await getOrOpenSocialContext(userId, accountName, accountType, 'IG', { headless, existingSessionDir });
+        browserContext = result.context;
+        chromeProc = result.chromeProc;
+        const pages = browserContext.pages();
+        const page = pages.length > 0 ? pages[0] : await browserContext.newPage();
         await page.setViewportSize({ width: 1280, height: 800 });
         await page.bringToFront().catch(() => {});
 
-        console.log(`[IG Post] STEP 3 - instagram.com...`);
         await page.goto('https://www.instagram.com/', { waitUntil: 'domcontentloaded', timeout: 60000 });
-        await page.waitForTimeout(3000);
-        if (page.url().includes('login')) throw new Error('Chưa đăng nhập');
-
-        // STEP 4: Click Create -> Post
-        console.log(`[IG Post] STEP 4 - Click New post...`);
-        await page.locator('svg[aria-label="New post"]').first().click();
-        await page.waitForTimeout(2000);
-
-        // Click "Post" trong dropdown
-        const postEls = await page.locator(':text("Post")').all();
-        for (const el of postEls) {
-            const text = (await el.textContent().catch(() => '')).trim();
-            const vis = await el.isVisible().catch(() => false);
-            if (vis && text.toLowerCase() === 'post') {
-                await el.click();
-                break;
-            }
-        }
-        await page.waitForTimeout(3000);
-
-        // STEP 5: Upload images
-        console.log(`[IG Post] STEP 5 - Upload ${resolvedImages.length} ảnh...`);
-        let activePage = page;
-        const allPages = context.pages();
-        for (const p of allPages) {
-            const fi = await p.locator('input[type="file"]').count().catch(() => 0);
-            if (fi > 0) { activePage = p; break; }
+        await page.waitForLoadState('networkidle').catch(() => {});
+        if (page.url().includes('login')) {
+            await saveDebugScreenshot(page, 'login-required', userId);
+            throw new Error('Chưa đăng nhập Instagram');
         }
 
-        const fileInput = activePage.locator('input[type="file"]');
-        if (await fileInput.count() > 0) {
-            await fileInput.setInputFiles(resolvedImages);
-            console.log(`[IG Post] STEP 5 - Ảnh đã upload!`);
-        } else {
-            throw new Error('Không tìm thấy input file');
-        }
-        await activePage.waitForTimeout(5000);
+        await dismissExistingDialogs(page);
+        await page.waitForTimeout(1000);
 
-        // STEP 6: Next (Instagram multi-image cần click Next)
+        console.log(`[IG Post] STEP 4 - Click Create -> Post...`);
+        await clickCreatePostDropdown(page);
+
+        console.log(`[IG Post] STEP 5 - Upload ${resolvedImages.length} images...`);
+        activePage = await uploadFileToInstagram(page, browserContext, resolvedImages, { retries: 3, stepLabel: 'Images' });
+
         console.log(`[IG Post] STEP 6 - Next...`);
-        const nextXPath = "//div[@role='button'][contains(.,'Next') or contains(.,'Tiếp')]";
-        const nextBtn = activePage.locator(nextXPath).first();
-        if (await nextBtn.count() > 0) { await nextBtn.click(); await activePage.waitForTimeout(2000); }
-        try { if (await nextBtn.isVisible()) { await nextBtn.click(); await activePage.waitForTimeout(2000); } } catch(e) {}
+        await clickNextButton(activePage, { maxClicks: 2 });
 
-        // STEP 7: Caption
         console.log(`[IG Post] STEP 7 - Caption...`);
-        const capXPath = "//div[@role='textbox'][@aria-label='Write a caption...']";
-        const captionBox = activePage.locator(capXPath).first();
-        if (await captionBox.count() > 0) {
-            await captionBox.click();
-            await activePage.waitForTimeout(500);
-            await activePage.keyboard.press('Control+a');
-            await activePage.keyboard.press('Backspace');
-            await activePage.keyboard.type(caption, { delay: 30 });
-        }
-        await activePage.waitForTimeout(1000);
+        await fillCaptionIG(activePage, sanitizeContentForIG(caption));
 
-        // STEP 8: Share
         console.log(`[IG Post] STEP 8 - Share...`);
-        const shareXPath = "//div[@role='button'][contains(.,'Share') or contains(.,'Chia sẻ')]";
-        const shareBtn = activePage.locator(shareXPath).last();
-        if (await shareBtn.count() > 0) { await shareBtn.click(); }
-        // Đợi 15-20 giây cho ảnh xử lý
-        await activePage.waitForTimeout(15000);
+        const shareSuccess = await clickShareButton(activePage, { retries: 3 });
 
-        const publishedUrl = activePage.url().includes('/p/') ? activePage.url() : '';
-        console.log(`[IG Post] HOÀN THÀNH url=${publishedUrl}`);
+        console.log(`[IG Post] STEP 9 - Waiting for confirmation...`);
+        const publishedUrl = await waitForIGSuccess(activePage, {
+            maxWaitMs: 90000,
+            regex: /post shared|your post has been shared|đã chia sẻ|chia sẻ thành công/i
+        });
 
-        // Đóng page để giải phóng tài nguyên
-        try { await activePage.close(); } catch(e) {}
-        
-        return { success: true, publishedUrl, message: 'Đăng Instagram Post thành công' };
+        if (!publishedUrl) await saveDebugScreenshot(activePage, 'post-failed', userId);
+
+        if (publishedUrl) {
+            return { success: true, publishedUrl, message: 'Đăng Instagram Post thành công' };
+        }
+        if (shareSuccess) {
+            return { success: false, publishedUrl: '', message: 'Instagram Post: Đã Share nhưng chưa xác nhận bài đăng' };
+        }
+        return { success: false, publishedUrl: '', message: 'Instagram Post: Không tìm thấy nút Share' };
 
     } catch (error) {
-        console.error(`[IG Post] LỖI: ${error.message}`);
+        console.error(`[IG Post] ERROR: ${error.message}`);
         return { success: false, publishedUrl: '', message: `Instagram Post: ${error.message}` };
+    } finally {
+        console.log(`[IG Post] Đóng Chrome...`);
+        safeCloseBrowser({ page: activePage, context: browserContext, chromeProc });
     }
 }
 

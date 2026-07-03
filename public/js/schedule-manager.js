@@ -233,6 +233,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    document.querySelectorAll('.btn-group-results').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            let groupResults = [];
+            let targetGroupIds = [];
+            try { groupResults = JSON.parse(btn.dataset.groupResults || '[]'); } catch (e) {}
+            try { targetGroupIds = JSON.parse(btn.dataset.targetGroupIds || '[]'); } catch (e) {}
+            showGroupResultsPopup(groupResults, targetGroupIds);
+        });
+    });
+
     editAllAffiliateLinks = Array.isArray(managerData.shopeeLinks) ? managerData.shopeeLinks : [];
     renderEditVideoOptions();
     renderEditAffiliateComboboxList(editAllAffiliateLinks, '');
@@ -244,3 +254,81 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(refreshManagerRowsFromServer, 15000);
     refreshManagerRowsFromServer();
 });
+
+function showGroupResultsPopup(groupResults, targetGroupIds) {
+    const existing = document.getElementById('groupResultsPopup');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'groupResultsPopup';
+    overlay.className = 'group-results-popup-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;';
+
+    let bodyHtml = '';
+    if (!groupResults || groupResults.length === 0) {
+        const groupCount = (targetGroupIds || []).length;
+        bodyHtml = `<div style="text-align:center;padding:32px 16px;color:#999;">
+            <i class="fa-solid fa-inbox" style="font-size:32px;margin-bottom:12px;display:block;"></i>
+            Chưa có kết quả${groupCount > 0 ? ` (${groupCount} nhóm đã chọn)` : ''}. Chạy schedule để xem kết quả.
+        </div>`;
+    } else {
+        const successCount = groupResults.filter(r => r.success && !r.skipped).length;
+        const skipCount = groupResults.filter(r => r.skipped).length;
+        const failCount = groupResults.filter(r => !r.success && !r.skipped).length;
+
+        bodyHtml = `<div style="margin-bottom:12px;font-size:13px;color:#555;">
+            ${groupResults.length} nhóm — <span style="color:#28a745;">✅ ${successCount} thành công</span>
+            ${skipCount > 0 ? ` · <span style="color:#ffc107;">⏭ ${skipCount} bỏ qua</span>` : ''}
+            ${failCount > 0 ? ` · <span style="color:#dc3545;">❌ ${failCount} thất bại</span>` : ''}
+        </div>
+        <div style="overflow-x:auto;">
+            <table class="group-results-table" style="width:100%;border-collapse:collapse;font-size:13px;">
+                <thead><tr>
+                    <th style="width:30px;padding:8px 6px;text-align:center;">#</th>
+                    <th style="padding:8px 6px;text-align:left;">Nhóm</th>
+                    <th style="width:90px;padding:8px 6px;text-align:center;">Trạng thái</th>
+                    <th style="padding:8px 6px;text-align:left;">Link bài đăng</th>
+                    <th style="padding:8px 6px;text-align:left;">Lỗi</th>
+                    <th style="width:140px;padding:8px 6px;text-align:left;">Thời gian</th>
+                </tr></thead>
+                <tbody>
+                    ${groupResults.map((r, i) => {
+                        let badge, text;
+                        if (r.skipped) { badge = 'badge-skip'; text = 'Bỏ qua'; }
+                        else if (r.success) { badge = 'badge-success'; text = 'Thành công'; }
+                        else { badge = 'badge-fail'; text = 'Thất bại'; }
+                        const name = r.groupName || r.groupId || r.groupUrl || `Group ${i+1}`;
+                        const url = r.publishedUrl || '';
+                        const err = r.error || '';
+                        const time = r.postedAt ? new Date(r.postedAt).toLocaleString('vi-VN') : '—';
+                        return `<tr>
+                            <td style="text-align:center;padding:8px 6px;border-top:1px solid var(--border,#e0e0e0);">${i+1}</td>
+                            <td style="padding:8px 6px;border-top:1px solid var(--border,#e0e0e0);font-weight:500;" title="${r.groupUrl || r.groupId || ''}">${_safeTextPopup(name)}</td>
+                            <td style="text-align:center;padding:8px 6px;border-top:1px solid var(--border,#e0e0e0);"><span class="group-result-badge ${badge}">${text}</span></td>
+                            <td style="padding:8px 6px;border-top:1px solid var(--border,#e0e0e0);">${url ? `<a href="${_safeTextPopup(url)}" target="_blank" style="color:#1877f2;font-size:12px;word-break:break-all;">${_safeTextPopup(url)}</a>` : '<span style="color:#999;">—</span>'}</td>
+                            <td style="max-width:200px;padding:8px 6px;border-top:1px solid var(--border,#e0e0e0);">${err ? `<span style="color:#dc3545;font-size:12px;word-break:break-all;" title="${_safeTextPopup(err)}">${_safeTextPopup(err)}</span>` : '<span style="color:#999;">—</span>'}</td>
+                            <td style="font-size:12px;color:#666;white-space:nowrap;padding:8px 6px;border-top:1px solid var(--border,#e0e0e0);">${time}</td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>`;
+    }
+
+    overlay.innerHTML = `<div style="background:#fff;border-radius:12px;max-width:800px;width:92%;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="margin:0;font-size:16px;"><i class="fa-solid fa-chart-column"></i> Kết quả đăng bài nhóm</h3>
+            <button onclick="this.closest('.group-results-popup-overlay').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#666;padding:4px 8px;">&times;</button>
+        </div>
+        ${bodyHtml}
+    </div>`;
+
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+}
+
+function _safeTextPopup(str) {
+    const div = document.createElement('div');
+    div.textContent = str || '';
+    return div.innerHTML;
+}

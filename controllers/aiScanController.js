@@ -5,7 +5,7 @@ const Channel = require('../models/Channel');
 const FacebookGroupCache = require('../models/FacebookGroupCache');
 const Settings = require('../models/Settings');
 const path = require('path');
-const { runAiScan, playCommentForResult } = require('../services/aiScanService');
+const { runAiScan, playCommentForResult, enqueueScan, getQueueStatus } = require('../services/aiScanService');
 
 // ============================================================
 // PAGE RENDERING
@@ -347,7 +347,7 @@ const getConfigById = async (req, res) => {
 // SCAN EXECUTION API
 // ============================================================
 
-// Chạy quét ngay
+// Chạy quét ngay (enqueue vào hàng đợi)
 const runScanNow = async (req, res) => {
     try {
         const { configId } = req.body;
@@ -361,26 +361,38 @@ const runScanNow = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Không tìm thấy cấu hình' });
         }
 
-        // Chạy quét (không await để không block response - trả về ngay)
-        res.json({ success: true, message: 'Đã bắt đầu quét. Hệ thống đang chạy ở background...' });
+        // Enqueue với priority cao (đảy lên đầu hàng đợi)
+        const enqueued = enqueueScan(config.toObject(), { priority: 'high', userId: req.user._id });
+        if (!enqueued) {
+            return res.json({ success: false, message: 'Config đang được quét hoặc đã có trong hàng đợi' });
+        }
 
-        // Chạy trong background
-        runAiScan(config).then(result => {
-            console.log(`[AI Scan] Background scan completed: ${config.name}`, {
-                total: result.totalPosts,
-                matching: result.matchingPosts,
-                commented: result.commentedPosts
-            });
-        }).catch(error => {
-            console.error(`[AI Scan] Background scan failed: ${config.name}`, error.message);
+        const queueStatus = getQueueStatus();
+        return res.json({
+            success: true,
+            message: `Đã thêm vào hàng đợi quét (${queueStatus.totalPending} đang chờ, ${queueStatus.totalRunning} đang chạy)`,
+            queue: {
+                pending: queueStatus.totalPending,
+                running: queueStatus.totalRunning
+            }
         });
 
     } catch (error) {
         console.error('Run AI Scan Now Error:', error);
-        // Nếu chưa gửi response thì mới gửi lỗi
         if (!res.headersSent) {
             return res.status(500).json({ success: false, message: 'Lỗi: ' + error.message });
         }
+    }
+};
+
+// Lấy trạng thái hàng đợi quét
+const getQueueStatusCtrl = async (req, res) => {
+    try {
+        const status = getQueueStatus();
+        return res.json({ success: true, ...status });
+    } catch (error) {
+        console.error('Get Queue Status Error:', error);
+        return res.status(500).json({ success: false, message: 'Lỗi: ' + error.message });
     }
 };
 
@@ -595,6 +607,7 @@ module.exports = {
 
     // Scan execution
     runScanNow,
+    getQueueStatus: getQueueStatusCtrl,
 
     // Results
     getResults,

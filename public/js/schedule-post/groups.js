@@ -8,6 +8,7 @@ let schedulePostFacebookGroups = [];
 let selectedGroupKeys = [];
 let currentGroupSourceChannelId = '';
 let schedulePostGroupsLoading = false;
+window.fbPostTargetType = 'group'; // 'group' | 'personal' | 'fanpage'
 
 /**
  * Stub - gọi từ platform-target.js. (Giữ tên để tương thích ngược.)
@@ -148,6 +149,9 @@ function renderSchedulePostGroupBadges() {
     if (!badgesContainer) return;
 
     let html = '';
+    if (selectedGroupKeys.length > 0) {
+        html += `<button type="button" class="groups-clear-all-btn" onclick="toggleAllSchedulePostGroups(false)" title="Xóa hết"><i class="fa-solid fa-trash-can"></i> Xóa hết</button>`;
+    }
     selectedGroupKeys.forEach(key => {
         const group = schedulePostFacebookGroups.find(g => (g.groupUrl || g.groupId) === key);
         const name = group?.groupName || key;
@@ -196,30 +200,87 @@ async function renderFacebookTab(container, tab) {
     const { sourceId, accName } = resolved;
     const myLoadToken = ++fbGroupsLoadToken;
 
-    // Hiển thị loading NGAY
-    container.innerHTML = `
-        <div class="target-block target-block--fb">
-            <div class="target-block__header">
-                <i class="${tab.icon}"></i>
-                <strong>Nhóm đích của "${escapeHtml(accName)}"</strong>
-                <span class="target-block__sub"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải...</span>
-            </div>
-            <div class="target-block__body">
-                <div class="schedule-accounts-empty"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải danh sách nhóm...</div>
-            </div>
-        </div>`;
+    // Determine account type from data attribute
+    const accCard = document.querySelector(`.account-card.acc-platform-FB input[value="${CSS.escape(sourceId)}"]`)?.closest('.account-card');
+    const accountType = (accCard?.getAttribute('data-account-type') || 'cá nhân').trim().toLowerCase();
+    const isPersonal = accountType === 'cá nhân';
+    const isFanpage = accountType === 'fanpage';
 
-    // Chỉ load lại khi account thay đổi (KHÔNG load lại khi chỉ tick thêm/bớt account khác)
-    if (currentGroupSourceChannelId !== sourceId) {
-        await loadSchedulePostFacebookGroups(sourceId);
-        // Bỏ qua nếu đã có lệnh load mới hơn (tránh ghi đè)
-        if (myLoadToken !== fbGroupsLoadToken) return;
+    // Auto-set destination type based on account type
+    if (isFanpage && window.fbPostTargetType === 'personal') {
+        window.fbPostTargetType = 'fanpage';
+    } else if (isPersonal && window.fbPostTargetType === 'fanpage') {
+        window.fbPostTargetType = 'group';
     }
 
-    // Nếu tab đã chuyển sang platform khác trong lúc đợi → không render
+    // Filter destination type options based on account type
+    const destOptions = [];
+    if (isPersonal) {
+        destOptions.push({ value: 'personal', icon: 'fa-solid fa-user', color: 'var(--primary)', label: 'Bài viết cá nhân' });
+    }
+    if (isFanpage) {
+        destOptions.push({ value: 'fanpage', icon: 'fa-solid fa-flag', color: '#1877f2', label: 'Fanpage' });
+    }
+    destOptions.push({ value: 'group', icon: 'fa-solid fa-users', color: '#42b72a', label: 'Nhóm Facebook' });
+
+    // Destination type selector HTML
+    const destTypeHtml = `
+        <div class="fb-dest-type-selector" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+            ${destOptions.map(opt => `
+                <label class="fb-dest-type-option" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border:2px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;transition:all 0.15s;${window.fbPostTargetType === opt.value ? 'border-color:var(--primary);background:var(--primary-light);' : ''}">
+                    <input type="radio" name="fbDestType" value="${opt.value}" ${window.fbPostTargetType === opt.value ? 'checked' : ''} style="display:none;">
+                    <i class="${opt.icon}" style="color:${opt.color};"></i> ${opt.label}
+                </label>
+            `).join('')}
+        </div>`;
+
+    // Show groups section only when target type is 'group'
+    const showGroups = window.fbPostTargetType === 'group';
+
+    if (showGroups) {
+        // Hiển thị loading NGAY
+        container.innerHTML = `
+            <div class="target-block target-block--fb">
+                <div class="target-block__header">
+                    <i class="${tab.icon}"></i>
+                    <strong>Nhóm đích của "${escapeHtml(accName)}"</strong>
+                    <span class="target-block__sub"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải...</span>
+                </div>
+                <div class="target-block__body">
+                    ${destTypeHtml}
+                    <div class="schedule-accounts-empty"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải danh sách nhóm...</div>
+                </div>
+            </div>`;
+
+        if (currentGroupSourceChannelId !== sourceId) {
+            await loadSchedulePostFacebookGroups(sourceId);
+            if (myLoadToken !== fbGroupsLoadToken) return;
+        }
+    }
+
     if (typeof currentTargetTab !== 'undefined' && currentTargetTab !== 'FB') return;
 
-    // Render groups list hoặc empty state
+    if (!showGroups) {
+        const destLabel = window.fbPostTargetType === 'personal' ? 'Bài viết cá nhân' : 'Fanpage';
+        const destIcon = window.fbPostTargetType === 'personal' ? 'fa-solid fa-user' : 'fa-solid fa-flag';
+        container.innerHTML = `
+            <div class="target-block target-block--fb">
+                <div class="target-block__header">
+                    <i class="${tab.icon}"></i>
+                    <strong>${destLabel} - "${escapeHtml(accName)}"</strong>
+                </div>
+                <div class="target-block__body">
+                    ${destTypeHtml}
+                    <div style="padding:20px;text-align:center;color:var(--text-light);font-size:13px;">
+                        <i class="${destIcon}" style="font-size:28px;display:block;margin-bottom:10px;color:var(--primary);"></i>
+                        Bài viết sẽ đăng lên <strong>${destLabel.toLowerCase()}</strong> của tài khoản <strong>${escapeHtml(accName)}</strong>
+                    </div>
+                </div>
+            </div>`;
+        bindFbDestTypeEvents(container);
+        return;
+    }
+
     const groupsListHtml = schedulePostFacebookGroups.length === 0
         ? `<div class="schedule-accounts-empty">
              <i class="fa-solid fa-users-slash"></i> Tài khoản <strong>${escapeHtml(accName)}</strong> chưa có nhóm nào. Vui lòng vào trang
@@ -235,19 +296,32 @@ async function renderFacebookTab(container, tab) {
                 <span class="target-block__sub">${selectedGroupKeys.length} nhóm đã chọn</span>
             </div>
             <div class="target-block__body">
+                ${destTypeHtml}
                 ${groupsListHtml}
             </div>
         </div>`;
 
     rebindGroupsTabEvents();
+    bindFbDestTypeEvents(container);
+    renderSchedulePostGroupBadges();
 
-    // Pre-select các group đã chọn trước đó
     if (selectedGroupKeys.length > 0) {
         selectedGroupKeys.forEach(key => {
             const cb = document.querySelector(`#schedulePostGroupsWrapper input[name="schedulePostGroupSelect"][value="${CSS.escape(key)}"]`);
             if (cb) cb.checked = true;
         });
     }
+}
+
+function bindFbDestTypeEvents(container) {
+    container.querySelectorAll('.fb-dest-type-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+            window.fbPostTargetType = opt.querySelector('input').value;
+            // Re-render the FB tab
+            const contentEl = document.getElementById('targetTabsContent');
+            if (contentEl) renderFacebookTab(contentEl, TARGET_TABS.find(t => t.key === 'FB'));
+        });
+    });
 }
 
 function buildGroupsListHtml() {
@@ -273,6 +347,7 @@ function buildGroupsListHtml() {
         </label>`;
     });
     html += `</div>
+    <div class="groups-selected-badges" id="schedulePostSelectedBadges"></div>
     <div class="groups-count-bar"><strong id="schedulePostGroupCount">${selectedGroupKeys.length}</strong> / ${schedulePostFacebookGroups.length} nhóm đã chọn</div>`;
     return html;
 }

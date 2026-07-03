@@ -1,9 +1,9 @@
 // services/writingStyleResearch.js
 const WritingStyle = require('../models/WritingStyle');
 const { crawlGroupPosts } = require('./aiScan/crawler');
-const { callAI } = require('./aiContentService');
 const { getOrOpenSocialContext } = require('./socialPlaywrightService');
 const { parseAIJsonResponse } = require('../utils/aiResponse');
+const { callAiForAnalysis } = require('./aiScan/aiAnalysis');
 
 /**
  * Crawl bài viết từ Facebook group
@@ -125,16 +125,11 @@ Trả về JSON:
   "summary": "Tóm tắt văn phong trong 2-3 câu"
 }`;
 
-    const raw = await callAI([
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-    ], {
-        apiKey,
-        temperature: 0.3,
-        maxTokens: 2000,
-        provider: options.provider || 'openai',
+    const raw = await callAiForAnalysis(userId, {}, systemPrompt + '\n\n' + userPrompt, {
+        openaiApiKey: apiKey,
         model: options.model || 'gpt-4o-mini',
-        baseUrl: options.baseUrl,
+        aiProvider: options.provider || 'openai',
+        openaiCompatibleBaseUrl: options.baseUrl,
     });
 
     try {

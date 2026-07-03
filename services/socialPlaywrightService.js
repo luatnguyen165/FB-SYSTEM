@@ -1,17 +1,69 @@
 const fs = require('fs');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, execSync } = require('child_process');
 const { chromium } = require('playwright-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 
 chromium.use(StealthPlugin());
 
 const { SESSION_ROOT, ensureDir, sanitizeFolderName, buildAccountFolder, buildStorageStatePath } = require('./common/browser');
-const getProfile = require('../../FbV2/getProfile');
+// const getProfile = require('../../FbV2/getProfile'); // Deprecated: dùng scrapeFacebookProfile built-in
 const { getAntiDetectionScript } = require('./humanBehaviorService');
 const FacebookGroupCache = require('../models/FacebookGroupCache');
 
 const ACTIVE_SOCIAL_SESSIONS = global.__socialPlaywrightSessions || (global.__socialPlaywrightSessions = new Map());
+
+/**
+ * Patch Chrome profile Preferences → force ngôn ngữ vi-VN
+ */
+function patchChromeLanguage(sessionDir) {
+    try {
+        const defaultDir = path.join(sessionDir, 'Default');
+        if (!fs.existsSync(defaultDir)) {
+            fs.mkdirSync(defaultDir, { recursive: true });
+        }
+
+        const VI_LANG = 'vi-VN,vi,en-US,en';
+
+        // Patch 1: Default/Preferences
+        const prefsPath = path.join(defaultDir, 'Preferences');
+        let prefs = {};
+        if (fs.existsSync(prefsPath)) {
+            try { prefs = JSON.parse(fs.readFileSync(prefsPath, 'utf8')); } catch (e) { prefs = {}; }
+        }
+        if (!prefs.intl) prefs.intl = {};
+        prefs.intl.selected_languages = VI_LANG;
+        prefs.intl.accept_languages = VI_LANG;
+        if (!prefs.browser) prefs.browser = {};
+        prefs.browser.language = 'vi-VN';
+        fs.writeFileSync(prefsPath, JSON.stringify(prefs));
+
+        // Patch 2: Default/Secure Preferences
+        const secPrefsPath = path.join(defaultDir, 'Secure Preferences');
+        if (fs.existsSync(secPrefsPath)) {
+            try {
+                const sp = JSON.parse(fs.readFileSync(secPrefsPath, 'utf8'));
+                if (!sp.browser) sp.browser = {};
+                sp.browser.language = 'vi-VN';
+                fs.writeFileSync(secPrefsPath, JSON.stringify(sp));
+            } catch (e) {}
+        }
+
+        // Patch 3: Local State
+        const localStatePath = path.join(sessionDir, 'Local State');
+        if (fs.existsSync(localStatePath)) {
+            try {
+                const ls = JSON.parse(fs.readFileSync(localStatePath, 'utf8'));
+                if (!ls.intl) ls.intl = {};
+                ls.intl.selected_languages = VI_LANG;
+                ls.intl.accept_languages = VI_LANG;
+                fs.writeFileSync(localStatePath, JSON.stringify(ls));
+            } catch (e) {}
+        }
+    } catch (e) {
+        console.warn(`[SocialSession] Failed to patch Chrome language: ${e.message}`);
+    }
+}
 
 // ─── Chrome CDP Helpers ────────────────────────────────────────────────────────
 
@@ -56,7 +108,9 @@ function launchChromeWithCDP(profileDir, url = '', { debugPort = 0 } = {}) {
     if (url) args.push(url);
 
     console.log(`[CDP] Launch Chrome port=${port} profile=${profileDir}`);
-    const chromeProcess = spawn(chromeExe, args, { detached: true, stdio: 'ignore' });
+    const chromeProcess = spawn(chromeExe, args, { detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    chromeProcess.stdout?.on('data', () => {});
+    chromeProcess.stderr?.on('data', () => {});
     chromeProcess.unref();
 
     return { process: chromeProcess, port };
@@ -66,7 +120,7 @@ function launchChromeWithCDP(profileDir, url = '', { debugPort = 0 } = {}) {
  * Kết nối Playwright vào Chrome qua CDP
  * @returns {{ browser, context, page }}
  */
-async function connectChromeCDP(port, retries = 10) {
+async function connectChromeCDP(port, retries = 20) {
     for (let i = 0; i < retries; i++) {
         try {
             const browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
@@ -76,7 +130,7 @@ async function connectChromeCDP(port, retries = 10) {
             return { browser, context, page };
         } catch (e) {
             if (i < retries - 1) {
-                await new Promise(r => setTimeout(r, 1000));
+                await new Promise(r => setTimeout(r, 1500));
             } else {
                 throw new Error(`Không thể kết nối CDP port ${port}: ${e.message}`);
             }
@@ -259,10 +313,10 @@ async function openSocialLoginWithCDP(userId, accountName, accountType, platform
             console.log(`[${platformLabel}] Đang scrape profile (headless)...`);
             const hBrowser = await chromium.launch({
                 headless: true, channel: 'chrome',
-                args: ['--disable-blink-features=AutomationControlled', '--no-first-run', '--disable-sync'],
+                args: ['--lang=vi-VN', '--disable-blink-features=AutomationControlled', '--no-first-run', '--disable-sync'],
                 ignoreDefaultArgs: ['--enable-automation', '--enable-logging', '--no-sandbox']
             });
-            const hCtx = await hBrowser.newContext({ storageState: storageStatePath });
+            const hCtx = await hBrowser.newContext({ storageState: storageStatePath, locale: 'vi-VN', timezoneId: 'Asia/Ho_Chi_Minh' });
             const hPage = hCtx.pages()[0] || await hCtx.newPage();
 
             // Log cookies loaded
@@ -287,6 +341,7 @@ async function openSocialLoginWithCDP(userId, accountName, accountType, platform
                         : platform === 'TT' ? downloadTiktokAvatar
                         : platform === 'IG' ? downloadIgAvatar
                         : platform === 'YT' ? downloadYtAvatar
+                        : platform === 'TH' ? downloadThAvatar
                         : null;
                     if (downloadFn) {
                         const localAvatar = await downloadFn(myAvatarUrl, userId, accountName);
@@ -498,13 +553,13 @@ async function downloadFbAvatar(url, userId, accountName) {
 
 /**
  * Lấy thông tin profile Facebook từ page đã có session.
- * (Y chang code bên FbV2/getProfile.js)
+ * (Dùng scrapeFacebookProfile built-in thay vì FbV2/getProfile)
  * @param {import('playwright').Page} page
  * @returns {Promise<{myName: string, myProfileUrl: string, myAvatarUrl: string, accountType: string}>}
  */
 async function scrapeFacebookProfile(page) {
-    // Block image/font resources để tăng tốc
-    await page.route('**/*.{png,jpg,jpeg,gif,svg,webp,woff,woff2,ttf,eot}', route => route.abort()).catch(() => {});
+    // Block font resources để tăng tốc (KHÔNG block images để avatar load đúng)
+    await page.route('**/*.{woff,woff2,ttf,eot}', route => route.abort()).catch(() => {});
 
     console.log(`[Facebook Profile Scrape] --> Đang vào https://facebook.com/me để lấy profile URL...`);
     await page.goto('https://www.facebook.com/me', { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
@@ -665,32 +720,56 @@ async function scrapeFacebookProfile(page) {
         }
 
         // === LẤY AVATAR ===
+        // Ưu tiên 1: Tìm img có alt chứa "Ảnh đại diện" hoặc "Profile picture" (avatar của user)
         try {
-            const avatarImg = page.locator('img[alt*="Ảnh đại diện"], img[alt*="profile"], img[alt*="avatar"], img[alt*="Profile"]').first();
-            await avatarImg.waitFor({ timeout: 3000 });
-            myAvatarUrl = await avatarImg.getAttribute('src');
+            const avatarImg = page.locator('img[alt*="Ảnh đại diện"], img[alt*="Profile picture"], img[alt*="profile picture"]').first();
+            await avatarImg.waitFor({ timeout: 5000 });
+            const src = await avatarImg.getAttribute('src');
+            if (src && src.startsWith('http') && (src.includes('scontent') || src.includes('fbcdn') || src.includes('.jpg') || src.includes('.png'))) {
+                myAvatarUrl = src;
+            }
         } catch (e) {}
 
+        // Ưu tiên 2: Tìm avatar trong profile header section
+        if (myAvatarUrl === 'Không tìm thấy') {
+            try {
+                const headerAvatar = page.locator('[data-pagelet="ProfileHeader"] img, [role="main"] img[width="168"], [role="main"] img[width="120"]').first();
+                await headerAvatar.waitFor({ timeout: 3000 });
+                const src = await headerAvatar.getAttribute('src');
+                if (src && src.startsWith('http') && (src.includes('scontent') || src.includes('fbcdn'))) {
+                    myAvatarUrl = src;
+                }
+            } catch (e) {}
+        }
+
+        // Ưu tiên 3: Tìm img có URL chứa scontent/fbcdn (Facebook CDN)
+        if (myAvatarUrl === 'Không tìm thấy') {
+            try {
+                const allImages = page.locator('img[src*="scontent"], img[src*="fbcdn"]');
+                const count = await allImages.count();
+                for (let i = 0; i < count; i++) {
+                    const src = await allImages.nth(i).getAttribute('src');
+                    if (src && src.includes('scontent') && (src.includes('profile') || src.includes('pic'))) {
+                        myAvatarUrl = src;
+                        break;
+                    }
+                }
+                // Fallback: lấy img Facebook CDN đầu tiên (có thể là avatar)
+                if (myAvatarUrl === 'Không tìm thấy' && count > 0) {
+                    const src = await allImages.first().getAttribute('src');
+                    if (src) myAvatarUrl = src;
+                }
+            } catch (e) {}
+        }
+
+        // Ưu tiên 4: SVG image (Facebook sometimes uses SVG for profile pic)
         if (myAvatarUrl === 'Không tìm thấy') {
             try {
                 const svgImage = page.locator('svg image').first();
                 await svgImage.waitFor({ timeout: 3000 });
                 const href = await svgImage.getAttribute('xlink:href');
-                if (href) myAvatarUrl = href;
-            } catch (e) {}
-        }
-
-        if (myAvatarUrl === 'Không tìm thấy') {
-            try {
-                const allImages = page.locator('img');
-                const count = await allImages.count();
-                for (let i = 0; i < count; i++) {
-                    const img = allImages.nth(i);
-                    const src = await img.getAttribute('src');
-                    if (src && src.includes('.jpg') && !src.includes('emoji') && !src.includes('icon')) {
-                        myAvatarUrl = src;
-                        break;
-                    }
+                if (href && href.startsWith('http') && (href.includes('scontent') || href.includes('fbcdn'))) {
+                    myAvatarUrl = href;
                 }
             } catch (e) {}
         }
@@ -801,27 +880,54 @@ async function getOrOpenSocialContext(userId, accountName, accountType, platform
 
     // Dùng CDP Chrome thật (không dùng Playwright launch)
     if (headless) {
+        // Patch Chrome profile language
+        patchChromeLanguage(userSessionDir);
         // Headless mode: dùng Playwright launch cho các task chạy nền (upload, scrape)
         const context = await chromium.launchPersistentContext(userSessionDir, {
             headless: true,
             channel: 'chrome',
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
             viewport: null,
             args: [
+                '--lang=vi-VN',
                 '--start-maximized',
                 '--disable-blink-features=AutomationControlled',
                 '--disable-features=AutomationControlled',
                 '--no-first-run',
                 '--disable-sync',
-                '--disable-background-networking'
+                '--disable-background-networking',
+                '--disable-webrtc-multiple-routes',
+                '--disable-webrtc-hw-encoding',
+                '--disable-webrtc-hw-decoding',
+                '--disable-webrtc',
+                '--enforce-webrtc-ip-permission-check'
             ],
-            ignoreDefaultArgs: ['--enable-automation', '--enable-logging', '--no-sandbox']
+            ignoreDefaultArgs: ['--enable-automation', '--enable-logging', '--no-sandbox'],
+            timezoneId: 'Asia/Ho_Chi_Minh',
+            locale: 'vi-VN'
         });
+
+        // Load cookies từ storage-state.json nếu có (YouTube, Pinterest, etc. cần cookie riêng)
+        const ssPath = getStorageStatePath(userId, accountName, platform);
+        if (fs.existsSync(ssPath)) {
+            try {
+                const ssData = JSON.parse(fs.readFileSync(ssPath, 'utf8'));
+                if (ssData.cookies?.length > 0) {
+                    await context.addCookies(ssData.cookies);
+                    console.log(`[Social Session] Headless loaded ${ssData.cookies.length} cookies from ${ssPath}`);
+                    const p = context.pages()[0] || await context.newPage();
+                    await p.reload({ waitUntil: 'domcontentloaded' }).catch(() => {});
+                }
+            } catch (e) {
+                console.log(`[Social Session] Headless cookie load error: ${e.message}`);
+            }
+        }
 
         session = { context, browser: null, userSessionDir, accountName, accountType, platform, headless: true };
         ACTIVE_SOCIAL_SESSIONS.set(sessionKey, session);
         context.on('close', () => ACTIVE_SOCIAL_SESSIONS.delete(sessionKey));
 
-        return { context, sessionKey, reused: false, userSessionDir };
+    return { context, sessionKey, reused: false, userSessionDir, chromeProc: null };
     }
 
     // Non-headless: dùng CDP Chrome thật
@@ -868,9 +974,20 @@ async function getOrOpenSocialContext(userId, accountName, accountType, platform
     session = { context, browser, chromeProc, userSessionDir, accountName, accountType, platform, headless: false };
     ACTIVE_SOCIAL_SESSIONS.set(sessionKey, session);
 
-    context.on('close', () => ACTIVE_SOCIAL_SESSIONS.delete(sessionKey));
+    context.on('close', () => {
+        ACTIVE_SOCIAL_SESSIONS.delete(sessionKey);
+        // Kill Chrome process tree hoàn toàn (browser.close() chỉ ngắt CDP, không kill process)
+        // Dùng taskkill /T để kill cả process con vì Chrome launch với {detached:true}
+        if (chromeProc && chromeProc.pid) {
+            try {
+                execSync(`taskkill /F /T /PID ${chromeProc.pid}`, { stdio: 'ignore', timeout: 5000 });
+            } catch (_) {
+                try { chromeProc.kill(); } catch (__) {}
+            }
+        }
+    });
 
-    return { context, sessionKey, reused: false, userSessionDir };
+    return { context, sessionKey, reused: false, userSessionDir, chromeProc };
 }
 
 /**
@@ -879,7 +996,7 @@ async function getOrOpenSocialContext(userId, accountName, accountType, platform
  * Flow (y chang FbV2):
  *   1. Dùng chromium.launch() + newContext() (non-persistent) → không restore session cũ → không google.com/newtab
  *   2. Cookie polling phát hiện c_user + xs → loginSuccess = true, đóng Chrome login ngay
- *   3. Mở Chrome headless mới với session đã lưu → dùng getProfile() từ FbV2
+ *   3. Mở Chrome headless mới với session đã lưu → scrapeFacebookProfile()
  *      để lấy accountName, accountType, profileUrl, avatarUrl
  *   4. Lưu DB + UI → đóng Chrome headless
  *   5. User tắt Chrome sớm / login chưa xong → không lưu DB
@@ -892,23 +1009,24 @@ async function getOrOpenSocialContext(userId, accountName, accountType, platform
  *   2. Cookie polling phát hiện c_user + xs (in-memory) → loginSuccess = true
  *   3. Lưu storageState vào file NGAY KHI BROWSER CÒN MỞ (giống FbV2: lưu trước khi close)
  *   4. Đợi user đóng Chrome
- *   5. Mở Chromium headless (channel:chrome) → newContext({ storageState }) → getProfile()
+ *   5. Mở Chromium headless (channel:chrome) → newContext({ storageState }) → scrapeFacebookProfile()
  *   6. User tắt Chrome sớm/login chưa xong → không lưu DB
  */
 async function openFacebookLoginWindow(userId, accountName, accountType = 'Cá nhân', platform = 'FB') {
     const result = await openSocialLoginWithCDP(userId, accountName, accountType, 'FB', 'https://www.facebook.com', ['c_user', 'xs'], 'Facebook');
 
-    // Facebook dùng getProfile() riêng để scrape
+    // Facebook dùng scrapeFacebookProfile() built-in để scrape
     if (result.success && result.cookiesSaved && result.storageStatePath) {
         try {
             console.log('[Facebook Login] Đang scrape profile...');
             const hBrowser = await chromium.launch({
                 headless: true, channel: 'chrome',
-                args: ['--disable-blink-features=AutomationControlled', '--no-first-run', '--disable-sync'],
+                args: ['--lang=vi-VN', '--disable-blink-features=AutomationControlled', '--no-first-run', '--disable-sync'],
                 ignoreDefaultArgs: ['--enable-automation', '--enable-logging', '--no-sandbox']
             });
-            const hCtx = await hBrowser.newContext({ storageState: result.storageStatePath });
-            const profileData = await getProfile(hCtx);
+            const hCtx = await hBrowser.newContext({ storageState: result.storageStatePath, locale: 'vi-VN', timezoneId: 'Asia/Ho_Chi_Minh' });
+            const hPage = await hCtx.newPage();
+            const profileData = await scrapeFacebookProfile(hPage);
             await hCtx.close().catch(() => {});
             await hBrowser.close().catch(() => {});
 
@@ -1420,79 +1538,134 @@ async function scrapePlatformProfile(page, platform) {
                 }
 
                 // ═══════════════════════════════════════════════════════
-                // BƯỚC 1: Lấy PROFILE URL + AVATAR từ header
+                // BƯỚC 1: Lấy PROFILE URL + USERNAME từ header/nav
                 // ═══════════════════════════════════════════════════════
                 const headerData = await page.evaluate(() => {
                     const r = { avatar: '', url: '', username: '' };
 
-                    // XPath: //a[@aria-current='page'] - link profile đang active
-                    // href="/@nluat6868"
-                    const profileLink = document.querySelector('a[aria-current="page"]') ||
-                                        document.querySelector('a[href^="/@"]');
+                    // Cách 1: link có aria-current="page" (profile đang active)
+                    const profileLink = document.querySelector('a[aria-current="page"]');
                     if (profileLink) {
                         const href = profileLink.getAttribute('href') || '';
-                        // Match /@username
                         const match = href.match(/^\/@([a-zA-Z0-9._]+)$/);
                         if (match) {
                             r.username = match[1];
                             r.url = 'https://www.threads.com' + href;
                         }
-                        // Avatar: img trong link (nếu có)
                         const img = profileLink.querySelector('img');
-                        if (img && img.src) {
-                            r.avatar = img.src;
+                        if (img && img.src) r.avatar = img.src;
+                    }
+
+                    // Cách 2: Tìm tất cả a[href^="/@"] trong nav/header
+                    if (!r.username) {
+                        const allLinks = document.querySelectorAll('a[href^="/@"]');
+                        for (const link of allLinks) {
+                            const href = link.getAttribute('href') || '';
+                            const match = href.match(/^\/@([a-zA-Z0-9._]+)$/);
+                            if (match) {
+                                r.username = match[1];
+                                r.url = 'https://www.threads.com' + href;
+                                const img = link.querySelector('img');
+                                if (img && img.src) r.avatar = img.src;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Cách 3: Lấy username từ URL hiện tại
+                    if (!r.username) {
+                        const urlMatch = window.location.href.match(/@([a-zA-Z0-9._]+)/);
+                        if (urlMatch) {
+                            r.username = urlMatch[1];
+                            r.url = 'https://www.threads.com/@' + urlMatch[1];
+                        }
+                    }
+
+                    // Avatar: tìm img có src chứa cdninstagram/fbcdn
+                    if (!r.avatar) {
+                        const imgs = document.querySelectorAll('img[src*="cdninstagram"], img[src*="fbcdn"], img[alt*="profile picture"]');
+                        for (const img of imgs) {
+                            if (img.src && img.src.startsWith('http')) {
+                                r.avatar = img.src;
+                                break;
+                            }
                         }
                     }
 
                     return r;
                 });
 
-                console.log(`[TH Scrape] Header: username="${headerData.username}" url="${headerData.url}" avatar="${headerData.avatar?.substring(0, 60) || 'SVG placeholder'}"`);
+                console.log(`[TH Scrape] Header: username="${headerData.username}" url="${headerData.url}" avatar="${headerData.avatar?.substring(0, 60) || 'none'}"`);
 
                 // ═══════════════════════════════════════════════════════
-                // BƯỚC 2: CLICK vào profile link → trang cá nhân
+                // BƯỚC 2: Navigate đến trang profile để scrape tên + avatar
                 // ═══════════════════════════════════════════════════════
                 let accountName = headerData.username || '';
 
                 if (headerData.url) {
                     console.log(`[TH Scrape] Navigate to profile: ${headerData.url}`);
                     await page.goto(headerData.url, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
-                    await page.waitForTimeout(3000);
+                    await page.waitForTimeout(4000);
 
                     // ═══════════════════════════════════════════════════════
-                    // BƯỚC 3: Scrape ACCOUNT NAME từ trang profile
+                    // BƯỚC 3: Scrape ACCOUNT NAME + AVATAR từ trang profile
                     // ═══════════════════════════════════════════════════════
                     const profileData = await page.evaluate(() => {
                         const r = { name: '', avatar: '' };
 
-                        // XPath helper
                         function xpathNode(xpath, ctx) {
                             return document.evaluate(xpath, ctx || document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
                         }
 
-                        // ACCOUNT NAME: <h1> chứa tên đầy đủ
-                        // XPath: //h1[@dir='auto']
-                        let nameEl = xpathNode("//h1[@dir='auto']");
-                        if (!nameEl) nameEl = document.querySelector('h1');
-                        if (nameEl) {
-                            r.name = nameEl.textContent?.trim() || '';
+                        // ACCOUNT NAME: nhiều selector fallback
+                        // Threads có 2 h1: h1[0]="Profile" (sidebar label), h1[1]="Tên thật"
+                        // → Lấy h1 KHÔNG phải "Profile" và KHÔNG rỗng
+                        const SKIP_NAMES = ['profile', 'threads', 'home', 'search', 'notifications', 'new'];
+                        const allH1 = document.querySelectorAll('h1');
+                        for (const h1 of allH1) {
+                            const text = h1.textContent?.trim() || '';
+                            if (text && !SKIP_NAMES.includes(text.toLowerCase())) {
+                                r.name = text;
+                                break;
+                            }
                         }
 
-                        // Fallback: meta og:title
+                        // Fallback: meta og:title → "NGUYỄN VĂN LUẬT (@nluat6868) • Threads, Say more"
                         if (!r.name) {
                             const meta = document.querySelector('meta[property="og:title"]');
                             if (meta) {
                                 const content = meta.getAttribute('content') || '';
-                                r.name = content.replace(/\s*•\s*Threads.*$/i, '').trim();
+                                const titleMatch = content.match(/^(.+?)\s*\(@/);
+                                if (titleMatch) {
+                                    r.name = titleMatch[1].trim();
+                                } else {
+                                    r.name = content.replace(/\s*•\s*Threads.*$/i, '').trim();
+                                }
                             }
                         }
 
-                        // AVATAR từ trang profile
-                        // XPath: //img[contains(@alt,"profile picture")] - alt="username's profile picture"
-                        const avatarImg = xpathNode("//img[contains(@alt,'profile picture')]") ||
-                                          document.querySelector('img[alt*="profile picture"]') ||
-                                          document.querySelector('img[src*="instagram"], img[src*="cdninstagram"]');
-                        if (avatarImg && avatarImg.src) {
+                        // Fallback: document.title
+                        if (!r.name && document.title) {
+                            const tMatch = document.title.match(/^(.+?)\s*\(@/);
+                            if (tMatch) r.name = tMatch[1].trim();
+                        }
+
+                        // AVATAR từ trang profile — nhiều selector fallback
+                        // 1. img alt chứa "profile picture"
+                        let avatarImg = xpathNode("//img[contains(@alt,'profile picture')]");
+                        // 2. img alt chứa "profile" (thêm fallback)
+                        if (!avatarImg || !avatarImg.src) avatarImg = xpathNode("//img[contains(@alt,'profile')]");
+                        // 3. img src chứa CDN
+                        if (!avatarImg || !avatarImg.src) {
+                            const cdnImgs = document.querySelectorAll('img[src*="cdninstagram"], img[src*="fbcdn"]');
+                            for (const img of cdnImgs) {
+                                if (img.width > 30 && img.height > 30) { // filter icon nhỏ
+                                    avatarImg = img;
+                                    break;
+                                }
+                            }
+                        }
+                        if (avatarImg && avatarImg.src && avatarImg.src.startsWith('http')) {
                             r.avatar = avatarImg.src;
                         }
 
@@ -1503,15 +1676,41 @@ async function scrapePlatformProfile(page, platform) {
                     if (profileData.avatar) headerData.avatar = profileData.avatar;
 
                     console.log(`[TH Scrape] Profile: name="${accountName}" avatar="${profileData.avatar?.substring(0, 60) || 'none'}"`);
+                } else {
+                    // Không tìm được profile URL từ header → dùng meta og:title
+                    console.log(`[TH Scrape] Không tìm profile URL từ header, thử meta tags...`);
+                    const metaData = await page.evaluate(() => {
+                        const r = { name: '', url: '', avatar: '' };
+                        const meta = document.querySelector('meta[property="og:title"]');
+                        if (meta) {
+                            const content = meta.getAttribute('content') || '';
+                            const titleMatch = content.match(/^(.+?)\s*\(@/);
+                            r.name = titleMatch ? titleMatch[1].trim() : content.replace(/\s*•\s*Threads.*$/i, '').trim();
+                        }
+                        // Thử tìm avatar từ homepage
+                        const avatarImg = document.querySelector('img[alt*="profile picture"], img[src*="cdninstagram"]');
+                        if (avatarImg && avatarImg.src) r.avatar = avatarImg.src;
+                        return r;
+                    });
+                    if (metaData.name) accountName = metaData.name;
+                    if (metaData.avatar) headerData.avatar = metaData.avatar;
                 }
 
-                // Fallback: meta tag
+                // Fallback cuối cùng: meta og:title cho tên
                 if (!accountName) {
                     const meta = await page.evaluate(() => {
                         const m = document.querySelector('meta[property="og:title"]');
-                        return m?.getAttribute('content')?.replace(/\s*•\s*Threads.*$/i, '')?.trim() || '';
+                        if (!m) return '';
+                        const content = m.getAttribute('content') || '';
+                        const titleMatch = content.match(/^(.+?)\s*\(@/);
+                        return titleMatch ? titleMatch[1].trim() : content.replace(/\s*•\s*Threads.*$/i, '').trim();
                     });
                     if (meta) accountName = meta;
+                }
+
+                // Fallback cuối cùng: URL cho profileUrl
+                if (!headerData.url && accountName) {
+                    headerData.url = `https://www.threads.com/@${headerData.username || accountName}`;
                 }
 
                 console.log(`[TH Scrape] KẾT QUẢ: name="${accountName}" url="${headerData.url}" avatar="${headerData.avatar?.substring(0, 60) || 'none'}"`);
@@ -1976,6 +2175,59 @@ async function downloadIgAvatar(url, userId, accountName) {
 }
 
 /**
+ * Download Threads avatar từ CDN về local (Threads dùng Instagram CDN)
+ */
+async function downloadThAvatar(url, userId, accountName) {
+    if (!url || url === 'Không tìm thấy' || !url.startsWith('http')) return '';
+    try {
+        const https = require('https');
+        const http = require('http');
+
+        const avatarDir = path.join(global.USER_DATA_DIR || path.join(__dirname, '..'), 'uploads', 'avatars');
+        ensureDir(avatarDir);
+
+        const filename = `${userId}_${sanitizeFolderName(accountName)}_th_avatar.jpg`;
+        const filePath = path.join(avatarDir, filename);
+
+        const response = await new Promise((resolve, reject) => {
+            const mod = url.startsWith('https') ? https : http;
+            const req = mod.get(url, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+                timeout: 15000
+            }, (res) => {
+                if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                    const redirectMod = res.headers.location.startsWith('https') ? https : http;
+                    redirectMod.get(res.headers.location, {
+                        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+                        timeout: 15000
+                    }, resolve).on('error', reject);
+                    return;
+                }
+                if (res.statusCode !== 200) { reject(new Error(`HTTP ${res.statusCode}`)); return; }
+                resolve(res);
+            });
+            req.on('error', reject);
+        });
+
+        const buffer = await new Promise((resolve, reject) => {
+            const chunks = [];
+            response.on('data', chunk => chunks.push(chunk));
+            response.on('end', () => resolve(Buffer.concat(chunks)));
+            response.on('error', reject);
+        });
+
+        if (buffer.length < 100) return '';
+
+        fs.writeFileSync(filePath, buffer);
+        console.log(`[TH Avatar] Đã lưu avatar local: ${filePath}`);
+        return `/uploads/avatars/${filename}`;
+    } catch (e) {
+        console.error(`[TH Avatar] Lỗi download: ${e.message}`);
+        return '';
+    }
+}
+
+/**
  * Download YouTube avatar từ CDN về local
  */
 async function downloadYtAvatar(url, userId, accountName) {
@@ -2050,6 +2302,27 @@ async function openThreadsLoginWindow(userId, accountName, accountType = 'Person
     return await openSocialLoginWithCDP(userId, accountName, accountType, 'TH', 'https://www.threads.com', ['sessionid', 'ds_user_id', 'csrftoken'], 'Threads');
 }
 
+/**
+ * Helper: đóng page, context và kill Chrome process an toàn.
+ * Dùng trong finally block của tất cả upload functions.
+ * @param {Object} options
+ * @param {import('playwright').Page|null} options.page
+ * @param {import('playwright').BrowserContext|null} options.context
+ * @param {object|null} options.chromeProc - Chrome child process (từ launchChromeWithCDP)
+ */
+function safeCloseBrowser({ page, context, chromeProc } = {}) {
+    try { if (page && !page.isClosed()) page.close().catch(() => {}); } catch (_) {}
+    try { if (context && !context.isClosed()) context.close().catch(() => {}); } catch (_) {}
+    // Kill Chrome process tree (browser.close() chỉ ngắt CDP, không kill process)
+    if (chromeProc && chromeProc.pid) {
+        try {
+            execSync(`taskkill /F /T /PID ${chromeProc.pid}`, { stdio: 'ignore', timeout: 5000 });
+        } catch (_) {
+            try { chromeProc.kill(); } catch (__) {}
+        }
+    }
+}
+
 module.exports = {
     getSocialSessionProfile,
     openFacebookLoginWindow,
@@ -2064,5 +2337,7 @@ module.exports = {
     getOrOpenSocialContext,
     downloadTiktokAvatar,
     downloadIgAvatar,
-    downloadYtAvatar
+    downloadYtAvatar,
+    downloadThAvatar,
+    safeCloseBrowser
 };

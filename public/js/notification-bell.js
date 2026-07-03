@@ -165,6 +165,11 @@
                 postUrl: data.postUrl,
                 time: data.time || Date.now()
             });
+            // Hiển thị toast cho người dùng
+            if (typeof window.showToast === 'function') {
+                const toastType = data.type === 'success' ? 'success' : data.type === 'error' ? 'error' : 'info';
+                window.showToast(data.title + ': ' + data.message, toastType);
+            }
         });
 
         socket.on('comment-crawler:progress', (data) => {
@@ -182,6 +187,9 @@
                     postUrl,
                     time: Date.now()
                 });
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Scrape thành công: ' + (data.mainComments || 0) + ' comments', 'success');
+                }
             } else if (data.phase === 'failed') {
                 addNotif({
                     id: id + '_failed',
@@ -191,6 +199,9 @@
                     postUrl,
                     time: Date.now()
                 });
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Scrape thất bại: ' + (data.error || 'Lỗi không xác định'), 'error');
+                }
             }
         });
     }

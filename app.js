@@ -29,7 +29,7 @@ require('dotenv').config();
 connectDB = require('./db');
 connectDB().then(() => {
     global.mongoConnected = true;
-    console.log('✅ MongoDB connected, starting schedulers...');
+    console.log('✅ Database connected, starting schedulers...');
     startSchedulers();
 }).catch(err => {
     console.error('❌ MongoDB connection failed:', err.message);

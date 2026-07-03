@@ -1,29 +1,4 @@
-// models/FeatureVisibility.js - Lưu cấu hình hiển thị tính năng
-const mongoose = require('mongoose');
+// models/FeatureVisibility.js — SQLite adapter
+const { getModel } = require('../scripts/sqlite-models');
 
-const FeatureVisibilitySchema = new mongoose.Schema({
-    // Mỗi tính năng là một key, value là true/false
-    // Chỉ có 1 document duy nhất trong collection (singleton pattern)
-    channels: { type: Boolean, default: true },
-    dashboard: { type: Boolean, default: true },
-    storage: { type: Boolean, default: true },
-    'schedule-manager': { type: Boolean, default: true },
-    'schedule-post': { type: Boolean, default: true },
-    'schedule-reels': { type: Boolean, default: true },
-    'schedule-archive': { type: Boolean, default: true },
-    'schedule-groups': { type: Boolean, default: true },
-    'ai-scan': { type: Boolean, default: true },
-    'ai-comments': { type: Boolean, default: true },
-    'comment-crawler': { type: Boolean, default: true },
-    'comment-play': { type: Boolean, default: true },
-    shopeeLink: { type: Boolean, default: true },
-    profile: { type: Boolean, default: true },
-    settings: { type: Boolean, default: true },
-    'ai-content': { type: Boolean, default: true },
-    feedback: { type: Boolean, default: true },
-    // Tính năng mới
-    'ai-reply-messenger': { type: Boolean, default: true },
-    'tracking': { type: Boolean, default: true },
-}, { timestamps: true });
-
-module.exports = mongoose.model('FeatureVisibility', FeatureVisibilitySchema);
+module.exports = getModel('FeatureVisibility');

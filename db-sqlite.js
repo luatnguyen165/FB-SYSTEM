@@ -564,7 +564,12 @@ function rowToObject(row, schema) {
         } else if (isDateType(fieldDef.type)) {
             obj[fieldName] = val ? new Date(val) : (fieldDef.default === null ? null : val);
         } else {
-            obj[fieldName] = val;
+            // Auto-detect JSON strings stored in TEXT columns (arrays/objects from MongoDB migration)
+            if (typeof val === 'string' && ((val.startsWith('[') && val.endsWith(']')) || (val.startsWith('{') && val.endsWith('}')))) {
+                obj[fieldName] = parseJsonValue(val);
+            } else {
+                obj[fieldName] = val;
+            }
         }
     }
     return obj;
@@ -767,7 +772,7 @@ const refModelMap = {
 // Try to determine the ref model from schema metadata
 function findRefModelForField(schema, fieldName) {
     // Check if schema has a ref mapping
-    if (schema.refs && schema.refs[fieldName]) return schema.refs[fieldName];
+    if (schema && schema.refs && schema.refs[fieldName]) return schema.refs[fieldName];
     // Fallback: guess from field name
     if (fieldName === 'userId') return 'User';
     if (fieldName === 'channelId' || fieldName === 'sourceChannelId' || fieldName === 'targetGroupSourceChannelId') return 'Channel';
